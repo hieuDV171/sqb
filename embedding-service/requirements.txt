@@ -1,0 +1,24 @@
+# requirements.txt
+
+# Core ML frameworks
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+
+# HuggingFace transformers + sentence-transformers
+transformers>=4.35.0
+sentence-transformers>=2.2.0
+
+# Image processing
+Pillow>=10.0.0
+
+# API framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# Optional: GPU support (nếu có GPU NVIDIA)
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pydantic
+huggingface-hub
+python-dotenv

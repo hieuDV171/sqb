@@ -1,0 +1,36 @@
+services:
+  redis:
+    image: redis
+    container_name: redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis-data:/data
+
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+    volumes:
+      - minio-data:/data
+
+    command: server /data --console-address ":9001"
+
+volumes:
+  redis-data:
+  minio-data:
