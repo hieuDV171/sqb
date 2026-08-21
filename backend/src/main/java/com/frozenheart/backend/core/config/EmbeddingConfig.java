@@ -14,7 +14,8 @@ public class EmbeddingConfig {
     public RestClient embeddingRestClient(EmbeddingServiceProperties properties) {
         String baseUrl = properties.getUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
-            baseUrl = "http://localhost:8000"; // Default fallback
+            return RestClient.builder()
+                    .baseUrl("http://localhost:8000").build(); // Default fallback
         }
         return RestClient.builder()
                 .baseUrl(baseUrl)

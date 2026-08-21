@@ -53,11 +53,6 @@ public class Question {
     @Column(columnDefinition = "JSONB")
     private List<QuestionOption> options;
 
-    @Column(length = 20)
-    private String originalCorrectAnswer;
-    @Column(length = 20)
-    private String correctAnswer;
-
     @Enumerated(value = EnumType.STRING)
     @Column(length = 50)
     private QuestionStatus status;
@@ -83,6 +78,8 @@ public class Question {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private List<DuplicateWarning> duplicateWarnings;
+
+    private LocalDateTime reviewdAt;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -4,6 +4,7 @@ import com.frozenheart.backend.modules.embedding.dto.*;
 import com.frozenheart.backend.modules.embedding.service.EmbeddingClientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -73,19 +74,7 @@ public class EmbeddingClientServiceImpl implements EmbeddingClientService {
             return new float[0];
 
         try {
-            ByteArrayResource resource = new ByteArrayResource(imageBytes) {
-                @Override
-                public String getFilename() {
-                    return filename != null ? filename : "image.jpg";
-                }
-            };
-
-            // Cách trực tiếp nhất nói với Spring body là multipart
-            // MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            // body.add("file", resource)
-            
-            MultipartBodyBuilder body = new MultipartBodyBuilder();
-            body.part("file", resource);
+            MultipartBodyBuilder body = getMultipartBodyBuilder(imageBytes, filename);
 
             EmbeddingResponse response = embeddingRestClient.post()
                     .uri("/embed/image")
@@ -100,6 +89,23 @@ public class EmbeddingClientServiceImpl implements EmbeddingClientService {
             log.error("[EmbeddingClient] Lỗi khi tạo Image Embedding: ", e);
             return new float[0];
         }
+    }
+
+    private @NonNull MultipartBodyBuilder getMultipartBodyBuilder(byte[] imageBytes, String filename) {
+        ByteArrayResource resource = new ByteArrayResource(imageBytes) {
+            @Override
+            public String getFilename() {
+                return filename != null ? filename : "image.jpg";
+            }
+        };
+
+        // Cách trực tiếp nhất nói với Spring body là multipart
+        // MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        // body.add("file", resource)
+
+        MultipartBodyBuilder body = new MultipartBodyBuilder();
+        body.part("file", resource);
+        return body;
     }
 
     private float[] convertToFloatArray(List<Float> list) {

@@ -1,15 +1,16 @@
 package com.frozenheart.backend.core.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 
@@ -17,11 +18,11 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
     @Override
     public void handle(
-            HttpServletRequest request,
+            @NonNull HttpServletRequest request,
             HttpServletResponse response,
             AccessDeniedException accessDeniedException
     ) throws IOException {
@@ -33,6 +34,6 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
                 accessDeniedException.getMessage() != null ? accessDeniedException.getMessage() : ResponseCode.ACCESS_DENIED.getMessage()
         );
 
-        objectMapper.writeValue(response.getOutputStream(), errorResponse);
+        jsonMapper.writeValue(response.getOutputStream(), errorResponse);
     }
 }

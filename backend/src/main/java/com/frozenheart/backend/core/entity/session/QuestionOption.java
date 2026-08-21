@@ -8,6 +8,7 @@ import lombok.Setter;
 public class QuestionOption {
     private String key;
     private String text;
+    private Boolean isCorrect;
     private String mediaUrl;
     private Long mediaId;
 }

@@ -32,8 +32,7 @@ public record ProposeSessionRequest(
             List<String> mediaUrls,
             @NotEmpty(message = "Danh sách đáp án không được để trống")
             List<QuestionOption> options,
-            @NotBlank(message = "Đáp án đúng không được để trống")
-            String correctAnswer,
+
             String explanation,
                     
             @NotNull(message = "Nguồn câu hỏi không được để trống")

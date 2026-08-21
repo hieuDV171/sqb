@@ -1,15 +1,16 @@
 package com.frozenheart.backend.core.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 
@@ -17,11 +18,11 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
     @Override
     public void commence(
-            HttpServletRequest request,
+            @NonNull HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException {
@@ -33,6 +34,6 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
                 authException.getMessage() != null ? authException.getMessage() : ResponseCode.TOKEN_INVALID_OR_EXPIRED.getMessage()
         );
 
-        objectMapper.writeValue(response.getOutputStream(), errorResponse);
+        jsonMapper.writeValue(response.getOutputStream(), errorResponse);
     }
 }

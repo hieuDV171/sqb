@@ -148,7 +148,7 @@ public class UserServiceImpl implements UserService {
         userProfile.getUser().setUpdatedAt(LocalDateTime.now());
 
         // @Transactional tự save
-        // userRepository.save(userProfile.getUser());
+        // userRepository.save(userProfile.getUser()); /
         // userProfileRepository.save(userProfile);
 
         return buildMyProfileResponse(userProfile);
@@ -218,7 +218,7 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(LocalDateTime.now());
 
         // @Transactional tự save
-        // userRepository.save(user);
+        // userRepository.save(user); /
         // userProfileRepository.save(userProfile);
     }
 
