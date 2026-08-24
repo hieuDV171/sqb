@@ -35,6 +35,11 @@ public class Session {
     private int reactCount;
     private int commentCount;
 
+    @Builder.Default
+    private boolean anonymous = false;
+
+    private LocalDateTime reviewedAt;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
@@ -42,6 +47,10 @@ public class Session {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "proposer_id")
     private User proposer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewer_id")
+    private User reviewer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")

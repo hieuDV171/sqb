@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
 import com.frozenheart.backend.core.entity.user.PushPreferences;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -71,7 +72,7 @@ public class DataInitializer implements CommandLineRunner {
                     .bio("Admin tối cao của SQB HUST")
                     .totalProposedQuestion(0)
                     .totalApprovedQuestions(0)
-                    .gamificationPoints(0.0)
+                    .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
                     .badgesCount(0)
                     .friendsCount(0)
                     .followersCount(0)

@@ -1,6 +1,9 @@
 package com.frozenheart.backend.core.entity.session;
 
 import com.frozenheart.backend.core.entity.post.Post;
+import com.frozenheart.backend.core.entity.prediction.PointHistory;
+import com.frozenheart.backend.core.entity.user.CourseClass;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,4 +40,12 @@ public class Subject {
     @Singular
     @OneToMany(mappedBy = "subject")
     private Set<Post> posts;
+
+    @Singular
+    @OneToMany(mappedBy = "subject")
+    private Set<CourseClass> courseClasses;
+
+    @Singular
+    @OneToMany(mappedBy = "subject")
+    private Set<PointHistory> pointHistories;
 }

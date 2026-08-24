@@ -1,6 +1,7 @@
 package com.frozenheart.backend.core.entity.user;
 
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
+import com.frozenheart.backend.core.entity.ai.AiChatSession;
 import com.frozenheart.backend.core.entity.conversation.Conversation;
 import com.frozenheart.backend.core.entity.conversation.Message;
 import com.frozenheart.backend.core.entity.conversation.UserDeletedMessageOnlyMe;
@@ -15,10 +16,10 @@ import com.frozenheart.backend.core.entity.prediction.Prediction;
 import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLog;
 import com.frozenheart.backend.core.entity.session.Exam;
 import com.frozenheart.backend.core.entity.socialinteraction.*;
-import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.Session;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -45,6 +46,11 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
+    @Column(length = 10)
+    private String gender;
+
+    private LocalDate dateOfBirth;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean verified = false;
@@ -61,6 +67,14 @@ public class User {
     // ----------------------
 
     // ----------------------
+
+    @Singular
+    @OneToMany(mappedBy = "lecturer")
+    private Set<CourseClass> taughtClasses;
+
+    @Singular
+    @OneToMany(mappedBy = "user")
+    private Set<UserCourseClass> classEnrollments;
 
     @Singular
     @OneToMany(mappedBy = "sender")
@@ -127,7 +141,7 @@ public class User {
     private Set<Post> posts;
 
     @Singular
-    @OneToMany(mappedBy = "lecturer")
+    @OneToMany(mappedBy = "actor")
     private Set<QuestionEditLog> questionEditLogs;
 
     @Singular
@@ -148,7 +162,7 @@ public class User {
 
     @Singular
     @OneToMany(mappedBy = "reviewer")
-    private Set<Question> questions;
+    private Set<Session> reviewedSessions;
 
     @Singular
     @OneToMany(mappedBy = "user")
@@ -189,5 +203,9 @@ public class User {
     @Singular
     @OneToMany(mappedBy = "user")
     private Set<UserDevice> devices;
+
+    @Singular
+    @OneToMany(mappedBy = "user")
+    private Set<AiChatSession> aiChatSessions;
 
 }

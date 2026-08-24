@@ -1,5 +1,7 @@
 package com.frozenheart.backend.core.entity.prediction;
 
+import com.frozenheart.backend.core.entity.session.Semester;
+import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -31,6 +33,14 @@ public class PointHistory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private Subject subject;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "semester_id")
+    private Semester semester;
     // ----------------
 
 }

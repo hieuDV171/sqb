@@ -42,6 +42,7 @@ import com.frozenheart.backend.core.entity.user.DevicePlatform;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.core.entity.user.PushPreferences;
 import com.frozenheart.backend.core.entity.user.QuietHour;
+import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserDevice;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -184,7 +185,7 @@ public class AuthServiceImpl implements AuthService {
                 .studentLecturerCode("")
                 .totalProposedQuestion(0)
                 .totalApprovedQuestions(0)
-                .gamificationPoints(0.0)
+                .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
                 .badgesCount(0)
                 .friendsCount(0)
                 .followersCount(0)
@@ -356,7 +357,7 @@ public class AuthServiceImpl implements AuthService {
                         .bio("Nơi nào có sự sống, nơi đó có công lý!")
                         .totalProposedQuestion(0)
                         .totalApprovedQuestions(0)
-                        .gamificationPoints(0.0)
+                        .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
                         .badgesCount(0)
                         .friendsCount(0)
                         .followersCount(0)

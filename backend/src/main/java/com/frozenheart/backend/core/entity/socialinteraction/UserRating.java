@@ -23,6 +23,8 @@ public class UserRating {
     @Column(length = 500)
     private String comment;
 
+    private boolean isError;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 

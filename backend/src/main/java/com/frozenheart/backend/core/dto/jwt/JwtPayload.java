@@ -25,7 +25,7 @@ public class JwtPayload {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !(authentication.getDetails() instanceof JwtPayload)) {
-            log.error("[JwtPayLoad: {}", ResponseCode.ACCESS_DENIED.getMessage());
+            log.error("[JwtPayLoad]: {}", ResponseCode.ACCESS_DENIED.getMessage());
             throw new AppException(ResponseCode.ACCESS_DENIED);
         }
 

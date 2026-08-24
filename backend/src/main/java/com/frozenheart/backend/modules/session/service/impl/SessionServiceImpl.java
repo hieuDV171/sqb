@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.core.entity.media.ProcessingStatus;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
@@ -46,6 +47,8 @@ import com.frozenheart.backend.modules.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import com.frozenheart.backend.modules.user.service.CounterMetricsService;
+
 @Service
 @RequiredArgsConstructor
 public class SessionServiceImpl implements SessionService {
@@ -57,6 +60,7 @@ public class SessionServiceImpl implements SessionService {
     private final QuestionRepository questionRepository;
     private final QuestionMediaRepository questionMediaRepository;
     private final DuplicateDetectionService duplicateDetectionService;
+    private final CounterMetricsService counterMetricsService;
 
     @Transactional
     @Override
@@ -89,7 +93,8 @@ public class SessionServiceImpl implements SessionService {
         session = sessionRepository.save(session);
 
         // {subjectCode}_{authorCode}_{timestamp}_{sessionId}
-        String sessionCode = subject.getCode() + "_" + authorCode + "_" + System.currentTimeMillis() + "_" + session.getId();
+        String sessionCode = subject.getCode() + "_" + authorCode + "_" + System.currentTimeMillis() + "_"
+                + session.getId();
         session.setSessionCode(sessionCode);
 
         // Chuyển đổi danh sách DTO sang danh sách Question Entity
@@ -99,12 +104,14 @@ public class SessionServiceImpl implements SessionService {
         List<Question> questions = requestedQuestions.stream()
                 .map(q -> {
                     String textContent = q.content();
+
+                    LocalDateTime now = LocalDateTime.now();
                     return Question.builder()
                             .session(finalSession) // Gán mối quan hệ với Session
 
                             .originalContent(textContent)
                             .content(textContent)
-                            
+
                             .difficulty(QuestionDifficulty.UNCLASSIFIED)
                             .status(QuestionStatus.PENDING)
 
@@ -117,7 +124,8 @@ public class SessionServiceImpl implements SessionService {
 
                             .llmGenerated(q.llmGenerated())
                             .confidenceScore(q.confidence() != null ? q.confidence() : 0.0)
-                            .createdAt(LocalDateTime.now())
+                            .createdAt(now)
+                            .updatedAt(now)
                             .build();
                 }).toList();
 
@@ -172,19 +180,20 @@ public class SessionServiceImpl implements SessionService {
                 }
             }
         }
-        
+
         if (!mediaListToSave.isEmpty()) {
             List<QuestionMedia> savedMedias = questionMediaRepository.saveAll(mediaListToSave);
-            
-            // Tạo Map tra cứu siêu nhanh O(1) trên RAM: Key = questionId_mediaUrl -> Value = mediaId
+
+            // Tạo Map tra cứu siêu nhanh O(1) trên RAM: Key = questionId_mediaUrl -> Value
+            // = mediaId
             Map<String, Long> mediaIdMap = savedMedias.stream()
                     .collect(Collectors.toMap(
                             m -> m.getQuestion().getId() + "_" + m.getUrl(), // key
-                            q -> q.getId(), // value
-                            (existing, replacement) -> existing // xử lý đụng độ
+                            QuestionMedia::getId, // value
+                            (existing, _) -> existing // xử lý đụng độ
                     ));
 
-            // 2. Tra cứu O(1) để gán mediaId ngược lại cho từng QuestionOption
+            // Tra cứu O(1) để gán mediaId ngược lại cho từng QuestionOption
             for (Question q : savedQuestions) {
                 if (q.getOptions() != null) {
                     for (var opt : q.getOptions()) {
@@ -197,6 +206,11 @@ public class SessionServiceImpl implements SessionService {
                     }
                 }
             }
+        }
+
+        // Cập nhật chỉ số totalProposedQuestion cho sinh viên đề xuất
+        if (request.questions() != null) {
+            counterMetricsService.incrementProposedQuestions(proposer.getId(), request.questions().size());
         }
 
         // BẮN TASK CHẠY NGẦM CHECK TRÙNG 3 TẦNG
@@ -230,24 +244,28 @@ public class SessionServiceImpl implements SessionService {
 
         Long nextAfter = null;
         if (!sessions.isEmpty()) {
-            nextAfter = sessions.get(sessions.size() - 1).getId();
+            nextAfter = sessions.getLast().getId();
         }
 
         List<MySubmissionsResponse.MySubmissionSessionSummaryDto> contents = sessions.stream()
-                .map(s -> MySubmissionsResponse.MySubmissionSessionSummaryDto.builder()
-                        .sessionId(s.getId())
-                        .subjectId(s.getSubject() != null ? s.getSubject().getId() : null)
-                        .subjectName(s.getSubject() != null ? s.getSubject().getName() : null)
-                        .questionCounts(s.getQuestions() != null ? s.getQuestions().size() : 0)
-                        .createdAt(s.getCreatedAt())
-                        .reactCount(s.getReactCount())
-                        .commentCount(s.getCommentCount())
-                        .build()
-                ).toList();
+                .map(s -> {
+                    Subject subject = s.getSubject();
+                    return MySubmissionsResponse.MySubmissionSessionSummaryDto.builder()
+                            .sessionId(s.getId())
+                            .subjectId(subject != null ? subject.getId() : null)
+                            .subjectName(subject != null ? subject.getName() : null)
+                            .subjectCode(subject != null ? subject.getCode() : null)
+                            .questionCounts(s.getQuestions() != null ? s.getQuestions().size() : 0)
+                            .createdAt(s.getCreatedAt())
+                            .reactCount(s.getReactCount())
+                            .commentCount(s.getCommentCount())
+                            .build();
+                })
+                .toList();
 
         return MySubmissionsResponse.builder()
                 .contents(contents)
-                .pagination(MySubmissionsResponse.CursorPaginationDto.builder()
+                .pagination(CursorPaginationDto.builder()
                         .after(nextAfter)
                         .hasNext(hasNext)
                         .build())
@@ -259,30 +277,26 @@ public class SessionServiceImpl implements SessionService {
     public MySubmissionDetailResponse getMySubmissionDetail(Long sessionId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        Session session = sessionRepository.findByIdWithSubject(sessionId)
+        Object[] rows = sessionRepository.findByIdFetchSubjectAndReviewer(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+
+        Session session = (Session) rows[0];
+        String reviewerFullName = (String) rows[1];
 
         if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
             throw new AppException(ResponseCode.ACCESS_DENIED);
         }
 
-        List<Object[]> rows = questionRepository.findQuestionsWithReviewerFullNameBySessionId(sessionId);
+        List<Question> questions = questionRepository.findQuestionsBySessionId(sessionId);
+        String reviewerName = session.getReviewer() != null ? session.getReviewer().getEmail() : null;
 
+        List<MySubmissionDetailResponse.MySubmissionQuestionDto> questionDtos = questions.stream()
+                .map(q -> {
 
-
-        List<MySubmissionDetailResponse.MySubmissionQuestionDto> questionDtos = rows.stream()
-                .map(row -> {
-
-                    Question q = (Question) row[0];
-                    String reviewerFullName = (String) row[1];
-
-                    List<String> imageUrls = q.getOwnedMedias() != null ?
-                            q.getOwnedMedias().stream()
-                                    .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
-                                    .map(m -> m.getUrl())
-                                    .toList() : List.of();
-
-                    String reviewerName = q.getReviewer() != null ? q.getReviewer().getEmail() : null;
+                    List<String> imageUrls = q.getOwnedMedias() != null ? q.getOwnedMedias().stream()
+                            .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
+                            .map(QuestionMedia::getUrl)
+                            .toList() : List.of();
 
                     return MySubmissionDetailResponse.MySubmissionQuestionDto.builder()
                             .questionId(q.getId())
@@ -290,20 +304,23 @@ public class SessionServiceImpl implements SessionService {
                             .imageUrls(imageUrls)
                             .options(q.getOriginalOptions())
                             .explanation(q.getOriginalExplanation())
-                            .source(q.isLlmGenerated() ? "LLM" : "H")
+                            .source(q.isLlmGenerated() ? "LLM" : "HOMO_SAPIENS")
                             .confidenceScore(q.getConfidenceScore())
-                            .reviewedByLecturer(reviewerFullName != null ? reviewerFullName : reviewerName)
-                            .reviewedAt(q.getReviewdAt())
                             .commentCount(q.getCommentCount() != null ? q.getCommentCount() : 0)
                             .reactCount(q.getReactCount() != null ? q.getReactCount() : 0)
                             .ratingCount(q.getRatingCount() != null ? q.getRatingCount() : 0)
                             .build();
                 }).toList();
 
+        Subject subject = session.getSubject();
+
         return MySubmissionDetailResponse.builder()
                 .sessionId(session.getId())
-                .subjectId(session.getSubject() != null ? session.getSubject().getId() : null)
-                .subjectName(session.getSubject() != null ? session.getSubject().getName() : null)
+                .subjectId(subject != null ? subject.getId() : null)
+                .subjectName(subject != null ? subject.getName() : null)
+                .subjectCode(subject != null ? subject.getCode() : null)
+                .reviewedByLecturer(reviewerFullName != null ? reviewerFullName : reviewerName)
+                .reviewedAt(session.getReviewedAt())
                 .commentCount(session.getCommentCount())
                 .reactCount(session.getReactCount())
                 .createdAt(session.getCreatedAt())
@@ -311,19 +328,26 @@ public class SessionServiceImpl implements SessionService {
                 .build();
     }
 
+    private Session getSession(Long userId, Long sessionId) {
+
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+
+        if (session.getProposer() == null || !session.getProposer().getId().equals(userId)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED);
+        }
+
+        return session;
+    }
+
     @Override
     @Transactional
     public void updateMySubmissionSession(Long sessionId, UpdateSubmissionSessionRequest request) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        Session session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+        Session session = getSession(currentUserId, sessionId);
 
-        if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED);
-        }
-
-        // Option 1 Rule: Cannot edit if status is not PENDING
+        // Không thể sửa nếu đang là PENDING
         if (session.getStatus() != SessionStatus.PENDING) {
             throw new AppException(ResponseCode.ACCESS_DENIED,
                     "Phiên đề xuất đã được hệ thống tiếp nhận xử lý, không thể chỉnh sửa");
@@ -343,23 +367,24 @@ public class SessionServiceImpl implements SessionService {
 
         if (request.subjectId() != null) {
             Subject subject = subjectRepository.findById(request.subjectId())
-                    .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy môn học"));
+                    .orElseThrow(
+                            () -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy môn học"));
             session.setSubject(subject);
         }
 
-        session = sessionRepository.save(session);
+        Session savedSession = sessionRepository.save(session);
 
         // Cập nhật/Thêm/Xóa danh sách câu hỏi nếu DTO gửi lên câu hỏi
         if (request.questions() != null) {
             List<Question> existingQuestions = questionRepository.findBySessionId(sessionId);
             Map<Long, Question> existingMap = existingQuestions.stream()
-                    .collect(Collectors.toMap(q -> q.getId(), q -> q));
+                    .collect(Collectors.toMap(Question::getId, q -> q));
 
             Set<Long> processedQuestionIds = new HashSet<>();
             List<Question> questionsToSave = new ArrayList<>();
 
             String authorCode = anonymizerUtil.encodeUserId(currentUserId);
-            Subject finalSubject = session.getSubject();
+            Subject finalSubject = savedSession.getSubject();
 
             List<UpdateSubmissionSessionRequest.QuestionUpdateDto> dtoList = request.questions();
             int size = dtoList.size();
@@ -390,18 +415,21 @@ public class SessionServiceImpl implements SessionService {
                         q.setExplanation(explanation);
                     }
 
-                    boolean llmGenerated = qDto.source() == QuestionSource.HOMO_SAPIENS ? false : true;
+                    boolean llmGenerated = qDto.source() != QuestionSource.HOMO_SAPIENS;
 
                     q.setLlmGenerated(llmGenerated);
                     if (qDto.confidence() != null) {
                         q.setConfidenceScore(qDto.confidence());
                     }
                     q.setDisplayOrder(i + 1);
+                    q.setUpdatedAt(LocalDateTime.now());
                 } else {
                     String textContent = qDto.content() != null ? qDto.content() : "";
-                    boolean llmGenerated = qDto.source() == QuestionSource.HOMO_SAPIENS ? false : true;
+                    boolean llmGenerated = qDto.source() != QuestionSource.HOMO_SAPIENS;
+
+                    LocalDateTime now = LocalDateTime.now();
                     q = Question.builder()
-                            .session(session)
+                            .session(savedSession)
                             .originalContent(textContent)
                             .content(textContent)
                             .difficulty(QuestionDifficulty.UNCLASSIFIED)
@@ -413,7 +441,8 @@ public class SessionServiceImpl implements SessionService {
                             .llmGenerated(llmGenerated)
                             .confidenceScore(qDto.confidence() != null ? qDto.confidence() : 0.0)
                             .displayOrder(i + 1)
-                            .createdAt(LocalDateTime.now())
+                            .createdAt(now)
+                            .updatedAt(now)
                             .build();
                 }
 
@@ -425,6 +454,7 @@ public class SessionServiceImpl implements SessionService {
                     .toList();
 
             if (!questionsToDelete.isEmpty()) {
+                counterMetricsService.incrementProposedQuestions(currentUserId, -questionsToDelete.size());
                 questionRepository.deleteAll(questionsToDelete);
             }
 
@@ -445,14 +475,9 @@ public class SessionServiceImpl implements SessionService {
     public void deleteMySubmissionSession(Long sessionId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        Session session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+        Session session = getSession(currentUserId, sessionId);
 
-        if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED);
-        }
-
-        // Option 1 Rule: Cannot delete if status is not PENDING
+        // Không xóa PENDING
         if (session.getStatus() != SessionStatus.PENDING) {
             throw new AppException(ResponseCode.ACCESS_DENIED,
                     "Phiên đề xuất đã được hệ thống tiếp nhận xử lý, không thể xóa");
@@ -460,6 +485,7 @@ public class SessionServiceImpl implements SessionService {
 
         List<Question> questions = questionRepository.findBySessionId(sessionId);
         if (!questions.isEmpty()) {
+            counterMetricsService.incrementProposedQuestions(currentUserId, -questions.size());
             questionRepository.deleteAll(questions);
         }
 

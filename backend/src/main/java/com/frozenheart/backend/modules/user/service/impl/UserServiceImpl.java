@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
@@ -103,7 +104,7 @@ public class UserServiceImpl implements UserService {
                 .role(userProfile.getUser().getRole())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
                 .totalApprovedQuestions(userProfile.getTotalApprovedQuestions())
-                .gamificationPoints(userProfile.getGamificationPoints())
+                .gamificationPoints(userProfile.getGamificationPoints().getPublicPoints())
                 .badgesCount(userProfile.getBadgesCount())
                 .friendsCount(userProfile.getFriendsCount())
                 .followersCount(userProfile.getFollowersCount())
@@ -174,7 +175,7 @@ public class UserServiceImpl implements UserService {
                 .verified(userProfile.getUser().isVerified())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
                 .totalApprovedQuestions(userProfile.getTotalApprovedQuestions())
-                .gamificationPoints(userProfile.getGamificationPoints())
+                .gamificationPoints(userProfile.getGamificationPoints() != null ? userProfile.getGamificationPoints().getPublicPoints() : 0.0)
                 .badgesCount(userProfile.getBadgesCount())
                 .friendsCount(userProfile.getFriendsCount())
                 .followersCount(userProfile.getFollowersCount())
@@ -209,7 +210,7 @@ public class UserServiceImpl implements UserService {
         userProfile.setStudentLecturerCode("");
         userProfile.setTotalProposedQuestion(0);
         userProfile.setTotalApprovedQuestions(0);
-        userProfile.setGamificationPoints(0.0);
+        userProfile.setGamificationPoints(new GamificationPointsJson(0.0, 0.0));
         userProfile.setBadgesCount(0);
         userProfile.setFriendsCount(0);
         userProfile.setFollowersCount(0);

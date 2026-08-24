@@ -2,6 +2,8 @@ package com.frozenheart.backend.core.entity.user;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -47,8 +49,10 @@ public class UserProfile {
     @Builder.Default
     private int totalApprovedQuestions = 0;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSONB")
     @Builder.Default
-    private double gamificationPoints = 0.0;
+    private GamificationPointsJson gamificationPoints = new GamificationPointsJson(0.0, 0.0);
 
     @Builder.Default
     private int badgesCount = 0;

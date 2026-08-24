@@ -13,6 +13,7 @@ public record ProposeSessionResponse(
         Long subjectId,
         int questionCount,
         SessionStatus status,
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt
+) {
 
 }

@@ -75,6 +75,9 @@ minio:
   region: us-east-1
 
 app:
+  ai-server:
+    url: ${AI_SERVER_URL}
+    model: ${AI_MODEL}
   salt: ${SECRET_SALT}
   cookie:
     secure: false

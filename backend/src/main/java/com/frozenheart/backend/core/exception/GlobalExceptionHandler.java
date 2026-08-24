@@ -3,6 +3,7 @@ package com.frozenheart.backend.core.exception;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -88,6 +89,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(GlobalResponse.error(ResponseCode.RESOURCE_NOT_FOUND, "Resource not found: " + ex.getResourcePath()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<GlobalResponse<Void>> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+        String message = "Dữ liệu bị trùng lặp hoặc vi phạm ràng buộc cơ sở dữ liệu";
+        if (ex.getCause() != null && ex.getCause().getMessage() != null) {
+            String causeMsg = ex.getCause().getMessage();
+            if (causeMsg.contains("idx_semesters_single_active")) {
+                message = "Đã có 1 học kỳ khác đang trong trạng thái kích hoạt";
+            }
+        }
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_VALUE, message));
     }
 
     @ExceptionHandler(Exception.class)

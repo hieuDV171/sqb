@@ -30,11 +30,11 @@ public class Prediction {
     private Long targetId;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "JSONB")
     private PredictionData predictionData;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "JSONB")
     private PredictionData actualData;
 
     @Enumerated(EnumType.STRING)

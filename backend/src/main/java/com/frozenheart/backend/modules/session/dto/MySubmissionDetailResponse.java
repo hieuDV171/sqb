@@ -12,11 +12,13 @@ public record MySubmissionDetailResponse(
         Long sessionId,
         Long subjectId,
         String subjectName,
+        String subjectCode,
         int commentCount,
         int reactCount,
+        String reviewedByLecturer,
+        LocalDateTime reviewedAt,
         LocalDateTime createdAt,
-        List<MySubmissionQuestionDto> questions
-) {
+        List<MySubmissionQuestionDto> questions) {
     @Builder
     public record MySubmissionQuestionDto(
             Long questionId,
@@ -26,10 +28,8 @@ public record MySubmissionDetailResponse(
             String explanation,
             String source,
             Double confidenceScore,
-            String reviewedByLecturer,
-            LocalDateTime reviewedAt,
             int commentCount,
             int reactCount,
-            int ratingCount
-    ) {}
+            int ratingCount) {
+    }
 }

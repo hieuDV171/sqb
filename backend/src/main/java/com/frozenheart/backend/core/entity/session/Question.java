@@ -3,7 +3,6 @@ package com.frozenheart.backend.core.entity.session;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswer;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
-import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -79,10 +78,10 @@ public class Question {
     @Column(columnDefinition = "JSONB")
     private List<DuplicateWarning> duplicateWarnings;
 
-    private LocalDateTime reviewdAt;
-
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 
     // ---------------------------
 
@@ -93,10 +92,6 @@ public class Question {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id")
     private Session session;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer_id")
-    private User reviewer;
     // ---------------------------
 
     @Singular
