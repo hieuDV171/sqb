@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.frozenheart.backend.core.entity.user.UserRole;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -306,7 +307,14 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
 
     @Override
     @Transactional
-    public AiApplyResponse applyAiRefinement(AiApplyRequest request) {
+    public AiApplyResponse applyAiRefinement(Long questionId, AiApplyRequest request) {
+
+        String role = JwtPayload.getCurrentUserPayload().getRole();
+
+        if (UserRole.STUDENT.name().equals(role)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Sinh viên táy máy cái gì?");
+        }
+
         QuestionEditLog editLog = questionEditLogRepository.findByIdFetchQuestion(request.editLogId())
                 .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy nhật ký chỉnh sửa AI"));
 

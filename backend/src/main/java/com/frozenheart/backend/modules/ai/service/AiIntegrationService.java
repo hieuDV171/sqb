@@ -17,7 +17,7 @@ public interface AiIntegrationService {
 
     AiChatResponse chatWithAi(AiChatRequest request);
 
-    AiApplyResponse applyAiRefinement(AiApplyRequest request);
+    AiApplyResponse applyAiRefinement(Long questionId, AiApplyRequest request);
 
     CursorResponse<AiChatHistoryResponse> getChatHistory(String sessionId, Long after, int limit);
 

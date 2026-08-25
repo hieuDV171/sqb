@@ -19,7 +19,7 @@ public record AiChatRequest(
 
         String chatSessionId,
 
-        /**
+        /*
          * Lịch sử hội thoại do FE tự quản lý và truyền lên.
          * Bắt buộc từng phần tử chỉ có role là 'user' hoặc 'assistant'.
          */

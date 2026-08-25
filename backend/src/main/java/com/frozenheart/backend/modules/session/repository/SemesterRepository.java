@@ -19,4 +19,5 @@ public interface SemesterRepository extends JpaRepository<Semester, Long> {
     @Modifying
     @Query("UPDATE Semester s SET s.active = false WHERE s.active = true")
     void deactivateAllSemesters();
+
 }

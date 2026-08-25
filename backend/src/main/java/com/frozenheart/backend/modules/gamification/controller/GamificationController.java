@@ -75,7 +75,7 @@ public class GamificationController {
     public ResponseEntity<GlobalResponse<LeaderboardResponse>> getLeaderboard(
             @RequestParam(defaultValue = "ALL_TIME") LeaderboardPeriod period,
             @RequestParam(required = false) Long subjectId,
-            @RequestParam(required = false) Integer after,
+            @RequestParam(required = false) Long after,
             @RequestParam(defaultValue = "20") Integer limit) {
         LeaderboardResponse response = gamificationService.getLeaderboard(period, subjectId, after, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));

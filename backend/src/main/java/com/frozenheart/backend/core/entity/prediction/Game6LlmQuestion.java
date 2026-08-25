@@ -1,6 +1,8 @@
 package com.frozenheart.backend.core.entity.prediction;
 
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.modules.gamification.dto.BankType;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -24,7 +26,7 @@ public class Game6LlmQuestion {
     private Long originalQuestionId;
 
     @Column(nullable = false, length = 20)
-    private String sourceType; // 'CURRENT_BANK' or 'LEGACY'
+    private BankType sourceType; // 'CURRENT' or 'LEGACY'
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;

@@ -67,7 +67,7 @@ public class AiIntegrationController {
     public ResponseEntity<GlobalResponse<AiApplyResponse>> applyAiRefinement(
             @PathVariable Long questionId,
             @Valid @RequestBody AiApplyRequest request) {
-        AiApplyResponse response = aiIntegrationService.applyAiRefinement(request);
+        AiApplyResponse response = aiIntegrationService.applyAiRefinement(questionId, request);
         return ResponseEntity.ok(GlobalResponse.success("Áp dụng kết quả chỉnh sửa AI thành công", response));
     }
 }

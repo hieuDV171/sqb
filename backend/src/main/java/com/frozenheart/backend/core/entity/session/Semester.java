@@ -26,4 +26,8 @@ public class Semester {
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isFinalized = false;
 }

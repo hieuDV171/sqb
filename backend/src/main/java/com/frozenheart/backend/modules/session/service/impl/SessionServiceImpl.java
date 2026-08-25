@@ -209,9 +209,7 @@ public class SessionServiceImpl implements SessionService {
         }
 
         // Cập nhật chỉ số totalProposedQuestion cho sinh viên đề xuất
-        if (request.questions() != null) {
-            counterMetricsService.incrementProposedQuestions(proposer.getId(), request.questions().size());
-        }
+        counterMetricsService.incrementProposedQuestions(proposer.getId(), request.questions().size());
 
         // BẮN TASK CHẠY NGẦM CHECK TRÙNG 3 TẦNG
         duplicateDetectionService.asyncCheckDuplicates(session.getId());

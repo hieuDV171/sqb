@@ -25,4 +25,17 @@ public class GamificationScheduler {
             log.error("[GamificationScheduler] Error executing daily Game 1 resolution", e);
         }
     }
+
+    /**
+     * CronJob chạy hàng tuần vào 01:00 AM Thứ 7 để tổng kết phiên cũ và mở phiên Game 6 mới cho ngày Thứ 7.
+     */
+    @Scheduled(cron = "0 0 1 * * SAT")
+    public void scheduleWeeklyGame6Process() {
+        log.info("[GamificationScheduler] Triggering weekly Game 6 resolution and question generation...");
+        try {
+            gamificationService.processAndGenerateGame6WeeklySession();
+        } catch (Exception e) {
+            log.error("[GamificationScheduler] Error executing weekly Game 6 resolution and generation", e);
+        }
+    }
 }

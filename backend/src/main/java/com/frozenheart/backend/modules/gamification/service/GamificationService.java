@@ -18,6 +18,8 @@ public interface GamificationService {
 
     GamePredictionResponse submitGame6(Game6SubmitRequest request);
 
+    Game6ActiveSessionResponse processAndGenerateGame6WeeklySession();
+
     List<GamePredictionResponse> getMyPredictions();
 
     void resolveGame2And3ForSession(Session session, List<Question> qList);
@@ -28,6 +30,6 @@ public interface GamificationService {
 
     void finalizeSemester();
 
-    LeaderboardResponse getLeaderboard(LeaderboardPeriod period, Long subjectId, Integer after, Integer limit);
+    LeaderboardResponse getLeaderboard(LeaderboardPeriod period, Long subjectId, Long after, Integer limit);
 
 }

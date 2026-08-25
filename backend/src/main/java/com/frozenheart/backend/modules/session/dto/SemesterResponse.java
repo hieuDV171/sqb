@@ -8,5 +8,6 @@ public record SemesterResponse(
         Long id,
         String name,
         boolean active,
+        boolean isFinalize,
         LocalDateTime createdAt
 ) {}

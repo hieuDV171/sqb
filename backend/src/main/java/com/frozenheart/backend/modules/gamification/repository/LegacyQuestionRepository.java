@@ -18,4 +18,10 @@ public interface LegacyQuestionRepository extends JpaRepository<LegacyQuestion, 
     @Query("UPDATE LegacyQuestion l SET l.used = false")
     void resetAllIsUsedToFalse();
 
+    @Query("SELECT l.id FROM LegacyQuestion l WHERE l.used = false")
+    List<Long> findUnusedLegacyQuestionIds();
+
+    @Query("SELECT l.id FROM LegacyQuestion l")
+    List<Long> findAllLegacyQuestionIds();
+
 }

@@ -75,7 +75,7 @@ public class QuestionEditLog {
 
     // ---------------------
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id", nullable = true)
+    @JoinColumn(name = "actor_id")
     private User actor;
 
     @ManyToOne(fetch = FetchType.LAZY)

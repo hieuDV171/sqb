@@ -1,11 +1,12 @@
 package com.frozenheart.backend.modules.user.service.impl;
 
+import com.frozenheart.backend.core.dto.event.PointAddedEvent;
 import com.frozenheart.backend.core.entity.prediction.PointHistory;
 import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.session.repository.PointHistoryRepository;
+import com.frozenheart.backend.modules.gamification.repository.PointHistoryRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
@@ -15,6 +16,7 @@ import com.frozenheart.backend.modules.user.service.CounterMetricsService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
     private final PointHistoryRepository pointHistoryRepository;
     private final UserRepository userRepository;
     private final CurrentSemesterHolder currentSemesterHolder;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     // ==========================================
     // 1. CHỈ SỐ USER PROFILE (Gamification & Social)
@@ -125,6 +129,13 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .createdAt(LocalDateTime.now())
                         .build();
                 historiesToSave.add(history);
+
+                eventPublisher.publishEvent(PointAddedEvent.builder()
+                        .userId(reward.userId())
+                        .points(reward.pointsDelta())
+                        .subjectId(reward.subject().getId())
+                        .build()
+                );
             }
         }
 
@@ -170,6 +181,13 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     .createdAt(LocalDateTime.now())
                     .build();
             pointHistoryRepository.save(history);
+
+            eventPublisher.publishEvent(PointAddedEvent.builder()
+                    .userId(userId)
+                    .points(pointsDelta)
+                    .subjectId(subject.getId())
+                    .build()
+            );
         });
     }
 
@@ -204,6 +222,14 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     .createdAt(LocalDateTime.now())
                     .build();
             pointHistoryRepository.save(history);
+
+            eventPublisher.publishEvent(
+                    PointAddedEvent.builder()
+                            .userId(userId)
+                            .points(pointsDelta)
+                            .subjectId(subject.getId())
+                            .build()
+            );
         });
     }
 
@@ -238,6 +264,14 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     .createdAt(LocalDateTime.now())
                     .build();
             pointHistoryRepository.save(history);
+
+            eventPublisher.publishEvent(
+                    PointAddedEvent.builder()
+                            .userId(userId)
+                            .points(pointsDelta)
+                            .subjectId(subject.getId())
+                            .build()
+            );
         });
     }
 
@@ -264,6 +298,14 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .createdAt(LocalDateTime.now())
                         .build();
                 pointHistoryRepository.save(history);
+
+                eventPublisher.publishEvent(
+                        PointAddedEvent.builder()
+                                .userId(profile.getUserId())
+                                .points(currentSecret)
+                                .subjectId(null)
+                                .build()
+                );
             }
         }
         userProfileRepository.saveAll(profiles);
@@ -350,9 +392,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
     public void incrementPostReacts(Long postId, int delta) {
         if (postId == null || delta == 0) return;
 
-        // TODO [TẦNG 3 - REDIS HIGH CONCURRENCY]:
-        // Nếu bài viết VIRAL có hàng ngàn lượt like/giây, mở comment dưới đây để ghi vào Redis thay vì SQL:
-        // redisTemplate.opsForValue().increment("post:" + postId + ":react_delta", delta);
+        // TODO [TẦNG 3 - REDIS HIGH CONCURRENCY]
 
         postRepository.incrementReactCount(postId, delta);
     }
@@ -373,19 +413,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
     public void reconcileAllUserProfileCounters() {
         log.info("Starting background metrics reconciliation job...");
 
-        // TODO [TẦNG 4 - RECONCILIATION SQL]:
-        // Sau này khi hệ thống có > 1,000,000 dòng dữ liệu, mở các câu SQL Native dưới đây để chạy quét ngầm 3:00 AM:
-
-        /*
-        // 1. Tính lại totalApprovedQuestions & totalProposedQuestions cho UserProfile:
-        userProfileRepository.reconcileTotalApprovedQuestions();
-        userProfileRepository.reconcileTotalProposedQuestions();
-
-        // 2. Tính lại reactCount & commentCount cho Session / Post / Question:
-        sessionRepository.reconcileSessionReactsAndComments();
-        postRepository.reconcilePostReactsAndComments();
-        questionRepository.reconcileQuestionStats();
-        */
+        // TODO [TẦNG 4 - RECONCILIATION SQL]
 
         log.info("Background metrics reconciliation job completed successfully.");
     }

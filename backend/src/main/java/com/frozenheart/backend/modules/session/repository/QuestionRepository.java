@@ -61,4 +61,10 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.ownedMedias WHERE q.status = :status")
     List<Question> findByStatusFetchMedias(@Param("status") QuestionStatus status);
 
+    @Query("SELECT q.id FROM Question q WHERE q.status != 'APPROVED'")
+    List<Long> findNonApprovedQuestionIds();
+
+    @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.ownedMedias WHERE q.id IN :ids")
+    List<Question> findByIdInFetchMedias(@Param("ids") List<Long> ids);
+
 }
