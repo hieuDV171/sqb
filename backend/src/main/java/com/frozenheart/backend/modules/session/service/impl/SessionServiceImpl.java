@@ -31,6 +31,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
+import com.frozenheart.backend.modules.session.dto.MySubmissionProjection;
 import com.frozenheart.backend.modules.session.dto.MySubmissionsResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest.QuestionProposeDto;
@@ -90,6 +91,7 @@ public class SessionServiceImpl implements SessionService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        // phiên chưa public, không đánh index (có gọi đánh index thì ES cũng không đánh index)
         session = sessionRepository.save(session);
 
         // {subjectCode}_{authorCode}_{timestamp}_{sessionId}
@@ -130,6 +132,7 @@ public class SessionServiceImpl implements SessionService {
                 }).toList();
 
         // Lưu câu hỏi vào DB
+        // Đang PENDING, không index
         List<Question> savedQuestions = questionRepository.saveAll(questions);
 
         // Cập nhật displayOrder, questionCode và Lưu QuestionMedia đính kèm
@@ -184,8 +187,7 @@ public class SessionServiceImpl implements SessionService {
         if (!mediaListToSave.isEmpty()) {
             List<QuestionMedia> savedMedias = questionMediaRepository.saveAll(mediaListToSave);
 
-            // Tạo Map tra cứu siêu nhanh O(1) trên RAM: Key = questionId_mediaUrl -> Value
-            // = mediaId
+            // Tạo Map tra cứu siêu nhanh O(1) trên RAM: Key = questionId_mediaUrl -> Value = mediaId
             Map<String, Long> mediaIdMap = savedMedias.stream()
                     .collect(Collectors.toMap(
                             m -> m.getQuestion().getId() + "_" + m.getUrl(), // key
@@ -232,28 +234,27 @@ public class SessionServiceImpl implements SessionService {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
 
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-        List<Session> sessions = sessionRepository.findMySubmissions(currentUserId, subjectId, status, after, pageable);
+        List<MySubmissionProjection> mySubmissions = sessionRepository.findMySubmissions(currentUserId, subjectId, status, after, pageable);
 
         boolean hasNext = false;
-        if (sessions.size() > pageSize) {
+        if (mySubmissions.size() > pageSize) {
             hasNext = true;
-            sessions = sessions.subList(0, pageSize);
+            mySubmissions = mySubmissions.subList(0, pageSize);
         }
 
         Long nextAfter = null;
-        if (!sessions.isEmpty()) {
-            nextAfter = sessions.getLast().getId();
+        if (!mySubmissions.isEmpty()) {
+            nextAfter = mySubmissions.getLast().getSessionId();
         }
 
-        List<MySubmissionsResponse.MySubmissionSessionSummaryDto> contents = sessions.stream()
+        List<MySubmissionsResponse.MySubmissionSessionSummaryDto> contents = mySubmissions.stream()
                 .map(s -> {
-                    Subject subject = s.getSubject();
                     return MySubmissionsResponse.MySubmissionSessionSummaryDto.builder()
-                            .sessionId(s.getId())
-                            .subjectId(subject != null ? subject.getId() : null)
-                            .subjectName(subject != null ? subject.getName() : null)
-                            .subjectCode(subject != null ? subject.getCode() : null)
-                            .questionCounts(s.getQuestions() != null ? s.getQuestions().size() : 0)
+                            .sessionId(s.getSessionId())
+                            .subjectId(s.getSubjectId())
+                            .subjectName(s.getSubjectName())
+                            .subjectCode(s.getSubjectCode())
+                            .questionCounts(s.getQuestionCount())
                             .createdAt(s.getCreatedAt())
                             .reactCount(s.getReactCount())
                             .commentCount(s.getCommentCount())
@@ -370,6 +371,7 @@ public class SessionServiceImpl implements SessionService {
             session.setSubject(subject);
         }
 
+        // Không đánh index, đang PENDING
         Session savedSession = sessionRepository.save(session);
 
         // Cập nhật/Thêm/Xóa danh sách câu hỏi nếu DTO gửi lên câu hỏi
@@ -456,6 +458,7 @@ public class SessionServiceImpl implements SessionService {
                 questionRepository.deleteAll(questionsToDelete);
             }
 
+            // Không đánh index (đang PENDING)
             List<Question> savedQuestions = questionRepository.saveAll(questionsToSave);
 
             for (Question q : savedQuestions) {

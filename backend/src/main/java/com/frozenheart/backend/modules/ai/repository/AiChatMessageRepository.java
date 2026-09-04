@@ -15,10 +15,12 @@ public interface AiChatMessageRepository extends JpaRepository<AiChatMessage, Lo
 
     List<AiChatMessage> findBySessionSessionIdAndSessionUserIdOrderByCreatedAtAsc(String sessionId, Long userId);
 
-    @Query("SELECT m FROM AiChatMessage m WHERE m.session.sessionId = :sessionId " +
-           "AND m.session.user.id = :userId " +
-           "AND (:after IS NULL OR m.id < :after) " +
-           "ORDER BY m.id DESC")
+    @Query("""
+            SELECT m FROM AiChatMessage m WHERE m.session.sessionId = :sessionId
+            AND m.session.user.id = :userId
+            AND (:after IS NULL OR m.id < :after)
+            ORDER BY m.id DESC
+        """)
     List<AiChatMessage> findMessagesWithCursor(
             @Param("sessionId") String sessionId,
             @Param("userId") Long userId,

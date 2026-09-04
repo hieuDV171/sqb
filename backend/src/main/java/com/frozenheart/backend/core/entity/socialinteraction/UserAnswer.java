@@ -26,7 +26,6 @@ public class UserAnswer {
     @Column(columnDefinition = "JSONB")
     private List<QuestionOption> selectedOptions;
 
-    private int timeSpentSeconds;
     private boolean isCorrect;
 
     @Column(updatable = false)

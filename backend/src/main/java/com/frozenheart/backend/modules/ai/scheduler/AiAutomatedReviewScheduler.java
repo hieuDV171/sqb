@@ -1,20 +1,29 @@
 package com.frozenheart.backend.modules.ai.scheduler;
 
 import com.frozenheart.backend.core.constant.Point;
+import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
+import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.util.AnonymizerUtil;
+import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.ai.dto.AiRefineRequest;
 import com.frozenheart.backend.modules.ai.service.AiIntegrationService;
+import com.frozenheart.backend.modules.gamification.service.GamificationService;
+import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
+import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
+import com.frozenheart.backend.modules.session.service.impl.QuestionReviewServiceImpl;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Luồng tự động hóa kiểm duyệt phiên đề xuất sau 3 ngày & 6 ngày nếu không có tác động từ Giảng viên.
@@ -36,8 +46,13 @@ public class AiAutomatedReviewScheduler {
 
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
+    private final PostRepository postRepository;
     private final AiIntegrationService aiIntegrationService;
     private final CounterMetricsService counterMetricsService;
+    private final GamificationService gamificationService;
+    private final ActivityFeedService activityFeedService;
+    private final AnonymizerUtil anonymizerUtil;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Scheduled(cron = "0 0 2 * * *") // Chạy hàng ngày vào lúc 2:00 AM
     @Transactional
@@ -81,13 +96,18 @@ public class AiAutomatedReviewScheduler {
         List<Question> allQuestionsToUpdate = new ArrayList<>();
         List<Session> allSessionsToUpdate = new ArrayList<>();
         List<UserPointRewardDto> rewardsToBatch = new ArrayList<>();
+        List<Post> autoPostsToSave = new ArrayList<>();
 
         for (Session session : pendingSessionsSixDays) {
             if (session.getQuestions() == null || session.getQuestions().isEmpty()) continue;
 
+            Set<Question> questions = session.getQuestions() != null ? session.getQuestions() : Set.of();
             int approvedInSession = 0;
-            for (Question q : session.getQuestions()) {
-                boolean hasDuplicateWarning = (q.getDuplicateWarnings() != null && !q.getDuplicateWarnings().isEmpty());
+
+            List<Question> questionsList = questions.stream().toList();
+
+            for (Question q : questionsList) {
+                boolean hasDuplicateWarning = q.getDuplicateWarnings() != null && !q.getDuplicateWarnings().isEmpty();
 
                 if (!hasDuplicateWarning) {
                     q.setStatus(QuestionStatus.APPROVED);
@@ -103,6 +123,10 @@ public class AiAutomatedReviewScheduler {
             session.setReviewedAt(now);
             allSessionsToUpdate.add(session);
 
+            // Giải quyết kết quả Mini-games Gamification (Game 2 & Game 3)
+            gamificationService.resolveGame2And3ForSession(session, questionsList);
+
+            // Thưởng điểm & Tự động đăng bài/feed nếu có ít nhất 1 câu hỏi được duyệt
             if (approvedInSession > 0 && session.getProposer() != null) {
                 User proposer = session.getProposer();
                 Double totalPoints = approvedInSession * Point.APPROVED_QUESTION.getPoints();
@@ -115,16 +139,35 @@ public class AiAutomatedReviewScheduler {
                         .targetType("SESSION")
                         .targetId(session.getId())
                         .subject(session.getSubject())
-                        .build());
+                        .build()
+                    );
+
+                Subject subject = session.getSubject();
+                String subjectName = subject != null ? subject.getName() : "Môn học";
+                String subjectCode = subject != null ? subject.getCode() : "Mã môn";
+                String proposerName = anonymizerUtil.encodeUserId(proposer.getId());
+
+                QuestionReviewServiceImpl.createPostAndAddFeed(autoPostsToSave, session, proposer, subject, subjectName, subjectCode, proposerName, now, activityFeedService);
+
+                // TODO: [NOTIFICATION] Send push notification to session proposer when question approval post is generated
             }
         }
 
         // Thực hiện Batch Save 1 lần duy nhất cho toàn bộ danh sách
         if (!allQuestionsToUpdate.isEmpty()) {
             questionRepository.saveAll(allQuestionsToUpdate);
+            List<Long> qIds = allQuestionsToUpdate.stream().map(Question::getId).toList();
+            eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, qIds));
         }
         if (!allSessionsToUpdate.isEmpty()) {
             sessionRepository.saveAll(allSessionsToUpdate);
+            List<Long> sIds = allSessionsToUpdate.stream().map(Session::getId).toList();
+            eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.SESSION, sIds));
+        }
+        if (!autoPostsToSave.isEmpty()) {
+            List<Post> savedPosts = postRepository.saveAll(autoPostsToSave);
+            List<Long> pIds = savedPosts.stream().map(Post::getId).toList();
+            eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.POST, pIds));
         }
         if (!rewardsToBatch.isEmpty()) {
             counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewardsToBatch);

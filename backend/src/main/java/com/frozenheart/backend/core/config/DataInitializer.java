@@ -22,8 +22,6 @@ import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.frozenheart.backend.modules.auth.service.impl.AuthServiceImpl.getPreferences;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -94,7 +92,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private PushPreferences createDefaultPushPreferences() {
-        return getPreferences();
+        return PushPreferences.createDefault();
     }
 
 }

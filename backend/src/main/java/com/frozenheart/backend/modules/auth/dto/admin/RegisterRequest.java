@@ -18,7 +18,7 @@ public record RegisterRequest(
         String deviceId,
 
         @NotNull(message = "MISSING_REQUIRED_PARAMETER")
-        RegistrationRole role
+        UserRoleDto role
 ) {
 
 }

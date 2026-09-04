@@ -18,9 +18,11 @@ public interface AiChatSessionRepository extends JpaRepository<AiChatSession, Lo
 
     List<AiChatSession> findByUserIdOrderByUpdatedAtDesc(Long userId);
 
-    @Query("SELECT s FROM AiChatSession s WHERE s.user.id = :userId " +
-           "AND (:after IS NULL OR s.id < :after) " +
-           "ORDER BY s.id DESC")
+    @Query("""
+            SELECT s FROM AiChatSession s WHERE s.user.id = :userId
+            AND (:after IS NULL OR s.id < :after)
+            ORDER BY s.id DESC
+        """)
     List<AiChatSession> findUserSessionsWithCursor(
             @Param("userId") Long userId,
             @Param("after") Long after,

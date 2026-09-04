@@ -11,7 +11,7 @@ import com.frozenheart.backend.core.entity.user.UserDevice;
 @Repository
 public interface UserDeviceRepository extends JpaRepository<UserDevice, Long> {
 
-    Optional<UserDevice> findByUserIdAndDeviceId(Long userId, String deviceId);
+    Optional<UserDevice> findByDeviceId(String deviceId);
 
     List<UserDevice> findByUserIdOrderByLastActiveAtDesc(Long userId);
 

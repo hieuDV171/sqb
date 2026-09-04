@@ -13,17 +13,39 @@ import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
+import com.frozenheart.backend.modules.session.dto.MySubmissionProjection;
 
 @Repository
 public interface SessionRepository extends JpaRepository<Session, Long> {
 
-    @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.questions " +
-            "WHERE s.proposer.id = :proposerId " +
-            "AND (:subjectId IS NULL OR s.subject.id = :subjectId) " +
-            "AND (:status IS NULL OR s.status = :status) " +
-            "AND (:after IS NULL OR s.id < :after) " +
-            "ORDER BY s.id DESC")
-    List<Session> findMySubmissions(
+    @Query("""
+            SELECT
+                s.id AS sessionId,
+                subject.id AS subjectId,
+                subject.name AS subjectName,
+                subject.code AS subjectCode,
+                COUNT(q) AS questionCount,
+                s.createdAt AS createdAt,
+                s.reactCount AS reactCount,
+                s.commentCount AS commentCount
+            FROM Session s
+            JOIN s.subject subject
+            LEFT JOIN s.questions q
+            WHERE s.proposer.id = :proposerId
+              AND (:subjectId IS NULL OR subject.id = :subjectId)
+              AND (:status IS NULL OR s.status = :status)
+              AND (:after IS NULL OR s.id < :after)
+            GROUP BY
+                s.id,
+                subject.id,
+                subject.name,
+                subject.code,
+                s.createdAt,
+                s.reactCount,
+                s.commentCount
+            ORDER BY s.id DESC
+            """)
+    List<MySubmissionProjection> findMySubmissions(
             @Param("proposerId") Long proposerId,
             @Param("subjectId") Long subjectId,
             @Param("status") SessionStatus status,
@@ -38,6 +60,15 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias WHERE s.id = :sessionId")
     Optional<Session> findByIdFetchSubjectAndQuestions(@Param("sessionId") Long sessionId);
+
+    @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.RESOLVED")
+    List<Session> findAllResolvedSessionsForSearch();
+
+    @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE s.id = :id")
+    Optional<Session> findByIdFetchSubjectAndProposerForSearch(@Param("id") Long id);
+
+    @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE s.id IN :ids")
+    List<Session> findByIdInFetchSubjectAndProposerForSearch(@Param("ids") List<Long> ids);
 
     @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject JOIN FETCH s.proposer " +
             "WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.PENDING " +

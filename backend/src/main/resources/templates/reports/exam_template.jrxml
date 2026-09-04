@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" 
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+              xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" 
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" 
+              name="exam_template" 
+              pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">
+    
+    <subDataset name="QuestionImagesDataset" uuid="b2c3d4e5-f6a7-8901-bcde-f23456789012">
+        <field name="_THIS" class="java.lang.String"/>
+    </subDataset>
+
+    <subDataset name="OptionsDataset" uuid="c3d4e5f6-a7b8-9012-bcde-f34567890123">
+        <parameter name="INCLUDE_ANSWER_SUB" class="java.lang.Boolean"/>
+        <field name="key" class="java.lang.String"/>
+        <field name="text" class="java.lang.String"/>
+        <field name="mediaUrl" class="java.lang.String"/>
+        <field name="isCorrect" class="java.lang.Boolean"/>
+    </subDataset>
+
+    <parameter name="EXAM_TITLE" class="java.lang.String"/>
+    <parameter name="SUBJECT_NAME" class="java.lang.String"/>
+    <parameter name="INCLUDE_ANSWER" class="java.lang.Boolean"/>
+
+    <field name="order" class="java.lang.Integer"/>
+    <field name="questionContent" class="java.lang.String"/>
+    <field name="questionImageUrls" class="java.util.List"/>
+    <field name="options" class="java.util.List"/>
+    <field name="optionsText" class="java.lang.String"/>
+    <field name="correctAnswer" class="java.lang.String"/>
+
+    <title>
+        <band height="60">
+            <textField>
+                <reportElement x="0" y="0" width="555" height="30" uuid="b1c2d3e4-f5a6-7890-bcde-f12345678901"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="16" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{EXAM_TITLE}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="30" width="555" height="20" uuid="c1d2e3f4-a5b6-7890-cdef-123456789012"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font size="12" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Môn học: " + ($P{SUBJECT_NAME} != null ? $P{SUBJECT_NAME} : "")]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <detail>
+        <band height="100" splitType="Stretch">
+            <!-- 1. CÂU HỎI CONTENT -->
+            <textField textAdjust="StretchHeight">
+                <reportElement x="0" y="5" width="555" height="20" uuid="d1e2f3a4-b5c6-7890-def1-234567890123"/>
+                <textElement verticalAlignment="Top">
+                    <font size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Câu " + $F{order} + ": " + $F{questionContent}]]></textFieldExpression>
+            </textField>
+
+            <!-- 2. ẢNH ĐỀ BÀI (CONTENT MEDIA) -->
+            <componentElement>
+                <reportElement x="20" y="27" width="535" height="20" isRemoveLineWhenBlank="true" uuid="c1e2f3a4-b5c6-7890-def1-123456789012"/>
+                <jr:list printOrder="Vertical">
+                    <datasetRun subDataset="QuestionImagesDataset" uuid="d2e3f4a5-b6c7-8901-cdef-234567890123">
+                        <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{questionImageUrls} != null ? $F{questionImageUrls} : java.util.Collections.emptyList())]]></dataSourceExpression>
+                    </datasetRun>
+                    <jr:listContents height="120" width="535">
+                        <image scaleImage="RetainShape" hAlign="Left" vAlign="Middle" isUsingCache="true">
+                            <reportElement x="0" y="5" width="250" height="110" uuid="e3f4a5b6-c7d8-9012-def3-345678901234"/>
+                            <imageExpression><![CDATA[$F{_THIS}]]></imageExpression>
+                        </image>
+                    </jr:listContents>
+                </jr:list>
+            </componentElement>
+
+            <!-- 3. DANH SÁCH ĐÁP ÁN (KEY + TEXT + IS_CORRECT + OPTION MEDIA) -->
+            <componentElement>
+                <reportElement x="20" y="50" width="535" height="25" isRemoveLineWhenBlank="true" uuid="f1e2d3c4-b5a6-7890-1234-567890abcdef"/>
+                <jr:list printOrder="Vertical">
+                    <datasetRun subDataset="OptionsDataset" uuid="a1b2c3d4-e5f6-7890-1234-567890abcdef">
+                        <datasetParameter name="INCLUDE_ANSWER_SUB">
+                            <datasetParameterExpression><![CDATA[$P{INCLUDE_ANSWER}]]></datasetParameterExpression>
+                        </datasetParameter>
+                        <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{options} != null ? $F{options} : java.util.Collections.emptyList())]]></dataSourceExpression>
+                    </datasetRun>
+                    <jr:listContents height="125" width="535">
+                        <!-- Key + Text Content + IsCorrect indicator -->
+                        <textField textAdjust="StretchHeight">
+                            <reportElement x="0" y="2" width="535" height="18" uuid="b1c2d3e4-f5a6-7890-1234-567890abcdef"/>
+                            <textElement verticalAlignment="Middle">
+                                <font size="10"/>
+                            </textElement>
+                            <textFieldExpression><![CDATA[$F{key} + ". " + ($F{text} != null ? $F{text} : "") + (Boolean.TRUE.equals($P{INCLUDE_ANSWER_SUB}) && Boolean.TRUE.equals($F{isCorrect}) ? " [Đáp án đúng]" : "")]]></textFieldExpression>
+                        </textField>
+
+                        <!-- Option Media Image (Nếu đáp án có ảnh) -->
+                        <image scaleImage="RetainShape" hAlign="Left" vAlign="Middle" isUsingCache="true">
+                            <reportElement x="15" y="22" width="200" height="95" isRemoveLineWhenBlank="true" uuid="c1d2e3f4-a5b6-7890-1234-567890abcdef"/>
+                            <imageExpression><![CDATA[$F{mediaUrl}]]></imageExpression>
+                        </image>
+                    </jr:listContents>
+                </jr:list>
+            </componentElement>
+
+            <!-- 4. BẢNG ĐÁP ÁN TỔNG HỢP NẾU CẦN -->
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="20" y="78" width="535" height="15" uuid="f1a2b3c4-d5e6-7890-f123-456789012345"/>
+                <textElement verticalAlignment="Top">
+                    <font size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[Boolean.TRUE.equals($P{INCLUDE_ANSWER}) ? ("=> Đáp án đúng: " + ($F{correctAnswer} != null ? $F{correctAnswer} : "")) : ""]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="20">
+            <textField>
+                <reportElement x="355" y="0" width="200" height="20" uuid="a2b3c4d5-e6f7-8901-bcde-f23456789012"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+</jasperReport>

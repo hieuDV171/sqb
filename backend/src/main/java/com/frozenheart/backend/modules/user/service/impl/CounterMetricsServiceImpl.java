@@ -112,6 +112,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     GamificationPointsJson p = profile.getGamificationPoints();
                     if (p == null) p = new GamificationPointsJson(0.0, 0.0);
                     p.setPublicPoints(p.getPublicPoints() + reward.pointsDelta());
+                    p.setCoinBalance(p.getCoinBalance() + reward.pointsDelta());
                     profile.setGamificationPoints(p);
                 }
                 profilesToSave.add(profile);
@@ -164,6 +165,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
             GamificationPointsJson p = profile.getGamificationPoints();
             if (p == null) p = new GamificationPointsJson(0.0, 0.0);
             p.setPublicPoints(p.getPublicPoints() + pointsDelta);
+            p.setCoinBalance(p.getCoinBalance() + pointsDelta);
             profile.setGamificationPoints(p);
             userProfileRepository.save(profile);
 
@@ -248,6 +250,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
             GamificationPointsJson p = profile.getGamificationPoints();
             if (p == null) p = new GamificationPointsJson(0.0, 0.0);
             p.setPublicPoints(Math.max(0.0, p.getPublicPoints() - pointsDelta));
+            p.setCoinBalance(Math.max(0.0, p.getCoinBalance() - pointsDelta));
             profile.setGamificationPoints(p);
             userProfileRepository.save(profile);
 
@@ -286,6 +289,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 double currentSecret = points.getSecretPoints();
 
                 points.setPublicPoints(currentPublic + currentSecret);
+                points.setCoinBalance(points.getCoinBalance() + currentSecret);
                 points.setSecretPoints(0.0);
                 profile.setGamificationPoints(points);
 
@@ -327,12 +331,12 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
 
     @Override
     @Transactional
-    public void updateFollowerRelationCounts(Long followerId, Long followedId, int delta) {
+    public void updateFollowerRelationCounts(Long followerId, Long followedUserId, int delta) {
         if (followerId != null && delta != 0) {
             userProfileRepository.incrementFollowingCount(followerId, delta);
         }
-        if (followedId != null && delta != 0) {
-            userProfileRepository.incrementFollowersCount(followedId, delta);
+        if (followedUserId != null && delta != 0) {
+            userProfileRepository.incrementFollowersCount(followedUserId, delta);
         }
     }
 

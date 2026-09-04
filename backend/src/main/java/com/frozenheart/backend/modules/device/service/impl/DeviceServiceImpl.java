@@ -55,10 +55,9 @@ public class DeviceServiceImpl implements DeviceService {
     public void revokeDevice(String targetDeviceId) {
 
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
-        Long currentUserId = payload.getUserId();
         String currentEmail = payload.getUsername();
 
-        UserDevice device = userDeviceRepository.findByUserIdAndDeviceId(currentUserId, targetDeviceId)
+        UserDevice device = userDeviceRepository.findByDeviceId(targetDeviceId)
                 .orElseThrow(() -> new AppException(ResponseCode.DEVICE_NOT_FOUND));
 
         device.setActive(false);
@@ -73,10 +72,9 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void deleteDevice(String targetDeviceId) {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
-        Long currentUserId = payload.getUserId();
         String currentEmail = payload.getUsername();
 
-        UserDevice device = userDeviceRepository.findByUserIdAndDeviceId(currentUserId, targetDeviceId)
+        UserDevice device = userDeviceRepository.findByDeviceId(targetDeviceId)
                 .orElseThrow(() -> new AppException(ResponseCode.DEVICE_NOT_FOUND));
 
         if (device.isActive()) {

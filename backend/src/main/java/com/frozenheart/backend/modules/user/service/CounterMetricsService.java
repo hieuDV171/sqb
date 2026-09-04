@@ -35,7 +35,7 @@ public interface CounterMetricsService {
 
     void incrementFriendsCount(Long userId, int delta);
 
-    void updateFollowerRelationCounts(Long followerId, Long followedId, int delta);
+    void updateFollowerRelationCounts(Long followerId, Long followedUserId, int delta);
 
     // --- Session Counters ---
     void incrementSessionReacts(Long sessionId, int delta);

@@ -31,4 +31,11 @@ public class JwtPayload {
 
         return (JwtPayload) authentication.getDetails();
     }
+
+    public static Long getUserId(java.security.Principal principal) {
+        if (principal instanceof Authentication auth && auth.getDetails() instanceof JwtPayload payload) {
+            return payload.getUserId();
+        }
+        return null;
+    }
 }

@@ -113,7 +113,7 @@ public class User {
     private Set<UserFollow> following;
 
     @Singular
-    @OneToMany(mappedBy = "followed", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "followedUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFollow> followers;
 
     @Singular("aBlocking")

@@ -6,5 +6,5 @@ import lombok.Builder;
 public record AiChatResponse(
         String aiResponse,
         String sessionId,
-        AiRefineResponse.AiMetadataDto aiMetadata
+        AiMetadataDto aiMetadata
 ) {}

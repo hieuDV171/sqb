@@ -83,6 +83,17 @@ dependencies {
     // hashids
     implementation 'org.hashids:hashids:1.0.3'
 
+    // JasperReports & Excel POI
+    implementation 'net.sf.jasperreports:jasperreports:7.0.8'
+    implementation 'org.apache.poi:poi-ooxml:5.5.1'
+
+    // Elasticsearch Java Client
+    implementation 'co.elastic.clients:elasticsearch-java:9.5.2'
+    implementation 'org.elasticsearch.client:elasticsearch-rest-client:9.5.2'
+    
+    // Thư viện chuẩn JSON-P
+    implementation 'jakarta.json:jakarta.json-api:2.1.3'
+    implementation 'org.eclipse.parsson:parsson:1.1.9'
 
 }
 

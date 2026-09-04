@@ -27,8 +27,8 @@ public class UserProfile {
 
     private String avatarUrl;
     private String coverUrl;
-    private String avatarFrameUrl;
     
+    private String avatarFrameUrl;
     private String chatBubbleUrl;
 
     @Column(length = 500)
@@ -68,5 +68,8 @@ public class UserProfile {
 
     @Column(nullable = false)
     private boolean profileCompleted;
+
+    @Column(length = 255)
+    private String hiddenChatPin;
 
 }

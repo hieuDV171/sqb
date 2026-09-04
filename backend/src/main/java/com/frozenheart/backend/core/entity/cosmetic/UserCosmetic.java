@@ -21,7 +21,9 @@ public class UserCosmetic {
     private UserCosmeticId id;
 
 
-    private String acquireMethod; // Chưa được định nghĩa
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private CosmeticAcquireMethod acquireMethod;
 
     private LocalDateTime acquireAt;
 

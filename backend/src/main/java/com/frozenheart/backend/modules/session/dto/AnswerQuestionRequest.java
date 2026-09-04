@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 
 @Builder
@@ -12,9 +11,8 @@ public record AnswerQuestionRequest(
         @NotEmpty(message = "Danh sách đáp án chọn không được để trống")
         List<String> selectedOptions,
 
-        @NotNull(message = "Thời gian làm bài không được để trống")
-        Integer timeSpentSeconds,
-
+        // Dùng để kiểm tra câu hỏi đã cũ chưa, đề phòng trường hợp
+        // FE bằng cách nào đó cho phép tác giả sửa câu hỏi trong lúc làm bài
         LocalDateTime questionUpdatedAt
 ) {}
 

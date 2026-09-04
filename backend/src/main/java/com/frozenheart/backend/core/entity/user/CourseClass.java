@@ -41,4 +41,8 @@ public class CourseClass {
     @Singular
     @OneToMany(mappedBy = "courseClass", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserCourseClass> studentEnrollments;
+
+    @Singular
+    @OneToMany(mappedBy = "courseClass")
+    private Set<ExamCourseClass> examCourseClasses;
 }

@@ -1,7 +1,6 @@
 package com.frozenheart.backend.modules.user.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.frozenheart.backend.core.entity.user.UserRole;
@@ -27,15 +26,11 @@ public record ProfileResponse(
                 
         // Counters & Gamification
         int totalProposedQuestions,
-        int totalApprovedQuestions,
         double gamificationPoints,
         int badgesCount,
         int friendsCount,
         int followersCount,
         int followingCount,
-        
-        // Feature Locking
-        List<LockedFeature> lockedFeatures,
 
         LocalDateTime createdAt,
 

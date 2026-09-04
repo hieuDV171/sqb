@@ -5,8 +5,8 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -26,10 +26,6 @@ public class MinigameLlmSession {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB", nullable = false)
-    private List<Long> questionIds;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSONB", nullable = false)
     private Map<String, Boolean> correctAnswers; // questionId -> boolean (isLlm)
 
     @Column(nullable = false)
@@ -41,4 +37,10 @@ public class MinigameLlmSession {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MinigameLlmSessionStatus status;
+
+    // ---------------------------------------
+
+    // ---------------------------------------
+    @OneToMany(mappedBy = "gameSession")
+    private Set<Game6LlmQuestion> questions;
 }

@@ -40,7 +40,7 @@ public class Post {
     private PostVisibility visibility;
 
     @Column(updatable = false)
-    private LocalDateTime creadtedAt;
+    private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
 

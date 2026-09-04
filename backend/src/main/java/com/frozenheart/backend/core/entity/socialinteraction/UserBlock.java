@@ -2,14 +2,13 @@ package com.frozenheart.backend.core.entity.socialinteraction;
 
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -18,7 +17,6 @@ public class UserBlock {
 
     @EmbeddedId
     private UserBlockId id;
-
 
     private String reason;
 

@@ -47,9 +47,8 @@ public class UserParticipant {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "last_read_message_id")
-    private Message message;
+    private Message lastReadMessage;
 
     // -------------------------
-
 
 }

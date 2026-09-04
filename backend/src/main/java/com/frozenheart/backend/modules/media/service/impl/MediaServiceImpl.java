@@ -4,17 +4,17 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import javax.imageio.ImageIO;
 
+import io.minio.SetObjectTagsArgs;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.frozenheart.backend.core.config.property.MinioProperties;
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.entity.media.MediaPurpose;
 import com.frozenheart.backend.core.entity.media.MediaType;
 import com.frozenheart.backend.core.exception.AppException;
@@ -40,8 +40,6 @@ public class MediaServiceImpl implements MediaService {
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
 
-    private static final int DEFAULT_PRESIGNED_EXPIRATION_SECONDS = 7200; // 2 hours
-
     @Override
     public MediaUploadResponse uploadMedia(MultipartFile file, MediaPurpose purpose) {
 
@@ -61,6 +59,7 @@ public class MediaServiceImpl implements MediaService {
                                 .object(objectKey)
                                 .stream(inputStream, file.getSize(), -1L)
                                 .contentType(contentType)
+                                .tags(Map.of("status", "temp"))
                                 .build());
             }
 
@@ -97,6 +96,28 @@ public class MediaServiceImpl implements MediaService {
             throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Upload file thất bại: " + e.getMessage());
         }
 
+    }
+
+    @Override
+    public void confirmMediaPermanent(List<String> objectKeys) {
+        if (objectKeys == null || objectKeys.isEmpty()) return;
+
+        Map<String, String> tagMap = Map.of("status", "permanent");
+
+        for (String objectKey : objectKeys) {
+            try {
+                minioClient.setObjectTags(
+                    SetObjectTagsArgs.builder()
+                        .bucket(minioProperties.getBucketName())
+                        .object(objectKey)
+                        .tags(tagMap)
+                        .build()
+                );
+                log.info("[MinIO] Đã chuyển file {} sang status=permanent", objectKey);
+            } catch (Exception e) {
+                log.error("[MinIO] Lỗi khi cập nhật tag permanent cho file {}: ", objectKey, e);
+            }
+        }
     }
 
     private String buildPublicUrl(String objectKey) {
@@ -142,12 +163,16 @@ public class MediaServiceImpl implements MediaService {
             try {
                 String objectKey = generateObjectKey(item.purpose(), item.fileName());
 
+                Map<String, String> extraQueryParams = new HashMap<>();
+                extraQueryParams.put("x-amz-tagging", "status=temp");
+
                 String uploadUrl = minioClient.getPresignedObjectUrl(
                         GetPresignedObjectUrlArgs.builder()
                                 .method(Method.PUT)
                                 .bucket(minioProperties.getBucketName())
                                 .object(objectKey)
-                                .expiry(DEFAULT_PRESIGNED_EXPIRATION_SECONDS)
+                                .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
+                                .extraQueryParams(extraQueryParams)
                                 .build());
 
                 String publicUrl = buildPublicUrl(objectKey);
@@ -156,7 +181,7 @@ public class MediaServiceImpl implements MediaService {
                         .objectKey(objectKey)
                         .uploadUrl(uploadUrl)
                         .publicUrl(publicUrl)
-                        .expiresInSeconds(DEFAULT_PRESIGNED_EXPIRATION_SECONDS)
+                        .expiresInSeconds(Time.DEFAULT_EXPIRATION_SECONDS)
                         .build());
             } catch (Exception e) {
 

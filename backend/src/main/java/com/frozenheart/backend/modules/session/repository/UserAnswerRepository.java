@@ -24,11 +24,12 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer, UserAnsw
 
     long countByIdQuestionId(Long questionId);
 
-    @Query("SELECT " +
-           "COUNT(ua), " +
-           "SUM(CASE WHEN ua.isCorrect = true THEN 1L ELSE 0L END), " +
-           "COALESCE(AVG(ua.timeSpentSeconds), 0.0) " +
-           "FROM UserAnswer ua WHERE ua.id.questionId = :questionId")
+    @Query("""
+            SELECT
+            COUNT(ua),
+            SUM(CASE WHEN ua.isCorrect = true THEN 1L ELSE 0L END)
+            FROM UserAnswer ua WHERE ua.id.questionId = :questionId
+            """)
     Object[] getAnswerStatsSummary(@Param("questionId") Long questionId);
 
     @Query("SELECT ua.selectedOptions FROM UserAnswer ua WHERE ua.id.questionId = :questionId")

@@ -6,10 +6,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.frozenheart.backend.modules.auth.dto.admin.AdminResetPasswordRequest;
 import com.frozenheart.backend.modules.auth.dto.admin.AuthResponse;
@@ -30,12 +32,14 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserPushSettingRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.CategorySetting;
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
@@ -69,6 +73,8 @@ public class AuthServiceImpl implements AuthService {
     private final RedisTemplate<String, String> redisTemplate;
     private final JwtService jwtService;
     private final EmailService emailService;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final String OTP_PREFIX = "otp:";
     private static final String RESEND_LOCK_PREFIX = "resend_lock:";
@@ -127,7 +133,7 @@ public class AuthServiceImpl implements AuthService {
 
     private void saveOrUpdateUserDevice(User user, LoginRequest request) {
 
-        UserDevice device = userDeviceRepository.findByUserIdAndDeviceId(user.getId(), request.deviceId())
+        UserDevice device = userDeviceRepository.findByDeviceId(request.deviceId())
                 .orElseGet(() -> UserDevice.builder()
                         .user(user)
                         .deviceId(request.deviceId())
@@ -238,6 +244,7 @@ public class AuthServiceImpl implements AuthService {
         Long userId = user.getId();
         UserProfile userProfile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.USER, user.getId()));
 
         return buildAuthResponse(deviceId, user, userProfile);
 
@@ -324,88 +331,126 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public BulkImportResult bulkImportUsers(BulkImportRequest request) {
-        AtomicInteger successCount = new AtomicInteger(0);
+        if (request == null || request.users() == null || request.users().isEmpty()) {
+            return new BulkImportResult(0, 0, List.of());
+        }
+
         List<String> errorMessages = new ArrayList<>();
+        Set<String> seenInRequest = new HashSet<>();
+        List<SingleUserImportDto> validDtos = new ArrayList<>();
+
+        // 1. Kiểm tra trùng lặp ngay trong payload gửi lên
         for (SingleUserImportDto dto : request.users()) {
+            if (dto.email() == null || dto.email().isBlank()) {
+                errorMessages.add("Email không được để trống.");
+                continue;
+            }
+            String emailLower = dto.email().trim().toLowerCase();
+            if (!seenInRequest.add(emailLower)) {
+                errorMessages.add("Email " + dto.email() + " bị trùng lặp trong danh sách import.");
+                continue;
+            }
+            validDtos.add(dto);
+        }
+
+        if (validDtos.isEmpty()) {
+            return new BulkImportResult(0, errorMessages.size(), errorMessages);
+        }
+
+        // 2. Query DB đúng 1 câu duy nhất kiểm tra email đã tồn tại (Chống N+1)
+        Set<String> requestEmails = validDtos.stream()
+                .map(d -> d.email().trim().toLowerCase())
+                .collect(Collectors.toSet());
+        Set<String> existingEmails = userRepository.findExistingEmailsByEmailIn(requestEmails).stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+
+        List<User> usersToSave = new ArrayList<>();
+        List<SingleUserImportDto> dtosToProcess = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (SingleUserImportDto dto : validDtos) {
+            String emailLower = dto.email().trim().toLowerCase();
+            if (existingEmails.contains(emailLower)) {
+                errorMessages.add("Email " + dto.email() + " đã tồn tại trong hệ thống.");
+                continue;
+            }
+
             try {
-                if (userRepository.existsByEmail(dto.email())) {
-                    errorMessages.add("Email " + dto.email() + " đã tồn tại.");
-                    continue;
-                }
-                // Tạo User (Verified = true ngay lập tức)
-                LocalDateTime now = LocalDateTime.now();
+                UserRole ur = UserRole.valueOf(dto.role().name());
                 User user = User.builder()
-                        .email(dto.email())
+                        .email(dto.email().trim())
                         .passwordHash(passwordEncoder.encode(dto.password()))
-                        .role(dto.role())
-                        .verified(true) // Đã được Admin cấp, không cần OTP
+                        .role(ur)
+                        .verified(true)
                         .active(true)
                         .createdAt(now)
                         .updatedAt(now)
                         .build();
-                User savedUser = userRepository.save(user);
-                // Tạo UserProfile mặc định
-                UserProfile profile = UserProfile.builder()
-                        .user(savedUser)
-                        .fullName(dto.fullName())
-                        .studentLecturerCode(dto.studentLecturerCode() != null ? dto.studentLecturerCode() : "")
-                        .faculty(dto.faculty() != null ? dto.faculty() : "")
-                        .major(dto.major() != null ? dto.major() : "")
-                        .avatarUrl("")
-                        .coverUrl("")
-                        .avatarFrameUrl("")
-                        .bio("Nơi nào có sự sống, nơi đó có công lý!")
-                        .totalProposedQuestion(0)
-                        .totalApprovedQuestions(0)
-                        .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
-                        .badgesCount(0)
-                        .friendsCount(0)
-                        .followersCount(0)
-                        .followingCount(0)
-                        .profileCompleted(false) // hỏi thầy
-                        .build();
-                userProfileRepository.save(profile);
-                // 3. Tạo UserPushSetting mặc định
-                UserPushSetting pushSetting = UserPushSetting.builder()
-                        .user(savedUser)
-                        .preferences(createDefaultPushPreferences())
-                        .updatedAt(LocalDateTime.now())
-                        .build();
-                userPushSettingRepository.save(pushSetting);
-                successCount.getAndIncrement();
+                usersToSave.add(user);
+                dtosToProcess.add(dto);
             } catch (Exception e) {
-                errorMessages.add("Lỗi khi tạo email " + dto.email() + ": " + e.getMessage());
+                errorMessages.add("Dữ liệu không hợp lệ cho email " + dto.email() + ": " + e.getMessage());
             }
         }
-        return new BulkImportResult(successCount.get(), errorMessages.size(), errorMessages);
+
+        if (usersToSave.isEmpty()) {
+            return new BulkImportResult(0, errorMessages.size(), errorMessages);
+        }
+
+        // 3. Batch Save Users
+        List<User> savedUsers = userRepository.saveAll(usersToSave);
+
+        // 4. Batch Create UserProfiles & PushSettings
+        List<UserProfile> profilesToSave = new ArrayList<>(savedUsers.size());
+        List<UserPushSetting> pushSettingsToSave = new ArrayList<>(savedUsers.size());
+        List<Long> savedUserIds = new ArrayList<>(savedUsers.size());
+
+        for (int i = 0; i < savedUsers.size(); i++) {
+            User savedUser = savedUsers.get(i);
+            SingleUserImportDto dto = dtosToProcess.get(i);
+            savedUserIds.add(savedUser.getId());
+
+            UserProfile profile = UserProfile.builder()
+                    .user(savedUser)
+                    .fullName(dto.fullName())
+                    .studentLecturerCode(dto.studentLecturerCode() != null ? dto.studentLecturerCode() : "")
+                    .faculty(dto.faculty() != null ? dto.faculty() : "")
+                    .major(dto.major() != null ? dto.major() : "")
+                    .avatarUrl("")
+                    .coverUrl("")
+                    .avatarFrameUrl("")
+                    .bio("Nơi nào có sự sống, nơi đó có công lý!")
+                    .totalProposedQuestion(0)
+                    .totalApprovedQuestions(0)
+                    .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
+                    .badgesCount(0)
+                    .friendsCount(0)
+                    .followersCount(0)
+                    .followingCount(0)
+                    .profileCompleted(true)
+                    .build();
+            profilesToSave.add(profile);
+
+            UserPushSetting pushSetting = UserPushSetting.builder()
+                    .user(savedUser)
+                    .preferences(createDefaultPushPreferences())
+                    .updatedAt(now)
+                    .build();
+            pushSettingsToSave.add(pushSetting);
+        }
+
+        userProfileRepository.saveAll(profilesToSave);
+        userPushSettingRepository.saveAll(pushSettingsToSave);
+
+        // 5. Bắn 1 sự kiện Bulk duy nhất sang Elasticsearch
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, savedUserIds));
+
+        return new BulkImportResult(savedUsers.size(), errorMessages.size(), errorMessages);
     }
 
     private PushPreferences createDefaultPushPreferences() {
-        return getPreferences();
-    }
-
-    public static PushPreferences getPreferences() {
-        QuietHour quietHour = QuietHour.builder()
-                .enabled(true)
-                .startTime(LocalTime.of(22, 0))
-                .endTime(LocalTime.of(7, 0))
-                .timezone("Asia/Ho_Chi_Minh") // Đã chuẩn hóa timezone
-                .build();
-        CategorySetting defaultCategory = CategorySetting.builder()
-                .enabled(true)
-                .description("")
-                .build();
-        Map<PushNotificationType, CategorySetting> categories = new HashMap<>();
-        for (PushNotificationType type : PushNotificationType.values()) {
-            categories.put(type, defaultCategory);
-        }
-        return PushPreferences.builder()
-                .pushEnabled(true)
-                .categories(categories)
-                .quietHour(quietHour)
-                .soundEnabled(true)
-                .vibrationEnabled(true)
-                .build();
+        return PushPreferences.createDefault();
     }
 
     @Override
@@ -413,12 +458,11 @@ public class AuthServiceImpl implements AuthService {
     public void logout() {
 
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
-        Long userId = payload.getUserId();
         String email = payload.getUsername();
         String deviceId = payload.getDeviceId();
 
         // Deactive thiết bị trong DB
-        userDeviceRepository.findByUserIdAndDeviceId(userId, deviceId)
+        userDeviceRepository.findByDeviceId(deviceId)
                 .ifPresent(device -> {
                     device.setActive(false);
                     device.setFcmToken(null); // Xóa token push notification

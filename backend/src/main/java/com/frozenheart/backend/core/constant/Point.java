@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public enum Point {
-    RESOLVED_SESSION(0.5),
     APPROVED_QUESTION(1.0),
     GAME1_AWARD(0.5),
     GAME2_AWARD(0.5),

@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.user.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,12 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 
     @Query("SELECT up FROM UserProfile up JOIN FETCH up.user WHERE up.userId = :userId")
     Optional<UserProfile> findByUserIdWithUser(@Param("userId") Long userid);
+
+    @Query("SELECT up FROM UserProfile up JOIN FETCH up.user u WHERE u.verified = true AND u.active = true")
+    java.util.List<UserProfile> findAllVerifiedActiveUsersForSearch();
+
+    @Query("SELECT up FROM UserProfile up JOIN FETCH up.user u WHERE up.userId IN :ids AND u.verified = true AND u.active = true")
+    java.util.List<UserProfile> findByIdInVerifiedActiveUsersForSearch(@Param("ids") List<Long> ids);
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.totalProposedQuestion = up.totalProposedQuestion + :delta WHERE up.userId = :userId")

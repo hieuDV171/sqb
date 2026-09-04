@@ -44,7 +44,6 @@ import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 import java.time.DayOfWeek;
-import java.time.temporal.TemporalAdjusters;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -220,15 +219,16 @@ public class GamificationServiceImpl implements GamificationService {
     @Transactional(readOnly = true)
     public Game6ActiveSessionResponse getActiveGame6Session() {
         Optional<MinigameLlmSession> sessionOpt = minigameLlmSessionRepository
-                .findFirstByStatusOrderByStartTimeDesc(MinigameLlmSessionStatus.ACTIVE);
+                .findByStatusFetchQuestions(MinigameLlmSessionStatus.ACTIVE);
         if (sessionOpt.isEmpty()) {
-            throw new AppException(ResponseCode.NO_MORE_DATA, "Không có phiên trò chơi chơi nào đang được mở");
+            throw new AppException(ResponseCode.NO_MORE_DATA, "Không có phiên trò chơi nào đang được mở");
         }
 
         MinigameLlmSession session = sessionOpt.get();
-        List<Game6LlmQuestion> questions = game6LlmQuestionRepository.findByIdIn(session.getQuestionIds());
+        Set<Game6LlmQuestion> questions = session.getQuestions() != null ? session.getQuestions() : Set.of();
 
         List<Game6ActiveSessionResponse.Game6QuestionDto> dtos = questions.stream()
+                .sorted(Comparator.comparing(Game6LlmQuestion::getId))
                 .map(q -> Game6ActiveSessionResponse.Game6QuestionDto.builder()
                         .id(q.getId())
                         .content(q.getContent())
@@ -369,6 +369,22 @@ public class GamificationServiceImpl implements GamificationService {
         Collections.shuffle(indices, random);
         Set<Integer> aiIndices = new HashSet<>(indices.subList(0, k));
 
+        LocalDateTime startTime = today.atStartOfDay();
+        LocalDateTime endTime = today.atTime(23, 59, 59);
+
+        int weekNumber = today.get(WeekFields.ISO.weekOfWeekBasedYear());
+        int year = today.getYear();
+
+        MinigameLlmSession newSession = MinigameLlmSession.builder()
+                .weekNumber(weekNumber)
+                .year(year)
+                .startTime(startTime)
+                .endTime(endTime)
+                .status(MinigameLlmSessionStatus.ACTIVE)
+                .build();
+
+        MinigameLlmSession savedSession = minigameLlmSessionRepository.save(newSession);
+
         List<Game6LlmQuestion> game6QuestionsToSave = new ArrayList<>();
 
         for (int i = 0; i < candidates.size(); i++) {
@@ -395,6 +411,7 @@ public class GamificationServiceImpl implements GamificationService {
             }
 
             Game6LlmQuestion g6q = Game6LlmQuestion.builder()
+                    .gameSession(savedSession)
                     .originalQuestionId(cand.originalId())
                     .sourceType(cand.sourceType())
                     .content(finalContent)
@@ -410,30 +427,14 @@ public class GamificationServiceImpl implements GamificationService {
 
         List<Game6LlmQuestion> savedGame6Questions = game6LlmQuestionRepository.saveAll(game6QuestionsToSave);
 
-        List<Long> questionIds = new ArrayList<>();
         Map<String, Boolean> correctAnswers = new HashMap<>();
         for (Game6LlmQuestion savedQ : savedGame6Questions) {
-            questionIds.add(savedQ.getId());
             correctAnswers.put(savedQ.getId().toString(), savedQ.isLlmGenerated());
         }
 
-        LocalDateTime startTime = today.atStartOfDay();
-        LocalDateTime endTime = today.atTime(23, 59, 59);
-
-        int weekNumber = today.get(WeekFields.ISO.weekOfWeekBasedYear());
-        int year = today.getYear();
-
-        MinigameLlmSession newSession = MinigameLlmSession.builder()
-                .weekNumber(weekNumber)
-                .year(year)
-                .questionIds(questionIds)
-                .correctAnswers(correctAnswers)
-                .startTime(startTime)
-                .endTime(endTime)
-                .status(MinigameLlmSessionStatus.ACTIVE)
-                .build();
-
-        MinigameLlmSession savedSession = minigameLlmSessionRepository.save(newSession);
+        savedSession.setCorrectAnswers(correctAnswers);
+        savedSession.setQuestions(new HashSet<>(savedGame6Questions));
+        minigameLlmSessionRepository.save(savedSession);
 
         List<Game6ActiveSessionResponse.Game6QuestionDto> dtos = savedGame6Questions.stream()
                 .map(q -> Game6ActiveSessionResponse.Game6QuestionDto.builder()
@@ -841,7 +842,7 @@ public class GamificationServiceImpl implements GamificationService {
         return Long.MAX_VALUE;
     }
 
-    // TODO: Khi FE gọi, phải bảo FE kiểm tra, nếu rank không tuần tự, buộc người dừng phải load lại từ trang đầu.
+    // TODO: Khi FE gọi, phải bảo FE kiểm tra, nếu rank không tuần tự, gợi ý người dùng load lại từ trang đầu.
     // VD: Người dùng lấy từ 1-20, 10 giây sau có 5 người nhảy vào top 10. Khi người
     // dùng gọi trang 2 -> sẽ bị lấy từ 26-45, nếu FE phát hiện không liên tiếp, phải làm nút refresh
     // động cho phép người dùng muốn làm mới ngay

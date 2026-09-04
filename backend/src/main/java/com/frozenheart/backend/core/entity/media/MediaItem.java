@@ -10,6 +10,12 @@ public record MediaItem(
         Integer duration,
         String name,
         String thumbnailUrl
-
 ) {
+    public static MediaItem of(String url) {
+        return new MediaItem(url, url, MediaType.IMAGE, null, null, null, null, null, null);
+    }
+
+    public static MediaItem of(String url, MediaType type) {
+        return new MediaItem(url, url, type != null ? type : MediaType.IMAGE, null, null, null, null, null, null);
+    }
 }

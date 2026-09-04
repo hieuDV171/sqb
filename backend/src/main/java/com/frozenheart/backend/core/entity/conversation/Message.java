@@ -39,7 +39,7 @@ public class Message {
     private LocalDateTime deletedAt;
 
     @Column(updatable = false)
-    private LocalDateTime creadtedAt;
+    private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
 

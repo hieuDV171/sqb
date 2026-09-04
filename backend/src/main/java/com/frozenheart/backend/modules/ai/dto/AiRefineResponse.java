@@ -34,11 +34,4 @@ public record AiRefineResponse(
             String detail,
             String severity
     ) {}
-
-    @Builder
-    public record AiMetadataDto(
-            String model,
-            int tokensUsed,
-            long processingTimeMs
-    ) {}
 }

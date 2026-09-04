@@ -9,9 +9,7 @@ import lombok.Builder;
 @Builder
 public record EditQuestionRequest(
         String content,
-        List<String> imageUrls,
         List<QuestionOption> options,
-        String correctAnswer,
         String explanation,
         Boolean autoApprove
 ) {}

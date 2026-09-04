@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
  * DTO Yêu cầu Chat với AI.
@@ -15,6 +16,7 @@ import jakarta.validation.constraints.Pattern;
  */
 public record AiChatRequest(
         @NotBlank(message = "Prompt câu hỏi không được để trống. FE cần gửi câu hỏi mới của người dùng.")
+        @Size(max = 1000, message = "Prompt câu hỏi không được vượt quá 1000 ký tự")
         String prompt,
 
         String chatSessionId,
@@ -23,6 +25,7 @@ public record AiChatRequest(
          * Lịch sử hội thoại do FE tự quản lý và truyền lên.
          * Bắt buộc từng phần tử chỉ có role là 'user' hoặc 'assistant'.
          */
+        @Size(max = 10, message = "Lịch sử trò chuyện tối đa 10 tin nhắn gần nhất")
         List<@Valid ChatMessageDto> history,
 
         ChatContextDto context
@@ -33,6 +36,7 @@ public record AiChatRequest(
             String role,
 
             @NotBlank(message = "Content câu chat trong history không được để trống")
+            @Size(max = 1000, message = "Nội dung tin nhắn trong history không được vượt quá 1000 ký tự")
             String content
     ) {}
 

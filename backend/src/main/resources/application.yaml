@@ -118,3 +118,8 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST}
+  port: ${ELASTICSEARCH_PORT}
+

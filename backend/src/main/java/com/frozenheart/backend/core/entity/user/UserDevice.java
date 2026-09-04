@@ -17,7 +17,7 @@ public class UserDevice {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    @Column(length = 500)
+    @Column(length = 500, unique = true)
     private String deviceId;
 
     @Column(length = 500)

@@ -23,11 +23,6 @@ public class Game6LlmQuestion {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    private Long originalQuestionId;
-
-    @Column(nullable = false, length = 20)
-    private BankType sourceType; // 'CURRENT' or 'LEGACY'
-
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
@@ -46,4 +41,18 @@ public class Game6LlmQuestion {
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    // targetType
+    @Column(nullable = false, length = 20)
+    private BankType sourceType; // 'CURRENT' or 'LEGACY'
+
+    // ------------------------------
+    // targetId
+    private Long originalQuestionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_session_id")
+    private MinigameLlmSession gameSession;
+
+    // ------------------------------
 }

@@ -63,6 +63,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
         }
 
         // Cập nhật lại danh sách câu hỏi kèm theo vector và duplicateWarnings
+        // Chỉ cập nhật duplicateWarnings, không liên quan index
         questionRepository.saveAll(questions);
         log.info("[DuplicateCheck] Hoàn thành kiểm tra trùng lặp cho Session ID: {}", sessionId);
 

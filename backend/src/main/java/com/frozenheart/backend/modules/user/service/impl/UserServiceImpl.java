@@ -2,14 +2,19 @@ package com.frozenheart.backend.modules.user.service.impl;
 
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
-import com.frozenheart.backend.modules.user.dto.LockedFeature;
+import com.frozenheart.backend.core.entity.socialinteraction.UserFollow;
+import com.frozenheart.backend.core.entity.socialinteraction.UserFollowId;
 import com.frozenheart.backend.modules.user.dto.Relationship;
 import com.frozenheart.backend.modules.user.repository.FollowRepository;
-import com.frozenheart.backend.modules.user.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
 import com.frozenheart.backend.core.entity.user.User;
@@ -18,13 +23,13 @@ import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.user.dto.ProfileResponse;
 import com.frozenheart.backend.modules.user.dto.UpdateProfileRequest;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
+import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.service.UserService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -36,12 +41,9 @@ public class UserServiceImpl implements UserService {
     private final FollowRepository followRepository;
     private final FriendshipRepository friendshipRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
 
-    private static final List<LockedFeature> lockedFeatures = List.of(
-            LockedFeature.COMMENT,
-            LockedFeature.POST,
-            LockedFeature.PREDICTION,
-            LockedFeature.PROPOSE);
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -83,10 +85,10 @@ public class UserServiceImpl implements UserService {
 
         Relationship relationships = Relationship.builder()
                 // userId có đang được currentUserId theo dõi không
-                .isFollowed(followRepository.existsByFollowerIdAndFollowedId(currentUserId, userId))
+                .isFollowed(followRepository.existsByFollowerIdAndFollowedUserId(currentUserId, userId))
 
                 // userId có đang theo dõi currentUserId không
-                .isFollowing(followRepository.existsByFollowerIdAndFollowedId(userId, currentUserId))
+                .isFollowing(followRepository.existsByFollowerIdAndFollowedUserId(userId, currentUserId))
                 .isFriend(friendship.getStatus().equals(FriendshipStatus.ACCEPTED))
                 .friendRequestStatus(friendship.getStatus())
                 .build();
@@ -103,7 +105,6 @@ public class UserServiceImpl implements UserService {
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
-                .totalApprovedQuestions(userProfile.getTotalApprovedQuestions())
                 .gamificationPoints(userProfile.getGamificationPoints().getPublicPoints())
                 .badgesCount(userProfile.getBadgesCount())
                 .friendsCount(userProfile.getFriendsCount())
@@ -125,6 +126,10 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE);
         }
 
+        if (request.fullName() == null && request.avatarUrl() == null && request.coverUrl() == null && request.bio() == null) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Vui lòng cung cấp ít nhất một thông tin cần cập nhật");
+        }
+
         if (request.fullName() != null && !request.fullName().isBlank()) {
             userProfile.setFullName(request.fullName().trim());
         }
@@ -137,20 +142,11 @@ public class UserServiceImpl implements UserService {
         if (request.bio() != null) {
             userProfile.setBio(request.bio().trim());
         }
-        if (request.faculty() != null) {
-            userProfile.setFaculty(request.faculty().trim());
-        }
-        if (request.major() != null) {
-            userProfile.setMajor(request.major().trim());
-        }
-        if (request.studentLecturerCode() != null) {
-            userProfile.setStudentLecturerCode(request.studentLecturerCode().trim());
-        }
         userProfile.getUser().setUpdatedAt(LocalDateTime.now());
 
-        // @Transactional tự save
-        // userRepository.save(userProfile.getUser()); /
-        // userProfileRepository.save(userProfile);
+        userRepository.save(userProfile.getUser());
+        userProfileRepository.save(userProfile);
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.USER, userId));
 
         return buildMyProfileResponse(userProfile);
     }
@@ -174,13 +170,11 @@ public class UserServiceImpl implements UserService {
                 .profileCompleted(profileCompleted)
                 .verified(userProfile.getUser().isVerified())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
-                .totalApprovedQuestions(userProfile.getTotalApprovedQuestions())
                 .gamificationPoints(userProfile.getGamificationPoints() != null ? userProfile.getGamificationPoints().getPublicPoints() : 0.0)
                 .badgesCount(userProfile.getBadgesCount())
                 .friendsCount(userProfile.getFriendsCount())
                 .followersCount(userProfile.getFollowersCount())
                 .followingCount(userProfile.getFollowingCount())
-                .lockedFeatures(profileCompleted ? null : lockedFeatures)
                 .createdAt(userProfile.getUser().getCreatedAt())
                 .relationships(null)
                 .build();
@@ -218,9 +212,9 @@ public class UserServiceImpl implements UserService {
 
         user.setUpdatedAt(LocalDateTime.now());
 
-        // @Transactional tự save
-        // userRepository.save(user); /
-        // userProfileRepository.save(userProfile);
+        userRepository.save(user);
+        userProfileRepository.save(userProfile);
+        eventPublisher.publishEvent(EntitySearchSyncEvent.delete(EntitySearchSyncEvent.EntityType.USER, userId));
     }
 
 }

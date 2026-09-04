@@ -8,7 +8,6 @@ import lombok.Builder;
 public record QuestionStatisticsResponse(
         long totalAnswer,
         double correctRate,
-        double avgTimeSpentSeconds,
         Map<String, Long> optionDistribution,
         RatingSummaryDto ratingSummary
 ) {

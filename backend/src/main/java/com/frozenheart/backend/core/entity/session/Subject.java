@@ -26,6 +26,9 @@ public class Subject {
 
     @Column(length = 10, nullable = false, unique = true)
     private String code;
+
+    
+
     // --------------------
 
     // --------------------
@@ -48,4 +51,8 @@ public class Subject {
     @Singular
     @OneToMany(mappedBy = "subject")
     private Set<PointHistory> pointHistories;
+
+    @Singular
+    @OneToMany(mappedBy = "subject")
+    private Set<Exam> exams;
 }

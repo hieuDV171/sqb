@@ -51,32 +51,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         private final UserAnswerRepository userAnswerRepository;
         private final UserRatingRepository userRatingRepository;
         private final UserRepository userRepository;
-
-// 🧠 NGUYÊN TẮC XỬ LÝ: INTERACTION-STICKY PRIORITY
-// Thuật toán ở Frontend chia hành vi thành 2 trạng thái rõ rệt:
-
-// 1. Trường hợp 1: SV ĐANG TƯƠNG TÁC với câu A (Đã bấm chọn đáp án A/B/C/D nhưng chưa nộp)
-// Quy tắc: Khoá trọng tâm (Active Lock).
-// Cách hoạt động: Ngay khi SV bấm click vào một đáp án của câu A, câu A được đánh dấu isInteracting = true.
-// Kết quả: Cho dù câu A bị đẩy lên sát mép trên màn hình và câu B trôi vào chính giữa, hệ thống VẪN TIẾP TỤC đếm giờ cho câu A. Đồng hồ của câu A chỉ dừng lại khi:
-// SV bấm nút "Gửi đáp án" cho câu A.
-// HOẶC SV chủ động bấm tương tác/chọn đáp án vào câu B.
-// 2. Trường hợp 2: SV CHƯA TƯƠNG TÁC (Chỉ lướt mắt đọc đề câu A rồi cuộn xuống)
-// Quy tắc: Đổi trọng tâm theo vị trí (Position Swap).
-// Cách hoạt động: SV đọc lướt câu A nhưng chưa bấm bất kỳ đáp án nào, sau đó cuộn tiếp xuống để câu B trôi vào giữa màn hình.
-// Kết quả: Hệ thống hiểu rằng SV đã bỏ qua câu A để chuyển sang đọc câu B $\rightarrow$ Đồng hồ câu A tự động dừng và đồng hồ câu B bắt đầu đếm. Đây là phản ánh đúng $100%$ tâm lý hành vi thực tế của học viên!
-// 💡 TỔNG HỢP THUẬT TOÁN LOGIC TRÊN FRONTEND (PSEUDO CODE)
-// typescript
-// function getActiveQuestionToCountTimer(questionsInViewport) {
-//   // 1. Ưu tiên số 1: Thẻ câu hỏi nào đang được người dùng CLICK chọn đáp án?
-//   const interactingQuestion = questionsInViewport.find(q => q.isInteracting === true);
-//   if (interactingQuestion) {
-//     return interactingQuestion; // Khóa đếm giờ cho câu này!
-//   }
-//   // 2. Ưu tiên số 2 (Nếu chỉ cuộn lướt): Chọn câu gần tâm màn hình nhất
-//   return getQuestionClosestToViewportCenter(questionsInViewport);
-// }
-// 👉 Sự kết hợp giữa Vị trí tâm màn hình (khi lướt) + Trạng thái Click tương tác (khi làm bài) tạo nên một cơ chế đếm thời gian thông minh, chính xác tuyệt đối và không bao giờ bị tính nhầm!
         
         @Override
         @Transactional(readOnly = true)
@@ -217,7 +191,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 .user(userRef)
                                 .question(question)
                                 .selectedOptions(selectedOptions)
-                                .timeSpentSeconds(request.timeSpentSeconds())
                                 .isCorrect(isCorrect)
                                 .createdAt(LocalDateTime.now())
                                 .build();
@@ -246,8 +219,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 long correctCount = answerStatsRow != null && answerStatsRow.length > 1 && answerStatsRow[1] != null
                                 ? ((Number) answerStatsRow[1]).longValue()
                                 : 0L;
-                double avgTimeSpentSeconds = answerStatsRow != null && answerStatsRow.length > 2
-                                && answerStatsRow[2] != null ? ((Number) answerStatsRow[2]).doubleValue() : 0.0;
                 double correctRate = totalAnswer > 0 ? (double) correctCount / totalAnswer : 0.0;
 
                 List<List<QuestionOption>> selectedOptionsLists = userAnswerRepository
@@ -284,7 +255,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 return QuestionStatisticsResponse.builder()
                                 .totalAnswer(totalAnswer)
                                 .correctRate(correctRate)
-                                .avgTimeSpentSeconds(avgTimeSpentSeconds)
                                 .optionDistribution(optionDistribution)
                                 .ratingSummary(QuestionStatisticsResponse.RatingSummaryDto.builder()
                                                 .avgRating(avgRating)
@@ -305,8 +275,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 User userRef = userRepository.getReferenceById(currentUserId);
                 UserRatingId ratingId = new UserRatingId(currentUserId, questionId);
 
-                boolean isError = request.isError() == null ? false : request.isError();
-                Double rating = isError ? 0 : request.rating().doubleValue();
+                boolean isError = request.isError() != null && request.isError();
+                double rating = isError ? 0 : request.rating().doubleValue();
 
                 UserRating userRating = UserRating.builder()
                                 .id(ratingId)
@@ -329,6 +299,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 : 0L;
 
                 question.setRatingCount((int) newCount);
+                
+                // Hoạt động thường xuyên, không đánh index
                 questionRepository.save(question);
 
                 return RateQuestionResponse.builder()
