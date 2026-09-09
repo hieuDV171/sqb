@@ -21,7 +21,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -50,18 +50,20 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
         Conversation conversation = conversationRepository.findById(request.getConversationId()).orElse(null);
         if (conversation == null) {
-            log.warn("[ChatWebSocketServiceImpl] Conversation not found: {}", request.getConversationId());
+            log.warn("[ChatWebSocketServiceImpl] Không tìm thấy cuộc hội thoại: {}", request.getConversationId());
             return;
         }
 
         UserParticipant senderParticipant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, conversation.getId()).orElse(null);
         if (senderParticipant == null || senderParticipant.getLeftAt() != null) {
-            log.warn("[ChatWebSocketServiceImpl] User {} is not an active participant in conversation {}", currentUserId, conversation.getId());
+            log.warn("[ChatWebSocketServiceImpl] User {} không còn hoạt động trong cuộc hội thoại {}", currentUserId,
+                    conversation.getId());
             return;
         }
 
-        List<UserParticipant> allParticipants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversation.getId());
+        List<UserParticipant> allParticipants = userParticipantRepository
+                .findByConversationIdAndLeftAtIsNull(conversation.getId());
 
         // Nếu là chat DIRECT 1-1, kiểm tra quan hệ chặn (Block)
         if (conversation.getType() == ConversationType.DIRECT) {
@@ -70,8 +72,10 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                     .findFirst()
                     .orElse(null);
 
-            if (otherParticipant != null && blockRepository.isBlockedBetween(currentUserId, otherParticipant.getUser().getId())) {
-                log.warn("[ChatWebSocketServiceImpl] Cannot send message in conversation {}: blocked relationship", conversation.getId());
+            if (otherParticipant != null
+                    && blockRepository.isBlockedBetween(currentUserId, otherParticipant.getUser().getId())) {
+                log.warn("[ChatWebSocketServiceImpl] Không thể gửi tin nhắn trong hội thoại {}: mối quan hệ đã bị chặn",
+                        conversation.getId());
                 return;
             }
         }
@@ -102,7 +106,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
             replyToMessage = messageRepository.findById(request.getReplyToMessageId()).orElse(null);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         MessageType msgType = request.getMessageType() != null ? request.getMessageType() : MessageType.TEXT;
 
         Message message = Message.builder()
@@ -181,7 +185,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         participant.setLastReadMessage(message);
         participant.setLastMessageReadAt(now);
         userParticipantRepository.save(participant);
@@ -191,7 +195,8 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
         UserSummaryDto readerSummary = UserSummaryDto.builder()
                 .userId(currentUserId)
-                .fullName(readerProfile != null ? readerProfile.getFullName() : (currentUser != null ? currentUser.getEmail() : ""))
+                .fullName(readerProfile != null ? readerProfile.getFullName()
+                        : (currentUser != null ? currentUser.getEmail() : ""))
                 .avatarUrl(readerProfile != null ? readerProfile.getAvatarUrl() : null)
                 .frameUrl(readerProfile != null ? readerProfile.getAvatarFrameUrl() : null)
                 .build();
@@ -227,7 +232,8 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
         UserSummaryDto userSummary = UserSummaryDto.builder()
                 .userId(currentUserId)
-                .fullName(userProfile != null ? userProfile.getFullName() : (currentUser != null ? currentUser.getEmail() : ""))
+                .fullName(userProfile != null ? userProfile.getFullName()
+                        : (currentUser != null ? currentUser.getEmail() : ""))
                 .avatarUrl(userProfile != null ? userProfile.getAvatarUrl() : null)
                 .frameUrl(userProfile != null ? userProfile.getAvatarFrameUrl() : null)
                 .build();
@@ -237,7 +243,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .conversationId(request.getConversationId())
                 .user(userSummary)
                 .isTyping(request.isTyping())
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
 
         // Broadcast tới topic của cuộc hội thoại: /topic/conv.{id}.typing

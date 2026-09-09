@@ -1,8 +1,10 @@
 package com.frozenheart.backend.modules.user.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.frozenheart.backend.core.entity.user.Gender;
 import com.frozenheart.backend.core.entity.user.UserRole;
 
 import lombok.Builder;
@@ -16,14 +18,17 @@ public record ProfileResponse(
         String avatarUrl,
         String coverUrl,
         String frameUrl,
+        Gender gender,
+        LocalDate dateOfBirth,
         String bio,
         String faculty,
         String major,
         String studentLecturerCode,
         UserRole role,
+        String timezone,
         boolean profileCompleted,
         boolean verified,
-                
+
         // Counters & Gamification
         int totalProposedQuestions,
         double gamificationPoints,
@@ -32,9 +37,8 @@ public record ProfileResponse(
         int followersCount,
         int followingCount,
 
-        LocalDateTime createdAt,
+        Instant createdAt,
 
-        Relationship relationships
-    ) {
+        Relationship relationships) {
 
 }

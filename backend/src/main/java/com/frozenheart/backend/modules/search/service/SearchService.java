@@ -2,7 +2,6 @@ package com.frozenheart.backend.modules.search.service;
 
 import com.frozenheart.backend.modules.search.dto.GlobalSearchResponseDto;
 import com.frozenheart.backend.modules.search.dto.SavedAndTrendingSearchesResponseDto;
-import com.frozenheart.backend.modules.search.dto.SearchScope;
 import com.frozenheart.backend.modules.search.dto.SearchType;
 
 public interface SearchService {
@@ -13,7 +12,6 @@ public interface SearchService {
     GlobalSearchResponseDto search(
             String query,
             SearchType type,
-            SearchScope scope,
             Long after,
             Integer limit
     );

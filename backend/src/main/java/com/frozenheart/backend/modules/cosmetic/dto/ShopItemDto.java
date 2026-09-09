@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.cosmetic.CosmeticRarity;
 import com.frozenheart.backend.core.entity.cosmetic.CosmeticType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -29,7 +29,7 @@ public class ShopItemDto {
 
     private double originalPrice;
 
-    private LocalDateTime availableUntil;
+    private Instant availableUntil;
 
     private boolean isOwned;
 }

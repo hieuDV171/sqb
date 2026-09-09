@@ -143,15 +143,14 @@ public class ElasticsearchIndexManager {
                 .properties("status", p -> p.keyword(k -> k))
                 .properties("difficulty", p -> p.keyword(k -> k))
 
-                // Tầng công khai (Sinh viên & Peer Learning)
-                .properties("original_content", p -> p.text(t -> t))
-                .properties("original_options_text", p -> p.text(t -> t))
-                .properties("original_explanation", p -> p.text(t -> t))
-
-                // Tầng ngân hàng đề lõi (Chỉ Giảng viên)
-                .properties("core_content", p -> p.text(t -> t))
-                .properties("core_options_text", p -> p.text(t -> t))
-                .properties("core_explanation", p -> p.text(t -> t))
+                // Nội dung câu hỏi
+                .properties("content", p -> p.text(t -> t))
+                .properties("options", p -> p.object(o -> o
+                        .properties("key", sp -> sp.keyword(k -> k))
+                        .properties("text", sp -> sp.text(t -> t))
+                        .properties("media_url", sp -> sp.keyword(k -> k.index(false)))
+                ))
+                .properties("explanation", p -> p.text(t -> t))
 
                 // 🌟 Tầng Dense Vector 384 chiều (AI Search)
                 .properties("text_vector", p -> p.denseVector(d -> d

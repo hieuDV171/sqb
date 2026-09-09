@@ -3,7 +3,7 @@ package com.frozenheart.backend.core.entity.conversation;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 @Getter
@@ -19,6 +19,11 @@ public class Conversation {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private ConversationType type;
@@ -31,12 +36,12 @@ public class Conversation {
     @Column(length = 500)
     private String description;
 
-    private LocalDateTime lastMessageAt;
+    private Instant lastMessageAt;
 
     @Column(updatable = false)
-    private LocalDateTime creadtedAt;
+    private Instant creadtedAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     // ----------------------------
     @OneToOne(fetch = FetchType.LAZY)

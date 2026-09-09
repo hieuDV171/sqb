@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -16,5 +16,5 @@ import java.time.LocalDateTime;
 public class UpdatePostResponseDto {
     private Long postId;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

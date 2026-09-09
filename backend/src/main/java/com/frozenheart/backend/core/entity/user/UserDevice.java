@@ -2,10 +2,12 @@ package com.frozenheart.backend.core.entity.user;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
-@Table(name = "user_devices")
+@Table(name = "user_devices", uniqueConstraints = {
+        @UniqueConstraint(name = "uc_user_devices_user_id_device_id", columnNames = { "user_id", "device_id" })
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,7 +19,7 @@ public class UserDevice {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    @Column(length = 500, unique = true)
+    @Column(length = 500)
     private String deviceId;
 
     @Column(length = 500)
@@ -33,10 +35,10 @@ public class UserDevice {
     private String deviceName;
     private String appVersion;
     private boolean isActive;
-    private LocalDateTime lastActiveAt;
+    private Instant lastActiveAt;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // -----------------------------
 

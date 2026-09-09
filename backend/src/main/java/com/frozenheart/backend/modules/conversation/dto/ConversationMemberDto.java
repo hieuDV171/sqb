@@ -3,7 +3,7 @@ package com.frozenheart.backend.modules.conversation.dto;
 import com.frozenheart.backend.core.entity.conversation.ConversationRole;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -22,5 +22,5 @@ public class ConversationMemberDto {
 
     private ConversationRole role;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

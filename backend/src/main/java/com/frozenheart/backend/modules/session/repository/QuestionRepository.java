@@ -85,9 +85,12 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByIdInFetchMedias(@Param("ids") List<Long> ids);
 
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.subject sub LEFT JOIN FETCH q.ownedMedias WHERE sub.id = :subjectId ORDER BY q.id ASC")
-    List<Question> findAllOriginalBySubjectId(@Param("subjectId") Long subjectId);
+    List<Question> findAllBySubjectIdForExport(@Param("subjectId") Long subjectId);
 
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.subject sub LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE sub.id = :subjectId AND q.status = com.frozenheart.backend.core.entity.session.QuestionStatus.APPROVED")
     List<Question> findApprovedBySubjectId(@Param("subjectId") Long subjectId);
+
+    @Query("SELECT COUNT(q) FROM Question q WHERE q.session.proposer.id = :userId AND q.session.subject.id = :subjectId AND q.status = com.frozenheart.backend.core.entity.session.QuestionStatus.APPROVED")
+    long countApprovedQuestionsByUserAndSubject(@Param("userId") Long userId, @Param("subjectId") Long subjectId);
 
 }

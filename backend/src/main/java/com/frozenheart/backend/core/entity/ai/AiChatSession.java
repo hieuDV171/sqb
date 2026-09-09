@@ -1,6 +1,6 @@
 package com.frozenheart.backend.core.entity.ai;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 import com.frozenheart.backend.core.entity.user.User;
@@ -46,10 +46,10 @@ public class AiChatSession {
     private String title;
 
     @Column(updatable = false, nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @Singular
     @OneToMany(mappedBy = "session")

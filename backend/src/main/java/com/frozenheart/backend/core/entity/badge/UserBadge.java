@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -18,7 +18,7 @@ public class UserBadge {
     @EmbeddedId
     private UserBadgeId id;
 
-    private LocalDateTime earnedAt;
+    private Instant earnedAt;
     // --------------------------
     @MapsId("userId")
     @ManyToOne(fetch = FetchType.LAZY)

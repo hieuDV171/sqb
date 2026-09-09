@@ -2,24 +2,24 @@ package com.frozenheart.backend.modules.user.service.impl;
 
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
-import com.frozenheart.backend.core.entity.socialinteraction.UserFollow;
-import com.frozenheart.backend.core.entity.socialinteraction.UserFollowId;
 import com.frozenheart.backend.modules.user.dto.Relationship;
 import com.frozenheart.backend.modules.user.repository.FollowRepository;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.repository.CrudRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
+import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
-import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
+import com.frozenheart.backend.core.entity.user.UserGamification;
+import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.user.dto.ProfileResponse;
 import com.frozenheart.backend.modules.user.dto.UpdateProfileRequest;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -29,7 +29,10 @@ import com.frozenheart.backend.modules.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -38,10 +41,12 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserProfileRepository userProfileRepository;
+    private final UserGamificationRepository userGamificationRepository;
     private final FollowRepository followRepository;
     private final FriendshipRepository friendshipRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final MediaService mediaService;
 
     private final ApplicationEventPublisher eventPublisher;
 
@@ -80,8 +85,7 @@ public class UserServiceImpl implements UserService {
         Friendship friendship = friendshipRepository.findFriendshipsBetween(currentUserId, userId)
                 .orElse(Friendship.builder()
                         .status(FriendshipStatus.NONE)
-                        .build()
-                );
+                        .build());
 
         Relationship relationships = Relationship.builder()
                 // userId có đang được currentUserId theo dõi không
@@ -99,13 +103,15 @@ public class UserServiceImpl implements UserService {
                 .avatarUrl(userProfile.getAvatarUrl())
                 .coverUrl(userProfile.getCoverUrl())
                 .frameUrl(userProfile.getAvatarFrameUrl())
+                .gender(userProfile.getGender())
                 .bio(userProfile.getBio())
                 .faculty(userProfile.getFaculty())
                 .major(userProfile.getMajor())
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
+                .timezone(userProfile.getTimezone())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
-                .gamificationPoints(userProfile.getGamificationPoints().getPublicPoints())
+                .gamificationPoints(getPublicPoints(userProfile.getUser().getId()))
                 .badgesCount(userProfile.getBadgesCount())
                 .friendsCount(userProfile.getFriendsCount())
                 .followersCount(userProfile.getFollowersCount())
@@ -126,23 +132,64 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE);
         }
 
-        if (request.fullName() == null && request.avatarUrl() == null && request.coverUrl() == null && request.bio() == null) {
-            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Vui lòng cung cấp ít nhất một thông tin cần cập nhật");
+        if (request.fullName() == null && request.avatarUrl() == null && request.coverUrl() == null
+                && request.bio() == null && request.timezone() == null
+                && request.gender() == null && request.dateOfBirth() == null) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Vui lòng cung cấp ít nhất một thông tin cần cập nhật");
         }
+
+        List<String> mediaToConfirm = new ArrayList<>();
+        List<String> mediaToDelete = new ArrayList<>();
 
         if (request.fullName() != null && !request.fullName().isBlank()) {
             userProfile.setFullName(request.fullName().trim());
+            userProfile.setProfileCompleted(true);
         }
         if (request.avatarUrl() != null) {
+            String oldAvatar = userProfile.getAvatarUrl();
+            if (oldAvatar != null && !oldAvatar.isBlank() && !oldAvatar.equals(request.avatarUrl())) {
+                mediaToDelete.add(oldAvatar);
+            }
             userProfile.setAvatarUrl(request.avatarUrl());
+            if (!request.avatarUrl().isBlank()) {
+                mediaToConfirm.add(request.avatarUrl());
+            }
         }
         if (request.coverUrl() != null) {
+            String oldCover = userProfile.getCoverUrl();
+            if (oldCover != null && !oldCover.isBlank() && !oldCover.equals(request.coverUrl())) {
+                mediaToDelete.add(oldCover);
+            }
             userProfile.setCoverUrl(request.coverUrl());
+            if (!request.coverUrl().isBlank()) {
+                mediaToConfirm.add(request.coverUrl());
+            }
+        }
+        if (!mediaToConfirm.isEmpty()) {
+            mediaService.confirmMediaPermanent(mediaToConfirm);
+        }
+        if (!mediaToDelete.isEmpty()) {
+            eventPublisher.publishEvent(MediaCleanupEvent.of(mediaToDelete));
+        }
+        if (request.gender() != null) {
+            userProfile.setGender(request.gender());
+        }
+        if (request.dateOfBirth() != null) {
+            userProfile.setDateOfBirth(request.dateOfBirth());
         }
         if (request.bio() != null) {
             userProfile.setBio(request.bio().trim());
         }
-        userProfile.getUser().setUpdatedAt(LocalDateTime.now());
+        if (request.timezone() != null && !request.timezone().isBlank()) {
+            try {
+                ZoneId parsed = ZoneId.of(request.timezone().trim());
+                userProfile.setTimezone(parsed.getId());
+            } catch (Exception e) {
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Múi giờ không hợp lệ");
+            }
+        }
+        userProfile.getUser().setUpdatedAt(Instant.now());
 
         userRepository.save(userProfile.getUser());
         userProfileRepository.save(userProfile);
@@ -162,15 +209,18 @@ public class UserServiceImpl implements UserService {
                 .avatarUrl(userProfile.getAvatarUrl())
                 .coverUrl(userProfile.getCoverUrl())
                 .frameUrl(userProfile.getAvatarFrameUrl())
+                .gender(userProfile.getGender())
+                .dateOfBirth(userProfile.getDateOfBirth())
                 .bio(userProfile.getBio())
                 .faculty(userProfile.getFaculty())
                 .major(userProfile.getMajor())
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
+                .timezone(userProfile.getTimezone())
                 .profileCompleted(profileCompleted)
                 .verified(userProfile.getUser().isVerified())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
-                .gamificationPoints(userProfile.getGamificationPoints() != null ? userProfile.getGamificationPoints().getPublicPoints() : 0.0)
+                .gamificationPoints(getPublicPoints(userProfile.getUser().getId()))
                 .badgesCount(userProfile.getBadgesCount())
                 .friendsCount(userProfile.getFriendsCount())
                 .followersCount(userProfile.getFollowersCount())
@@ -194,6 +244,14 @@ public class UserServiceImpl implements UserService {
         user.setEmail("Deleted_Account_" + UUID.randomUUID());
         user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
 
+        List<String> mediaToDelete = new ArrayList<>();
+        if (userProfile.getAvatarUrl() != null && !userProfile.getAvatarUrl().isBlank()) {
+            mediaToDelete.add(userProfile.getAvatarUrl());
+        }
+        if (userProfile.getCoverUrl() != null && !userProfile.getCoverUrl().isBlank()) {
+            mediaToDelete.add(userProfile.getCoverUrl());
+        }
+
         userProfile.setFullName("Tài khoản đã bị xóa");
         userProfile.setAvatarUrl("");
         userProfile.setCoverUrl("");
@@ -204,17 +262,37 @@ public class UserServiceImpl implements UserService {
         userProfile.setStudentLecturerCode("");
         userProfile.setTotalProposedQuestion(0);
         userProfile.setTotalApprovedQuestions(0);
-        userProfile.setGamificationPoints(new GamificationPointsJson(0.0, 0.0));
         userProfile.setBadgesCount(0);
         userProfile.setFriendsCount(0);
         userProfile.setFollowersCount(0);
         userProfile.setFollowingCount(0);
 
-        user.setUpdatedAt(LocalDateTime.now());
+        userGamificationRepository.findById(userId).ifPresent(g -> {
+            g.setPublicPoints(0.0);
+            g.setSecretPoints(0.0);
+            g.setCoinBalance(0.0);
+            g.setCurrentStreak(0);
+            userGamificationRepository.save(g);
+        });
+
+        user.setUpdatedAt(Instant.now());
 
         userRepository.save(user);
         userProfileRepository.save(userProfile);
         eventPublisher.publishEvent(EntitySearchSyncEvent.delete(EntitySearchSyncEvent.EntityType.USER, userId));
+
+        if (!mediaToDelete.isEmpty()) {
+            eventPublisher.publishEvent(MediaCleanupEvent.of(mediaToDelete));
+        }
+    }
+
+    private double getPublicPoints(Long userId) {
+        if (userId == null) {
+            return 0.0;
+        }
+        return userGamificationRepository.findById(userId)
+                .map(UserGamification::getPublicPoints)
+                .orElse(0.0);
     }
 
 }

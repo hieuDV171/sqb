@@ -1,6 +1,6 @@
 package com.frozenheart.backend.core.entity.ai;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.frozenheart.backend.core.constant.AiChatRole;
 
@@ -46,5 +46,5 @@ public class AiChatMessage {
     private String content;
 
     @Column(updatable = false, nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

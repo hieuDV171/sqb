@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -21,5 +21,5 @@ public class ExportResponse {
 
     private Integer questionsCount;
 
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 }

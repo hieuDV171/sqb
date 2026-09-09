@@ -1,6 +1,6 @@
 package com.frozenheart.backend.modules.device.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
 
@@ -11,9 +11,8 @@ public record DeviceResponse(
         DevicePlatform platform,
         String osVersion,
         String appVersion,
-        LocalDateTime lastActiveAt,
+        Instant lastActiveAt,
         boolean isActive,
-        boolean isCurrentDevice
-    ) {
+        boolean isCurrentDevice) {
 
 }

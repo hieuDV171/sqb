@@ -9,7 +9,7 @@ import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -58,7 +58,7 @@ public class GlobalSearchResponseDto {
         private List<String> mediaUrls;
         private Integer reactCount;
         private Integer commentCount;
-        private LocalDateTime createdAt;
+        private Instant createdAt;
     }
 
     @Getter
@@ -99,9 +99,9 @@ public class GlobalSearchResponseDto {
         private QuestionStatus status;
         private QuestionDifficulty difficulty;
 
-        // Nội dung trả về phụ thuộc vào SearchScope (PUBLIC -> original_, CORE -> core_)
+        // Nội dung câu hỏi tìm kiếm
         private String content;
-        private List<String> optionsText;
+        private List<QuestionOptionDto> options;
         private String explanation;
 
         private List<String> imageUrls;
@@ -109,7 +109,19 @@ public class GlobalSearchResponseDto {
         private Integer ratingCount;
         private Integer reactCount;
         private Integer commentCount;
-        private LocalDateTime createdAt;
+        private Instant createdAt;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class QuestionOptionDto {
+        private String key;
+        private String text;
+        private String mediaUrl;
     }
 
     @Getter
@@ -128,7 +140,7 @@ public class GlobalSearchResponseDto {
         private Integer questionCount;
         private Integer reactCount;
         private Integer commentCount;
-        private LocalDateTime createdAt;
+        private Instant createdAt;
     }
 
     @Getter

@@ -19,8 +19,8 @@ import com.frozenheart.backend.core.entity.socialinteraction.*;
 import com.frozenheart.backend.core.entity.session.Session;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+
+import java.time.Instant;
 import java.util.Set;
 
 @Getter
@@ -46,11 +46,6 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
-    @Column(length = 10)
-    private String gender;
-
-    private LocalDate dateOfBirth;
-
     @Column(nullable = false)
     @Builder.Default
     private boolean verified = false;
@@ -60,9 +55,9 @@ public class User {
     private boolean active = true;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     // ----------------------
 

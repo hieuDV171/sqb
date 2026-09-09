@@ -14,6 +14,4 @@ public class QuietHoursDto {
     private String startTime;
 
     private String endTime;
-
-    private String timezone;
 }

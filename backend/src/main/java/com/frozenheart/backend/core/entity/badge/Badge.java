@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 @Getter
@@ -30,14 +30,23 @@ public class Badge {
     @Column(length = 20)
     private BadgeTier badgeTier;
 
+    // Sự kiện kích hoạt huy hiệu
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private BadgeTriggerEvent badgeTriggerEvent;
+
     private String iconUrl;
 
+    // Loại thuật toán kích hoạt huy hiệu
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private BadgeCriteria criteria;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+
+    @Builder.Default
+    private boolean active = true;
 
     // ---------------------------
 

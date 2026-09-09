@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "friendships")
@@ -24,10 +24,10 @@ public class Friendship {
     @Column(length = 30)
     private FriendshipStatus status;
 
-    private LocalDateTime acceptedAt;
+    private Instant acceptedAt;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ------------------------
 

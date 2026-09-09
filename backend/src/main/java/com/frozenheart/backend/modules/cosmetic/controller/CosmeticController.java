@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.cosmetic.controller;
 
+import com.frozenheart.backend.core.annotation.Idempotent;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.entity.cosmetic.CosmeticRarity;
 import com.frozenheart.backend.core.entity.cosmetic.CosmeticType;
@@ -39,6 +40,7 @@ public class CosmeticController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
+    @Idempotent(keyPrefix = "buy_cosmetic", expireSeconds = 60)
     @PostMapping("/{id}/buy")
     public ResponseEntity<GlobalResponse<ShopItemDto>> buyCosmetic(@PathVariable("id") Long cosmeticId) {
         ShopItemDto response = cosmeticService.buyCosmetic(cosmeticId);

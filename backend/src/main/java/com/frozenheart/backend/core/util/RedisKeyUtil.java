@@ -12,7 +12,6 @@ public final class RedisKeyUtil {
         StringBuilder key = new StringBuilder("leaderboard:");
 
         switch (period) {
-            case ALL_TIME -> key.append(LeaderboardPeriod.ALL_TIME.getRedisKey());
             case SEMESTER -> {
                 if (semesterId == null)
                     throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Cần semesterId cho BXH SEMESTER");

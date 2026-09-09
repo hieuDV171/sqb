@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -44,5 +44,5 @@ public class LegacyQuestion {
     private String subjectCode;
 
     @Column(updatable = false)
-    private LocalDateTime importedAt;
+    private Instant importedAt;
 }

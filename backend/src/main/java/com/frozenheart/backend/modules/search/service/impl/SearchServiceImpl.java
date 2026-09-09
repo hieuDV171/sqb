@@ -7,7 +7,6 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
-import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.socialinteraction.Search;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.modules.search.document.*;
@@ -21,10 +20,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 @Slf4j
@@ -37,6 +37,7 @@ public class SearchServiceImpl implements SearchService {
     private final SearchRepository searchRepository;
     private final UserRepository userRepository;
     private final RedisTemplate<String, String> redisTemplate;
+    private final TransactionTemplate transactionTemplate;
 
     private static final String TRENDING_SEARCHES_KEY = "trending_searches";
     private static final int MAX_SAVED_SEARCHES_PER_USER = 20;
@@ -45,25 +46,14 @@ public class SearchServiceImpl implements SearchService {
     public GlobalSearchResponseDto search(
             String query,
             SearchType type,
-            SearchScope scope,
             Long after,
-            Integer limit
-    ) {
+            Integer limit) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         int fromOffset = (after != null && after >= 0) ? after.intValue() : 0;
 
         // Trích xuất thông tin người dùng an toàn từ Security Context
         Optional<JwtPayload> payloadOpt = getOptionalJwtPayload();
         Long currentUserId = payloadOpt.map(JwtPayload::getUserId).orElse(null);
-        String currentUserRole = payloadOpt.map(JwtPayload::getRole).orElse("STUDENT");
-
-        // Phân quyền ngữ cảnh tìm kiếm câu hỏi
-        boolean isLecturerOrAdmin = "LECTURER".equalsIgnoreCase(currentUserRole)
-                || "ADMIN".equalsIgnoreCase(currentUserRole);
-
-        SearchScope effectiveScope = (scope == SearchScope.CORE && isLecturerOrAdmin)
-                ? SearchScope.CORE
-                : SearchScope.PUBLIC;
 
         // Lưu vết lịch sử và tăng điểm thịnh hành
         if (query != null && !query.trim().isBlank()) {
@@ -74,7 +64,7 @@ public class SearchServiceImpl implements SearchService {
         List<String> indices = resolveTargetIndices(type);
 
         try {
-            Query esQuery = buildQuery(query, effectiveScope);
+            Query esQuery = buildQuery(query);
 
             SearchResponse<ObjectNode> response = client.search(s -> s
                     .index(indices)
@@ -82,8 +72,7 @@ public class SearchServiceImpl implements SearchService {
                     .from(fromOffset)
                     .size(pageSize + 1)
                     .sort(so -> so.score(sc -> sc.order(SortOrder.Desc))),
-                    ObjectNode.class
-            );
+                    ObjectNode.class);
 
             List<Hit<ObjectNode>> hits = response.hits().hits();
             boolean hasNext = hits.size() > pageSize;
@@ -91,7 +80,7 @@ public class SearchServiceImpl implements SearchService {
 
             List<GlobalSearchResponseDto.SearchResultItemDto> items = new ArrayList<>();
             for (Hit<ObjectNode> hit : resultHits) {
-                GlobalSearchResponseDto.SearchResultItemDto item = mapHitToSearchResultItem(hit, effectiveScope);
+                GlobalSearchResponseDto.SearchResultItemDto item = mapHitToSearchResultItem(hit);
                 if (item != null) {
                     items.add(item);
                 }
@@ -157,16 +146,17 @@ public class SearchServiceImpl implements SearchService {
     @Override
     @Transactional
     public void deleteSavedSearch(Long id) {
-        if (id == null) return;
+        if (id == null)
+            return;
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
         searchRepository.deleteByIdAndUserId(id, currentUserId);
         log.info("[SearchService] 🗑️ User ID {} đã xóa từ khóa tìm kiếm ID {}", currentUserId, id);
     }
 
     @Override
-    @Transactional
     public void recordSearchQuery(Long currentUserId, String query) {
-        if (query == null || query.isBlank()) return;
+        if (query == null || query.isBlank())
+            return;
         String cleanQuery = query.trim();
 
         // 1. Tăng điểm Trending trên Redis (ZINCRBY)
@@ -176,26 +166,30 @@ public class SearchServiceImpl implements SearchService {
             log.warn("[SearchService] Không thể cập nhật trending search trên Redis: {}", e.getMessage());
         }
 
-        // 2. Lưu vào lịch sử cá nhân trong PostgreSQL & Giới hạn tối đa 20 từ khóa gần nhất (FIFO)
+        // 2. Lưu vào lịch sử cá nhân trong PostgreSQL & Giới hạn tối đa 20 từ khóa gần
+        // nhất (FIFO)
         if (currentUserId != null) {
             try {
-                LocalDateTime now = LocalDateTime.now();
-                // 1 query UPDATE nếu từ khóa đã tồn tại
-                int updated = searchRepository.updateLastSearchedAt(currentUserId, cleanQuery, now);
-                if (updated == 0) {
-                    // Từ khóa mới: 1 query INSERT + 1 query Native SQL Pruning (xóa ngoài top 20)
-                    User userRef = userRepository.getReferenceById(currentUserId);
-                    Search newSearch = Search.builder()
-                            .user(userRef)
-                            .queryText(cleanQuery)
-                            .lastSearchedAt(now)
-                            .createdAt(now)
-                            .build();
-                    searchRepository.save(newSearch);
-                    searchRepository.pruneOldSearches(currentUserId, MAX_SAVED_SEARCHES_PER_USER);
-                }
+                transactionTemplate.executeWithoutResult(_ -> {
+                    Instant now = Instant.now();
+                    // 1 query UPDATE nếu từ khóa đã tồn tại
+                    int updated = searchRepository.updateLastSearchedAt(currentUserId, cleanQuery, now);
+                    if (updated == 0) {
+                        // Từ khóa mới: 1 query INSERT + 1 query Native SQL Pruning (xóa ngoài top 20)
+                        User userRef = userRepository.getReferenceById(currentUserId);
+                        Search newSearch = Search.builder()
+                                .user(userRef)
+                                .queryText(cleanQuery)
+                                .lastSearchedAt(now)
+                                .createdAt(now)
+                                .build();
+                        searchRepository.save(newSearch);
+                        searchRepository.pruneOldSearches(currentUserId, MAX_SAVED_SEARCHES_PER_USER);
+                    }
+                });
             } catch (Exception e) {
-                log.warn("[SearchService] Không thể lưu lịch sử tìm kiếm cho User ID {}: {}", currentUserId, e.getMessage());
+                log.warn("[SearchService] Không thể lưu lịch sử tìm kiếm cho User ID {}: {}", currentUserId,
+                        e.getMessage());
             }
         }
     }
@@ -219,8 +213,7 @@ public class SearchServiceImpl implements SearchService {
                     SubjectSearchDoc.INDEX_NAME,
                     PostSearchDoc.INDEX_NAME,
                     SessionSearchDoc.INDEX_NAME,
-                    QuestionSearchDoc.INDEX_NAME
-            );
+                    QuestionSearchDoc.INDEX_NAME);
         }
         return switch (type) {
             case USER -> List.of(UserSearchDoc.INDEX_NAME);
@@ -228,56 +221,34 @@ public class SearchServiceImpl implements SearchService {
             case POST -> List.of(PostSearchDoc.INDEX_NAME);
             case SESSION -> List.of(SessionSearchDoc.INDEX_NAME);
             case QUESTION -> List.of(QuestionSearchDoc.INDEX_NAME);
-            default -> List.of(UserSearchDoc.INDEX_NAME, SubjectSearchDoc.INDEX_NAME, PostSearchDoc.INDEX_NAME, SessionSearchDoc.INDEX_NAME, QuestionSearchDoc.INDEX_NAME);
+            default -> List.of(UserSearchDoc.INDEX_NAME, SubjectSearchDoc.INDEX_NAME, PostSearchDoc.INDEX_NAME,
+                    SessionSearchDoc.INDEX_NAME, QuestionSearchDoc.INDEX_NAME);
         };
     }
 
-    private Query buildQuery(String queryText, SearchScope scope) {
+    private Query buildQuery(String queryText) {
         if (queryText == null || queryText.trim().isBlank()) {
             return Query.of(q -> q.matchAll(m -> m));
         }
 
         String cleanText = queryText.trim();
 
-        List<String> searchFields = new ArrayList<>(List.of(
+        List<String> searchFields = List.of(
                 "full_name^4", "student_lecturer_code^3", "bio^1", "faculty^2", "major^2",
                 "subject_code^4", "subject_name^3",
-                "content^3", "author_name^2",
-                "title^4", "topic_name^2", "question_code^5"
-        ));
+                "content^4", "author_name^2",
+                "title^4", "topic_name^2", "question_code^5",
+                "options.text^3", "explanation^2");
 
-        if (scope == SearchScope.CORE) {
-            searchFields.add("core_content^4");
-            searchFields.add("core_options_text^3");
-            searchFields.add("core_explanation^2");
-            searchFields.add("original_content^2");
-        } else {
-            searchFields.add("original_content^4");
-            searchFields.add("original_options_text^3");
-            searchFields.add("original_explanation^2");
-        }
-
-        return Query.of(q -> q.bool(b -> {
-            b.should(s -> s.multiMatch(mm -> mm
-                    .query(cleanText)
-                    .fields(searchFields)
-                    .fuzziness("AUTO")
-            ));
-
-            // Nếu tìm kiếm chuyên sâu trong CORE đề thi -> chỉ hiển thị câu hỏi APPROVED
-            if (scope == SearchScope.CORE) {
-                b.filter(f -> f.bool(fb -> fb
-                        .should(sh -> sh.term(t -> t.field("status").value(QuestionStatus.APPROVED.name())))
-                        .should(sh -> sh.bool(notQ -> notQ.mustNot(mn -> mn.exists(ex -> ex.field("status")))))
-                ));
-            }
-
-            return b;
-        }));
+        return Query.of(q -> q.multiMatch(mm -> mm
+                .query(cleanText)
+                .fields(searchFields)
+                .fuzziness("AUTO")));
     }
 
-    private GlobalSearchResponseDto.SearchResultItemDto mapHitToSearchResultItem(Hit<ObjectNode> hit, SearchScope scope) {
-        if (hit.source() == null) return null;
+    private GlobalSearchResponseDto.SearchResultItemDto mapHitToSearchResultItem(Hit<ObjectNode> hit) {
+        if (hit.source() == null)
+            return null;
         String index = hit.index();
         Double score = hit.score();
 
@@ -358,18 +329,6 @@ public class SearchServiceImpl implements SearchService {
             } else if (QuestionSearchDoc.INDEX_NAME.equals(index)) {
                 QuestionSearchDoc doc = jsonMapper.treeToValue(hit.source(), QuestionSearchDoc.class);
 
-                String resolvedContent = (scope == SearchScope.CORE && doc.getCoreContent() != null)
-                        ? doc.getCoreContent()
-                        : doc.getOriginalContent();
-
-                List<String> resolvedOptions = (scope == SearchScope.CORE && doc.getCoreOptionsText() != null && !doc.getCoreOptionsText().isEmpty())
-                        ? doc.getCoreOptionsText()
-                        : doc.getOriginalOptionsText();
-
-                String resolvedExplanation = (scope == SearchScope.CORE && doc.getCoreExplanation() != null)
-                        ? doc.getCoreExplanation()
-                        : doc.getOriginalExplanation();
-
                 return GlobalSearchResponseDto.SearchResultItemDto.builder()
                         .type(SearchType.QUESTION)
                         .relevanceScore(score)
@@ -382,9 +341,15 @@ public class SearchServiceImpl implements SearchService {
                                 .topicName(doc.getTopicName())
                                 .status(doc.getStatus())
                                 .difficulty(doc.getDifficulty())
-                                .content(resolvedContent)
-                                .optionsText(resolvedOptions)
-                                .explanation(resolvedExplanation)
+                                .content(doc.getContent())
+                                .options(doc.getOptions() != null
+                                        ? doc.getOptions().stream().map(opt -> GlobalSearchResponseDto.QuestionOptionDto.builder()
+                                                .key(opt.getKey())
+                                                .text(opt.getText())
+                                                .mediaUrl(opt.getMediaUrl())
+                                                .build()).toList()
+                                        : Collections.emptyList())
+                                .explanation(doc.getExplanation())
                                 .imageUrls(doc.getImageUrls())
                                 .avgRating(doc.getAvgRating())
                                 .ratingCount(doc.getRatingCount())

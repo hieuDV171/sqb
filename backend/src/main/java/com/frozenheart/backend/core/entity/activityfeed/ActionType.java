@@ -11,10 +11,5 @@ public enum ActionType {
 
     // Gamification & Cosmetics
     EARNED_BADGE,
-    EQUIPPED_COSMETIC,
-    REACHED_LEVEL_MILESTONE,
-
-    // Social Graph
-    BECOME_FRIENDS,
-    JOINED_SUBJECT
+    REACHED_MILESTONE,
 }

@@ -3,8 +3,10 @@ package com.frozenheart.backend.core.exception;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.dto.error.FieldErrorDetail;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -115,6 +117,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_VALUE, message));
+    }
+
+    @ExceptionHandler({
+            ObjectOptimisticLockingFailureException.class,
+            OptimisticLockException.class
+    })
+    public ResponseEntity<GlobalResponse<Void>> handleOptimisticLockingFailureException(Exception ex) {
+        String message = "Dữ liệu đã được cập nhật bởi một thao tác khác trong cùng thời điểm. Vui lòng tải lại trang và thử lại.";
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(GlobalResponse.error(ResponseCode.STALE_DATA_DETECTED, message));
     }
 
     @ExceptionHandler(Exception.class)

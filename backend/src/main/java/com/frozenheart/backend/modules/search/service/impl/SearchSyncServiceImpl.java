@@ -9,7 +9,6 @@ import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostVisibility;
 import com.frozenheart.backend.core.entity.session.Question;
-import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
@@ -541,14 +540,14 @@ public class SearchSyncServiceImpl implements SearchSyncService {
     }
 
     private QuestionSearchDoc mapToQuestionDoc(Question q) {
-        // Tách text của đáp án gốc
-        List<String> originalOpts = q.getOriginalOptions() != null
-                ? q.getOriginalOptions().stream().map(QuestionOption::getText).filter(Objects::nonNull).toList()
-                : Collections.emptyList();
-
-        // Tách text của đáp án chuẩn ngân hàng đề
-        List<String> coreOpts = q.getOptions() != null
-                ? q.getOptions().stream().map(QuestionOption::getText).filter(Objects::nonNull).toList()
+        // Tách các lựa chọn (key, text, mediaUrl) - không lưu isCorrect để bảo mật
+        List<QuestionOptionDoc> options = q.getOptions() != null
+                ? q.getOptions().stream().map(opt -> QuestionOptionDoc.builder()
+                        .key(opt.getKey())
+                        .text(opt.getText())
+                        .mediaUrl(opt.getMediaUrl())
+                        .build()
+                    ).toList()
                 : Collections.emptyList();
 
         // Vector hình ảnh nếu có (DINOv2 - 384 dims) và danh sách URL ảnh đính kèm
@@ -577,14 +576,10 @@ public class SearchSyncServiceImpl implements SearchSyncService {
                 .topicName(q.getTopic() != null ? q.getTopic().getName() : null)
                 .status(q.getStatus())
                 .difficulty(q.getDifficulty())
-                // Tầng công khai
-                .originalContent(q.getOriginalContent())
-                .originalOptionsText(originalOpts)
-                .originalExplanation(q.getOriginalExplanation())
-                // Tầng ngân hàng đề lõi
-                .coreContent(q.getContent())
-                .coreOptionsText(coreOpts)
-                .coreExplanation(q.getExplanation())
+                // Nội dung câu hỏi
+                .content(q.getContent())
+                .options(options)
+                .explanation(q.getExplanation())
                 // AI Vector Layer
                 .textVector(q.getTextEmbedding())
                 .imageVectors(imageVectors.isEmpty() ? null : imageVectors)

@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -21,6 +21,11 @@ public class Report {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 
     private String targetType;
     private Long targetId;
@@ -41,13 +46,13 @@ public class Report {
     private String description;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private ReportStatus status;
 
-    private LocalDateTime reviewedAt;
+    private Instant reviewedAt;
 
     @Column(length = 500)
     private String resolutionNote;

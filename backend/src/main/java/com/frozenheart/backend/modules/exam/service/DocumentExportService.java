@@ -6,9 +6,9 @@ import com.frozenheart.backend.modules.exam.dto.ExportResponse;
 public interface DocumentExportService {
 
     /**
-     * Export all original questions of a subject for students
+     * Export all questions of a subject for lecturers
      */
-    ExportResponse exportOriginalQuestions(Long subjectId, String format, Boolean includeAnswer);
+    ExportResponse exportQuestions(Long subjectId, String format, Boolean includeAnswer);
 
     /**
      * Export a generated exam for lecturers

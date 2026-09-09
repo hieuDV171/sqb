@@ -1,10 +1,11 @@
 package com.frozenheart.backend.modules.notification.dto;
 
 import com.frozenheart.backend.core.dto.user.UserSummaryDto;
+import com.frozenheart.backend.core.entity.notification.NotificationMetadata;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -23,11 +24,13 @@ public class NotificationDto {
 
     private String iconUrl;
 
-    private LocalDateTime readAt;
+    private Instant readAt;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     private NotificationTargetDto target;
 
     private UserSummaryDto actor;
+
+    private NotificationMetadata metadata;
 }

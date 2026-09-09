@@ -20,4 +20,6 @@ public interface QuestionReviewService {
 
     EditQuestionResponse editQuestion(Long questionId, EditQuestionRequest request);
 
+    void completeSessionReview(Long sessionId);
+
 }

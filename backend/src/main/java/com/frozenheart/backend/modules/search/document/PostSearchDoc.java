@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import com.frozenheart.backend.core.entity.post.PostType;
@@ -34,12 +34,13 @@ public class PostSearchDoc {
     private PostType postType; // LEARNING_VIDEO, SOCIAL_POST, QUESTION_APPROVED_NOTIFICATION
     private PostVisibility visibility; // PUBLIC, FRIENDS, ONLY_ME
 
-    // Danh sách URL ảnh/video đính kèm (để hiển thị thumbnail trên kết quả tìm kiếm)
+    // Danh sách URL ảnh/video đính kèm (để hiển thị thumbnail trên kết quả tìm
+    // kiếm)
     private List<String> mediaUrls;
 
     // Chỉ số tương tác xếp hạng
     private Integer reactCount;
     private Integer commentCount;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

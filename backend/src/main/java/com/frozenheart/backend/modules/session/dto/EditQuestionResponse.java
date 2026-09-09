@@ -1,13 +1,13 @@
 package com.frozenheart.backend.modules.session.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import lombok.Builder;
 
 @Builder
 public record EditQuestionResponse(
-        Long questionId,
-        String status,
-        Long reviewedBy,
-        LocalDateTime reviewedAt
-) {}
+                Long questionId,
+                String status,
+                Long reviewedBy,
+                Instant reviewedAt) {
+}

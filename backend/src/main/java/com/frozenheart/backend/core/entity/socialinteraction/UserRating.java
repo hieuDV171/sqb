@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -26,7 +26,7 @@ public class UserRating {
     private boolean isError;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ----------------------
 

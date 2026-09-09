@@ -23,7 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,10 +44,13 @@ public class MessageServiceImpl implements MessageService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
 
-        UserParticipant participant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia cuộc hội thoại này"));
+        UserParticipant participant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                        "Bạn không tham gia cuộc hội thoại này"));
 
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 100) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
@@ -137,7 +140,7 @@ public class MessageServiceImpl implements MessageService {
         if (!messages.isEmpty()) {
             Message newestMessage = messages.getFirst();
             participant.setLastReadMessage(newestMessage);
-            participant.setLastMessageReadAt(LocalDateTime.now());
+            participant.setLastMessageReadAt(Instant.now());
             userParticipantRepository.save(participant);
         }
 
@@ -163,13 +166,16 @@ public class MessageServiceImpl implements MessageService {
                 .orElseThrow(() -> new AppException(ResponseCode.MESSAGE_NOT_FOUND, "Không tìm thấy tin nhắn"));
 
         Long conversationId = message.getConversation().getId();
-        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId, conversationId);
+        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId,
+                conversationId);
         if (!isParticipant) {
-            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia cuộc hội thoại chứa tin nhắn này");
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                    "Bạn không tham gia cuộc hội thoại chứa tin nhắn này");
         }
 
         if (request.getScope() == MessageDeleteScope.ME) {
-            boolean alreadyDeleted = userDeletedMessageOnlyMeRepository.existsByUserIdAndMessageId(currentUserId, messageId);
+            boolean alreadyDeleted = userDeletedMessageOnlyMeRepository.existsByUserIdAndMessageId(currentUserId,
+                    messageId);
             if (!alreadyDeleted) {
                 User currentUser = userRepository.findById(currentUserId)
                         .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
@@ -178,7 +184,7 @@ public class MessageServiceImpl implements MessageService {
                         .id(new UserDeletedMessageOnlyMeId(currentUserId, messageId))
                         .user(currentUser)
                         .deletedMessageOnlyMe(message)
-                        .deletedAt(LocalDateTime.now())
+                        .deletedAt(Instant.now())
                         .build();
 
                 userDeletedMessageOnlyMeRepository.save(deletedRecord);
@@ -192,10 +198,11 @@ public class MessageServiceImpl implements MessageService {
         } else {
             // scope == EVERYONE
             if (!Objects.equals(message.getSender().getId(), currentUserId)) {
-                throw new AppException(ResponseCode.NOT_MESSAGE_OWNER, "Bạn chỉ có thể thu hồi tin nhắn do chính bạn gửi");
+                throw new AppException(ResponseCode.NOT_MESSAGE_OWNER,
+                        "Bạn chỉ có thể thu hồi tin nhắn do chính bạn gửi");
             }
 
-            message.setDeletedAt(LocalDateTime.now());
+            message.setDeletedAt(Instant.now());
             messageRepository.save(message);
 
             return DeleteMessageResponseDto.builder()

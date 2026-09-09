@@ -24,7 +24,7 @@ public class GenerateExamRequest {
     private String title;
 
     @Builder.Default
-    private Integer questionCount = 10;
+    private Integer questionCount = 40;
 
     private DifficultyDistribution difficultyDistribution;
 
@@ -34,7 +34,7 @@ public class GenerateExamRequest {
     private Boolean shuffleOptions = false;
 
     @Builder.Default
-    private Boolean includeAnswerKey = true;
+    private Boolean includeAnswerKey = false;
 
     @NotEmpty(message = "Phải có ít nhất 1 id lớp học")
     private List<Long> classIds;

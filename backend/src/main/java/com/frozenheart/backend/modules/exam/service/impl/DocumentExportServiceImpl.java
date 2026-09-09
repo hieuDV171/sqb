@@ -12,6 +12,7 @@ import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.exam.dto.ExamQuestionReportDto;
 import com.frozenheart.backend.modules.exam.dto.ExportResponse;
+import com.frozenheart.backend.modules.exam.dto.QuestionReportDto;
 import com.frozenheart.backend.modules.exam.service.DocumentExportService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -31,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,17 +47,18 @@ public class DocumentExportServiceImpl implements DocumentExportService {
 
     @Override
     @Transactional(readOnly = true)
-    public ExportResponse exportOriginalQuestions(Long subjectId, String format, Boolean includeAnswer) {
+    public ExportResponse exportQuestions(Long subjectId, String format, Boolean includeAnswer) {
         boolean withAnswer = includeAnswer == null || includeAnswer;
         String ext = "excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format) ? "xlsx" : "pdf";
 
         // Đặt tên chung như thế này để nếu có người cùng tải về 1 loại thì dùng cái này cache luôn
-        String objectKey = String.format("exports/questions/subject_%d_original_ans_%b.%s", subjectId, withAnswer, ext);
+        String objectKey = String.format("exports/questions/subject_%d_ans_%b.%s", subjectId, withAnswer, ext);
 
-        // Fetch Original Questions (JOIN FETCH)
-        List<Question> questions = questionRepository.findAllOriginalBySubjectId(subjectId);
+        // Fetch Questions (JOIN FETCH session, subject, ownedMedias)
+        List<Question> questions = questionRepository.findAllBySubjectIdForExport(subjectId);
         if (questions.isEmpty()) {
-            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy câu hỏi gốc nào thuộc môn học này");
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Không tìm thấy câu hỏi nào thuộc môn học này");
         }
 
         // Check MinIO Cache
@@ -69,10 +71,10 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         byte[] contentBytes;
         String contentType;
         if ("xlsx".equalsIgnoreCase(ext)) {
-            contentBytes = generateOriginalQuestionsExcel(questions, withAnswer);
+            contentBytes = generateQuestionsExcel(questions, withAnswer);
             contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         } else {
-            contentBytes = generateOriginalQuestionsPdf(questions, withAnswer);
+            contentBytes = generateQuestionsPdf(questions, withAnswer);
             contentType = "application/pdf";
         }
 
@@ -116,8 +118,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                     StatObjectArgs.builder()
                             .bucket(minioProperties.getBucketName())
                             .object(objectKey)
-                            .build()
-            );
+                            .build());
             if (stat != null) {
                 String downloadUrl = minioClient.getPresignedObjectUrl(
                         GetPresignedObjectUrlArgs.builder()
@@ -125,14 +126,13 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                                 .bucket(minioProperties.getBucketName())
                                 .object(objectKey)
                                 .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
-                                .build()
-                );
+                                .build());
                 double fileSizeMb = Math.round((stat.size() / (1024.0 * 1024.0)) * 100.0) / 100.0;
                 return ExportResponse.builder()
                         .downloadUrl(downloadUrl)
                         .fileSizeMb(fileSizeMb)
                         .questionsCount(questionsCount)
-                        .expiresAt(LocalDateTime.now().plusSeconds(Time.DEFAULT_EXPIRATION_SECONDS))
+                        .expiresAt(Instant.now().plusSeconds(Time.DEFAULT_EXPIRATION_SECONDS))
                         .build();
             }
         } catch (Exception e) {
@@ -141,7 +141,8 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         return null;
     }
 
-    private ExportResponse uploadAndPresign(String objectKey, byte[] contentBytes, String contentType, int questionsCount) {
+    private ExportResponse uploadAndPresign(String objectKey, byte[] contentBytes, String contentType,
+            int questionsCount) {
         try {
             try (InputStream is = new ByteArrayInputStream(contentBytes)) {
                 minioClient.putObject(
@@ -150,9 +151,8 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                                 .object(objectKey)
                                 .stream(is, (long) contentBytes.length, -1L)
                                 .contentType(contentType)
-                                .tags(Map.of("status", "permanent"))
-                                .build()
-                );
+                                .tags(Map.of("status", "temp"))
+                                .build());
             }
 
             String downloadUrl = minioClient.getPresignedObjectUrl(
@@ -161,15 +161,14 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                             .bucket(minioProperties.getBucketName())
                             .object(objectKey)
                             .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
-                            .build()
-            );
+                            .build());
 
             double fileSizeMb = Math.round((contentBytes.length / (1024.0 * 1024.0)) * 100.0) / 100.0;
             return ExportResponse.builder()
                     .downloadUrl(downloadUrl)
                     .fileSizeMb(fileSizeMb)
                     .questionsCount(questionsCount)
-                    .expiresAt(LocalDateTime.now().plusSeconds(Time.DEFAULT_EXPIRATION_SECONDS))
+                    .expiresAt(Instant.now().plusSeconds(Time.DEFAULT_EXPIRATION_SECONDS))
                     .build();
 
         } catch (Exception e) {
@@ -197,7 +196,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         return contentStyle;
     }
 
-    private byte[] generateOriginalQuestionsExcel(List<Question> questions, boolean includeAnswer) {
+    private byte[] generateQuestionsExcel(List<Question> questions, boolean includeAnswer) {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Danh Sach Cau Hoi");
 
@@ -205,7 +204,8 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             CellStyle contentStyle = createContentStyle(workbook);
 
             Row headerRow = sheet.createRow(0);
-            String[] headers = includeAnswer ? new String[]{"STT", "Nội Dung", "Các Lựa Chọn", "Giải Thích"} : new String[]{"STT", "Nội Dung", "Các Lựa Chọn"};
+            String[] headers = includeAnswer ? new String[] { "STT", "Nội Dung", "Các Lựa Chọn", "Giải Thích" }
+                    : new String[] { "STT", "Nội Dung", "Các Lựa Chọn" };
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -221,11 +221,11 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                 c0.setCellStyle(contentStyle);
 
                 Cell c1 = row.createCell(1);
-                c1.setCellValue(q.getOriginalContent() != null ? q.getOriginalContent() : q.getContent());
+                c1.setCellValue(q.getContent() != null ? q.getContent() : "");
                 c1.setCellStyle(contentStyle);
 
                 StringBuilder optionsSb = new StringBuilder();
-                List<QuestionOption> options = q.getOriginalOptions() != null ? q.getOriginalOptions() : q.getOptions();
+                List<QuestionOption> options = q.getOptions();
                 if (options != null) {
                     for (QuestionOption opt : options) {
                         optionsSb.append(opt.getKey()).append(". ").append(opt.getText());
@@ -241,7 +241,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
 
                 if (includeAnswer) {
                     Cell c3 = row.createCell(3);
-                    c3.setCellValue(q.getOriginalExplanation() != null ? q.getOriginalExplanation() : "");
+                    c3.setCellValue(q.getExplanation() != null ? q.getExplanation() : "");
                     c3.setCellStyle(contentStyle);
                 }
             }
@@ -260,12 +260,14 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         }
     }
 
-    private record FormattedOptions(String optionsText, String correctAnswers) {}
+    private record FormattedOptions(String optionsText, String correctAnswers) {
+    }
 
     private FormattedOptions formatExamQuestionOptions(ExamQuestion eq) {
         StringBuilder optsSb = new StringBuilder();
         StringBuilder correctSb = new StringBuilder();
-        List<QuestionOption> options = eq.getOptionsSnapshot() != null ? eq.getOptionsSnapshot() : eq.getQuestion().getOptions();
+        List<QuestionOption> options = eq.getOptionsSnapshot() != null ? eq.getOptionsSnapshot()
+                : eq.getQuestion().getOptions();
         if (options != null) {
             for (QuestionOption opt : options) {
                 optsSb.append(opt.getKey()).append(". ").append(opt.getText()).append("\n");
@@ -294,7 +296,9 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             subCell.setCellValue("Môn học: " + (exam.getSubject() != null ? exam.getSubject().getName() : ""));
 
             Row headerRow = sheet.createRow(3);
-            String[] headers = includeAnswerKey ? new String[]{"Câu Số", "Nội Dung Câu Hỏi", "Các Phương Án Lựa Chọn", "Đáp Án Đúng"} : new String[]{"Câu Số", "Nội Dung Câu Hỏi", "Các Phương Án Lựa Chọn"};
+            String[] headers = includeAnswerKey
+                    ? new String[] { "Câu Số", "Nội Dung Câu Hỏi", "Các Phương Án Lựa Chọn", "Đáp Án Đúng" }
+                    : new String[] { "Câu Số", "Nội Dung Câu Hỏi", "Các Phương Án Lựa Chọn" };
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -342,50 +346,55 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         }
     }
 
-    private byte[] generateOriginalQuestionsPdf(List<Question> questions, boolean includeAnswer) {
+    private byte[] generateQuestionsPdf(List<Question> questions, boolean includeAnswer) {
         try {
             InputStream templateStream = getClass().getResourceAsStream("/templates/reports/questions_template.jrxml");
             if (templateStream == null) {
-                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy file mẫu questions_template.jrxml trong resources");
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                        "Không tìm thấy file mẫu questions_template.jrxml trong resources");
             }
-            net.sf.jasperreports.engine.JasperReport jasperReport = net.sf.jasperreports.engine.JasperCompileManager.compileReport(templateStream);
+            JasperReport jasperReport = JasperCompileManager
+                    .compileReport(templateStream);
 
-            String subjectName = (questions != null && !questions.isEmpty() && questions.getFirst().getSession() != null && questions.getFirst().getSession().getSubject() != null)
-                    ? questions.getFirst().getSession().getSubject().getName()
-                    : "";
+            String subjectName = (questions != null && !questions.isEmpty() && questions.getFirst().getSession() != null
+                    && questions.getFirst().getSession().getSubject() != null)
+                            ? questions.getFirst().getSession().getSubject().getName()
+                            : "";
 
             Map<String, Object> parameters = new HashMap<>();
             parameters.put("SUBJECT_NAME", subjectName);
             parameters.put("INCLUDE_ANSWER", includeAnswer);
 
-            List<com.frozenheart.backend.modules.exam.dto.QuestionReportDto> reportDtos = new ArrayList<>();
+            List<QuestionReportDto> reportDtos = new ArrayList<>();
             if (questions != null) {
                 int count = 1;
                 for (Question q : questions) {
                     List<String> questionImageUrls = q.getOwnedMedias() != null
                             ? q.getOwnedMedias().stream()
-                                .filter(m -> m.getMediaTarget() == com.frozenheart.backend.core.entity.media.MediaTarget.CONTENT)
-                                .map(com.frozenheart.backend.core.entity.media.QuestionMedia::getUrl)
-                                .collect(Collectors.toList())
+                                    .filter(m -> m
+                                            .getMediaTarget() == MediaTarget.CONTENT)
+                                    .map(QuestionMedia::getUrl)
+                                    .collect(Collectors.toList())
                             : Collections.emptyList();
 
-                    List<com.frozenheart.backend.modules.exam.dto.QuestionReportDto.OptionReportDto> optionDtos = new ArrayList<>();
-                    List<QuestionOption> options = q.getOriginalOptions() != null ? q.getOriginalOptions() : q.getOptions();
+                    List<QuestionReportDto.OptionReportDto> optionDtos = new ArrayList<>();
+                    List<QuestionOption> options = q.getOptions();
                     if (options != null) {
                         for (QuestionOption opt : options) {
-                            optionDtos.add(com.frozenheart.backend.modules.exam.dto.QuestionReportDto.OptionReportDto.builder()
-                                    .key(opt.getKey())
-                                    .text(opt.getText())
-                                    .mediaUrl(opt.getMediaUrl())
-                                    .isCorrect(opt.getIsCorrect())
-                                    .build());
+                            optionDtos.add(
+                                     QuestionReportDto.OptionReportDto.builder()
+                                             .key(opt.getKey())
+                                             .text(opt.getText())
+                                             .mediaUrl(opt.getMediaUrl())
+                                             .isCorrect(opt.getIsCorrect())
+                                             .build());
                         }
                     }
 
-                    String content = q.getOriginalContent() != null ? q.getOriginalContent() : q.getContent();
-                    String explanation = q.getOriginalExplanation() != null ? q.getOriginalExplanation() : q.getExplanation();
+                    String content = q.getContent() != null ? q.getContent() : "";
+                    String explanation = q.getExplanation() != null ? q.getExplanation() : "";
 
-                    reportDtos.add(com.frozenheart.backend.modules.exam.dto.QuestionReportDto.builder()
+                    reportDtos.add(QuestionReportDto.builder()
                             .order(count++)
                             .questionContent(content)
                             .questionImageUrls(questionImageUrls)
@@ -395,18 +404,19 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                 }
             }
 
-            net.sf.jasperreports.engine.data.JRBeanCollectionDataSource dataSource =
-                    new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource(reportDtos);
+            JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(
+                    reportDtos);
 
-            net.sf.jasperreports.engine.JasperPrint jasperPrint =
-                    net.sf.jasperreports.engine.JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+            JasperPrint jasperPrint = JasperFillManager
+                    .fillReport(jasperReport, parameters, dataSource);
 
-            return net.sf.jasperreports.engine.JasperExportManager.exportReportToPdf(jasperPrint);
+            return JasperExportManager.exportReportToPdf(jasperPrint);
         } catch (AppException ae) {
             throw ae;
         } catch (Exception e) {
             log.error("[DocumentExportService] Lỗi khi tạo PDF danh sách câu hỏi ôn tập bằng JasperReports: ", e);
-            throw new AppException(ResponseCode.UNKNOWN_SYSTEM_ERROR, "Tạo PDF câu hỏi ôn tập thất bại: " + e.getMessage());
+            throw new AppException(ResponseCode.UNKNOWN_SYSTEM_ERROR,
+                    "Tạo PDF câu hỏi ôn tập thất bại: " + e.getMessage());
         }
     }
 
@@ -414,7 +424,8 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         try {
             InputStream templateStream = getClass().getResourceAsStream("/templates/reports/exam_template.jrxml");
             if (templateStream == null) {
-                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy file mẫu exam_template.jrxml trong resources");
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                        "Không tìm thấy file mẫu exam_template.jrxml trong resources");
             }
             JasperReport jasperReport = JasperCompileManager.compileReport(templateStream);
 
@@ -423,20 +434,21 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             parameters.put("SUBJECT_NAME", exam.getSubject() != null ? exam.getSubject().getName() : "");
             parameters.put("INCLUDE_ANSWER", includeAnswerKey);
 
-            List<com.frozenheart.backend.modules.exam.dto.ExamQuestionReportDto> reportDtos = new ArrayList<>();
+            List<ExamQuestionReportDto> reportDtos = new ArrayList<>();
             if (exam.getExamQuestions() != null) {
                 for (ExamQuestion eq : exam.getExamQuestions()) {
                     FormattedOptions formatted = formatExamQuestionOptions(eq);
 
                     List<String> questionImageUrls = eq.getQuestion().getOwnedMedias() != null
                             ? eq.getQuestion().getOwnedMedias().stream()
-                                .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
-                                .map(QuestionMedia::getUrl)
-                                .collect(Collectors.toList())
+                                    .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
+                                    .map(QuestionMedia::getUrl)
+                                    .collect(Collectors.toList())
                             : Collections.emptyList();
 
                     List<ExamQuestionReportDto.OptionReportDto> optionDtos = new ArrayList<>();
-                    List<QuestionOption> options = eq.getOptionsSnapshot() != null ? eq.getOptionsSnapshot() : eq.getQuestion().getOptions();
+                    List<QuestionOption> options = eq.getOptionsSnapshot() != null ? eq.getOptionsSnapshot()
+                            : eq.getQuestion().getOptions();
                     if (options != null) {
                         for (QuestionOption opt : options) {
                             optionDtos.add(ExamQuestionReportDto.OptionReportDto.builder()
@@ -459,11 +471,9 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                 }
             }
 
-            JRBeanCollectionDataSource dataSource =
-                    new JRBeanCollectionDataSource(reportDtos);
+            JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(reportDtos);
 
-            JasperPrint jasperPrint =
-                    JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
 
             return JasperExportManager.exportReportToPdf(jasperPrint);
         } catch (AppException ae) {

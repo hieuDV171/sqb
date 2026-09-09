@@ -11,6 +11,6 @@ import lombok.*;
 @AllArgsConstructor
 public class UpdateMemberRoleRequestDto {
 
-    @NotNull(message = "Role không được để trống (ADMIN hoặc MEMBER)")
+    @NotNull(message = "Role không được để trống (LEADER, DEPUTY hoặc MEMBER)")
     private ConversationRole role;
 }

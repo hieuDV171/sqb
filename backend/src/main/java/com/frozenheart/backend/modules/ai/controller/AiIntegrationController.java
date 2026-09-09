@@ -38,14 +38,14 @@ public class AiIntegrationController {
         return ResponseEntity.ok(GlobalResponse.success("AI tinh chỉnh câu hỏi thành công", response));
     }
 
-    @PostMapping("/ai/chat")
+    @PostMapping("/admin/ai/chat")
     public ResponseEntity<GlobalResponse<AiChatResponse>> chatWithAi(
             @Valid @RequestBody AiChatRequest request) {
         AiChatResponse response = aiIntegrationService.chatWithAi(request);
         return ResponseEntity.ok(GlobalResponse.success("Phản hồi từ AI thành công", response));
     }
 
-    @GetMapping("/ai/chat/history")
+    @GetMapping("/admin/ai/chat/history")
     public ResponseEntity<GlobalResponse<CursorResponse<AiChatHistoryResponse>>> getChatHistory(
             @RequestParam String sessionId,
             @RequestParam(required = false) Long after,
@@ -55,7 +55,7 @@ public class AiIntegrationController {
         return ResponseEntity.ok(GlobalResponse.success("Lấy lịch sử hội thoại AI thành công", history));
     }
 
-    @GetMapping("/ai/chat/sessions")
+    @GetMapping("/admin/ai/chat/sessions")
     public ResponseEntity<GlobalResponse<CursorResponse<AiChatSessionSummaryResponse>>> getUserChatSessions(
             @RequestParam(required = false) Long after,
             @RequestParam(defaultValue = "20") int limit) {

@@ -1,6 +1,6 @@
 package com.frozenheart.backend.core.entity.questioneditlog;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -71,7 +71,7 @@ public class QuestionEditLog {
     private Map<String, Object> aiMetadata;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ---------------------
     @ManyToOne(fetch = FetchType.LAZY)
@@ -86,7 +86,5 @@ public class QuestionEditLog {
     @JoinColumn(name = "session_id")
     private Session session;
     // ---------------------
-
-
 
 }

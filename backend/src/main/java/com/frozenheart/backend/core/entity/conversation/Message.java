@@ -7,7 +7,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -35,13 +35,13 @@ public class Message {
     @Column(columnDefinition = "JSONB")
     private List<MediaItem> mediaUrls;
 
-    private LocalDateTime editedAt;
-    private LocalDateTime deletedAt;
+    private Instant editedAt;
+    private Instant deletedAt;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     // ----------------------------
     @ManyToOne(fetch = FetchType.LAZY)
@@ -65,6 +65,5 @@ public class Message {
     @Singular
     @OneToMany(mappedBy = "deletedMessageOnlyMe")
     private Set<UserDeletedMessageOnlyMe> deletedMessageUsers;
-
 
 }

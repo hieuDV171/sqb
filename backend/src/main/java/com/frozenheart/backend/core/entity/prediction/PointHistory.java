@@ -5,7 +5,7 @@ import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -21,13 +21,18 @@ public class PointHistory {
     private Long id;
 
     private double points;
-    private String reason;
 
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50, nullable = false)
+    private PointHistoryReason reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private PointHistoryTargetType targetType;
     private Long targetId;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ----------------
     @ManyToOne(fetch = FetchType.LAZY)

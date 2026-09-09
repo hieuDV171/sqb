@@ -1,12 +1,14 @@
 package com.frozenheart.backend.modules.auth.dto.admin;
 
+import java.time.LocalDate;
 import java.util.List;
 
-import jakarta.validation.constraints.Size;
-import org.jetbrains.annotations.NotNull;
-
+import com.frozenheart.backend.core.entity.user.Gender;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
+import org.jetbrains.annotations.NotNull;
 
 public class AdminBulkCreateUserDto {
     public record SingleUserImportDto(
@@ -27,8 +29,15 @@ public class AdminBulkCreateUserDto {
 
             String major,
 
+            Gender gender,
+
+            @Past(message = "Ngày sinh phải là ngày trong quá khứ")
+            LocalDate dateOfBirth,
+
             @NotNull 
-            UserRoleDto role
+            UserRoleDto role,
+
+            String timezone
         ) {
     }
 

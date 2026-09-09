@@ -1,6 +1,5 @@
 package com.frozenheart.backend.core.entity.user;
 
-import com.frozenheart.backend.core.constant.Time;
 import lombok.*;
 
 import java.time.LocalTime;
@@ -36,7 +35,6 @@ public class PushPreferences {
                 .enabled(false)
                 .startTime(LocalTime.of(22, 0))
                 .endTime(LocalTime.of(7, 0))
-                .timezone(Time.DEFAULT_TIMEZONE)
                 .build();
 
         return PushPreferences.builder()

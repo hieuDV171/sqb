@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -39,11 +39,11 @@ public class ReactServiceImpl implements ReactService {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
-        String targetTypeStr = request.getTargetType().name();
+        InteractionTargetType targetType = request.getTargetType();
         Long targetId = request.getTargetId();
 
         Optional<React> existingOpt = reactRepository.findByUserIdAndTargetTypeAndTargetId(
-                currentUserId, targetTypeStr, targetId);
+                currentUserId, targetType, targetId);
 
         String myReaction = null;
 
@@ -63,11 +63,11 @@ public class ReactServiceImpl implements ReactService {
         } else {
             // New react
             React newReact = new React();
-            newReact.setTargetType(targetTypeStr);
+            newReact.setTargetType(targetType);
             newReact.setTargetId(targetId);
             newReact.setReactionType(request.getReactionType());
             newReact.setUser(currentUser);
-            newReact.setCreatedAt(LocalDateTime.now());
+            newReact.setCreatedAt(Instant.now());
 
             reactRepository.save(newReact);
             incrementTargetReactCounter(request.getTargetType(), targetId, 1);
@@ -75,7 +75,7 @@ public class ReactServiceImpl implements ReactService {
         }
 
         // Calculate reaction counts breakdown and total
-        List<React> allReacts = reactRepository.findByTargetTypeAndTargetId(targetTypeStr, targetId);
+        List<React> allReacts = reactRepository.findByTargetTypeAndTargetId(targetType, targetId);
 
         Map<String, Integer> countsMap = new LinkedHashMap<>();
         for (ReactionType type : ReactionType.values()) {
@@ -94,10 +94,11 @@ public class ReactServiceImpl implements ReactService {
                 .reactionCounts(countsMap)
                 .totalCount(allReacts.size())
                 .build();
-        }
+    }
 
     private void incrementTargetReactCounter(InteractionTargetType targetType, Long targetId, int delta) {
-        if (targetType == null || targetId == null) return;
+        if (targetType == null || targetId == null)
+            return;
         switch (targetType) {
             case POST -> counterMetricsService.incrementPostReacts(targetId, delta);
             case SESSION -> counterMetricsService.incrementSessionReacts(targetId, delta);

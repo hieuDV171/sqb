@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -27,21 +27,21 @@ public class PostResponseDto {
 
     private int reactCount;
     private int commentCount;
-    private boolean likedByMe;
+    private boolean reactedByMe;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     private String lecturerNote;
 
-    private LocalDateTime lecturerNoteAddedAt;
+    private Instant lecturerNoteAddedAt;
 
     private AuthorDto notedLecturer;
 
     private Long subjectId;
     private String subjectName;
     private String subjectCode;
-    
+
     private Long sessionId;
 }

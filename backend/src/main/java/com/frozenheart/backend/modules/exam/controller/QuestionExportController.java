@@ -15,13 +15,13 @@ public class QuestionExportController {
 
     private final DocumentExportService documentExportService;
 
-    @GetMapping("/questions/export")
-    public ResponseEntity<GlobalResponse<ExportResponse>> exportOriginalQuestions(
+    @GetMapping("/lecturer/questions/export")
+    public ResponseEntity<GlobalResponse<ExportResponse>> exportQuestions(
             @RequestParam(name = "subject_id") Long subjectId,
             @RequestParam(defaultValue = "pdf") String format,
             @RequestParam(defaultValue = "true", name = "include_answer") Boolean includeAnswer) {
 
-        ExportResponse response = documentExportService.exportOriginalQuestions(subjectId, format, includeAnswer);
+        ExportResponse response = documentExportService.exportQuestions(subjectId, format, includeAnswer);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 }

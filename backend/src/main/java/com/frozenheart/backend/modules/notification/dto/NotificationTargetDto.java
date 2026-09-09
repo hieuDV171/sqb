@@ -1,5 +1,7 @@
 package com.frozenheart.backend.modules.notification.dto;
 
+import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
+
 import lombok.*;
 
 @Getter
@@ -9,7 +11,7 @@ import lombok.*;
 @AllArgsConstructor
 public class NotificationTargetDto {
 
-    private String type;
+    private NotificationTargetType type;
 
     private Long id;
 

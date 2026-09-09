@@ -11,5 +11,6 @@ public class LeaveGroupResponseDto {
 
     private Long conversationId;
 
-    private ConversationMemberDto newAdmin;
+    private ConversationMemberDto newLeader;
+
 }

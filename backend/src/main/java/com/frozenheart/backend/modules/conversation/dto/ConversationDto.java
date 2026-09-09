@@ -3,7 +3,7 @@ package com.frozenheart.backend.modules.conversation.dto;
 import com.frozenheart.backend.core.entity.conversation.ConversationType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -28,7 +28,7 @@ public class ConversationDto {
 
     private boolean isMuted;
 
-    private LocalDateTime hiddenAt;
+    private Instant hiddenAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

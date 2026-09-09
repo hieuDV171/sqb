@@ -6,7 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -20,18 +20,17 @@ public class UserCosmetic {
     @EmbeddedId
     private UserCosmeticId id;
 
-
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private CosmeticAcquireMethod acquireMethod;
 
-    private LocalDateTime acquireAt;
+    private Instant acquireAt;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private AcquireMetadata metadata;
 
-    private LocalDateTime equippedAt;
+    private Instant equippedAt;
 
     // ----------------------------
     @MapsId("userId")

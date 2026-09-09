@@ -3,7 +3,7 @@ package com.frozenheart.backend.modules.conversation.dto;
 import com.frozenheart.backend.core.entity.conversation.MessageType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -31,7 +31,7 @@ public class MessageDto {
 
     private ReplyMessagePreviewDto replyToMessage;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     private boolean isEdited;
 

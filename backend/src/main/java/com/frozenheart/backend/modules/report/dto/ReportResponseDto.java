@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.ReportStatus;
 import com.frozenheart.backend.modules.report.constant.ReportTargetType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -21,5 +21,5 @@ public class ReportResponseDto {
 
     private ReportStatus status;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

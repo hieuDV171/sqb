@@ -17,11 +17,22 @@ public interface PointHistoryRepository extends JpaRepository<PointHistory, Long
         FROM PointHistory p
         WHERE (:semesterId IS NULL OR p.semester.id = :semesterId)
             AND (:subjectId IS NULL OR p.subject.id = :subjectId)
-        GROUP BY  p.user.id
+            AND ((p.semester IS NOT NULL AND p.semester.isFinalized = TRUE)
+                 OR p.reason IS NULL
+                 OR p.reason NOT IN (com.frozenheart.backend.core.entity.prediction.PointHistoryReason.GAME_5_REPORT_ERROR_APPROVED, com.frozenheart.backend.core.entity.prediction.PointHistoryReason.SECRET_POINTS_AWARDED))
+        GROUP BY p.user.id
     """)
     List<LeaderboardAggregation> getAggregatedPointsForRebuild(
             @Param("subjectId") Long subjectId,
             @Param("semesterId") Long semesterId
     );
+
+    @Query("""
+        SELECT p FROM PointHistory p
+        LEFT JOIN FETCH p.user
+        WHERE p.semester.id = :semesterId
+          AND p.reason = com.frozenheart.backend.core.entity.prediction.PointHistoryReason.GAME_5_REPORT_ERROR_APPROVED
+    """)
+    List<PointHistory> findApprovedErrorHistoriesInSemester(@Param("semesterId") Long semesterId);
 
 }

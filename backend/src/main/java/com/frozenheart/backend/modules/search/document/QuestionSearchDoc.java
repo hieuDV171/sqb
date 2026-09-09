@@ -1,6 +1,6 @@
 package com.frozenheart.backend.modules.search.document;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
@@ -33,18 +33,11 @@ public class QuestionSearchDoc {
     private QuestionDifficulty difficulty; // UNCLASSIFIED, MEDIUM, HARD
 
     // =======================================================
-    // 1. TẦNG CÔNG KHAI (Original Draft - Sinh viên & Peer Learning)
+    // NỘI DUNG CÂU HỎI
     // =======================================================
-    private String originalContent;
-    private List<String> originalOptionsText; // Text của các đáp án gốc: ["Merge Sort", "Quick Sort", ...]
-    private String originalExplanation;
-
-    // =======================================================
-    // 2. TẦNG NGÂN HÀNG ĐỀ LÕI (Core Bank - Chỉ Giảng viên)
-    // =======================================================
-    private String coreContent;
-    private List<String> coreOptionsText; // Text của các đáp án đã chuẩn hóa
-    private String coreExplanation;
+    private String content;
+    private List<QuestionOptionDoc> options;
+    private String explanation;
 
     // =======================================================
     // 3. TẦNG VECTOR ĐA PHƯƠNG TIỆN (Dense Vectors cho AI Search)
@@ -52,7 +45,8 @@ public class QuestionSearchDoc {
     // Vector ngữ nghĩa của đề bài (384 dims sinh từ multilingual-e5-small)
     private float[] textVector;
 
-    // Danh sách vector hình ảnh minh họa đính kèm (Mỗi ảnh 384 dims sinh từ facebook/dinov2-small)
+    // Danh sách vector hình ảnh minh họa đính kèm (Mỗi ảnh 384 dims sinh từ
+    // facebook/dinov2-small)
     private List<float[]> imageVectors;
     private List<String> imageUrls; // Danh sách URL ảnh đính kèm để preview kết quả
 
@@ -67,7 +61,7 @@ public class QuestionSearchDoc {
     private Long authorId;
     private String authorName;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 
 }

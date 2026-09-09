@@ -112,7 +112,7 @@ public class LocalAiClient {
         }
 
         long processingTime = System.currentTimeMillis() - startTime;
-        String fallbackContent = generateFallbackResponse(userPrompt);
+        String fallbackContent = generateFallbackResponse();
         return LocalAiResponse.builder()
                 .content(fallbackContent)
                 .model(Ai.modelName)
@@ -128,7 +128,7 @@ public class LocalAiClient {
         return (int) Math.ceil(text.length() / 4.0);
     }
 
-    private String generateFallbackResponse(String userPrompt) {
+    private String generateFallbackResponse() {
         return """
                 <JSON>
                 {

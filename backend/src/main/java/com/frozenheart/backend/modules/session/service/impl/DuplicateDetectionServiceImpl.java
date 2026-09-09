@@ -53,7 +53,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
 
             List<DuplicateWarning> warnings = new ArrayList<>();
 
-            // TODO:
+            // TODO: 3 tầng check trùng
             // - Tầng 1: Rule-Based (Exact Text Match trong DB)
             // - Tầng 2: Trigram (Postgres pg_trgm > 0.85) & pHash ảnh (Hamming <= 5)
             // - Tầng 3: Vector Cosine Similarity (Cosine > 0.90)

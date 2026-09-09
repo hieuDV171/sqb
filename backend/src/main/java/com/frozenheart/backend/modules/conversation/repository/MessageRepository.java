@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -51,5 +52,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     @Query("SELECT m FROM Message m JOIN FETCH m.sender s JOIN FETCH m.conversation c WHERE m.id IN :ids")
     List<Message> findByIdInFetchSenderAndConversationForSearch(@Param("ids") List<Long> ids);
+
+    @Query("SELECT m FROM Message m WHERE m.deletedAt IS NOT NULL AND m.deletedAt < :cutoff AND m.mediaUrls IS NOT NULL")
+    List<Message> findRevokedMessagesWithMediaOlderThan(@Param("cutoff") Instant cutoff, Pageable pageable);
 
 }

@@ -3,7 +3,7 @@ package com.frozenheart.backend.modules.conversation.dto;
 import com.frozenheart.backend.core.entity.conversation.MessageType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -18,5 +18,5 @@ public class LastMessageDto {
 
     private MessageType messageType;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

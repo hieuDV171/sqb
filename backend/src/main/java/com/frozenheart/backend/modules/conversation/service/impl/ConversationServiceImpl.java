@@ -7,6 +7,7 @@ import com.frozenheart.backend.core.entity.conversation.*;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.conversation.dto.*;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
@@ -17,6 +18,7 @@ import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,8 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,7 @@ public class ConversationServiceImpl implements ConversationService {
     private final BlockRepository blockRepository;
     private final PasswordEncoder passwordEncoder;
     private final MediaService mediaService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -61,10 +63,9 @@ public class ConversationServiceImpl implements ConversationService {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-        // [CẢNH BÁO] Zone khác nhau cho kết quả khác nhau.
-        LocalDateTime cursor = (after != null && after > 0)
-                ? LocalDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneId.systemDefault())
-                : LocalDateTime.now().plusYears(100);
+        Instant cursor = (after != null && after > 0)
+                ? Instant.ofEpochMilli(after)
+                : Instant.now().plus(36500, ChronoUnit.DAYS);
 
         List<Conversation> conversations = conversationRepository.findUserConversationsCursor(
                 currentUserId, isHidden, cursor, pageable);
@@ -75,9 +76,9 @@ public class ConversationServiceImpl implements ConversationService {
         if (conversations.size() > pageSize) {
             hasNext = true;
             conversations = conversations.subList(0, pageSize);
-            LocalDateTime lastMessageAt = conversations.getLast().getLastMessageAt();
+            Instant lastMessageAt = conversations.getLast().getLastMessageAt();
             nextCursor = lastMessageAt != null
-                    ? lastMessageAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    ? lastMessageAt.toEpochMilli()
                     : null;
         }
 
@@ -92,7 +93,8 @@ public class ConversationServiceImpl implements ConversationService {
         List<Long> convIds = conversations.stream().map(Conversation::getId).toList();
 
         // Batch fetch participants to avoid N+1
-        List<UserParticipant> allParticipants = userParticipantRepository.findActiveParticipantsForConversations(convIds);
+        List<UserParticipant> allParticipants = userParticipantRepository
+                .findActiveParticipantsForConversations(convIds);
         Map<Long, List<UserParticipant>> participantsByConvId = allParticipants.stream()
                 .collect(Collectors.groupingBy(p -> p.getConversation().getId()));
 
@@ -183,7 +185,8 @@ public class ConversationServiceImpl implements ConversationService {
         Long targetUserId = request.getTargetUserId();
 
         if (Objects.equals(currentUserId, targetUserId)) {
-            throw new AppException(ResponseCode.CANNOT_INTERACT_WITH_SELF, "Không thể tạo cuộc hội thoại với chính mình");
+            throw new AppException(ResponseCode.CANNOT_INTERACT_WITH_SELF,
+                    "Không thể tạo cuộc hội thoại với chính mình");
         }
 
         if (blockRepository.isBlockedBetween(currentUserId, targetUserId)) {
@@ -195,13 +198,14 @@ public class ConversationServiceImpl implements ConversationService {
         User targetUser = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
-        Optional<Conversation> existingOpt = conversationRepository.findDirectConversationBetween(currentUserId, targetUserId);
+        Optional<Conversation> existingOpt = conversationRepository.findDirectConversationBetween(currentUserId,
+                targetUserId);
         if (existingOpt.isPresent()) {
             Conversation existing = existingOpt.get();
             return mapToDetailDto(existing);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         Conversation conversation = Conversation.builder()
                 .type(ConversationType.DIRECT)
                 .creater(currentUser)
@@ -245,7 +249,8 @@ public class ConversationServiceImpl implements ConversationService {
                 .toList();
 
         if (memberIds.size() < 2 || memberIds.size() > 199) {
-            throw new AppException(ResponseCode.CONSTRAINTS_UNSATISFIED, "Nhóm phải có từ 3 đến 200 người (bao gồm người tạo và từ 2 đến 199 thành viên khác)");
+            throw new AppException(ResponseCode.CONSTRAINTS_UNSATISFIED,
+                    "Nhóm phải có từ 3 đến 200 người (bao gồm người tạo và từ 2 đến 199 thành viên khác)");
         }
 
         List<User> targetMembers = userRepository.findAllById(memberIds);
@@ -262,7 +267,7 @@ public class ConversationServiceImpl implements ConversationService {
             mediaService.confirmMediaPermanent(List.of(request.getAvatarUrl()));
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         Conversation conversation = Conversation.builder()
                 .type(ConversationType.GROUP)
                 .name(request.getName())
@@ -279,7 +284,7 @@ public class ConversationServiceImpl implements ConversationService {
                 .id(new UserParticipantId(currentUserId, savedConv.getId()))
                 .user(currentUser)
                 .conversation(savedConv)
-                .role(ConversationRole.ADMIN)
+                .role(ConversationRole.LEADER)
                 .joinedAt(now)
                 .build());
 
@@ -302,11 +307,13 @@ public class ConversationServiceImpl implements ConversationService {
     @Transactional
     public void hideConversation(Long conversationId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-        UserParticipant participant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Cuộc hội thoại không tồn tại hoặc bạn không tham gia cuộc hội thoại này"));
+        UserParticipant participant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
+                        "Cuộc hội thoại không tồn tại hoặc bạn không tham gia cuộc hội thoại này"));
 
         participant.setMuted(true);
-        participant.setHiddenAt(LocalDateTime.now());
+        participant.setHiddenAt(Instant.now());
         userParticipantRepository.save(participant);
     }
 
@@ -314,8 +321,10 @@ public class ConversationServiceImpl implements ConversationService {
     @Transactional
     public void unhideConversation(Long conversationId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-        UserParticipant participant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Cuộc hội thoại không tồn tại hoặc bạn không tham gia cuộc hội thoại này"));
+        UserParticipant participant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
+                        "Cuộc hội thoại không tồn tại hoặc bạn không tham gia cuộc hội thoại này"));
 
         participant.setMuted(false);
         participant.setHiddenAt(null);
@@ -330,7 +339,8 @@ public class ConversationServiceImpl implements ConversationService {
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
         if (profile.getHiddenChatPin() != null && !profile.getHiddenChatPin().isBlank()) {
-            if (request.getOldPin() == null || !passwordEncoder.matches(request.getOldPin(), profile.getHiddenChatPin())) {
+            if (request.getOldPin() == null
+                    || !passwordEncoder.matches(request.getOldPin(), profile.getHiddenChatPin())) {
                 throw new AppException(ResponseCode.INVALID_PIN, "Mã PIN cũ không chính xác");
             }
         }
@@ -363,17 +373,22 @@ public class ConversationServiceImpl implements ConversationService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
 
         if (conversation.getType() != ConversationType.GROUP) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Chỉ có thể cập nhật thông tin cho nhóm chat");
         }
 
-        UserParticipant participant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
+        UserParticipant participant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
 
-        if (participant.getLeftAt() != null || participant.getRole() != ConversationRole.ADMIN) {
-            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Chỉ quản trị viên mới có quyền cập nhật thông tin nhóm");
+        if (participant.getLeftAt() != null || (participant.getRole() != ConversationRole.LEADER
+                && participant.getRole() != ConversationRole.DEPUTY)) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                    "Chỉ tù trưởng hoặc già làng mới có quyền cập nhật thông tin nhóm");
         }
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -381,11 +396,15 @@ public class ConversationServiceImpl implements ConversationService {
         }
 
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
+            String oldAvatar = conversation.getAvatarUrl();
             mediaService.confirmMediaPermanent(List.of(request.getAvatarUrl()));
             conversation.setAvatarUrl(request.getAvatarUrl());
+            if (oldAvatar != null && !oldAvatar.isBlank() && !oldAvatar.equals(request.getAvatarUrl())) {
+                eventPublisher.publishEvent(MediaCleanupEvent.of(oldAvatar));
+            }
         }
 
-        conversation.setUpdatedAt(LocalDateTime.now());
+        conversation.setUpdatedAt(Instant.now());
         Conversation saved = conversationRepository.save(conversation);
 
         return mapToDetailDto(saved);
@@ -396,12 +415,14 @@ public class ConversationServiceImpl implements ConversationService {
     public List<ConversationMemberDto> getGroupMembers(Long conversationId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId, conversationId);
+        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId,
+                conversationId);
         if (!isParticipant) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia cuộc hội thoại này");
         }
 
-        List<UserParticipant> participants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversationId);
+        List<UserParticipant> participants = userParticipantRepository
+                .findByConversationIdAndLeftAtIsNull(conversationId);
         Set<Long> userIds = participants.stream().map(p -> p.getUser().getId()).collect(Collectors.toSet());
         Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
@@ -425,19 +446,23 @@ public class ConversationServiceImpl implements ConversationService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
 
         if (conversation.getType() != ConversationType.GROUP) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Chỉ có thể thêm thành viên vào nhóm chat");
         }
 
-        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId, conversationId);
+        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId,
+                conversationId);
         if (!isParticipant) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này");
         }
 
-        List<UserParticipant> currentActiveParticipants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversationId);
-        Set<Long> currentMemberIds = currentActiveParticipants.stream().map(p -> p.getUser().getId()).collect(Collectors.toSet());
+        List<UserParticipant> currentActiveParticipants = userParticipantRepository
+                .findByConversationIdAndLeftAtIsNull(conversationId);
+        Set<Long> currentMemberIds = currentActiveParticipants.stream().map(p -> p.getUser().getId())
+                .collect(Collectors.toSet());
 
         List<Long> targetUserIds = request.getUserIds().stream()
                 .filter(id -> !Objects.equals(id, currentUserId))
@@ -460,34 +485,39 @@ public class ConversationServiceImpl implements ConversationService {
         List<ConversationMemberDto> addedMembers = new ArrayList<>();
         List<FailedMemberDto> failedMembers = new ArrayList<>();
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         int maxCapacity = 200;
 
         for (Long targetUserId : targetUserIds) {
             User targetUser = userMap.get(targetUserId);
             UserProfile targetProfile = profileMap.get(targetUserId);
 
-            String fullName = targetProfile != null ? targetProfile.getFullName() : (targetUser != null ? targetUser.getEmail() : "");
+            String fullName = targetProfile != null ? targetProfile.getFullName()
+                    : (targetUser != null ? targetUser.getEmail() : "");
             String avatarUrl = targetProfile != null ? targetProfile.getAvatarUrl() : null;
             String frameUrl = targetProfile != null ? targetProfile.getAvatarFrameUrl() : null;
 
             if (targetUser == null) {
-                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl, "Người dùng không tồn tại"));
+                failedMembers.add(
+                        new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl, "Người dùng không tồn tại"));
                 continue;
             }
 
             if (currentMemberIds.contains(targetUserId)) {
-                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl, "Đã là thành viên của nhóm"));
+                failedMembers.add(
+                        new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl, "Đã là thành viên của nhóm"));
                 continue;
             }
 
             if (blockedIds.contains(targetUserId)) {
-                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl, "Không thể thêm người dùng bị chặn"));
+                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
+                        "Không thể thêm người dùng bị chặn"));
                 continue;
             }
 
             if (currentMemberIds.size() + addedMembers.size() >= maxCapacity) {
-                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl, "Nhóm đã đạt số lượng tối đa 200 thành viên"));
+                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
+                        "Nhóm đã đạt số lượng tối đa 200 thành viên"));
                 continue;
             }
 
@@ -533,30 +563,40 @@ public class ConversationServiceImpl implements ConversationService {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Để rời nhóm vui lòng sử dụng chức năng rời nhóm");
         }
 
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
+        conversationRepository.findById(conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND, "Không tìm thấy cuộc hội thoại"));
 
-        UserParticipant callerParticipant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
+        UserParticipant callerParticipant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
 
-        if (callerParticipant.getLeftAt() != null || callerParticipant.getRole() != ConversationRole.ADMIN) {
-            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Chỉ quản trị viên mới có quyền xóa thành viên");
+        if (callerParticipant.getLeftAt() != null) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không còn trong nhóm chat này");
         }
 
-        UserParticipant targetParticipant = userParticipantRepository.findByUserIdAndConversationId(targetUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên không tồn tại trong nhóm"));
+        UserParticipant targetParticipant = userParticipantRepository
+                .findByUserIdAndConversationId(targetUserId, conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên không tồn tại trong nhóm"));
 
         if (targetParticipant.getLeftAt() != null) {
             throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên đã rời khỏi nhóm");
         }
 
-        if (targetParticipant.getRole() == ConversationRole.ADMIN) {
-            if (!Objects.equals(conversation.getCreater().getId(), currentUserId)) {
-                throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Chỉ người tạo nhóm mới có quyền xóa quản trị viên khác");
-            }
+        // Tù trưởng (LEADER) có thể xóa Già làng (DEPUTY) và Dân làng (MEMBER).
+        // Già làng (DEPUTY) chỉ có thể xóa Dân làng (MEMBER).
+        boolean canRemove = (callerParticipant.getRole() == ConversationRole.LEADER
+                && targetParticipant.getRole() != ConversationRole.LEADER)
+                || (callerParticipant.getRole() == ConversationRole.DEPUTY
+                        && targetParticipant.getRole() == ConversationRole.MEMBER);
+
+        if (!canRemove) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không có quyền xóa thành viên này khỏi nhóm");
         }
 
-        targetParticipant.setLeftAt(LocalDateTime.now());
+        targetParticipant.setLeftAt(Instant.now());
         userParticipantRepository.save(targetParticipant);
     }
 
@@ -569,26 +609,33 @@ public class ConversationServiceImpl implements ConversationService {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Không thể tự thay đổi vai trò của chính mình");
         }
 
-        UserParticipant callerParticipant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
+        UserParticipant callerParticipant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
 
-        if (callerParticipant.getLeftAt() != null || callerParticipant.getRole() != ConversationRole.ADMIN) {
-            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Chỉ quản trị viên mới có quyền thay đổi vai trò thành viên");
+        if (callerParticipant.getLeftAt() != null || callerParticipant.getRole() != ConversationRole.LEADER) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                    "Chỉ tù trưởng mới có quyền thay đổi vai trò thành viên");
         }
 
-        UserParticipant targetParticipant = userParticipantRepository.findByUserIdAndConversationId(targetUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên không tồn tại trong nhóm"));
+        UserParticipant targetParticipant = userParticipantRepository
+                .findByUserIdAndConversationId(targetUserId, conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên không tồn tại trong nhóm"));
 
         if (targetParticipant.getLeftAt() != null) {
             throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên đã rời khỏi nhóm");
         }
 
-        if (request.getRole() == ConversationRole.MEMBER && targetParticipant.getRole() == ConversationRole.ADMIN) {
-            List<UserParticipant> activeParticipants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversationId);
-            long adminCount = activeParticipants.stream().filter(p -> p.getRole() == ConversationRole.ADMIN).count();
-            if (adminCount <= 1) {
-                throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Nhóm phải có ít nhất một quản trị viên");
-            }
+        if (request.getRole() == ConversationRole.LEADER) {
+            // Chuyển giao ngôi Tù trưởng: Tù trưởng hiện tại lùi về làm Già làng (DEPUTY)
+            callerParticipant.setRole(ConversationRole.DEPUTY);
+            userParticipantRepository.save(callerParticipant);
+
+            targetParticipant.setRole(ConversationRole.LEADER);
+            userParticipantRepository.save(targetParticipant);
+            return;
         }
 
         targetParticipant.setRole(request.getRole());
@@ -600,62 +647,78 @@ public class ConversationServiceImpl implements ConversationService {
     public LeaveGroupResponseDto leaveGroup(Long conversationId, LeaveGroupRequestDto request) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        UserParticipant callerParticipant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
-                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
+        UserParticipant callerParticipant = userParticipantRepository
+                .findByUserIdAndConversationId(currentUserId, conversationId)
+                .orElseThrow(
+                        () -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
 
         if (callerParticipant.getLeftAt() != null) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn đã rời khỏi nhóm chat này rồi");
         }
 
-        List<UserParticipant> otherActiveParticipants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversationId)
+        List<UserParticipant> otherActiveParticipants = userParticipantRepository
+                .findByConversationIdAndLeftAtIsNull(conversationId)
                 .stream()
                 .filter(p -> !Objects.equals(p.getUser().getId(), currentUserId))
                 .toList();
 
-        ConversationMemberDto newAdminDto = null;
+        ConversationMemberDto newLeaderDto = null;
 
-        if (callerParticipant.getRole() == ConversationRole.ADMIN && !otherActiveParticipants.isEmpty()) {
-            boolean hasOtherAdmin = otherActiveParticipants.stream().anyMatch(p -> p.getRole() == ConversationRole.ADMIN);
+        if (callerParticipant.getRole() == ConversationRole.LEADER && !otherActiveParticipants.isEmpty()) {
+            UserParticipant nextLeader;
+            Long specifiedNewLeaderId = request != null ? request.getNewLeaderId() : null;
 
-            if (!hasOtherAdmin) {
-                UserParticipant nextAdmin;
-                if (request != null && request.getNewAdminId() != null) {
-                    nextAdmin = otherActiveParticipants.stream()
-                            .filter(p -> Objects.equals(p.getUser().getId(), request.getNewAdminId()))
-                            .findFirst()
-                            .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên chỉ định làm quản trị viên mới không hợp lệ"));
+            if (specifiedNewLeaderId != null) {
+                nextLeader = otherActiveParticipants.stream()
+                        .filter(p -> Objects.equals(p.getUser().getId(), specifiedNewLeaderId))
+                        .findFirst()
+                        .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND,
+                                "Thành viên chỉ định làm tù trưởng mới không hợp lệ"));
+            } else {
+                // Ưu tiên chọn Già làng (DEPUTY) tham gia sớm nhất, nếu không có thì chọn Dân
+                // làng (MEMBER) tham gia sớm nhất
+                List<UserParticipant> deputies = otherActiveParticipants.stream()
+                        .filter(p -> p.getRole() == ConversationRole.DEPUTY)
+                        .toList();
+                if (!deputies.isEmpty()) {
+                    nextLeader = deputies.stream()
+                            .min(Comparator.comparing(UserParticipant::getJoinedAt))
+                            .orElse(deputies.getFirst());
                 } else {
-                    nextAdmin = otherActiveParticipants.stream()
+                    nextLeader = otherActiveParticipants.stream()
                             .min(Comparator.comparing(UserParticipant::getJoinedAt))
                             .orElse(otherActiveParticipants.getFirst());
                 }
-
-                nextAdmin.setRole(ConversationRole.ADMIN);
-                userParticipantRepository.save(nextAdmin);
-
-                UserProfile nextAdminProfile = userProfileRepository.findByUserId(nextAdmin.getUser().getId()).orElse(null);
-                newAdminDto = ConversationMemberDto.builder()
-                        .userId(nextAdmin.getUser().getId())
-                        .fullName(nextAdminProfile != null ? nextAdminProfile.getFullName() : nextAdmin.getUser().getEmail())
-                        .avatarUrl(nextAdminProfile != null ? nextAdminProfile.getAvatarUrl() : null)
-                        .frameUrl(nextAdminProfile != null ? nextAdminProfile.getAvatarFrameUrl() : null)
-                        .role(ConversationRole.ADMIN)
-                        .createdAt(nextAdmin.getJoinedAt())
-                        .build();
             }
+
+            nextLeader.setRole(ConversationRole.LEADER);
+            userParticipantRepository.save(nextLeader);
+
+            UserProfile nextLeaderProfile = userProfileRepository.findByUserId(nextLeader.getUser().getId())
+                    .orElse(null);
+            newLeaderDto = ConversationMemberDto.builder()
+                    .userId(nextLeader.getUser().getId())
+                    .fullName(nextLeaderProfile != null ? nextLeaderProfile.getFullName()
+                            : nextLeader.getUser().getEmail())
+                    .avatarUrl(nextLeaderProfile != null ? nextLeaderProfile.getAvatarUrl() : null)
+                    .frameUrl(nextLeaderProfile != null ? nextLeaderProfile.getAvatarFrameUrl() : null)
+                    .role(ConversationRole.LEADER)
+                    .createdAt(nextLeader.getJoinedAt())
+                    .build();
         }
 
-        callerParticipant.setLeftAt(LocalDateTime.now());
+        callerParticipant.setLeftAt(Instant.now());
         userParticipantRepository.save(callerParticipant);
 
         return LeaveGroupResponseDto.builder()
                 .conversationId(conversationId)
-                .newAdmin(newAdminDto)
+                .newLeader(newLeaderDto)
                 .build();
     }
 
     private ConversationDetailDto mapToDetailDto(Conversation conversation) {
-        List<UserParticipant> participants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversation.getId());
+        List<UserParticipant> participants = userParticipantRepository
+                .findByConversationIdAndLeftAtIsNull(conversation.getId());
         Set<Long> userIds = participants.stream().map(p -> p.getUser().getId()).collect(Collectors.toSet());
         Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(UserProfile::getUserId, p -> p));

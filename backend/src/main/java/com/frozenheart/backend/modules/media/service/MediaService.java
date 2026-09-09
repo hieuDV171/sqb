@@ -15,6 +15,10 @@ public interface MediaService {
 
     void confirmMediaPermanent(List<String> objectKeys);
 
+    void deleteMedia(List<String> urlsOrKeys);
+
+    String extractObjectKey(String urlOrKey);
+
     PresignMediaResponse generatePresignedUrls(PresignMediaRequest request);
 
 }

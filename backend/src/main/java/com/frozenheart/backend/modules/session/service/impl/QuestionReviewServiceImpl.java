@@ -1,14 +1,18 @@
 package com.frozenheart.backend.modules.session.service.impl;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
+import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
+import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -61,9 +65,17 @@ import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.post.PostVisibility;
+import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent.EntityType;
-import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.badge.service.BadgeService;
+import com.frozenheart.backend.core.dto.event.PushNotificationEvent;
+import com.frozenheart.backend.core.entity.notification.Notification;
+import com.frozenheart.backend.core.entity.notification.NotificationCategory;
+import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
+import com.frozenheart.backend.core.entity.notification.NotificationType;
+import com.frozenheart.backend.core.entity.user.PushNotificationType;
+import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
 import org.springframework.context.ApplicationEventPublisher;
 
 @Service
@@ -80,7 +92,9 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     private final AnonymizerUtil anonymizerUtil;
     private final GamificationService gamificationService;
     private final PostRepository postRepository;
+    private final NotificationRepository notificationRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final BadgeService badgeService;
 
     @Override
     @Transactional(readOnly = true)
@@ -164,7 +178,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         if (session.getStatus() == SessionStatus.PENDING) {
             session.setStatus(SessionStatus.REVIEWING);
             session.setReviewer(lecturer);
-            session.setReviewedAt(LocalDateTime.now());
+            session.setReviewedAt(Instant.now());
 
             Session saved = sessionRepository.save(session);
             eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.SESSION, saved.getId()));
@@ -258,23 +272,26 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                     .build();
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        User lecturer = userRepository.getReferenceById(payload.getUserId());
+        Instant now = Instant.now();
 
         List<Question> questions = questionRepository.findByIdInFetchSessionSubjectAndProposer(request.questionIds());
-        Set<Session> parentSessions = new HashSet<>();
+        Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
             q.setStatus(QuestionStatus.APPROVED);
             q.setUpdatedAt(now);
             if (q.getSession() != null) {
-                parentSessions.add(q.getSession());
+                sessionIds.add(q.getSession().getId());
             }
         }
 
         questionRepository.saveAll(questions);
-        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
+        eventPublisher.publishEvent(
+                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
 
-        checkAndAutoResolveSessions(parentSessions);
+        checkAndAutoResolveSessions(sessionIds, lecturer);
 
         return ApproveQuestionsResponse.builder()
                 .pointsEarned(questions.size() * Point.APPROVED_QUESTION.getPoints())
@@ -288,23 +305,26 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        User lecturer = userRepository.getReferenceById(payload.getUserId());
+        Instant now = Instant.now();
 
         List<Question> questions = questionRepository.findByIdInFetchSessionSubjectAndProposer(request.questionIds());
-        Set<Session> parentSessions = new HashSet<>();
+        Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
             q.setStatus(QuestionStatus.REJECTED);
             q.setUpdatedAt(now);
             if (q.getSession() != null) {
-                parentSessions.add(q.getSession());
+                sessionIds.add(q.getSession().getId());
             }
         }
 
         questionRepository.saveAll(questions);
-        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
+        eventPublisher.publishEvent(
+                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
 
-        checkAndAutoResolveSessions(parentSessions);
+        checkAndAutoResolveSessions(sessionIds, lecturer);
     }
 
     @Override
@@ -319,7 +339,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         }
 
         User lecturer = userRepository.getReferenceById(currentUserId);
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         Question question = questionRepository.findByIdFetchSessionAndSubject(questionId)
                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
@@ -342,15 +362,11 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         question.setUpdatedAt(now);
         Question savedQuestion = questionRepository.save(question);
-        eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.QUESTION, savedQuestion.getId()));
+        eventPublisher.publishEvent(
+                EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.QUESTION, savedQuestion.getId()));
 
         if (question.getSession() != null) {
-            Session s = question.getSession();
-            if (s.getReviewer() == null) {
-                s.setReviewer(lecturer);
-                s.setReviewedAt(now);
-            }
-            checkAndAutoResolveSessions(Set.of(s));
+            checkAndAutoResolveSessions(Set.of(question.getSession().getId()), lecturer);
         }
 
         return EditQuestionResponse.builder()
@@ -361,16 +377,64 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .build();
     }
 
-    // NOTE (N+1 Prevention): The caller must ensure that the Session objects in
-    // 'sessions' have eagerly fetched 'subject' and 'proposer'(e.g. via
-    // @EntityGraph or FETCH JOIN). Otherwise, accessing s.getSubject() and
-    // s.getProposer() inside the loop will trigger N+1 queries.
-    private void checkAndAutoResolveSessions(Set<Session> sessions) {
-        if (sessions == null || sessions.isEmpty())
-            return;
+    @Override
+    @Transactional
+    public void completeSessionReview(Long sessionId) {
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        Long currentUserId = payload.getUserId();
+        String role = payload.getRole();
 
-        List<Long> sessionIds = sessions.stream().map(Session::getId).toList();
-        List<Question> allQuestions = questionRepository.findBySessionIdIn(sessionIds);
+        if (UserRole.STUDENT.name().equals(role)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Chỉ giảng viên mới được phép hoàn tất xem xét phiên đề xuất");
+        }
+
+        User lecturer = userRepository.getReferenceById(currentUserId);
+        Instant now = Instant.now();
+
+        Session s = sessionRepository.findByIdInFetchSubjectAndProposerAndReviewer(List.of(sessionId))
+                .stream().findFirst()
+                .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+
+        if (s.getStatus() == SessionStatus.RESOLVED) {
+            return;
+        }
+
+        s.setReviewer(lecturer);
+        s.setReviewedAt(now);
+
+        // Tự động đánh dấu REJECTED cho các câu còn PENDING khi GV bấm chốt hoàn tất
+        // phiên
+        List<Question> questions = questionRepository.findBySessionId(sessionId);
+        List<Question> questionsToUpdate = new ArrayList<>();
+        for (Question q : questions) {
+            if (q.getStatus() == QuestionStatus.PENDING) {
+                q.setStatus(QuestionStatus.REJECTED);
+                q.setUpdatedAt(now);
+                questionsToUpdate.add(q);
+            }
+        }
+        if (!questionsToUpdate.isEmpty()) {
+            questionRepository.saveAll(questionsToUpdate);
+            List<Long> qIds = questionsToUpdate.stream().map(Question::getId).toList();
+            eventPublisher
+                    .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, qIds));
+        }
+
+        checkAndAutoResolveSessions(Set.of(sessionId), lecturer);
+    }
+
+    private void checkAndAutoResolveSessions(Set<Long> sessionIds, User reviewer) {
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            return;
+        }
+
+        List<Session> sessions = sessionRepository.findByIdInFetchSubjectAndProposerAndReviewer(sessionIds);
+        if (sessions.isEmpty()) {
+            return;
+        }
+
+        List<Question> allQuestions = questionRepository.findBySessionIdIn(new ArrayList<>(sessionIds));
 
         Map<Long, List<Question>> questionsBySessionMap = allQuestions.stream()
                 .filter(q -> q.getSession() != null)
@@ -378,6 +442,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         List<Session> sessionsToSave = new ArrayList<>();
         List<UserPointRewardDto> rewardsToBatch = new ArrayList<>();
         List<Post> postsToSave = new ArrayList<>();
+        List<Notification> notificationsToSave = new ArrayList<>();
+        Instant now = Instant.now();
 
         for (Session s : sessions) {
             List<Question> qList = questionsBySessionMap.getOrDefault(s.getId(), List.of());
@@ -386,6 +452,10 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
             if (allResolved && s.getStatus() != SessionStatus.RESOLVED) {
                 s.setStatus(SessionStatus.RESOLVED);
+                if (s.getReviewer() == null && reviewer != null) {
+                    s.setReviewer(reviewer);
+                    s.setReviewedAt(now);
+                }
                 sessionsToSave.add(s);
 
                 gamificationService.resolveGame2And3ForSession(s, qList);
@@ -401,8 +471,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                             .userId(proposer.getId())
                             .pointsDelta(totalPoints)
                             .approvedDelta(approvedCount)
-                            .reason("SESSION_RESOLVED_BONUS")
-                            .targetType("SESSION")
+                            .reason(PointHistoryReason.SESSION_RESOLVED_BONUS)
+                            .targetType(PointHistoryTargetType.SESSION)
                             .targetId(s.getId())
                             .subject(s.getSubject())
                             .build());
@@ -412,12 +482,37 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                     String subjectCode = subject != null ? subject.getCode() : "Mã môn";
                     String proposerName = anonymizerUtil.encodeUserId(proposer.getId());
 
-                    LocalDateTime now = LocalDateTime.now();
+                    createPostAndAddFeed(postsToSave, s, proposer, subject, subjectName, subjectCode, proposerName, now,
+                            activityFeedService);
 
-                    createPostAndAddFeed(postsToSave, s, proposer, subject, subjectName, subjectCode, proposerName, now, activityFeedService);
+                    // 1. Tạo thông báo nội bộ (Internal Notification - không tiết lộ số câu được
+                    // duyệt để bảo mật đề thi)
+                    Notification notif = Notification.builder()
+                            .receiver(proposer)
+                            .actor(s.getReviewer())
+                            .type(NotificationType.QUESTION_APPROVED)
+                            .category(NotificationCategory.ACADEMIC)
+                            .title("Câu hỏi của bạn đã được phê duyệt!")
+                            .body("Phiên đề xuất môn [" + subjectName + "] (" + subjectCode
+                                    + ") đã có câu hỏi được duyệt.")
+                            .targetType(NotificationTargetType.SESSION)
+                            .targetId(s.getId())
+                            .creadtedAt(now)
+                            .build();
+                    notificationsToSave.add(notif);
 
-                    // TODO: [NOTIFICATION] Send push notification to session proposer when question
-                    // approval post is generated (Waiting for Notification module implementation)
+                    // 2. Gửi thông báo đẩy bất đồng bộ (Push Notification Event - không tiết lộ số
+                    // câu được duyệt)
+                    eventPublisher.publishEvent(PushNotificationEvent.single(
+                            proposer.getId(),
+                            "Câu hỏi của bạn đã được phê duyệt!",
+                            "Phiên đề xuất môn [" + subjectName
+                                    + "] đã có câu hỏi được chấp nhận vào Ngân hàng câu hỏi.",
+                            null,
+                            NotificationTargetType.SESSION,
+                            s.getId(),
+                            "/sessions/" + s.getId(),
+                            PushNotificationType.ACADEMIC));
                 }
             }
         }
@@ -425,19 +520,35 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         if (!sessionsToSave.isEmpty()) {
             sessionRepository.saveAll(sessionsToSave);
             List<Long> sIds = sessionsToSave.stream().map(Session::getId).toList();
-            eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.SESSION, sIds));
+            eventPublisher
+                    .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.SESSION, sIds));
+
+            // Tự động kiểm tra và trao huy hiệu REVIEWED_SESSIONS cho Giảng viên
+            Set<User> reviewersToGrant = sessionsToSave.stream()
+                    .map(Session::getReviewer)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            if (!reviewersToGrant.isEmpty()) {
+                badgeService.checkAndGrantBadgesBatch(new ArrayList<>(reviewersToGrant),
+                        BadgeTriggerEvent.REVIEWED_SESSIONS, null);
+            }
         }
         if (!postsToSave.isEmpty()) {
             List<Post> savedPosts = postRepository.saveAll(postsToSave);
             List<Long> pIds = savedPosts.stream().map(Post::getId).toList();
             eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.POST, pIds));
         }
+        if (!notificationsToSave.isEmpty()) {
+            notificationRepository.saveAll(notificationsToSave);
+        }
         if (!rewardsToBatch.isEmpty()) {
             counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewardsToBatch);
         }
     }
 
-    public static void createPostAndAddFeed(List<Post> postsToSave, Session s, User proposer, Subject subject, String subjectName, String subjectCode, String proposerName, LocalDateTime now, ActivityFeedService activityFeedService) {
+    public static void createPostAndAddFeed(List<Post> postsToSave, Session s, User proposer, Subject subject,
+            String subjectName, String subjectCode, String proposerName, Instant now,
+            ActivityFeedService activityFeedService) {
         Post autoPost = new Post();
         autoPost.setPostType(PostType.QUESTION_APPROVED_NOTIFICATION);
         autoPost.setPoster(null); // System post
@@ -457,6 +568,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .subjectCode(subjectCode)
                 .subjectName(subjectName)
                 .build();
-        activityFeedService.logActivity(proposer, ActionType.SESSION_RESOLVED_APPROVED, ActivityFeedTargetType.SESSION.name(), s.getId(), feedMeta);
+        activityFeedService.logActivity(proposer, ActionType.SESSION_RESOLVED_APPROVED,
+                ActivityFeedTargetType.SESSION.name(), s.getId(), feedMeta);
     }
 }

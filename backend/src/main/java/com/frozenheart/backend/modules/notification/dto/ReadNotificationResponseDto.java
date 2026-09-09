@@ -2,7 +2,7 @@ package com.frozenheart.backend.modules.notification.dto;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -15,7 +15,7 @@ public class ReadNotificationResponseDto {
 
     private boolean isRead;
 
-    private LocalDateTime readAt;
+    private Instant readAt;
 
     private int unreadCount;
 }

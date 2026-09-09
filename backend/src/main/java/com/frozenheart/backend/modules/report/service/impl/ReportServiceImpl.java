@@ -3,7 +3,6 @@ package com.frozenheart.backend.modules.report.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.media.MediaItem;
-import com.frozenheart.backend.core.entity.media.MediaType;
 import com.frozenheart.backend.core.entity.socialinteraction.Report;
 import com.frozenheart.backend.core.entity.socialinteraction.ReportStatus;
 import com.frozenheart.backend.core.entity.user.User;
@@ -21,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -59,7 +58,7 @@ public class ReportServiceImpl implements ReportService {
             }
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         Report report = Report.builder()
                 .targetType(request.getTargetType().name())
                 .targetId(request.getTargetId())
@@ -106,7 +105,8 @@ public class ReportServiceImpl implements ReportService {
                     throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận được báo cáo");
                 }
             }
-            default -> throw new AppException(ResponseCode.REPORT_TARGET_NOT_FOUND, "Loại mục tiêu báo cáo không hợp lệ");
+            default ->
+                throw new AppException(ResponseCode.REPORT_TARGET_NOT_FOUND, "Loại mục tiêu báo cáo không hợp lệ");
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.frozenheart.backend.modules.session.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public interface MySubmissionProjection {
 
@@ -14,7 +14,7 @@ public interface MySubmissionProjection {
 
     Integer getQuestionCount();
 
-    LocalDateTime getCreatedAt();
+    Instant getCreatedAt();
 
     Integer getReactCount();
 

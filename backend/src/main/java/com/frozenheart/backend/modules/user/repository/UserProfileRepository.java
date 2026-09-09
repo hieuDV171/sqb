@@ -27,7 +27,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.totalProposedQuestion = up.totalProposedQuestion + :delta WHERE up.userId = :userId")
-    int incrementProposedQuestions(@Param("userId") Long userId, @Param("delta") int delta);
+    void incrementProposedQuestions(@Param("userId") Long userId, @Param("delta") int delta);
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.totalApprovedQuestions = up.totalApprovedQuestions + :approvedDelta WHERE up.userId = :userId")
@@ -35,17 +35,17 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.badgesCount = up.badgesCount + :delta WHERE up.userId = :userId")
-    int incrementBadgesCount(@Param("userId") Long userId, @Param("delta") int delta);
+    void incrementBadgesCount(@Param("userId") Long userId, @Param("delta") int delta);
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.friendsCount = up.friendsCount + :delta WHERE up.userId = :userId")
-    int incrementFriendsCount(@Param("userId") Long userId, @Param("delta") int delta);
+    void incrementFriendsCount(@Param("userId") Long userId, @Param("delta") int delta);
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.followersCount = up.followersCount + :delta WHERE up.userId = :userId")
-    int incrementFollowersCount(@Param("userId") Long userId, @Param("delta") int delta);
+    void incrementFollowersCount(@Param("userId") Long userId, @Param("delta") int delta);
 
     @Modifying
     @Query("UPDATE UserProfile up SET up.followingCount = up.followingCount + :delta WHERE up.userId = :userId")
-    int incrementFollowingCount(@Param("userId") Long userId, @Param("delta") int delta);
+    void incrementFollowingCount(@Param("userId") Long userId, @Param("delta") int delta);
 }

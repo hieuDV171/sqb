@@ -1,7 +1,11 @@
 package com.frozenheart.backend.modules.user.dto;
 
+import com.frozenheart.backend.core.entity.user.Gender;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
+
+import java.time.LocalDate;
 
 @Builder
 public record UpdateProfileRequest(
@@ -13,6 +17,13 @@ public record UpdateProfileRequest(
         String coverUrl,
 
         @Size(max = 500, message = "Bio không vượt quá 500 ký tự")
-        String bio
+        String bio,
+
+        String timezone,
+
+        Gender gender,
+
+        @Past(message = "Ngày sinh phải là ngày trong quá khứ")
+        LocalDate dateOfBirth
 ) {
 }

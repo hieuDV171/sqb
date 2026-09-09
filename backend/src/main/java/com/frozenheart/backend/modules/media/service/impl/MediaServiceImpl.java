@@ -3,11 +3,17 @@ package com.frozenheart.backend.modules.media.service.impl;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import javax.imageio.ImageIO;
 
+import java.net.URI;
+import io.minio.RemoveObjectsArgs;
+import io.minio.Result;
+import io.minio.messages.DeleteRequest;
+import io.minio.messages.DeleteResult;
 import io.minio.SetObjectTagsArgs;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -104,7 +110,9 @@ public class MediaServiceImpl implements MediaService {
 
         Map<String, String> tagMap = Map.of("status", "permanent");
 
-        for (String objectKey : objectKeys) {
+        for (String rawKey : objectKeys) {
+            String objectKey = extractObjectKey(rawKey);
+            if (objectKey == null) continue;
             try {
                 minioClient.setObjectTags(
                     SetObjectTagsArgs.builder()
@@ -118,6 +126,82 @@ public class MediaServiceImpl implements MediaService {
                 log.error("[MinIO] Lỗi khi cập nhật tag permanent cho file {}: ", objectKey, e);
             }
         }
+    }
+
+    @Override
+    public void deleteMedia(List<String> urlsOrKeys) {
+        if (urlsOrKeys == null || urlsOrKeys.isEmpty()) return;
+
+        List<DeleteRequest.Object> objectsToDelete = urlsOrKeys.stream()
+                .map(this::extractObjectKey)
+                .filter(Objects::nonNull)
+                .distinct()
+                .map(DeleteRequest.Object::new)
+                .toList();
+
+        if (objectsToDelete.isEmpty()) return;
+
+        try {
+            Iterable<Result<DeleteResult.Error>> results = minioClient.removeObjects(
+                    RemoveObjectsArgs.builder()
+                            .bucket(minioProperties.getBucketName())
+                            .objects(objectsToDelete)
+                            .build()
+            );
+
+            // MinIO SDK trả về lazy iterable, duyệt qua để thực thi xóa và bắt lỗi
+            for (Result<DeleteResult.Error> result : results) {
+                DeleteResult.Error error = result.get();
+                log.error("[MinIO] Lỗi khi xóa object {}: {}", error.objectName(), error.message());
+            }
+            log.info("[MinIO] Đã hoàn tất yêu cầu xóa {} objects khỏi bucket {}", objectsToDelete.size(), minioProperties.getBucketName());
+        } catch (Exception e) {
+            log.error("[MinIO] Lỗi khi thực hiện xóa batch objects: ", e);
+        }
+    }
+
+    @Override
+    public String extractObjectKey(String urlOrKey) {
+        if (urlOrKey == null || urlOrKey.isBlank()) {
+            return null;
+        }
+        String clean = urlOrKey.trim();
+
+        // Loại bỏ query parameter nếu có (ví dụ presigned URL: ?token=...)
+        int queryIdx = clean.indexOf('?');
+        if (queryIdx != -1) {
+            clean = clean.substring(0, queryIdx);
+        }
+
+        // Trường hợp URL tuyệt đối chứa bucket name (/sqb-bucket/...)
+        String bucketPattern = "/" + minioProperties.getBucketName() + "/";
+        int bucketIdx = clean.indexOf(bucketPattern);
+        if (bucketIdx != -1) {
+            clean = clean.substring(bucketIdx + bucketPattern.length());
+        } else if (clean.startsWith("http://") || clean.startsWith("https://")) {
+            try {
+                URI uri = URI.create(clean);
+                String path = uri.getPath();
+                if (path != null) {
+                    if (path.startsWith("/")) {
+                        path = path.substring(1);
+                    }
+                    if (path.startsWith(minioProperties.getBucketName() + "/")) {
+                        path = path.substring((minioProperties.getBucketName() + "/").length());
+                    }
+                    clean = path;
+                }
+            } catch (Exception e) {
+                log.warn("[MediaServiceImpl] Không thể parse URI từ: {}", urlOrKey);
+            }
+        }
+
+        // Xóa dấu slash ở đầu nếu còn sót
+        while (clean != null && clean.startsWith("/")) {
+            clean = clean.substring(1);
+        }
+
+        return (clean != null && !clean.isBlank()) ? clean : null;
     }
 
     private String buildPublicUrl(String objectKey) {
@@ -141,7 +225,7 @@ public class MediaServiceImpl implements MediaService {
     // Sinh đường dẫn lưu trữ ObjectKey trên MinIO theo cấu trúc: {folder}/{yyyy/MM}/{uuid}{extension}
     private String generateObjectKey(MediaPurpose purpose, String originalFilename) {
         String folder = (purpose != null) ? purpose.getFolderName() : "others";
-        String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
+        String datePath = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy/MM"));
         String extension = getFileExtension(originalFilename);
 
         return String.format("%s/%s/%s%s", folder, datePath, UUID.randomUUID(), extension);

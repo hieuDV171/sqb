@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.gamification.controller;
 
+import com.frozenheart.backend.core.annotation.Idempotent;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.modules.gamification.dto.*;
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
@@ -15,6 +16,12 @@ import java.util.List;
 public class GamificationController {
 
     private final GamificationService gamificationService;
+
+    @GetMapping("/games/prediction/game-1/classes")
+    public ResponseEntity<GlobalResponse<List<MyCourseClassPredictionDto>>> getMyCourseClassesForGame1Prediction() {
+        List<MyCourseClassPredictionDto> response = gamificationService.getMyCourseClassesForGame1Prediction();
+        return ResponseEntity.ok(GlobalResponse.success(response));
+    }
 
     @PostMapping("/games/prediction/participants")
     public ResponseEntity<GlobalResponse<GamePredictionResponse>> predictGame1(
@@ -51,8 +58,10 @@ public class GamificationController {
     }
 
     @GetMapping("/games/my-predictions")
-    public ResponseEntity<GlobalResponse<List<GamePredictionResponse>>> getMyPredictions() {
-        List<GamePredictionResponse> response = gamificationService.getMyPredictions();
+    public ResponseEntity<GlobalResponse<MyPredictionsResponse>> getMyPredictions(
+            @RequestParam(required = false) Long after,
+            @RequestParam(defaultValue = "10") Integer limit) {
+        MyPredictionsResponse response = gamificationService.getMyPredictions(after, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
@@ -73,11 +82,19 @@ public class GamificationController {
 
     @GetMapping("/games/leaderboard")
     public ResponseEntity<GlobalResponse<LeaderboardResponse>> getLeaderboard(
-            @RequestParam(defaultValue = "ALL_TIME") LeaderboardPeriod period,
+            @RequestParam(defaultValue = "SEMESTER") LeaderboardPeriod period,
             @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) Long before,
             @RequestParam(defaultValue = "20") Integer limit) {
-        LeaderboardResponse response = gamificationService.getLeaderboard(period, subjectId, after, limit);
+        LeaderboardResponse response = gamificationService.getLeaderboard(period, subjectId, after, before, limit);
+        return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
+    @Idempotent(keyPrefix = "daily_checkin", expireSeconds = 60)
+    @PostMapping("/games/check-in")
+    public ResponseEntity<GlobalResponse<CheckInResponse>> checkInDaily() {
+        CheckInResponse response = gamificationService.checkInDaily();
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

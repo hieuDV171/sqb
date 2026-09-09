@@ -2,7 +2,7 @@ package com.frozenheart.backend.core.entity.user;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -17,7 +17,7 @@ public class UserCourseClass {
     private UserCourseClassId id;
 
     @Column(updatable = false)
-    private LocalDateTime enrolledAt;
+    private Instant enrolledAt;
 
     // ----------------------
     @MapsId("userId")
@@ -29,4 +29,5 @@ public class UserCourseClass {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_class_id")
     private CourseClass courseClass;
+    // ----------------------
 }

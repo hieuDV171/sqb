@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -24,14 +24,14 @@ public class UserParticipant {
     @Column(length = 20)
     private ConversationRole role;
 
-    private LocalDateTime joinedAt;
-    private LocalDateTime leftAt;
+    private Instant joinedAt;
+    private Instant leftAt;
 
     private boolean isMuted;
 
-    private LocalDateTime hiddenAt;
+    private Instant hiddenAt;
 
-    private LocalDateTime lastMessageReadAt;
+    private Instant lastMessageReadAt;
 
     // -------------------------
 

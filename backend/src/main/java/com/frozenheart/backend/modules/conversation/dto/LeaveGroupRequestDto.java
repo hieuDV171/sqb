@@ -8,6 +8,5 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LeaveGroupRequestDto {
-
-    private Long newAdminId;
+    private Long newLeaderId;
 }

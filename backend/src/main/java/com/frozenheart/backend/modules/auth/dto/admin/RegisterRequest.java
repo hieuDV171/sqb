@@ -18,7 +18,9 @@ public record RegisterRequest(
         String deviceId,
 
         @NotNull(message = "MISSING_REQUIRED_PARAMETER")
-        UserRoleDto role
+        UserRoleDto role,
+
+        String timezone
 ) {
 
 }

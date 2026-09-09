@@ -72,4 +72,10 @@ public class QuestionReviewController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
+    @PostMapping("/sessions/{sessionId}/complete-review")
+    public ResponseEntity<GlobalResponse<Void>> completeSessionReview(
+            @PathVariable Long sessionId) {
+        questionReviewService.completeSessionReview(sessionId);
+        return ResponseEntity.ok(GlobalResponse.success());
+    }
 }

@@ -6,7 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -33,7 +33,7 @@ public class Notification {
 
     private String iconUrl;
 
-    private String targetType;
+    private NotificationTargetType targetType;
     private Long targetId;
     private String targetUrl;
 
@@ -41,10 +41,10 @@ public class Notification {
     @Column(columnDefinition = "JSONB")
     private NotificationMetadata metadata;
 
-    private LocalDateTime readAt;
+    private Instant readAt;
 
     @Column(updatable = false)
-    private LocalDateTime creadtedAt;
+    private Instant creadtedAt;
 
     // -------------------------
     @ManyToOne(fetch = FetchType.LAZY)
@@ -55,6 +55,5 @@ public class Notification {
     @JoinColumn(name = "receiver_id")
     private User receiver;
     // -------------------------
-
 
 }

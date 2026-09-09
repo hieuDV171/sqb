@@ -6,7 +6,7 @@ import com.frozenheart.backend.core.entity.conversation.MessageType;
 import com.frozenheart.backend.modules.conversation.constant.ChatWsEventType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -35,7 +35,7 @@ public class WsMessageBroadcastDto {
 
     private Long replyToMessageId;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     private boolean isEdited;
 }

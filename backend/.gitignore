@@ -38,3 +38,5 @@ out/
 
 .env
 **/resources/db/changelog/**
+
+firebase-service-account.json

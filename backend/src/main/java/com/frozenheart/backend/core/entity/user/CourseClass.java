@@ -3,7 +3,7 @@ package com.frozenheart.backend.core.entity.user;
 import com.frozenheart.backend.core.entity.session.Subject;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 @Getter
@@ -26,7 +26,7 @@ public class CourseClass {
     private String semester;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ----------------------
     @ManyToOne(fetch = FetchType.LAZY)

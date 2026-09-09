@@ -2,7 +2,7 @@ package com.frozenheart.backend.modules.search.dto;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -23,6 +23,6 @@ public class SavedAndTrendingSearchesResponseDto {
     public static class SavedSearchDto {
         private Long id;
         private String queryText;
-        private LocalDateTime lastSearchedAt;
+        private Instant lastSearchedAt;
     }
 }

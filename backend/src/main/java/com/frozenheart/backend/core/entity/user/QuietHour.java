@@ -25,6 +25,4 @@ public class QuietHour {
     @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
 
-    private String timezone;
-
 }

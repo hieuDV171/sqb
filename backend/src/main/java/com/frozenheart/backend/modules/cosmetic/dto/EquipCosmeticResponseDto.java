@@ -3,7 +3,7 @@ package com.frozenheart.backend.modules.cosmetic.dto;
 import com.frozenheart.backend.core.entity.cosmetic.CosmeticType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 
 @Getter
@@ -21,7 +21,7 @@ public class EquipCosmeticResponseDto {
 
     private String assetUrl;
 
-    private LocalDateTime equippedAt;
+    private Instant equippedAt;
 
     private Map<String, Object> previousItem;
 

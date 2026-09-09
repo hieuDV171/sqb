@@ -4,6 +4,8 @@ import lombok.Builder;
 
 @Builder
 public record CursorPaginationDto(
+        Long before,
         Long after,
+        boolean hasPrev,
         boolean hasNext
 ) {}

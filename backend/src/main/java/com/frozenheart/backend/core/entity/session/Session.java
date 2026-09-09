@@ -5,7 +5,7 @@ import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLog;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 @Getter
@@ -19,6 +19,11 @@ public class Session {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 
     // "Mã môn"_"Mã tác giả"_"Timestamp"_"sessionId"
     @Column(comment = "subjectCode_authorCode_timestampId_sessionId")
@@ -38,10 +43,10 @@ public class Session {
     @Builder.Default
     private boolean anonymous = false;
 
-    private LocalDateTime reviewedAt;
+    private Instant reviewedAt;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ---------------------------
     @ManyToOne(fetch = FetchType.LAZY)

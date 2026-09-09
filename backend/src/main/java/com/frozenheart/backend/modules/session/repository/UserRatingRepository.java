@@ -19,7 +19,7 @@ public interface UserRatingRepository extends JpaRepository<UserRating, UserRati
 
     Optional<UserRating> findByIdUserIdAndIdRatedQuestionId(Long userId, Long ratedQuestionId);
 
-    @Query("SELECT ur FROM UserRating ur JOIN FETCH ur.ratedQuestion q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.subject sub WHERE ur.id.userId = :userId AND ur.id.ratedQuestionId = :ratedQuestionId")
+    @Query("SELECT ur FROM UserRating ur JOIN FETCH ur.ratedQuestion q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE ur.id.userId = :userId AND ur.id.ratedQuestionId = :ratedQuestionId")
     Optional<UserRating> findByUserIdAndRatedQuestionIdFetchQuestionAndSession(@Param("userId") Long userId, @Param("ratedQuestionId") Long ratedQuestionId);
 
     @Query("SELECT ur FROM UserRating ur WHERE ur.id.userId = :userId AND ur.id.ratedQuestionId IN :questionIds")

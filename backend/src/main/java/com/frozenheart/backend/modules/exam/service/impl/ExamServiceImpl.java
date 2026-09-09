@@ -30,7 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -73,26 +73,38 @@ public class ExamServiceImpl implements ExamService {
         // Fetch APPROVED questions
         List<Question> approvedQuestions = questionRepository.findApprovedBySubjectId(request.getSubjectId());
         if (approvedQuestions.isEmpty()) {
-            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Ngân hàng câu hỏi đã duyệt (APPROVED) cho môn học này đang trống");
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Ngân hàng câu hỏi đã duyệt (APPROVED) cho môn học này đang trống");
         }
 
         // Filter & Group by difficulty
         Map<QuestionDifficulty, List<Question>> byDifficulty = approvedQuestions.stream()
-                .collect(Collectors.groupingBy(q -> q.getDifficulty() != null ? q.getDifficulty() : QuestionDifficulty.UNCLASSIFIED));
+                .collect(Collectors.groupingBy(
+                        q -> q.getDifficulty() != null ? q.getDifficulty() : QuestionDifficulty.UNCLASSIFIED));
 
         int targetTotal = request.getQuestionCount() != null ? request.getQuestionCount() : 10;
         GenerateExamRequest.DifficultyDistribution dist = request.getDifficultyDistribution();
 
-        int targetEasy = dist != null && dist.getEasy() != null ? (int) Math.round(targetTotal * dist.getEasy()) : (int) Math.round(targetTotal * 0.0);
-        int targetMedium = dist != null && dist.getMedium() != null ? (int) Math.round(targetTotal * dist.getMedium()) : (int) Math.round(targetTotal * 0.0);
-        int targetHard = dist != null && dist.getHard() != null ? (int) Math.round(targetTotal * dist.getHard()) : (int) Math.round(targetTotal * 0.0);
-        int targetUnclassified = dist != null && dist.getUnclassified() != null ? (int) Math.round(targetTotal * dist.getUnclassified()) : (dist == null ? targetTotal : 0);
+        int targetEasy = dist != null && dist.getEasy() != null ? (int) Math.round(targetTotal * dist.getEasy())
+                : (int) Math.round(targetTotal * 0.0);
+        int targetMedium = dist != null && dist.getMedium() != null ? (int) Math.round(targetTotal * dist.getMedium())
+                : (int) Math.round(targetTotal * 0.0);
+        int targetHard = dist != null && dist.getHard() != null ? (int) Math.round(targetTotal * dist.getHard())
+                : (int) Math.round(targetTotal * 0.0);
+        int targetUnclassified = dist != null && dist.getUnclassified() != null
+                ? (int) Math.round(targetTotal * dist.getUnclassified())
+                : (dist == null ? targetTotal : 0);
 
         List<Question> selectedQuestions = new ArrayList<>();
-        selectedQuestions.addAll(pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.EASY, Collections.emptyList()), targetEasy));
-        selectedQuestions.addAll(pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.MEDIUM, Collections.emptyList()), targetMedium));
-        selectedQuestions.addAll(pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.HARD, Collections.emptyList()), targetHard));
-        selectedQuestions.addAll(pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.UNCLASSIFIED, Collections.emptyList()), targetUnclassified));
+        selectedQuestions.addAll(
+                pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.EASY, Collections.emptyList()), targetEasy));
+        selectedQuestions.addAll(pickQuestions(
+                byDifficulty.getOrDefault(QuestionDifficulty.MEDIUM, Collections.emptyList()), targetMedium));
+        selectedQuestions.addAll(
+                pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.HARD, Collections.emptyList()), targetHard));
+        selectedQuestions.addAll(
+                pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.UNCLASSIFIED, Collections.emptyList()),
+                        targetUnclassified));
 
         // Nếu thừa câu do làm tròn -> Cắt về đúng targetTotal
         if (selectedQuestions.size() > targetTotal) {
@@ -124,7 +136,7 @@ public class ExamServiceImpl implements ExamService {
                 ? request.getTitle()
                 : "Đề thi " + subject.getName() + " - " + System.currentTimeMillis() / 1000;
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         Exam exam = Exam.builder()
                 .title(examTitle)
@@ -139,22 +151,21 @@ public class ExamServiceImpl implements ExamService {
 
         Exam savedExam = examRepository.save(exam);
 
-
         List<CourseClass> courseClasses = courseClassRepository.findAllByIds(request.getClassIds());
 
         Set<ExamCourseClass> examCourseClasses = new HashSet<>();
         for (CourseClass courseClass : courseClasses) {
 
             ExamCourseClassId id = ExamCourseClassId.builder()
-                        .examId(savedExam.getId())
-                        .courseClassId(courseClass.getId())
-                        .build();
+                    .examId(savedExam.getId())
+                    .courseClassId(courseClass.getId())
+                    .build();
 
             examCourseClasses.add(ExamCourseClass.builder()
                     .id(id)
-                    .examCode(subject.getId() + "_" + courseClass.getId() + "_" + savedExam.getTitle() + "_" + savedExam.getId())
-                    .build()
-            );
+                    .examCode(subject.getId() + "_" + courseClass.getId() + "_" + savedExam.getTitle() + "_"
+                            + savedExam.getId())
+                    .build());
         }
 
         if (!examCourseClasses.isEmpty()) {
@@ -203,7 +214,8 @@ public class ExamServiceImpl implements ExamService {
         Long lecturerId = JwtPayload.getCurrentUserPayload().getUserId();
 
         int safePageSize = Math.clamp(limit, 1, 20);
-        List<Exam> exams = examRepository.findMyExamsCursor(lecturerId, subjectId, after, PageRequest.of(0, safePageSize + 1));
+        List<Exam> exams = examRepository.findMyExamsCursor(lecturerId, subjectId, after,
+                PageRequest.of(0, safePageSize + 1));
 
         boolean hasNext = exams.size() > safePageSize;
         List<Exam> pageContent = hasNext ? exams.subList(0, safePageSize) : exams;
@@ -212,8 +224,7 @@ public class ExamServiceImpl implements ExamService {
         List<ExamQuestion> examQuestions = examQuestionRepository.findByExamsIdWithQuestionAndTopic(examIds);
 
         Map<Long, List<ExamQuestion>> examIdToQuestionsMap = examQuestions.stream().collect(
-                Collectors.groupingBy(eq -> eq.getExam().getId())
-        );
+                Collectors.groupingBy(eq -> eq.getExam().getId()));
 
         List<ExamListResponse.ExamItem> items = pageContent.stream().map(e -> {
 
@@ -222,12 +233,16 @@ public class ExamServiceImpl implements ExamService {
             int easy = 0, medium = 0, hard = 0, unclassified = 0;
 
             for (ExamQuestion eq : questions) {
-                    QuestionDifficulty d = eq.getQuestion().getDifficulty();
-                    if (d == QuestionDifficulty.EASY) easy++;
-                    else if (d == QuestionDifficulty.MEDIUM) medium++;
-                    else if (d == QuestionDifficulty.HARD) hard++;
-                    else unclassified++;
-                }
+                QuestionDifficulty d = eq.getQuestion().getDifficulty();
+                if (d == QuestionDifficulty.EASY)
+                    easy++;
+                else if (d == QuestionDifficulty.MEDIUM)
+                    medium++;
+                else if (d == QuestionDifficulty.HARD)
+                    hard++;
+                else
+                    unclassified++;
+            }
 
             return ExamListResponse.ExamItem.builder()
                     .examId(e.getId())
@@ -267,7 +282,8 @@ public class ExamServiceImpl implements ExamService {
     // --- Helpers ---
 
     private List<Question> pickQuestions(List<Question> source, int count) {
-        if (source.isEmpty() || count <= 0) return Collections.emptyList();
+        if (source.isEmpty() || count <= 0)
+            return Collections.emptyList();
         List<Question> shuffled = new ArrayList<>(source);
         Collections.shuffle(shuffled);
         return shuffled.subList(0, Math.min(count, shuffled.size()));
@@ -291,7 +307,8 @@ public class ExamServiceImpl implements ExamService {
     }
 
     private List<QuestionOption> prepareOptionsSnapshot(List<QuestionOption> originalOptions, boolean shuffle) {
-        if (originalOptions == null || originalOptions.isEmpty()) return Collections.emptyList();
+        if (originalOptions == null || originalOptions.isEmpty())
+            return Collections.emptyList();
         List<QuestionOption> list = new ArrayList<>(originalOptions);
         if (shuffle) {
             Collections.shuffle(list);
@@ -319,16 +336,20 @@ public class ExamServiceImpl implements ExamService {
             for (ExamQuestion eq : exam.getExamQuestions()) {
                 Question q = eq.getQuestion();
                 QuestionDifficulty d = q.getDifficulty();
-                if (d == QuestionDifficulty.EASY) easy++;
-                else if (d == QuestionDifficulty.MEDIUM) medium++;
-                else if (d == QuestionDifficulty.HARD) hard++;
-                else unclassified++;
+                if (d == QuestionDifficulty.EASY)
+                    easy++;
+                else if (d == QuestionDifficulty.MEDIUM)
+                    medium++;
+                else if (d == QuestionDifficulty.HARD)
+                    hard++;
+                else
+                    unclassified++;
 
                 List<String> imageUrls = q.getOwnedMedias() != null
                         ? q.getOwnedMedias().stream()
-                            .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
-                            .map(QuestionMedia::getUrl)
-                            .collect(Collectors.toList())
+                                .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
+                                .map(QuestionMedia::getUrl)
+                                .collect(Collectors.toList())
                         : Collections.emptyList();
 
                 List<ExamDetailResponse.OptionDto> optionDtos = new ArrayList<>();
@@ -345,7 +366,8 @@ public class ExamServiceImpl implements ExamService {
                 }
 
                 DifficultyDto difficulty = DifficultyDto
-                        .valueOf(q.getDifficulty() != null ? q.getDifficulty().name() : QuestionDifficulty.UNCLASSIFIED.name());
+                        .valueOf(q.getDifficulty() != null ? q.getDifficulty().name()
+                                : QuestionDifficulty.UNCLASSIFIED.name());
 
                 qDtos.add(ExamDetailResponse.ExamQuestionDto.builder()
                         .order(eq.getDisplayOrder())
@@ -355,8 +377,7 @@ public class ExamServiceImpl implements ExamService {
                         .options(optionDtos)
                         .difficulty(difficulty)
                         .topic(q.getTopic() != null ? q.getTopic().getName() : "")
-                        .build()
-                );
+                        .build());
             }
         }
 

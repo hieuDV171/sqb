@@ -12,6 +12,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.AuthorDto;
 import com.frozenheart.backend.modules.socialinteraction.dto.*;
@@ -22,12 +23,13 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,7 @@ public class CommentServiceImpl implements CommentService {
     private final InteractionTargetValidator targetValidator;
     private final MediaService mediaService;
     private final CounterMetricsService counterMetricsService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final int MAX_PREVIEW_REPLIES = 3;
 
@@ -51,7 +54,8 @@ public class CommentServiceImpl implements CommentService {
         boolean hasMedia = request.getMediaUrl() != null && !request.getMediaUrl().isBlank();
 
         if (!hasContent && !hasMedia) {
-            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
         }
 
         targetValidator.validateTargetExists(request.getTargetType(), request.getTargetId());
@@ -63,7 +67,8 @@ public class CommentServiceImpl implements CommentService {
         Comment parentComment = null;
         if (request.getParentCommentId() != null) {
             parentComment = commentRepository.findByIdAndDeletedAtIsNull(request.getParentCommentId())
-                    .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận cha"));
+                    .orElseThrow(
+                            () -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận cha"));
         }
 
         List<MediaItem> mediaItems = null;
@@ -71,11 +76,10 @@ public class CommentServiceImpl implements CommentService {
             mediaService.confirmMediaPermanent(List.of(request.getMediaUrl()));
             mediaItems = List.of(new MediaItem(
                     request.getMediaUrl(), request.getMediaUrl(), MediaType.IMAGE,
-                    null, null, null, null, null, null
-            ));
+                    null, null, null, null, null, null));
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         Comment comment = Comment.builder()
                 .targetType(request.getTargetType().name())
                 .targetId(request.getTargetId())
@@ -98,7 +102,8 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public CursorResponse<CommentResponseDto> getComments(
-            InteractionTargetType targetType, Long targetId, Long parentCommentId, String sort, Long after, Integer limit) {
+            InteractionTargetType targetType, Long targetId, Long parentCommentId, String sort, Long after,
+            Integer limit) {
 
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
@@ -118,18 +123,21 @@ public class CommentServiceImpl implements CommentService {
             }
         } else {
             if (targetType == null || targetId == null) {
-                throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Vui lòng cung cấp targetType và targetId");
+                throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                        "Vui lòng cung cấp targetType và targetId");
             }
             targetValidator.validateTargetExists(targetType, targetId);
 
             if (isOldest) {
                 Long cursor = (after != null && after > 0) ? after : 0L;
-                commentsList = commentRepository.findByTargetTypeAndTargetIdAndParentCommentIsNullAndIdGreaterThanOrderByIdAsc(
-                        targetType.name(), targetId, cursor, pageable);
+                commentsList = commentRepository
+                        .findByTargetTypeAndTargetIdAndParentCommentIsNullAndIdGreaterThanOrderByIdAsc(
+                                targetType.name(), targetId, cursor, pageable);
             } else {
                 Long cursor = (after != null && after > 0) ? after : Long.MAX_VALUE;
-                commentsList = commentRepository.findByTargetTypeAndTargetIdAndParentCommentIsNullAndIdLessThanOrderByIdDesc(
-                        targetType.name(), targetId, cursor, pageable);
+                commentsList = commentRepository
+                        .findByTargetTypeAndTargetIdAndParentCommentIsNullAndIdLessThanOrderByIdDesc(
+                                targetType.name(), targetId, cursor, pageable);
             }
         }
 
@@ -176,7 +184,8 @@ public class CommentServiceImpl implements CommentService {
         boolean hasMedia = request.getMediaUrl() != null && !request.getMediaUrl().isBlank();
 
         if (!hasContent && !hasMedia) {
-            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
         }
 
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
@@ -188,20 +197,35 @@ public class CommentServiceImpl implements CommentService {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền sửa bình luận này");
         }
 
+        List<String> oldMediaKeys = (comment.getMediaUrls() != null)
+                ? comment.getMediaUrls().stream().map(MediaItem::url).filter(Objects::nonNull).toList()
+                : Collections.emptyList();
+
+        List<String> mediaToDelete = new ArrayList<>();
+
         if (hasMedia) {
             mediaService.confirmMediaPermanent(List.of(request.getMediaUrl()));
             comment.setMediaUrls(List.of(new MediaItem(
                     request.getMediaUrl(), request.getMediaUrl(), MediaType.IMAGE,
-                    null, null, null, null, null, null
-            )));
+                    null, null, null, null, null, null)));
+            for (String oldKey : oldMediaKeys) {
+                if (!oldKey.equals(request.getMediaUrl())) {
+                    mediaToDelete.add(oldKey);
+                }
+            }
         } else if (request.getMediaUrl() != null && request.getMediaUrl().isBlank()) {
             comment.setMediaUrls(null);
+            mediaToDelete.addAll(oldMediaKeys);
+        }
+
+        if (!mediaToDelete.isEmpty()) {
+            eventPublisher.publishEvent(MediaCleanupEvent.of(mediaToDelete));
         }
 
         if (hasContent) {
             comment.setContent(request.getContent());
         }
-        comment.setUpdatedAt(LocalDateTime.now());
+        comment.setUpdatedAt(Instant.now());
 
         Comment updated = commentRepository.save(comment);
         return mapToCommentResponseDto(updated, Map.of(), false);
@@ -224,25 +248,35 @@ public class CommentServiceImpl implements CommentService {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền xóa bình luận này");
         }
 
-        comment.setDeletedAt(LocalDateTime.now());
+        List<String> mediaToDelete = (comment.getMediaUrls() != null)
+                ? comment.getMediaUrls().stream().map(MediaItem::url).filter(Objects::nonNull).toList()
+                : Collections.emptyList();
+
+        comment.setDeletedAt(Instant.now());
         comment.setContent("Bình luận này đã bị xóa");
         comment.setMediaUrls(null);
 
         commentRepository.save(comment);
+
+        if (!mediaToDelete.isEmpty()) {
+            eventPublisher.publishEvent(MediaCleanupEvent.of(mediaToDelete));
+        }
 
         // Decrement target comment counter
         if (comment.getTargetType() != null && comment.getTargetId() != null) {
             try {
                 InteractionTargetType type = InteractionTargetType.valueOf(comment.getTargetType());
                 incrementTargetCommentCounter(type, comment.getTargetId(), -1);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
     }
 
     // --- Helper Methods ---
 
     private void incrementTargetCommentCounter(InteractionTargetType targetType, Long targetId, int delta) {
-        if (targetType == null || targetId == null) return;
+        if (targetType == null || targetId == null)
+            return;
         switch (targetType) {
             case POST -> counterMetricsService.incrementPostComments(targetId, delta);
             case SESSION -> counterMetricsService.incrementSessionComments(targetId, delta);
@@ -250,7 +284,8 @@ public class CommentServiceImpl implements CommentService {
         }
     }
 
-    private CommentResponseDto mapToCommentResponseDto(Comment comment, Map<Long, UserProfile> profileMap, boolean includeRepliesPreview) {
+    private CommentResponseDto mapToCommentResponseDto(Comment comment, Map<Long, UserProfile> profileMap,
+            boolean includeRepliesPreview) {
         boolean hidden = comment.getDeletedAt() != null;
 
         AuthorDto authorDto = null;
@@ -269,7 +304,7 @@ public class CommentServiceImpl implements CommentService {
 
         String mediaUrl = null;
         if (!hidden && comment.getMediaUrls() != null && !comment.getMediaUrls().isEmpty()) {
-            MediaItem first = comment.getMediaUrls().get(0);
+            MediaItem first = comment.getMediaUrls().getFirst();
             mediaUrl = first.url() != null ? first.url() : first.key();
         }
 

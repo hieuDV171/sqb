@@ -15,17 +15,16 @@ public class SearchController {
 
     /**
      * API 5.3.5.1: Tìm kiếm toàn cục đa thực thể
-     * GET /search?query=...&type=ALL&scope=PUBLIC&after=...&limit=10
+     * GET /search?query=...&type=ALL&after=...&limit=10
      */
     @GetMapping("/search")
     public ResponseEntity<GlobalResponse<GlobalSearchResponseDto>> search(
             @RequestParam(required = false) String query,
             @RequestParam(required = false, defaultValue = "ALL") SearchType type,
-            @RequestParam(required = false, defaultValue = "PUBLIC") SearchScope scope,
             @RequestParam(required = false) Long after,
             @RequestParam(required = false, defaultValue = "10") Integer limit
     ) {
-        GlobalSearchResponseDto response = searchService.search(query, type, scope, after, limit);
+        GlobalSearchResponseDto response = searchService.search(query, type, after, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

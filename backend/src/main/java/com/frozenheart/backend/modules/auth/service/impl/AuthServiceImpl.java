@@ -2,15 +2,14 @@ package com.frozenheart.backend.modules.auth.service.impl;
 
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import com.frozenheart.backend.modules.auth.dto.admin.AdminResetPasswordRequest;
@@ -39,14 +38,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
-import com.frozenheart.backend.core.entity.user.CategorySetting;
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
-import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.core.entity.user.PushPreferences;
-import com.frozenheart.backend.core.entity.user.QuietHour;
-import com.frozenheart.backend.core.entity.user.GamificationPointsJson;
+import com.frozenheart.backend.core.entity.user.UserGamification;
+import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserDevice;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -67,6 +65,7 @@ public class AuthServiceImpl implements AuthService {
     private final CookieUtils cookieUtils;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final UserGamificationRepository userGamificationRepository;
     private final UserPushSettingRepository userPushSettingRepository;
     private final UserDeviceRepository userDeviceRepository;
     private final PasswordEncoder passwordEncoder;
@@ -132,12 +131,36 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void saveOrUpdateUserDevice(User user, LoginRequest request) {
+        // 1. Device takeover: Thu hồi phiên của bất kỳ tài khoản nào khác đang active
+        // trên thiết bị này
+        List<UserDevice> otherActiveDevices = userDeviceRepository
+                .findActiveDevicesByDeviceIdWithUser(request.deviceId());
+        List<UserDevice> devicesToDeactivate = new ArrayList<>();
+        for (UserDevice otherDevice : otherActiveDevices) {
+            if (otherDevice.getUser() != null && !otherDevice.getUser().getId().equals(user.getId())) {
+                otherDevice.setActive(false);
+                otherDevice.setFcmToken(null);
+                devicesToDeactivate.add(otherDevice);
 
-        UserDevice device = userDeviceRepository.findByDeviceId(request.deviceId())
+                // Xóa Refresh Token của người dùng cũ trong Redis
+                String oldEmail = otherDevice.getUser().getEmail();
+                if (oldEmail != null) {
+                    redisTemplate.delete("rt:" + oldEmail + ":" + request.deviceId());
+                    log.info("[AuthService] Đã tự động thu hồi phiên của user {} trên thiết bị {}", oldEmail,
+                            request.deviceId());
+                }
+            }
+        }
+        if (!devicesToDeactivate.isEmpty()) {
+            userDeviceRepository.saveAll(devicesToDeactivate);
+        }
+
+        // 2. Kích hoạt hoặc tạo mới UserDevice cho người dùng hiện tại
+        UserDevice device = userDeviceRepository.findByUserIdAndDeviceId(user.getId(), request.deviceId())
                 .orElseGet(() -> UserDevice.builder()
                         .user(user)
                         .deviceId(request.deviceId())
-                        .createdAt(LocalDateTime.now())
+                        .createdAt(Instant.now())
                         .build());
 
         device.setFcmToken(request.fcmToken());
@@ -146,10 +169,9 @@ public class AuthServiceImpl implements AuthService {
         device.setOsVersion(request.osVersion());
         device.setAppVersion(request.appVersion());
         device.setActive(true);
-        device.setLastActiveAt(LocalDateTime.now());
+        device.setLastActiveAt(Instant.now());
 
         userDeviceRepository.save(device);
-
     }
 
     @Transactional
@@ -164,7 +186,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserRole role = UserRole.valueOf(request.role().name());
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         // Tạo tài khoản (chưa xác thực OTP)
         User user = User.builder()
@@ -179,6 +201,15 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(user);
 
+        String userTz = Time.DEFAULT_TIMEZONE;
+        if (request.timezone() != null && !request.timezone().isBlank()) {
+            try {
+                userTz = ZoneId.of(request.timezone().trim()).getId();
+            } catch (Exception e) {
+                log.warn("Invalid timezone '{}' in register request, falling back to {}", request.timezone(), Time.DEFAULT_TIMEZONE);
+            }
+        }
+
         UserProfile userProfile = UserProfile.builder()
                 .user(savedUser)
                 .fullName("Sóc bay đỏ mận" + email.substring(0, email.indexOf('@')))
@@ -189,9 +220,9 @@ public class AuthServiceImpl implements AuthService {
                 .faculty("")
                 .major("")
                 .studentLecturerCode("")
+                .timezone(userTz)
                 .totalProposedQuestion(0)
                 .totalApprovedQuestions(0)
-                .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
                 .badgesCount(0)
                 .friendsCount(0)
                 .followersCount(0)
@@ -201,12 +232,21 @@ public class AuthServiceImpl implements AuthService {
 
         userProfileRepository.save(userProfile);
 
+        UserGamification userGamification = UserGamification.builder()
+                .user(savedUser)
+                .publicPoints(0.0)
+                .secretPoints(0.0)
+                .coinBalance(0.0)
+                .currentStreak(0)
+                .build();
+        userGamificationRepository.save(userGamification);
+
         PushPreferences pushPreferences = createDefaultPushPreferences();
 
         UserPushSetting userPushSetting = UserPushSetting.builder()
                 .user(savedUser)
                 .preferences(pushPreferences)
-                .updatedAt(LocalDateTime.now())
+                .updatedAt(Instant.now())
                 .build();
 
         userPushSettingRepository.save(userPushSetting);
@@ -367,7 +407,7 @@ public class AuthServiceImpl implements AuthService {
 
         List<User> usersToSave = new ArrayList<>();
         List<SingleUserImportDto> dtosToProcess = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         for (SingleUserImportDto dto : validDtos) {
             String emailLower = dto.email().trim().toLowerCase();
@@ -401,8 +441,9 @@ public class AuthServiceImpl implements AuthService {
         // 3. Batch Save Users
         List<User> savedUsers = userRepository.saveAll(usersToSave);
 
-        // 4. Batch Create UserProfiles & PushSettings
+        // 4. Batch Create UserProfiles, Gamifications & PushSettings
         List<UserProfile> profilesToSave = new ArrayList<>(savedUsers.size());
+        List<UserGamification> gamificationsToSave = new ArrayList<>(savedUsers.size());
         List<UserPushSetting> pushSettingsToSave = new ArrayList<>(savedUsers.size());
         List<Long> savedUserIds = new ArrayList<>(savedUsers.size());
 
@@ -411,19 +452,30 @@ public class AuthServiceImpl implements AuthService {
             SingleUserImportDto dto = dtosToProcess.get(i);
             savedUserIds.add(savedUser.getId());
 
+            String userTz = Time.DEFAULT_TIMEZONE;
+            if (dto.timezone() != null && !dto.timezone().isBlank()) {
+                try {
+                    userTz = ZoneId.of(dto.timezone().trim()).getId();
+                } catch (Exception e) {
+                    log.warn("Invalid timezone '{}' in bulk import dto, falling back to {}", dto.timezone(), Time.DEFAULT_TIMEZONE);
+                }
+            }
+
             UserProfile profile = UserProfile.builder()
                     .user(savedUser)
                     .fullName(dto.fullName())
                     .studentLecturerCode(dto.studentLecturerCode() != null ? dto.studentLecturerCode() : "")
                     .faculty(dto.faculty() != null ? dto.faculty() : "")
                     .major(dto.major() != null ? dto.major() : "")
+                    .timezone(userTz)
                     .avatarUrl("")
                     .coverUrl("")
                     .avatarFrameUrl("")
+                    .gender(dto.gender())
+                    .dateOfBirth(dto.dateOfBirth())
                     .bio("Nơi nào có sự sống, nơi đó có công lý!")
                     .totalProposedQuestion(0)
                     .totalApprovedQuestions(0)
-                    .gamificationPoints(new GamificationPointsJson(0.0, 0.0))
                     .badgesCount(0)
                     .friendsCount(0)
                     .followersCount(0)
@@ -431,6 +483,15 @@ public class AuthServiceImpl implements AuthService {
                     .profileCompleted(true)
                     .build();
             profilesToSave.add(profile);
+
+            UserGamification gamification = UserGamification.builder()
+                    .user(savedUser)
+                    .publicPoints(0.0)
+                    .secretPoints(0.0)
+                    .coinBalance(0.0)
+                    .currentStreak(0)
+                    .build();
+            gamificationsToSave.add(gamification);
 
             UserPushSetting pushSetting = UserPushSetting.builder()
                     .user(savedUser)
@@ -441,10 +502,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         userProfileRepository.saveAll(profilesToSave);
+        userGamificationRepository.saveAll(gamificationsToSave);
         userPushSettingRepository.saveAll(pushSettingsToSave);
 
         // 5. Bắn 1 sự kiện Bulk duy nhất sang Elasticsearch
-        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, savedUserIds));
+        eventPublisher
+                .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, savedUserIds));
 
         return new BulkImportResult(savedUsers.size(), errorMessages.size(), errorMessages);
     }
@@ -458,11 +521,12 @@ public class AuthServiceImpl implements AuthService {
     public void logout() {
 
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        Long currentUserId = payload.getUserId();
         String email = payload.getUsername();
         String deviceId = payload.getDeviceId();
 
-        // Deactive thiết bị trong DB
-        userDeviceRepository.findByDeviceId(deviceId)
+        // Deactive thiết bị của chính user này trong DB
+        userDeviceRepository.findByUserIdAndDeviceId(currentUserId, deviceId)
                 .ifPresent(device -> {
                     device.setActive(false);
                     device.setFcmToken(null); // Xóa token push notification
@@ -479,7 +543,7 @@ public class AuthServiceImpl implements AuthService {
     public void changePassword(ChangePasswordRequest request) {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
         Long userId = payload.getUserId();
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
@@ -488,7 +552,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
 
         userRepository.save(user);
 
@@ -568,7 +632,7 @@ public class AuthServiceImpl implements AuthService {
                 : "Hust@123456";
 
         user.setPasswordHash(passwordEncoder.encode(targetPassword));
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
         // Đăng xuất khỏi tất cả các thiết bị

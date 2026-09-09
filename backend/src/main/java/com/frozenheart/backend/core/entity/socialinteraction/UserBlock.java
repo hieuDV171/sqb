@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -21,7 +21,7 @@ public class UserBlock {
     private String reason;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ----------------------------
     @ManyToOne(fetch = FetchType.LAZY)

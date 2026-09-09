@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.post.repository;
 
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
+import com.frozenheart.backend.core.entity.post.PostVisibility;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,11 +18,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Modifying
     @Query("UPDATE Post p SET p.reactCount = p.reactCount + :delta WHERE p.id = :postId")
-    int incrementReactCount(@Param("postId") Long postId, @Param("delta") int delta);
+    void incrementReactCount(@Param("postId") Long postId, @Param("delta") int delta);
 
     @Modifying
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + :delta WHERE p.id = :postId")
-    int incrementCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
+    void incrementCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
 
     @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     Optional<Post> findByIdAndDeletedAtIsNull(Long id);
@@ -49,6 +51,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     List<Post> findByPosterIdAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
+            Long after,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    List<Post> findByPosterIdAndVisibilityInAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
+            Long posterId,
+            Collection<PostVisibility> visibilities,
             Long after,
             Pageable pageable
     );

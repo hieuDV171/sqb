@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.dto.user.UserSummaryDto;
 import com.frozenheart.backend.modules.conversation.constant.ChatWsEventType;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -22,5 +22,5 @@ public class WsTypingBroadcastDto {
 
     private boolean isTyping;
 
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 }

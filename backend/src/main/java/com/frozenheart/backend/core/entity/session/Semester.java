@@ -2,7 +2,8 @@ package com.frozenheart.backend.core.entity.session;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -20,12 +21,14 @@ public class Semester {
     @Column(nullable = false, length = 100)
     private String name;
 
+    private LocalDate startDate;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean active = false;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Builder.Default
     @Column(nullable = false)

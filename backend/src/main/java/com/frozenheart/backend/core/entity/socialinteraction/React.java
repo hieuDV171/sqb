@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -19,7 +19,10 @@ public class React {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private InteractionTargetType targetType;
+
     private Long targetId;
 
     @Enumerated(EnumType.STRING)
@@ -27,7 +30,7 @@ public class React {
     private ReactionType reactionType;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ------------------
     @ManyToOne(fetch = FetchType.LAZY)

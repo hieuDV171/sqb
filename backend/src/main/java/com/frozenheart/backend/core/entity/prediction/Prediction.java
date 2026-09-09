@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -26,7 +26,10 @@ public class Prediction {
     @Column(length = 50)
     private GameType gameType;
 
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private PredictionTargetType targetType;
+
     private Long targetId;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -43,11 +46,11 @@ public class Prediction {
 
     private boolean isCorrect;
 
-    private LocalDateTime targetDate;
-    private LocalDateTime resolvedAt;
+    private Instant targetDate;
+    private Instant resolvedAt;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // ---------------------
     @ManyToOne(fetch = FetchType.LAZY)

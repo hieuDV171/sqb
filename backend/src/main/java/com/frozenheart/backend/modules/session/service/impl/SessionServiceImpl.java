@@ -1,10 +1,12 @@
 package com.frozenheart.backend.modules.session.service.impl;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,11 +44,14 @@ import com.frozenheart.backend.modules.session.repository.QuestionMediaRepositor
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
+import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
+import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 import com.frozenheart.backend.modules.session.service.SessionService;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
 
@@ -62,6 +67,8 @@ public class SessionServiceImpl implements SessionService {
     private final QuestionMediaRepository questionMediaRepository;
     private final DuplicateDetectionService duplicateDetectionService;
     private final CounterMetricsService counterMetricsService;
+    private final MediaService mediaService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @Override
@@ -88,10 +95,11 @@ public class SessionServiceImpl implements SessionService {
                 .proposer(proposer)
                 .subject(subject)
                 .status(SessionStatus.PENDING)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
-        // phiên chưa public, không đánh index (có gọi đánh index thì ES cũng không đánh index)
+        // phiên chưa public, không đánh index (có gọi đánh index thì ES cũng không đánh
+        // index)
         session = sessionRepository.save(session);
 
         // {subjectCode}_{authorCode}_{timestamp}_{sessionId}
@@ -107,21 +115,16 @@ public class SessionServiceImpl implements SessionService {
                 .map(q -> {
                     String textContent = q.content();
 
-                    LocalDateTime now = LocalDateTime.now();
+                    Instant now = Instant.now();
                     return Question.builder()
                             .session(finalSession) // Gán mối quan hệ với Session
 
-                            .originalContent(textContent)
                             .content(textContent)
 
                             .difficulty(QuestionDifficulty.UNCLASSIFIED)
                             .status(QuestionStatus.PENDING)
 
-                            // Gán cả bản gốc và bản làm việc
-                            .originalOptions(q.options())
                             .options(q.options())
-
-                            .originalExplanation(q.explanation())
                             .explanation(q.explanation())
 
                             .llmGenerated(q.llmGenerated())
@@ -157,7 +160,7 @@ public class SessionServiceImpl implements SessionService {
                                 .question(q)
                                 .owner(proposer)
                                 .processingStatus(ProcessingStatus.PENDING)
-                                .uploadedAt(LocalDateTime.now())
+                                .uploadedAt(Instant.now())
                                 .build();
 
                         mediaListToSave.add(media);
@@ -175,7 +178,7 @@ public class SessionServiceImpl implements SessionService {
                                 .question(q)
                                 .owner(proposer)
                                 .processingStatus(ProcessingStatus.PENDING)
-                                .uploadedAt(LocalDateTime.now())
+                                .uploadedAt(Instant.now())
                                 .build();
 
                         mediaListToSave.add(media);
@@ -186,8 +189,16 @@ public class SessionServiceImpl implements SessionService {
 
         if (!mediaListToSave.isEmpty()) {
             List<QuestionMedia> savedMedias = questionMediaRepository.saveAll(mediaListToSave);
+            List<String> mediaUrls = mediaListToSave.stream()
+                    .map(QuestionMedia::getUrl)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!mediaUrls.isEmpty()) {
+                mediaService.confirmMediaPermanent(mediaUrls);
+            }
 
-            // Tạo Map tra cứu siêu nhanh O(1) trên RAM: Key = questionId_mediaUrl -> Value = mediaId
+            // Tạo Map tra cứu siêu nhanh O(1) trên RAM: Key = questionId_mediaUrl -> Value
+            // = mediaId
             Map<String, Long> mediaIdMap = savedMedias.stream()
                     .collect(Collectors.toMap(
                             m -> m.getQuestion().getId() + "_" + m.getUrl(), // key
@@ -234,7 +245,8 @@ public class SessionServiceImpl implements SessionService {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
 
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-        List<MySubmissionProjection> mySubmissions = sessionRepository.findMySubmissions(currentUserId, subjectId, status, after, pageable);
+        List<MySubmissionProjection> mySubmissions = sessionRepository.findMySubmissions(currentUserId, subjectId,
+                status, after, pageable);
 
         boolean hasNext = false;
         if (mySubmissions.size() > pageSize) {
@@ -299,10 +311,10 @@ public class SessionServiceImpl implements SessionService {
 
                     return MySubmissionDetailResponse.MySubmissionQuestionDto.builder()
                             .questionId(q.getId())
-                            .content(q.getOriginalContent())
+                            .content(q.getContent())
                             .imageUrls(imageUrls)
-                            .options(q.getOriginalOptions())
-                            .explanation(q.getOriginalExplanation())
+                            .options(q.getOptions())
+                            .explanation(q.getExplanation())
                             .source(q.isLlmGenerated() ? "LLM" : "HOMO_SAPIENS")
                             .confidenceScore(q.getConfidenceScore())
                             .commentCount(q.getCommentCount() != null ? q.getCommentCount() : 0)
@@ -401,17 +413,14 @@ public class SessionServiceImpl implements SessionService {
                     String explanation = qDto.explanation();
 
                     if (content != null) {
-                        q.setOriginalContent(content);
                         q.setContent(content);
                     }
 
                     if (options != null) {
-                        q.setOriginalOptions(options);
                         q.setOptions(options);
                     }
 
                     if (explanation != null) {
-                        q.setOriginalExplanation(explanation);
                         q.setExplanation(explanation);
                     }
 
@@ -422,21 +431,18 @@ public class SessionServiceImpl implements SessionService {
                         q.setConfidenceScore(qDto.confidence());
                     }
                     q.setDisplayOrder(i + 1);
-                    q.setUpdatedAt(LocalDateTime.now());
+                    q.setUpdatedAt(Instant.now());
                 } else {
                     String textContent = qDto.content() != null ? qDto.content() : "";
                     boolean llmGenerated = qDto.source() != QuestionSource.HOMO_SAPIENS;
 
-                    LocalDateTime now = LocalDateTime.now();
+                    Instant now = Instant.now();
                     q = Question.builder()
                             .session(savedSession)
-                            .originalContent(textContent)
                             .content(textContent)
                             .difficulty(QuestionDifficulty.UNCLASSIFIED)
                             .status(QuestionStatus.PENDING)
-                            .originalOptions(qDto.options())
                             .options(qDto.options())
-                            .originalExplanation(qDto.explanation())
                             .explanation(qDto.explanation())
                             .llmGenerated(llmGenerated)
                             .confidenceScore(qDto.confidence() != null ? qDto.confidence() : 0.0)
@@ -486,8 +492,22 @@ public class SessionServiceImpl implements SessionService {
 
         List<Question> questions = questionRepository.findBySessionId(sessionId);
         if (!questions.isEmpty()) {
+            List<Long> qIds = questions.stream().map(Question::getId).toList();
+            List<QuestionMedia> medias = questionMediaRepository.findByQuestionIdIn(qIds);
+            List<String> mediaUrlsToDelete = (medias != null) ? medias.stream()
+                    .map(QuestionMedia::getUrl)
+                    .filter(Objects::nonNull)
+                    .toList() : Collections.emptyList();
+
             counterMetricsService.incrementProposedQuestions(currentUserId, -questions.size());
+            if (medias != null && !medias.isEmpty()) {
+                questionMediaRepository.deleteAll(medias);
+            }
             questionRepository.deleteAll(questions);
+
+            if (!mediaUrlsToDelete.isEmpty()) {
+                eventPublisher.publishEvent(MediaCleanupEvent.of(mediaUrlsToDelete));
+            }
         }
 
         sessionRepository.delete(session);

@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -19,7 +19,7 @@ public class FriendshipResponseDto {
     private Long addresseeId;
     private FriendshipStatus status;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime acceptedAt;
+    private Instant acceptedAt;
 }

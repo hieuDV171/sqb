@@ -10,7 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import com.frozenheart.backend.core.constant.EmbeddingConstants;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -27,14 +27,15 @@ public class QuestionMedia {
 
     // Kết quả thuật toán pHash là dãy 64 bit = 8 bytes tương đương với kiểu Long
     // Nên lưu dưới dạng long để có thể thực hiện tính toán nếu cần
-    // Nếu lưu dưới dạng String thì khi tính toán sẽ mất thêm 1 bước chuyển đổi String <-> Long
+    // Nếu lưu dưới dạng String thì khi tính toán sẽ mất thêm 1 bước chuyển đổi
+    // String <-> Long
     private Long pHash;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private AiAnalysisResult aiAnalysisResult;
 
-//    @Type(PgVectorType.class)
+    // @Type(PgVectorType.class)
     @Column(columnDefinition = "vector(" + EmbeddingConstants.IMAGE_EMBEDDING_DIMS + ")")
     @JdbcTypeCode(SqlTypes.VECTOR)
     private float[] mediaEmbedding;
@@ -57,16 +58,15 @@ public class QuestionMedia {
     @Column(length = 50)
     private ProcessingStatus processingStatus;
 
-    private LocalDateTime uploadedAt;
-    private LocalDateTime processedAt;
+    private Instant uploadedAt;
+    private Instant processedAt;
 
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     // ---------------------
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id")

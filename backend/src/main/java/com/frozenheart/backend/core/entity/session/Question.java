@@ -10,7 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import com.frozenheart.backend.core.constant.EmbeddingConstants;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -26,12 +26,15 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     // "Mã môn"_"Mã tác giả"_"question id"
     @Column(comment = "subjectId_authorCode_questionId")
     private String questionCode;
 
-    @Column(columnDefinition = "TEXT")
-    private String originalContent;
     @Column(columnDefinition = "TEXT")
     private String content;
 
@@ -46,18 +49,11 @@ public class Question {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
-    private List<QuestionOption> originalOptions;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSONB")
     private List<QuestionOption> options;
 
     @Enumerated(value = EnumType.STRING)
     @Column(length = 50)
     private QuestionStatus status;
-
-    @Column(columnDefinition = "TEXT")
-    private String originalExplanation;
 
     @Column(columnDefinition = "TEXT")
     private String explanation;
@@ -79,9 +75,9 @@ public class Question {
     private List<DuplicateWarning> duplicateWarnings;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     // ---------------------------
 

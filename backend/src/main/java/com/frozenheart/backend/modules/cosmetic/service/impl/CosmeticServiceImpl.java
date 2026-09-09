@@ -6,6 +6,8 @@ import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent.EntityType;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.cosmetic.*;
+import com.frozenheart.backend.core.entity.user.CoinTransactionTargetType;
+import com.frozenheart.backend.core.entity.user.CoinTransactionType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
@@ -26,7 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,13 +47,15 @@ public class CosmeticServiceImpl implements CosmeticService {
 
     @Override
     @Transactional(readOnly = true)
-    public MyInventoryResponseDto getMyInventory(CosmeticType type, CosmeticRarity rarity, boolean onlyUnlocked, Long after, Integer limit) {
+    public MyInventoryResponseDto getMyInventory(CosmeticType type, CosmeticRarity rarity, boolean onlyUnlocked,
+            Long after, Integer limit) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
 
         Long cursor = (after != null && after > 0) ? after : null;
-        List<UserCosmetic> userCosmetics = userCosmeticRepository.findInventoryCursor(currentUserId, type, rarity, cursor, pageable);
+        List<UserCosmetic> userCosmetics = userCosmeticRepository.findInventoryCursor(currentUserId, type, rarity,
+                cursor, pageable);
 
         boolean hasNext = false;
         Long nextCursor = null;
@@ -64,7 +68,7 @@ public class CosmeticServiceImpl implements CosmeticService {
 
         // 1. Tính toán Summary (Tổng mở khóa, theo Rarity, % hoàn thành)
         int totalUnlocked = userCosmeticRepository.countByIdUserId(currentUserId);
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         int totalActiveSystemItems = cosmeticItemRepository.countActiveItems(now);
 
         // 2 chữ số sau dấu phẩy
@@ -141,10 +145,11 @@ public class CosmeticServiceImpl implements CosmeticService {
         double userPoints = userCurrencyService.getBalance(currentUserId);
 
         // Lấy danh sách ID các item đã sở hữu để đánh dấu isOwned
-        List<UserCosmetic> ownedItems = userCosmeticRepository.findInventoryCursor(currentUserId, null, null, null, PageRequest.of(0, 500));
+        List<UserCosmetic> ownedItems = userCosmeticRepository.findInventoryCursor(currentUserId, null, null, null,
+                PageRequest.of(0, 500));
         Set<Long> ownedIds = ownedItems.stream().map(uc -> uc.getCosmetic().getId()).collect(Collectors.toSet());
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
 
@@ -168,7 +173,8 @@ public class CosmeticServiceImpl implements CosmeticService {
             nextCursor = shopItems.getLast().getId();
         }
 
-        List<ShopItemDto> items = shopItems.stream().map(c -> mapToShopItemDto(c, ownedIds)).collect(Collectors.toList());
+        List<ShopItemDto> items = shopItems.stream().map(c -> mapToShopItemDto(c, ownedIds))
+                .collect(Collectors.toList());
 
         CursorPaginationDto pagination = CursorPaginationDto.builder()
                 .after(nextCursor)
@@ -190,7 +196,7 @@ public class CosmeticServiceImpl implements CosmeticService {
         CosmeticItem cosmetic = cosmeticItemRepository.findById(cosmeticId)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Vật phẩm không tồn tại"));
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (cosmetic.getAvailableUtil() != null && cosmetic.getAvailableUtil().isBefore(now)) {
             throw new AppException(ResponseCode.COSMETIC_EXPIRED, "Vật phẩm đã hết hạn mở bán");
         }
@@ -199,9 +205,12 @@ public class CosmeticServiceImpl implements CosmeticService {
             throw new AppException(ResponseCode.ACTION_ALREADY_PERFORMED, "Bạn đã sở hữu vật phẩm này rồi");
         }
 
-        // Trừ tiền qua UserCurrencyService
+        // Trừ tiền qua UserCurrencyService và lưu vết sổ cái CoinTransaction
         userCurrencyService.deduct(currentUserId, cosmetic.getPrice(),
-                "MUA_VAT_PHAM_TRANG_TRI_" + cosmetic.getName());
+                CoinTransactionType.BUY_COSMETIC,
+                "Mua vật phẩm trang trí: " + cosmetic.getName(),
+                CoinTransactionTargetType.COSMETIC_ITEM,
+                cosmeticId);
 
         User user = userRepository.getReferenceById(currentUserId);
         UserCosmetic userCosmetic = UserCosmetic.builder()
@@ -223,7 +232,8 @@ public class CosmeticServiceImpl implements CosmeticService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
         UserCosmetic targetUc = userCosmeticRepository.findByUserIdAndCosmeticId(currentUserId, request.getCosmeticId())
-                .orElseThrow(() -> new AppException(ResponseCode.COSMETIC_NOT_OWNED, "Bạn chưa sở hữu vật phẩm này trong túi đồ"));
+                .orElseThrow(() -> new AppException(ResponseCode.COSMETIC_NOT_OWNED,
+                        "Bạn chưa sở hữu vật phẩm này trong túi đồ"));
 
         CosmeticItem targetItem = targetUc.getCosmetic();
         CosmeticType type = targetItem.getType();
@@ -244,7 +254,7 @@ public class CosmeticServiceImpl implements CosmeticService {
         }
 
         // 2. Trang bị vật phẩm mới
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         targetUc.setEquippedAt(now);
         userCosmeticRepository.save(targetUc);
 
@@ -281,7 +291,8 @@ public class CosmeticServiceImpl implements CosmeticService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
         UserCosmetic targetUc = userCosmeticRepository.findByUserIdAndCosmeticId(currentUserId, request.getCosmeticId())
-                .orElseThrow(() -> new AppException(ResponseCode.COSMETIC_NOT_OWNED, "Bạn chưa sở hữu vật phẩm này trong túi đồ"));
+                .orElseThrow(() -> new AppException(ResponseCode.COSMETIC_NOT_OWNED,
+                        "Bạn chưa sở hữu vật phẩm này trong túi đồ"));
 
         if (targetUc.getEquippedAt() == null) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Vật phẩm này hiện không được trang bị");

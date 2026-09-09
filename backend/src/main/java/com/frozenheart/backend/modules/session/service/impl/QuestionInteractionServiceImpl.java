@@ -1,6 +1,6 @@
 package com.frozenheart.backend.modules.session.service.impl;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,7 +51,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         private final UserAnswerRepository userAnswerRepository;
         private final UserRatingRepository userRatingRepository;
         private final UserRepository userRepository;
-        
+
         @Override
         @Transactional(readOnly = true)
         public UserQuestionsResponse getUserProposedQuestions(Long userId, Long after, Integer limit, Long subjectId) {
@@ -99,7 +99,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         .rated(rated)
                                         .build();
 
-                        List<String> correctKeys = q.getOriginalOptions() != null ? q.getOriginalOptions().stream()
+                        List<String> correctKeys = q.getOptions() != null ? q.getOptions().stream()
                                         .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
                                         .map(QuestionOption::getKey)
                                         .toList() : List.of();
@@ -107,12 +107,12 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                         UserQuestionsResponse.HiddenFieldsDto hiddenFields = answered
                                         ? UserQuestionsResponse.HiddenFieldsDto.builder()
                                                         .correctAnswer(String.join(", ", correctKeys))
-                                                        .explanation(q.getOriginalExplanation())
+                                                        .explanation(q.getExplanation())
                                                         .build()
                                         : null;
 
-                        List<QuestionOption> sanitizedOptions = q.getOriginalOptions() != null
-                                        ? q.getOriginalOptions().stream().map(o -> {
+                        List<QuestionOption> sanitizedOptions = q.getOptions() != null
+                                        ? q.getOptions().stream().map(o -> {
                                                 QuestionOption opt = new QuestionOption();
                                                 opt.setKey(o.getKey());
                                                 opt.setText(o.getText());
@@ -126,7 +126,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                         return UserQuestionsResponse.UserQuestionItemDto.builder()
                                         .questionId(q.getId())
                                         .questionCode(q.getQuestionCode())
-                                        .content(q.getOriginalContent())
+                                        .content(q.getContent())
                                         .imageUrls(imageUrls)
                                         .options(sanitizedOptions)
                                         .source(q.isLlmGenerated() ? QuestionSource.LLM : QuestionSource.HOMO_SAPIENS)
@@ -161,7 +161,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 Question question = questionRepository.findById(questionId)
                                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
 
-                LocalDateTime currentUpdatedAt = question.getUpdatedAt() != null ? question.getUpdatedAt()
+                Instant currentUpdatedAt = question.getUpdatedAt() != null ? question.getUpdatedAt()
                                 : question.getCreatedAt();
                 if (request.questionUpdatedAt() != null && currentUpdatedAt != null
                                 && !currentUpdatedAt.equals(request.questionUpdatedAt())) {
@@ -169,7 +169,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         "Dữ liệu câu hỏi đã được cập nhật mới. Vui lòng tải lại câu hỏi để thực hiện lại!");
                 }
 
-                Set<String> correctKeys = question.getOriginalOptions() != null ? question.getOriginalOptions().stream()
+                Set<String> correctKeys = question.getOptions() != null ? question.getOptions().stream()
                                 .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
                                 .map(QuestionOption::getKey)
                                 .collect(Collectors.toSet()) : Set.of();
@@ -177,8 +177,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 Set<String> selectedKeys = new HashSet<>(request.selectedOptions());
                 boolean isCorrect = !correctKeys.isEmpty() && correctKeys.equals(selectedKeys);
 
-                List<QuestionOption> selectedOptions = question.getOriginalOptions() != null
-                                ? question.getOriginalOptions().stream()
+                List<QuestionOption> selectedOptions = question.getOptions() != null
+                                ? question.getOptions().stream()
                                                 .filter(o -> selectedKeys.contains(o.getKey()))
                                                 .toList()
                                 : List.of();
@@ -192,7 +192,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 .question(question)
                                 .selectedOptions(selectedOptions)
                                 .isCorrect(isCorrect)
-                                .createdAt(LocalDateTime.now())
+                                .createdAt(Instant.now())
                                 .build();
 
                 userAnswerRepository.save(userAnswer);
@@ -202,7 +202,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 return AnswerQuestionResponse.builder()
                                 .isCorrect(isCorrect)
                                 .correctAnswer(correctAnswerStr)
-                                .explanation(question.getOriginalExplanation())
+                                .explanation(question.getExplanation())
                                 .build();
         }
 
@@ -285,7 +285,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 .rating(rating)
                                 .isError(isError)
                                 .comment(request.comment())
-                                .createdAt(LocalDateTime.now())
+                                .createdAt(Instant.now())
                                 .build();
 
                 userRatingRepository.save(userRating);
@@ -299,7 +299,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 : 0L;
 
                 question.setRatingCount((int) newCount);
-                
+
                 // Hoạt động thường xuyên, không đánh index
                 questionRepository.save(question);
 

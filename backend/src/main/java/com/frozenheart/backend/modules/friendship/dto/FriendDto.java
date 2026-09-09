@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -19,7 +19,7 @@ public class FriendDto {
     private String avatarUrl;
     private String frameUrl;
 
-    private LocalDateTime friendsSince;
+    private Instant friendsSince;
 
     private Integer mutualFriendsCount;
 }

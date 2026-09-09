@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -22,5 +22,5 @@ public class BlockedUserDto {
 
     private String frameUrl;
 
-    private LocalDateTime blockedAt;
+    private Instant blockedAt;
 }

@@ -1,11 +1,13 @@
 package com.frozenheart.backend.modules.gamification.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public interface LeaderboardAggregation {
 
     Long getUserId();
+
     Double getTotalPoints();
-    LocalDateTime getLastEventTime();
+
+    Instant getLastEventTime();
 
 }

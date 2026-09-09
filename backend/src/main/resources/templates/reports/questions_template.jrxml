@@ -50,7 +50,7 @@
         <band height="110" splitType="Stretch">
             <!-- 1. Nội dung câu hỏi -->
             <textField textAdjust="StretchHeight">
-                <reportElement x="0" y="5" width="555" height="20" uuid="e1f2a3b4-c5d6-7890-def1-1234567890123"/>
+                <reportElement positionType="Float" x="0" y="5" width="555" height="20" uuid="e1f2a3b4-c5d6-7890-def1-1234567890123"/>
                 <textElement verticalAlignment="Top">
                     <font size="11" isBold="true"/>
                 </textElement>
@@ -59,13 +59,13 @@
 
             <!-- 2. Danh sách ảnh đề bài -->
             <componentElement>
-                <reportElement x="20" y="27" width="535" height="20" isRemoveLineWhenBlank="true" uuid="f1a2b3c4-d5e6-7890-def1-123456789012"/>
+                <reportElement positionType="Float" x="20" y="27" width="535" height="20" isRemoveLineWhenBlank="true" uuid="f1a2b3c4-d5e6-7890-def1-123456789012"/>
                 <jr:list printOrder="Vertical">
                     <datasetRun subDataset="QuestionImagesDataset" uuid="a2b3c4d5-e6f7-8901-cdef-234567890123">
                         <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{questionImageUrls} != null ? $F{questionImageUrls} : java.util.Collections.emptyList())]]></dataSourceExpression>
                     </datasetRun>
                     <jr:listContents height="120" width="535">
-                        <image scaleImage="RetainShape" hAlign="Left" vAlign="Middle" isUsingCache="true">
+                        <image scaleImage="RetainShape" hAlign="Left" vAlign="Middle" isUsingCache="true" onErrorType="Blank">
                             <reportElement x="0" y="5" width="250" height="110" uuid="b3c4d5e6-f7a8-9012-def3-345678901234"/>
                             <imageExpression><![CDATA[$F{_THIS}]]></imageExpression>
                         </image>
@@ -75,7 +75,7 @@
 
             <!-- 3. Danh sách các lựa chọn (Options) -->
             <componentElement>
-                <reportElement x="20" y="50" width="535" height="25" isRemoveLineWhenBlank="true" uuid="c3d4e5f6-a7b8-9012-1234-567890abcdef"/>
+                <reportElement positionType="Float" x="20" y="50" width="535" height="25" isRemoveLineWhenBlank="true" uuid="c3d4e5f6-a7b8-9012-1234-567890abcdef"/>
                 <jr:list printOrder="Vertical">
                     <datasetRun subDataset="OptionsDataset" uuid="d4e5f6a7-b8c9-9012-1234-567890abcdef">
                         <datasetParameter name="INCLUDE_ANSWER_SUB">
@@ -85,14 +85,16 @@
                     </datasetRun>
                     <jr:listContents height="125" width="535">
                         <textField textAdjust="StretchHeight">
-                            <reportElement x="0" y="2" width="535" height="18" uuid="e5f6a7b8-c9d0-9012-1234-567890abcdef"/>
+                            <reportElement positionType="Float" x="0" y="2" width="535" height="18" uuid="e5f6a7b8-c9d0-9012-1234-567890abcdef"/>
                             <textElement verticalAlignment="Middle">
                                 <font size="10"/>
                             </textElement>
                             <textFieldExpression><![CDATA[$F{key} + ". " + ($F{text} != null ? $F{text} : "") + (Boolean.TRUE.equals($P{INCLUDE_ANSWER_SUB}) && Boolean.TRUE.equals($F{isCorrect}) ? " [Đáp án đúng]" : "")]]></textFieldExpression>
                         </textField>
-                        <image scaleImage="RetainShape" hAlign="Left" vAlign="Middle" isUsingCache="true">
-                            <reportElement x="15" y="22" width="200" height="95" isRemoveLineWhenBlank="true" uuid="f6a7b8c9-d0e1-9012-1234-567890abcdef"/>
+                        <image scaleImage="RetainShape" hAlign="Left" vAlign="Middle" isUsingCache="true" onErrorType="Blank">
+                            <reportElement positionType="Float" x="15" y="22" width="200" height="95" isRemoveLineWhenBlank="true" uuid="f6a7b8c9-d0e1-9012-1234-567890abcdef">
+                                <printWhenExpression><![CDATA[$F{mediaUrl} != null && !$F{mediaUrl}.trim().isEmpty()]]></printWhenExpression>
+                            </reportElement>
                             <imageExpression><![CDATA[$F{mediaUrl}]]></imageExpression>
                         </image>
                     </jr:listContents>
@@ -101,7 +103,7 @@
 
             <!-- 4. Lời giải / Giải thích chi tiết -->
             <textField textAdjust="StretchHeight" isBlankWhenNull="true">
-                <reportElement x="20" y="80" width="535" height="20" isRemoveLineWhenBlank="true" uuid="a1c2e3f4-b5d6-7890-f123-456789012345"/>
+                <reportElement positionType="Float" x="20" y="80" width="535" height="20" isRemoveLineWhenBlank="true" uuid="a1c2e3f4-b5d6-7890-f123-456789012345"/>
                 <textElement verticalAlignment="Top">
                     <font size="10" isItalic="true"/>
                 </textElement>

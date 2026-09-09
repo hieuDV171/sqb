@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.time.ZoneId;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -32,47 +32,51 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
     private final Semester currentSemester;
 
-//        ⚠️ Lưu ý quan trọng về kiến trúc Redis (Cluster Mode)
-//    Phương pháp gom Key vào Lua Script này hoạt động hoàn hảo trên
-//    Redis Standalone hoặc Redis Sentinel.
-//
-//    Tuy nhiên, nếu hệ thống đang chạy Redis Cluster (chia nhỏ dữ liệu ra nhiều node),
-//    Redis sẽ báo lỗi CROSSSLOT Keys in request don't hash to the same slot khi chạy đoạn mã Lua.
-//     Lý do là leaderboard:alltime và leaderboard:semester:1 có thể bị phân mảnh nằm ở 2 server vật lý khác nhau,
-//     khiến Lua script không thể khóa cả 2 cùng lúc.
-//
-//    Nếu bạn đang dùng Redis Cluster, bạn phải quay lại sử dụng cơ chế Pipeline thuần túy của Spring Data Redis
-//    bằng SessionCallback
+    // ⚠️ Lưu ý quan trọng về kiến trúc Redis (Cluster Mode)
+    // Phương pháp gom Key vào Lua Script này hoạt động hoàn hảo trên
+    // Redis Standalone hoặc Redis Sentinel.
+    //
+    // Tuy nhiên, nếu hệ thống đang chạy Redis Cluster (chia nhỏ dữ liệu ra nhiều
+    // node),
+    // Redis sẽ báo lỗi CROSSSLOT Keys in request don't hash to the same slot khi
+    // chạy đoạn mã Lua.
+    // Lý do là leaderboard:alltime và leaderboard:semester:1 có thể bị phân mảnh
+    // nằm ở 2 server vật lý khác nhau,
+    // khiến Lua script không thể khóa cả 2 cùng lúc.
+    //
+    // Nếu bạn đang dùng Redis Cluster, bạn phải quay lại sử dụng cơ chế Pipeline
+    // thuần túy của Spring Data Redis
+    // bằng SessionCallback
 
-    public LeaderboardServiceImpl(RedisTemplate<String, String> redisTemplate, CurrentSemesterHolder currentSemesterHolder, PointHistoryRepository pointHistoryRepository) {
+    public LeaderboardServiceImpl(RedisTemplate<String, String> redisTemplate,
+            CurrentSemesterHolder currentSemesterHolder, PointHistoryRepository pointHistoryRepository) {
         this.redisTemplate = redisTemplate;
         this.pointHistoryRepository = pointHistoryRepository;
 
         // Khởi tạo Lua Script
-        String script =
-                """                
-                        -- Lấy thời gian 1 lần duy nhất để dùng chung cho mọi bảng xếp hạng
-                        local server_time = redis.call('TIME')
-                        local current_micro = tonumber(server_time[1]) * 1000000 + tonumber(server_time[2])
-                        local max_time = 4096051200000000
-                        local fraction = (max_time - current_micro) / max_time
-                        
-                        local added = tonumber(ARGV[2])
-                        
-                        -- Duyệt qua tất cả các KEYS được truyền vào từ Java
-                        for i = 1, #KEYS do
-                            local current_score = redis.call('ZSCORE', KEYS[i], ARGV[1])
-                            local scaled = 0
-                        
-                            if current_score then
-                                scaled = math.floor(tonumber(current_score))
-                            end
-                        
-                            local new_score = scaled + added + fraction
-                            redis.call('ZADD', KEYS[i], new_score, ARGV[1])
-                        end
-                        
-                        return 1""";
+        String script = """
+                -- Lấy thời gian 1 lần duy nhất để dùng chung cho mọi bảng xếp hạng
+                local server_time = redis.call('TIME')
+                local current_micro = tonumber(server_time[1]) * 1000000 + tonumber(server_time[2])
+                local max_time = 4096051200000000
+                local fraction = (max_time - current_micro) / max_time
+
+                local added = tonumber(ARGV[2])
+
+                -- Duyệt qua tất cả các KEYS được truyền vào từ Java
+                for i = 1, #KEYS do
+                    local current_score = redis.call('ZSCORE', KEYS[i], ARGV[1])
+                    local scaled = 0
+
+                    if current_score then
+                        scaled = math.floor(tonumber(current_score))
+                    end
+
+                    local new_score = scaled + added + fraction
+                    redis.call('ZADD', KEYS[i], new_score, ARGV[1])
+                end
+
+                return 1""";
 
         this.updateScoreScript = new DefaultRedisScript<>(script, Double.class);
         this.currentSemester = currentSemesterHolder.getCurrentSemester();
@@ -90,9 +94,9 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         // Gửi toàn bộ danh sách Keys vào Lua Script trong 1 lần thực thi
         redisTemplate.execute(
                 updateScoreScript,
-                leaderboardKeys,                           // Danh sách KEYS
-                member,                                    // ARGV[1]
-                String.valueOf(scaledAddedPoints)          // ARGV[2]
+                leaderboardKeys, // Danh sách KEYS
+                member, // ARGV[1]
+                String.valueOf(scaledAddedPoints) // ARGV[2]
         );
     }
 
@@ -114,9 +118,11 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         redisTemplate.delete(leaderboardKey);
 
         // Lấy dữ liệu đã được gom nhóm tổng sẵn từ PostgreSQL
-        List<LeaderboardAggregation> dbData = pointHistoryRepository.getAggregatedPointsForRebuild(subjectId, semesterId);
+        List<LeaderboardAggregation> dbData = pointHistoryRepository.getAggregatedPointsForRebuild(subjectId,
+                semesterId);
 
-        if (dbData.isEmpty()) return;
+        if (dbData.isEmpty())
+            return;
 
         // Chuẩn bị danh sách Insert hàng loạt
         Set<ZSetOperations.TypedTuple<String>> tuplesToInsert = new HashSet<>();
@@ -127,15 +133,8 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             // Xử lý điểm
             long scaledPoints = Math.round(row.getTotalPoints() * 100.0);
 
-            // TODO
-            // Nên lấy báo Zone mặc định làm hằng số nếu muốn kết quả đồng bộ ở mọi zone
-            // Hiện tại, systemDefault() sẽ cho kết quả khác nhau ở các zone khác nhau.
-
-            // Chuyển LocalDateTime sang Milliseconds
-            long lastEventMs = row.getLastEventTime()
-                    .atZone(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli();
+            // Chuyển Instant sang Milliseconds
+            long lastEventMs = row.getLastEventTime().toEpochMilli();
 
             // Tính phân số thời gian
             double timeFraction = (double) (Time.MAX_TIME_MS - lastEventMs) / (double) Time.MAX_TIME_MS;
@@ -160,11 +159,10 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         Long currentSemesterId = currentSemester.getId();
 
         List<String> targetKeys = new ArrayList<>();
-
-        targetKeys.add(RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.ALL_TIME, null, null));
         targetKeys.add(RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SEMESTER, currentSemesterId, null));
         if (event.subjectId() != null) {
-            targetKeys.add(RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SUBJECT, currentSemesterId, event.subjectId()));
+            targetKeys.add(
+                    RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SUBJECT, currentSemesterId, event.subjectId()));
         }
 
         // Giao tiếp với Redis ĐÚNG 1 LẦN DUY NHẤT
@@ -174,27 +172,27 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
     @Override
     public void scheduleOldSemesterCleanup(Long oldSemesterId) {
-    // Pattern tìm kiếm: "leaderboard:semester:{oldSemesterId}*"
-    // Nó sẽ bao trùm cả BXH Semester và tất cả BXH Subject của kỳ đó
-    String pattern = "leaderboard:semester:" + oldSemesterId + "*";
+        // Pattern tìm kiếm: "leaderboard:semester:{oldSemesterId}*"
+        // Nó sẽ bao trùm cả BXH Semester và tất cả BXH Subject của kỳ đó
+        String pattern = "leaderboard:semester:" + oldSemesterId + "*";
 
-    // BẮT BUỘC dùng SCAN thay vì KEYS để không làm treo Redis
-    ScanOptions options = ScanOptions.scanOptions().match(pattern).count(100).build();
+        // BẮT BUỘC dùng SCAN thay vì KEYS để không làm treo Redis
+        ScanOptions options = ScanOptions.scanOptions().match(pattern).count(100).build();
 
-    redisTemplate.execute((RedisCallback<Void>) connection -> {
+        redisTemplate.execute((RedisCallback<Void>) connection -> {
 
-        try (Cursor<byte[]> cursor = connection.keyCommands().scan(options)) {
+            try (Cursor<byte[]> cursor = connection.keyCommands().scan(options)) {
 
-            while (cursor.hasNext()) {
-                byte[] key = cursor.next();
+                while (cursor.hasNext()) {
+                    byte[] key = cursor.next();
 
-                // 30 ngày = 30 x 24 x 60 x 60 = 2.592.000 giây
-                connection.keyCommands().expire(key, 2592000L);
+                    // 30 ngày = 30 x 24 x 60 x 60 = 2.592.000 giây
+                    connection.keyCommands().expire(key, 2592000L);
+                }
+
             }
-
-        }
-        return null;
-    });
-}
+            return null;
+        });
+    }
 
 }
