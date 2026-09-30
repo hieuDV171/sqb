@@ -21,8 +21,7 @@ public class Conversation {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

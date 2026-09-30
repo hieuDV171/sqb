@@ -66,7 +66,7 @@ public class ElasticsearchIndexManager {
                 // Nhóm lọc chính xác (Filter / Exact Match)
                 .properties("student_lecturer_code", p -> p.keyword(k -> k))
                 .properties("email", p -> p.keyword(k -> k))
-                .properties("faculty", p -> p.keyword(k -> k))
+                .properties("school_faculty", p -> p.keyword(k -> k))
                 .properties("major", p -> p.keyword(k -> k))
                 .properties("role", p -> p.keyword(k -> k))
                 // Nhóm tính điểm độ liên quan (Boosting / Scoring)

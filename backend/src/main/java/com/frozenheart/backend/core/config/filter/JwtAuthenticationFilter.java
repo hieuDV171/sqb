@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -58,6 +59,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     authenticationToken.setDetails(jwtPayload);
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+                    // Bổ sung danh tính user vào MDC để tương quan log
+                    if (jwtPayload.getUserId() != null) {
+                        MDC.put("userId", String.valueOf(jwtPayload.getUserId()));
+                    }
+                    if (username != null) {
+                        MDC.put("username", username);
+                    }
                 }
             }
         } catch (Exception _) {

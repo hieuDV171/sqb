@@ -8,11 +8,12 @@ import lombok.Builder;
 
 @Builder
 public record ProposeSessionResponse(
-                Long sessionId,
-                String sessionCode,
-                Long subjectId,
-                int questionCount,
-                SessionStatus status,
-                Instant createdAt) {
+        Long sessionId,
+        String sessionCode,
+        Long subjectId,
+        int questionCount,
+        SessionStatus status,
+        Instant createdAt
+    ) {
 
 }

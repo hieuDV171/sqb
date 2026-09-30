@@ -2,6 +2,13 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import humps from "humps";
 import type { GlobalResponse } from "../types/response.types";
 import { useAuthStore } from "../stores/useAuthStore";
+import { toast } from "../stores/useToastStore";
+
+declare module "axios" {
+    export interface AxiosRequestConfig {
+        skipToast?: boolean;
+    }
+}
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
 
@@ -53,10 +60,9 @@ axiosClient.interceptors.response.use(
         const originalRequest = error.config;
         const formattedError = error.response?.data ? humps.camelizeKeys(error.response.data) : error;
 
-        // Nếu lỗi 401 (Unauthorized) và request này chưa từng retry
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // 1. Xử lý 401 (Unauthorized) - Silent Refresh Token
+        if (error.response?.status === 401 && !originalRequest?._retry) {
             if (isRefreshing) {
-                // Nếu đang trong quá trình refresh token, cho request này vào hàng chờ (Queue)
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 })
@@ -75,6 +81,7 @@ axiosClient.interceptors.response.use(
             if (!currentRefreshToken) {
                 isRefreshing = false;
                 useAuthStore.getState().logout();
+                toast.warning("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.", "Hết phiên đăng nhập");
                 return Promise.reject(formattedError);
             }
 
@@ -110,8 +117,8 @@ axiosClient.interceptors.response.use(
                 return axiosClient(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError, null);
-                // Refresh token cũng đã hết hạn hoặc bị thu hồi -> Bắt buộc Đăng xuất
                 useAuthStore.getState().logout();
+                toast.warning("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.", "Hết phiên đăng nhập");
 
                 if (
                     typeof window !== "undefined" &&
@@ -126,8 +133,28 @@ axiosClient.interceptors.response.use(
             }
         }
 
+        // 2. Tự động hiển thị Toast Error cho các mã lỗi HTTP khác nếu không cấu hình skipToast
+        if (!originalRequest?.skipToast) {
+            const status = error.response?.status;
+            const message = formattedError?.message || (typeof formattedError === 'string' ? formattedError : null);
+
+            if (!status) {
+                // Network error / Connection refused
+                toast.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.", "Lỗi kết nối");
+            } else if (status === 400) {
+                toast.error(message || "Yêu cầu không hợp lệ. Vui lòng kiểm tra lại thông tin.", "Lỗi dữ liệu (400)");
+            } else if (status === 403) {
+                toast.error(message || "Bạn không có quyền thực hiện thao tác này.", "Từ chối truy cập (403)");
+            } else if (status === 404) {
+                // Chỉ hiển thị toast 404 nếu có message cụ thể từ backend
+                if (message) {
+                    toast.warning(message, "Không tìm thấy dữ liệu (404)");
+                }
+            } else if (status >= 500) {
+                toast.error(message || "Máy chủ gặp sự cố xử lý. Vui lòng thử lại sau.", "Lỗi hệ thống (500)");
+            }
+        }
+
         return Promise.reject(formattedError);
     },
 );
-
-

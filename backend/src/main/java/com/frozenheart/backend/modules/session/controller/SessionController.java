@@ -1,5 +1,7 @@
 package com.frozenheart.backend.modules.session.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,10 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
-import com.frozenheart.backend.modules.session.dto.MySubmissionsResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
+import com.frozenheart.backend.modules.session.dto.SubjectResponse;
+import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 import com.frozenheart.backend.modules.session.service.SessionService;
 
 import jakarta.validation.Valid;
@@ -39,14 +42,20 @@ public class SessionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(GlobalResponse.success(response));
     }
 
+    @GetMapping("/my-enrolled-subjects")
+    public ResponseEntity<GlobalResponse<List<SubjectResponse>>> getMyEnrolledSubjects() {
+        List<SubjectResponse> response = sessionService.getMyEnrolledSubjects();
+        return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
     @GetMapping("/my-submissions")
-    public ResponseEntity<GlobalResponse<MySubmissionsResponse>> getMySubmissions(
+    public ResponseEntity<GlobalResponse<SubmissionsResponse>> getMySubmissions(
             @RequestParam(required = false) Long after,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false, name = "subject_id") Long subjectId,
             @RequestParam(required = false) SessionStatus status) {
 
-        MySubmissionsResponse response = sessionService.getMySubmissions(after, limit, subjectId, status);
+        SubmissionsResponse response = sessionService.getMySubmissions(after, limit, subjectId, status);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

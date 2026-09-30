@@ -8,34 +8,34 @@ import org.springframework.stereotype.Service;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
+import com.frozenheart.backend.modules.ai.dto.BtpropSidecarRequest;
+import com.frozenheart.backend.modules.ai.dto.BtpropSidecarResponse;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Thuật toán kiểm tra ảo giác BTPROP (Belief Tree Propagation)
+ * Kết nối tới Python AI Sidecar (FastAPI) để dựng cây niềm tin và suy luận xác suất Markov.
  * Dựa trên bài báo khoa học NAACL 2025:
  * "A Probabilistic Framework for LLM Hallucination Detection via Belief Tree Propagation"
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class BtpropHallucinationCheckerService {
 
-    /**
-     * TODO: Hiện tại vẫn đang viết bừa, thuật toán chưa được cài đặt chuẩn xác
-     */
-    public AiRefineResponse.BtpropAuditDto audit(Question originalQuestion, AiRefineResponse.SuggestedQuestionDto suggested) {
-        log.info("Running BTPROP Belief Tree Propagation audit for question ID: {}", originalQuestion != null ? originalQuestion.getId() : "null");
+    private final AiSidecarClientService aiSidecarClientService;
 
-        List<AiRefineResponse.ViolationDto> violations = new ArrayList<>();
-        int beliefTreeDepth = 2;
-        double confidenceScore = 0.95;
-        boolean isHallucinated = false;
+    public AiRefineResponse.BtpropAuditDto audit(Question originalQuestion, AiRefineResponse.SuggestedQuestionDto suggested) {
+        log.info("Running BTPROP Belief Tree Propagation audit for question ID: {}", 
+                originalQuestion != null ? originalQuestion.getId() : "null");
 
         if (suggested == null) {
             return AiRefineResponse.BtpropAuditDto.builder()
                     .isHallucinated(true)
                     .confidenceScore(0.0)
-                    .beliefTreeDepth(beliefTreeDepth)
+                    .beliefTreeDepth(0)
                     .violations(List.of(AiRefineResponse.ViolationDto.builder()
                             .type("EMPTY_SUGGESTION")
                             .nodeStatement("Phản hồi AI trống")
@@ -45,62 +45,95 @@ public class BtpropHallucinationCheckerService {
                     .build();
         }
 
-        // Kiểm tra nếu AI từ chối sửa ảnh
+        // Nếu AI từ chối sinh câu hỏi (ví dụ người dùng yêu cầu sửa ảnh)
         if (suggested.refusalReason() != null && !suggested.refusalReason().isBlank()) {
             return AiRefineResponse.BtpropAuditDto.builder()
                     .isHallucinated(false)
                     .confidenceScore(1.0)
-                    .beliefTreeDepth(1)
+                    .beliefTreeDepth(0)
                     .violations(List.of())
                     .build();
         }
 
-        // Kiểm tra tính nhất quán của đáp án đúng (Key Answer Consistency Node)
-        if (originalQuestion != null && originalQuestion.getOptions() != null && suggested.options() != null) {
-            String originalCorrectKey = findCorrectKey(originalQuestion.getOptions());
-            String suggestedCorrectKey = findCorrectKey(suggested.options());
-
-            if (originalCorrectKey != null && suggestedCorrectKey != null && !originalCorrectKey.equalsIgnoreCase(suggestedCorrectKey)) {
-                violations.add(AiRefineResponse.ViolationDto.builder()
-                        .type("ANSWER_KEY_FLIP")
-                        .nodeStatement("Node 1.1: Mâu thuẫn khóa đáp án đúng")
-                        .detail("Đáp án đúng gốc là [" + originalCorrectKey + "] nhưng AI đảo thành [" + suggestedCorrectKey + "] mà không có giải thích hợp lý.")
-                        .severity("HIGH")
-                        .build());
-                confidenceScore -= 0.35;
+        // 1. Trích xuất ngữ cảnh Môn học & Chủ đề để truyền vào Dynamic Prompt
+        String subject = "Khoa học máy tính";
+        String topic = null;
+        if (originalQuestion != null) {
+            if (originalQuestion.getSession() != null && originalQuestion.getSession().getSubject() != null) {
+                subject = originalQuestion.getSession().getSubject().getName();
+            }
+            if (originalQuestion.getTopic() != null) {
+                topic = originalQuestion.getTopic().getName();
             }
         }
 
-        // 3. Kiểm tra tính đầy đủ của nội dung (Content Completeness Node)
-        if (suggested.content() == null || suggested.content().trim().length() < 10) {
-            violations.add(AiRefineResponse.ViolationDto.builder()
-                    .type("CONTENT_DECAY")
-                    .nodeStatement("Node 1.2: Suy thoái mệnh đề câu hỏi")
-                    .detail("Nội dung câu hỏi quá ngắn hoặc thiếu thông tin cốt lõi.")
-                    .severity("HIGH")
-                    .build());
-            confidenceScore -= 0.40;
+        // 2. Chuyển đổi danh sách options sang DTO của AI Sidecar (Hỗ trợ nhiều lựa chọn & nhiều đáp án đúng)
+        List<BtpropSidecarRequest.OptionDto> sidecarOptions = new ArrayList<>();
+        if (suggested.options() != null) {
+            for (QuestionOption opt : suggested.options()) {
+                sidecarOptions.add(BtpropSidecarRequest.OptionDto.builder()
+                        .key(opt.getKey() != null ? opt.getKey() : "")
+                        .text(opt.getText() != null ? opt.getText() : "")
+                        .isCorrect(Boolean.TRUE.equals(opt.getIsCorrect()))
+                        .mediaUrl(opt.getMediaUrl())
+                        .mediaId(opt.getMediaId())
+                        .build());
+            }
         }
 
-        confidenceScore = Math.max(0.0, Math.min(1.0, confidenceScore));
-        if (confidenceScore < 0.65 || violations.stream().anyMatch(v -> "HIGH".equalsIgnoreCase(v.severity()))) {
-            isHallucinated = true;
+        BtpropSidecarRequest request = BtpropSidecarRequest.builder()
+                .subject(subject)
+                .topic(topic)
+                .content(suggested.content() != null ? suggested.content() : "")
+                .options(sidecarOptions)
+                .explanation(suggested.explanation() != null ? suggested.explanation() : "")
+                .fastMode(false)
+                .build();
+
+        // 3. Gọi sang AI Sidecar để thẩm định qua Cây Niềm Tin
+        BtpropSidecarResponse response = aiSidecarClientService.auditQuestion(request);
+
+        // Fallback an toàn (Graceful Degradation): Nếu AI Sidecar gặp lỗi hoặc timeout, không chặn đứng luồng làm việc
+        if (response == null || "error".equalsIgnoreCase(response.status()) || "unverified".equalsIgnoreCase(response.status())) {
+            log.warn("[BTProp] AI Sidecar phản hồi không sẵn sàng. Fallback sang cảnh báo UNVERIFIED.");
+            return fallbackAudit(response);
+        }
+
+        List<AiRefineResponse.ViolationDto> violations = new ArrayList<>();
+        if (response.violations() != null) {
+            for (BtpropSidecarResponse.ViolationDto v : response.violations()) {
+                violations.add(AiRefineResponse.ViolationDto.builder()
+                        .type(v.type())
+                        .nodeStatement(v.nodeStatement())
+                        .detail(v.detail())
+                        .severity(v.severity())
+                        .build());
+            }
         }
 
         return AiRefineResponse.BtpropAuditDto.builder()
-                .isHallucinated(isHallucinated)
-                .confidenceScore(confidenceScore)
-                .beliefTreeDepth(beliefTreeDepth)
+                .isHallucinated(response.isHallucinated())
+                .confidenceScore(response.confidenceScore())
+                .beliefTreeDepth(response.beliefTreeDepth())
                 .violations(violations)
                 .build();
     }
 
-    private String findCorrectKey(List<QuestionOption> options) {
-        if (options == null) return null;
-        return options.stream()
-                .filter(opt -> Boolean.TRUE.equals(opt.getIsCorrect()))
-                .map(QuestionOption::getKey)
-                .findFirst()
-                .orElse(null);
+    private AiRefineResponse.BtpropAuditDto fallbackAudit(BtpropSidecarResponse response) {
+        String detail = (response != null && response.issues() != null && !response.issues().isEmpty())
+                ? String.join("; ", response.issues())
+                : "Không thể kết nối đến AI Sidecar BTProp hoặc Sidecar chưa cấu hình API Key. Cần giảng viên tự rà soát.";
+
+        return AiRefineResponse.BtpropAuditDto.builder()
+                .isHallucinated(false)
+                .confidenceScore(0.5)
+                .beliefTreeDepth(0)
+                .violations(List.of(AiRefineResponse.ViolationDto.builder()
+                        .type("UNVERIFIED")
+                        .nodeStatement("Dịch vụ kiểm chứng chưa hoàn tất")
+                        .detail(detail)
+                        .severity("LOW")
+                        .build()))
+                .build();
     }
 }

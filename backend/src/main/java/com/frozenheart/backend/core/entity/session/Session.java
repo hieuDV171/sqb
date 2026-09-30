@@ -22,8 +22,7 @@ public class Session {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     // "Mã môn"_"Mã tác giả"_"Timestamp"_"sessionId"
     @Column(comment = "subjectCode_authorCode_timestampId_sessionId")

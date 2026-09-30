@@ -19,7 +19,7 @@ import java.time.Instant;
 @Builder
 public class BadgeResponseDto {
 
-    private Long id;
+    private Long badgeId;
     private String name;
     private String description;
     private BadgeTier badgeTier;

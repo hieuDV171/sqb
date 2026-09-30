@@ -35,6 +35,16 @@ dependencies {
 
     // mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    // Actuator & Prometheus Metrics
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    // Distributed Tracing (OpenTelemetry Bridge + OTLP Exporter)
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
+
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
@@ -103,3 +113,30 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.named('bootRun') {
+    systemProperty 'spring.profiles.active', 'dev'
+    systemProperty 'spring.output.ansi.enabled', 'always'
+    systemProperty 'file.encoding', 'UTF-8'
+
+    jvmArgs = [
+        '-Dfile.encoding=UTF-8',
+        '-Dsun.stdout.encoding=UTF-8',
+        '-Dsun.stderr.encoding=UTF-8'
+    ]
+
+    // Tự động load tất cả biến môi trường từ file .env
+    def envFile = file('.env')
+    if (envFile.exists()) {
+        envFile.readLines().each { line ->
+            line = line.trim()
+            if (line && !line.startsWith('#') && line.contains('=')) {
+                def (key, value) = line.split('=', 2)
+                value = value.trim().replaceAll('^["\']|["\']$', '')
+                environment key.trim(), value
+            }
+        }
+    }
+}
+
+

@@ -98,15 +98,16 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         return ProfileResponse.builder()
-                .id(userProfile.getUser().getId())
+                .userId(userProfile.getUser().getId())
                 .fullName(userProfile.getFullName())
                 .avatarUrl(userProfile.getAvatarUrl())
                 .coverUrl(userProfile.getCoverUrl())
                 .frameUrl(userProfile.getAvatarFrameUrl())
                 .gender(userProfile.getGender())
                 .bio(userProfile.getBio())
-                .faculty(userProfile.getFaculty())
+                .schoolFaculty(userProfile.getSchoolFaculty())
                 .major(userProfile.getMajor())
+                .className(userProfile.getClassName())
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
                 .timezone(userProfile.getTimezone())
@@ -203,7 +204,7 @@ public class UserServiceImpl implements UserService {
         boolean profileCompleted = userProfile.isProfileCompleted();
 
         return ProfileResponse.builder()
-                .id(userProfile.getUser().getId())
+                .userId(userProfile.getUser().getId())
                 .email(userProfile.getUser().getEmail())
                 .fullName(userProfile.getFullName())
                 .avatarUrl(userProfile.getAvatarUrl())
@@ -212,8 +213,9 @@ public class UserServiceImpl implements UserService {
                 .gender(userProfile.getGender())
                 .dateOfBirth(userProfile.getDateOfBirth())
                 .bio(userProfile.getBio())
-                .faculty(userProfile.getFaculty())
+                .schoolFaculty(userProfile.getSchoolFaculty())
                 .major(userProfile.getMajor())
+                .className(userProfile.getClassName())
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
                 .timezone(userProfile.getTimezone())
@@ -257,7 +259,7 @@ public class UserServiceImpl implements UserService {
         userProfile.setCoverUrl("");
         userProfile.setAvatarFrameUrl("");
         userProfile.setBio("");
-        userProfile.setFaculty("");
+        userProfile.setSchoolFaculty("");
         userProfile.setMajor("");
         userProfile.setStudentLecturerCode("");
         userProfile.setTotalProposedQuestion(0);

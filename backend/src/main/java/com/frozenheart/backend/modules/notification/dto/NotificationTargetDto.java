@@ -13,7 +13,7 @@ public class NotificationTargetDto {
 
     private NotificationTargetType type;
 
-    private Long id;
+    private Long targetId;
 
     private String url;
 }

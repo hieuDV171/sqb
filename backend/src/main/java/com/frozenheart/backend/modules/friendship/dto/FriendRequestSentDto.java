@@ -16,7 +16,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 public class FriendRequestSentDto {
-    private AuthorDto requestee;
+    private AuthorDto receiver;
     private FriendshipStatus status;
 
     private Instant createdAt;

@@ -6,7 +6,7 @@ import lombok.Builder;
 
 @Builder
 public record AiChatSessionSummaryResponse(
-                Long id,
+                Long chatSessionId,
                 String sessionId,
                 String title,
                 Instant createdAt,

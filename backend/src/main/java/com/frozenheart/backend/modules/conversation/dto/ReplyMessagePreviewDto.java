@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 public class ReplyMessagePreviewDto {
 
-    private Long id;
+    private Long messageId;
 
     private Long senderId;
 

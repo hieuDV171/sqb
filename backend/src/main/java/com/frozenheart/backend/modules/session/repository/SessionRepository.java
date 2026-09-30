@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
-import com.frozenheart.backend.modules.session.dto.MySubmissionProjection;
+import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
 
 @Repository
 public interface SessionRepository extends JpaRepository<Session, Long> {
@@ -22,6 +22,9 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
         @Query("""
                         SELECT
                             s.id AS sessionId,
+                            s.sessionCode AS sessionCode,
+                            s.title AS title,
+                            s.content AS content,
                             subject.id AS subjectId,
                             subject.name AS subjectName,
                             subject.code AS subjectCode,
@@ -38,6 +41,9 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                           AND (:after IS NULL OR s.id < :after)
                         GROUP BY
                             s.id,
+                            s.sessionCode,
+                            s.title,
+                            s.content,
                             subject.id,
                             subject.name,
                             subject.code,
@@ -46,7 +52,7 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                             s.commentCount
                         ORDER BY s.id DESC
                         """)
-        List<MySubmissionProjection> findMySubmissions(
+        List<SubmissionProjection> findSubmissions(
                         @Param("proposerId") Long proposerId,
                         @Param("subjectId") Long subjectId,
                         @Param("status") SessionStatus status,

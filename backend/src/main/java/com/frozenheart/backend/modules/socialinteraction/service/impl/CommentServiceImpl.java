@@ -99,6 +99,13 @@ public class CommentServiceImpl implements CommentService {
         return mapToCommentResponseDto(saved, Map.of(), false);
     }
 
+    /**
+     * Lấy danh sách bình luận (hỗ trợ phân trang con trỏ Cursor-based Pagination).
+     * Hệ thống duy trì cả 2 chế độ sắp xếp:
+     * - 'newest': xem các phản hồi mới nhất (phù hợp cập nhật nhanh).
+     * - 'oldest': đọc luồng thảo luận bài tập theo trình tự thời gian (Chronological),
+     *             giúp người học nắm bắt mạch tư duy giải bài từ đầu đến cuối một cách tự nhiên.
+     */
     @Override
     @Transactional(readOnly = true)
     public CursorResponse<CommentResponseDto> getComments(
@@ -295,7 +302,7 @@ public class CommentServiceImpl implements CommentService {
                 profile = userProfileRepository.findByUserId(comment.getUser().getId()).orElse(null);
             }
             authorDto = AuthorDto.builder()
-                    .id(comment.getUser().getId())
+                    .userId(comment.getUser().getId())
                     .fullName(profile != null ? profile.getFullName() : comment.getUser().getEmail())
                     .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
                     .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)

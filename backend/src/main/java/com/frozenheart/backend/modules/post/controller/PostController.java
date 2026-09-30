@@ -62,9 +62,9 @@ public class PostController {
     }
 
     @DeleteMapping("/posts/{id}")
-    public ResponseEntity<GlobalResponse<Void>> deletePost(@PathVariable Long id) {
-        postService.deletePost(id);
-        return ResponseEntity.ok(GlobalResponse.success());
+    public ResponseEntity<GlobalResponse<DeletePostResponseDto>> deletePost(@PathVariable Long id) {
+        DeletePostResponseDto response = postService.deletePost(id);
+        return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
     @GetMapping("/video-posts")

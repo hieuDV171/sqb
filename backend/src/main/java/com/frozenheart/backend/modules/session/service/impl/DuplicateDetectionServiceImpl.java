@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.Question;
-import com.frozenheart.backend.modules.embedding.service.EmbeddingClientService;
+import com.frozenheart.backend.modules.ai.service.AiSidecarClientService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 
@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DuplicateDetectionServiceImpl implements DuplicateDetectionService {
 
     private final QuestionRepository questionRepository;
-    private final EmbeddingClientService embeddingClientService;
+    private final AiSidecarClientService aiSidecarClientService;
 
     @Async
     @Transactional
@@ -39,7 +39,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
                 .map(this::buildFullTextForEmbedding)
                 .toList();
 
-        List<float[]> embeddings = embeddingClientService.getBatchTextEmbeddings(fullTexts);
+        List<float[]> embeddings = aiSidecarClientService.getBatchTextEmbeddings(fullTexts);
 
         int questionsSize = questions.size();
         int embeddingSize = embeddings.size();

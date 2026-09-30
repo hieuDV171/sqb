@@ -107,7 +107,7 @@ public SemesterResponse activateSemester(Long semesterId) {
 
     private SemesterResponse mapToResponse(Semester s) {
         return SemesterResponse.builder()
-                .id(s.getId())
+                .semesterId(s.getId())
                 .name(s.getName())
                 .active(s.isActive())
                 .isFinalize(s.isFinalized())

@@ -484,7 +484,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
                 .bio(up.getBio())
                 .avatarUrl(up.getAvatarUrl())
                 .avatarFrameUrl(up.getAvatarFrameUrl())
-                .faculty(up.getFaculty())
+                .schoolFaculty(up.getSchoolFaculty())
                 .major(up.getMajor())
                 .role(up.getUser() != null ? up.getUser().getRole() : null)
                 .totalProposedQuestions(up.getTotalProposedQuestion())

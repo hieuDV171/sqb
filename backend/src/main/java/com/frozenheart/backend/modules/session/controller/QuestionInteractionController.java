@@ -9,14 +9,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionRatingsResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
 import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RateQuestionResponse;
-import com.frozenheart.backend.modules.session.dto.UserQuestionsResponse;
+import com.frozenheart.backend.modules.session.dto.SessionQuestionsResponse;
+import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 import com.frozenheart.backend.modules.session.service.QuestionInteractionService;
+import com.frozenheart.backend.modules.session.service.SessionService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,15 +29,25 @@ import lombok.RequiredArgsConstructor;
 public class QuestionInteractionController {
 
     private final QuestionInteractionService questionInteractionService;
+    private final SessionService sessionService;
 
-    @GetMapping("/users/{userId}/questions")
-    public ResponseEntity<GlobalResponse<UserQuestionsResponse>> getUserProposedQuestions(
+    @GetMapping("/users/{userId}/sessions")
+    public ResponseEntity<GlobalResponse<SubmissionsResponse>> getUserProposedSessions(
             @PathVariable Long userId,
             @RequestParam(required = false) Long after,
             @RequestParam(required = false) Integer limit,
-            @RequestParam(required = false, name = "subject_id") Long subjectId) {
+            @RequestParam(required = false, name = "subject_id") Long subjectId,
+            @RequestParam(required = false) SessionStatus status) {
 
-        UserQuestionsResponse response = questionInteractionService.getUserProposedQuestions(userId, after, limit, subjectId);
+        SubmissionsResponse response = sessionService.getUserSubmissions(userId, after, limit, subjectId, status);
+        return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
+    @GetMapping("/sessions/{sessionId}/questions")
+    public ResponseEntity<GlobalResponse<SessionQuestionsResponse>> getSessionQuestions(
+            @PathVariable Long sessionId) {
+
+        SessionQuestionsResponse response = questionInteractionService.getSessionQuestions(sessionId);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

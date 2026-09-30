@@ -58,6 +58,8 @@ import com.frozenheart.backend.modules.session.repository.QuestionEditLogReposit
 
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
 
+import com.frozenheart.backend.core.util.MetricService;
+
 import com.frozenheart.backend.core.entity.activityfeed.ActionType;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
@@ -95,6 +97,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     private final NotificationRepository notificationRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final BadgeService badgeService;
+    private final MetricService metricService;
 
     @Override
     @Transactional(readOnly = true)
@@ -229,7 +232,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                         : actorNameMap.getOrDefault(log.getActor().getId(), "Giảng viên");
 
                 editLogDto = SessionDetailReviewResponse.QuestionEditLogDto.builder()
-                        .id(log.getId())
+                        .editLogId(log.getId())
                         .actorType(log.getActorType() != null ? log.getActorType().name() : "SYSTEM")
                         .actorName(actorName)
                         .status(log.getStatus() != null ? log.getStatus().name() : "PROPOSED")
@@ -292,6 +295,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
 
         checkAndAutoResolveSessions(sessionIds, lecturer);
+        metricService.incrementCounter("sqb.exam.questions.reviewed", questions.size(), "decision", "approved");
 
         return ApproveQuestionsResponse.builder()
                 .pointsEarned(questions.size() * Point.APPROVED_QUESTION.getPoints())
@@ -325,6 +329,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
 
         checkAndAutoResolveSessions(sessionIds, lecturer);
+        metricService.incrementCounter("sqb.exam.questions.reviewed", questions.size(), "decision", "rejected");
     }
 
     @Override

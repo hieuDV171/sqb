@@ -21,7 +21,9 @@ import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionSource;
+import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
+import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswer;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswerId;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
@@ -34,8 +36,9 @@ import com.frozenheart.backend.modules.session.dto.QuestionRatingsResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
 import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RateQuestionResponse;
-import com.frozenheart.backend.modules.session.dto.UserQuestionsResponse;
+import com.frozenheart.backend.modules.session.dto.SessionQuestionsResponse;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
+import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.session.repository.UserAnswerRepository;
 import com.frozenheart.backend.modules.session.repository.UserRatingRepository;
 import com.frozenheart.backend.modules.session.service.QuestionInteractionService;
@@ -48,29 +51,45 @@ import lombok.RequiredArgsConstructor;
 public class QuestionInteractionServiceImpl implements QuestionInteractionService {
 
         private final QuestionRepository questionRepository;
+        private final SessionRepository sessionRepository;
         private final UserAnswerRepository userAnswerRepository;
         private final UserRatingRepository userRatingRepository;
         private final UserRepository userRepository;
 
         @Override
         @Transactional(readOnly = true)
-        public UserQuestionsResponse getUserProposedQuestions(Long userId, Long after, Integer limit, Long subjectId) {
+        public SessionQuestionsResponse getSessionQuestions(Long sessionId) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-                int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
-                Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                List<Question> questions = questionRepository.findUserQuestionsWithCursor(userId,
-                                SessionStatus.RESOLVED, subjectId, after, pageable);
+                Session session = sessionRepository.findByIdFetchSubject(sessionId)
+                                .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
-                boolean hasNext = false;
-                Long nextCursor = null;
-
-                if (questions.size() > pageSize) {
-                        hasNext = true;
-                        questions = questions.subList(0, pageSize);
-                        nextCursor = questions.getLast().getId();
+                if (session.getStatus() != SessionStatus.RESOLVED) {
+                        if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
+                                throw new AppException(ResponseCode.ACCESS_DENIED, "Phiên đề xuất chưa được phê duyệt");
+                        }
                 }
 
+                List<Question> questions = questionRepository.findQuestionsBySessionId(sessionId);
+                List<SessionQuestionsResponse.PracticeQuestionDto> questionDtos = mapQuestionsToDtos(questions, currentUserId);
+
+                Subject subject = session.getSubject();
+
+                return SessionQuestionsResponse.builder()
+                                .sessionId(session.getId())
+                                .sessionCode(session.getSessionCode())
+                                .title(session.getTitle())
+                                .content(session.getContent())
+                                .subjectId(subject != null ? subject.getId() : null)
+                                .subjectName(subject != null ? subject.getName() : null)
+                                .subjectCode(subject != null ? subject.getCode() : null)
+                                .createdAt(session.getCreatedAt())
+                                .totalQuestions(questions.size())
+                                .questions(questionDtos)
+                                .build();
+        }
+
+        private List<SessionQuestionsResponse.PracticeQuestionDto> mapQuestionsToDtos(List<Question> questions, Long currentUserId) {
                 List<Long> questionIds = questions.stream().map(Question::getId).toList();
 
                 final Set<Long> answeredQIds = questionIds.isEmpty() ? Set.of()
@@ -84,7 +103,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                                 .map(r -> r.getRatedQuestion().getId())
                                                 .collect(Collectors.toSet());
 
-                List<UserQuestionsResponse.UserQuestionItemDto> items = questions.stream().map(q -> {
+                return questions.stream().map(q -> {
                         List<String> imageUrls = q.getOwnedMedias() != null ? q.getOwnedMedias().stream()
                                         .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
                                         .map(QuestionMedia::getUrl)
@@ -93,7 +112,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                         boolean answered = answeredQIds.contains(q.getId());
                         boolean rated = ratedQIds.contains(q.getId());
 
-                        UserQuestionsResponse.MyInteractionDto myInteraction = UserQuestionsResponse.MyInteractionDto
+                        SessionQuestionsResponse.MyInteractionDto myInteraction = SessionQuestionsResponse.MyInteractionDto
                                         .builder()
                                         .answered(answered)
                                         .rated(rated)
@@ -104,8 +123,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         .map(QuestionOption::getKey)
                                         .toList() : List.of();
 
-                        UserQuestionsResponse.HiddenFieldsDto hiddenFields = answered
-                                        ? UserQuestionsResponse.HiddenFieldsDto.builder()
+                        SessionQuestionsResponse.HiddenFieldsDto hiddenFields = answered
+                                        ? SessionQuestionsResponse.HiddenFieldsDto.builder()
                                                         .correctAnswer(String.join(", ", correctKeys))
                                                         .explanation(q.getExplanation())
                                                         .build()
@@ -123,7 +142,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         }).toList()
                                         : List.of();
 
-                        return UserQuestionsResponse.UserQuestionItemDto.builder()
+                        return SessionQuestionsResponse.PracticeQuestionDto.builder()
                                         .questionId(q.getId())
                                         .questionCode(q.getQuestionCode())
                                         .content(q.getContent())
@@ -139,14 +158,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         .ratingCount(q.getRatingCount() != null ? q.getRatingCount() : 0)
                                         .build();
                 }).toList();
-
-                return UserQuestionsResponse.builder()
-                                .items(items)
-                                .pagination(CursorPaginationDto.builder()
-                                                .after(nextCursor)
-                                                .hasNext(hasNext)
-                                                .build())
-                                .build();
         }
 
         @Override

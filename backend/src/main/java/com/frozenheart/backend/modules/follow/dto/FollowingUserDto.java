@@ -24,7 +24,7 @@ public class FollowingUserDto {
     private String frameUrl;
 
     private UserRole role;
-    private String faculty;
+    private String schoolFaculty;
     private String code;
 
     private Instant followedAt;

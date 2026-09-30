@@ -30,8 +30,7 @@ public class Post {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @Column(columnDefinition = "TEXT")
     private String content;

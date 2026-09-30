@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'SQB Monitoring'
+    orgId: 1
+    folder: 'SQB Observability'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

@@ -10,6 +10,9 @@ import lombok.Builder;
 @Builder
 public record MySubmissionDetailResponse(
                 Long sessionId,
+                String sessionCode,
+                String title,
+                String content,
                 Long subjectId,
                 String subjectName,
                 String subjectCode,

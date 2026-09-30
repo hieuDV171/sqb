@@ -4,9 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Học viện SQB</title>
+    <script>
+      window.global = window;
+      try {
+        const stored = localStorage.getItem('sqb-theme');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.state?.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      } catch (e) {}
+    </script>
   </head>
-  <body>
+  <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

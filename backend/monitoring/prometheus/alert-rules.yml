@@ -1,0 +1,62 @@
+groups:
+  - name: sqb_backend_alerts
+    rules:
+      # Cảnh báo khi Backend Spring Boot bị sập
+      - alert: BackendServiceDown
+        expr: up{job="sqb-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SQB Backend Service is DOWN"
+          description: "Spring Boot backend instance has been unreachable for more than 1 minute."
+
+      # Cảnh báo khi tỉ lệ lỗi HTTP 5xx vượt quá 2%
+      - alert: HighHttp5xxErrorRate
+        expr: (sum(rate(http_server_requests_seconds_count{status=~"5.."}[2m])) / sum(rate(http_server_requests_seconds_count[2m]))) * 100 > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx Error Rate (> 2%)"
+          description: "More than 2% of HTTP requests are failing with 5xx status codes over the last 2 minutes."
+
+      # Cảnh báo cạn kiệt Connection Pool HikariCP (Đang có thread phải xếp hàng chờ kết nối DB)
+      - alert: HikariConnectionExhaustion
+        expr: hikaricp_connections_pending > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HikariCP Connection Pool Exhausted"
+          description: "Application threads are waiting for a database connection. Potential connection leak or pool size too small."
+
+      # Cảnh báo RAM Heap JVM vượt quá 85%
+      - alert: JvmHighHeapMemoryUsage
+        expr: (sum(jvm_memory_used_bytes{area="heap"}) / sum(jvm_memory_max_bytes{area="heap"})) * 100 > 85
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM Heap Memory Usage High (> 85%)"
+          description: "JVM Heap memory has been above 85% for more than 3 minutes. Potential memory leak."
+
+      # Cảnh báo PostgreSQL Exporter không kết nối được
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL Database is DOWN"
+          description: "Postgres exporter cannot connect to PostgreSQL database."
+
+      # Cảnh báo Redis Exporter không kết nối được
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis Cache is DOWN"
+          description: "Redis exporter cannot connect to Redis instance."

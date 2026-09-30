@@ -28,8 +28,7 @@ public class Question {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     // "Mã môn"_"Mã tác giả"_"question id"
     @Column(comment = "subjectId_authorCode_questionId")

@@ -43,9 +43,9 @@ public class NotificationController {
     }
 
     @PutMapping("/settings/push")
-    public ResponseEntity<GlobalResponse<UpdatePushSettingsResponseDto>> updatePushSettings(
+    public ResponseEntity<GlobalResponse<PushSettingsResponseDto>> updatePushSettings(
             @Valid @RequestBody UpdatePushSettingsRequestDto request) {
-        UpdatePushSettingsResponseDto response = notificationService.updatePushSettings(request);
+        PushSettingsResponseDto response = notificationService.updatePushSettings(request);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 }

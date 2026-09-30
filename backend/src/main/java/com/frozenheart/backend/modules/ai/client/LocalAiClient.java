@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import com.frozenheart.backend.core.constant.Ai;
+import com.frozenheart.backend.modules.ai.constant.Ai;
 
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;

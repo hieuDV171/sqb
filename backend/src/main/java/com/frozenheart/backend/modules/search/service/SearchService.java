@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.search.service;
 
+import com.frozenheart.backend.modules.search.dto.DeleteSavedSearchResponseDto;
 import com.frozenheart.backend.modules.search.dto.GlobalSearchResponseDto;
 import com.frozenheart.backend.modules.search.dto.SavedAndTrendingSearchesResponseDto;
 import com.frozenheart.backend.modules.search.dto.SearchType;
@@ -24,7 +25,7 @@ public interface SearchService {
     /**
      * Xóa 1 từ khóa khỏi lịch sử tìm kiếm cá nhân
      */
-    void deleteSavedSearch(Long id);
+    DeleteSavedSearchResponseDto deleteSavedSearch(Long id);
 
     /**
      * Lưu lịch sử tìm kiếm vào DB & tăng điểm Trending trên Redis

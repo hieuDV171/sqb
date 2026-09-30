@@ -30,13 +30,10 @@ public class PostResponseDto {
     private boolean reactedByMe;
 
     private Instant createdAt;
-
     private Instant updatedAt;
 
     private String lecturerNote;
-
     private Instant lecturerNoteAddedAt;
-
     private AuthorDto notedLecturer;
 
     private Long subjectId;

@@ -16,7 +16,7 @@ public record Game6ActiveSessionResponse(
                 List<Game6QuestionDto> questions) {
         @Builder
         public record Game6QuestionDto(
-                        Long id,
+                        Long questionId,
                         String content,
                         List<QuestionOption> options,
                         String explanation,

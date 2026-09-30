@@ -30,6 +30,15 @@ public class ReactServiceImpl implements ReactService {
     private final InteractionTargetValidator targetValidator;
     private final CounterMetricsService counterMetricsService;
 
+    /**
+     * Xử lý tương tác cảm xúc đa hình (Toggle Reaction) trên các thực thể (Post, Comment, Question...).
+     * Triết lý giáo dục: Hệ thống tuân thủ chuẩn EdTech/LinkedIn, chỉ duy trì 3 cảm xúc tích cực:
+     * - LIKE: Đồng tình / Đánh giá tốt
+     * - LOVE: Tâm đắc / Rất hữu ích
+     * - WOW: Khâm phục / Trầm trồ
+     * Tuyệt đối không chứa cảm xúc tiêu cực (Dislike, Angry) để loại bỏ nỗi sợ bị đánh giá tiêu cực
+     * (Fear of Negative Evaluation), bảo vệ tâm lý người học và thúc đẩy văn hóa chia sẻ tích cực.
+     */
     @Override
     @Transactional
     public ReactResponseDto toggleReact(ReactRequest request) {
@@ -45,7 +54,7 @@ public class ReactServiceImpl implements ReactService {
         Optional<React> existingOpt = reactRepository.findByUserIdAndTargetTypeAndTargetId(
                 currentUserId, targetType, targetId);
 
-        String myReaction = null;
+        String myReaction;
 
         if (existingOpt.isPresent()) {
             React existing = existingOpt.get();

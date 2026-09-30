@@ -82,7 +82,7 @@ public class NotificationServiceImpl implements NotificationService {
 
                         NotificationTargetDto target = NotificationTargetDto.builder()
                                         .type(n.getTargetType())
-                                        .id(n.getTargetId())
+                                        .targetId(n.getTargetId())
                                         .url(n.getTargetUrl())
                                         .build();
 
@@ -157,53 +157,12 @@ public class NotificationServiceImpl implements NotificationService {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
                 UserPushSetting setting = userPushSettingRepository.findById(currentUserId).orElse(null);
-                PushPreferences prefs = (setting != null && setting.getPreferences() != null)
-                                ? setting.getPreferences()
-                                : PushPreferences.createDefault();
-
-                Map<String, PushCategorySettingDto> categories = new LinkedHashMap<>();
-                if (prefs.getCategories() != null) {
-                        for (Map.Entry<PushNotificationType, CategorySetting> entry : prefs.getCategories()
-                                        .entrySet()) {
-                                CategorySetting cs = entry.getValue();
-                                categories.put(entry.getKey().name().toLowerCase(),
-                                                new PushCategorySettingDto(cs.isEnabled(), cs.getDescription()));
-                        }
-                }
-
-                QuietHoursDto quietHoursDto;
-                if (prefs.getQuietHour() != null) {
-                        QuietHour qh = prefs.getQuietHour();
-                        String startTime = qh.getStartTime() != null
-                                        ? qh.getStartTime().format(Time.TIME_FORMATTER_HH_MM)
-                                        : "22:00";
-                        String endTime = qh.getEndTime() != null ? qh.getEndTime().format(Time.TIME_FORMATTER_HH_MM)
-                                        : "07:00";
-                        quietHoursDto = QuietHoursDto.builder()
-                                        .enabled(qh.isEnabled())
-                                        .startTime(startTime)
-                                        .endTime(endTime)
-                                        .build();
-                } else {
-                        quietHoursDto = QuietHoursDto.builder()
-                                        .enabled(false)
-                                        .startTime("22:00")
-                                        .endTime("07:00")
-                                        .build();
-                }
-
-                return PushSettingsResponseDto.builder()
-                                .pushEnabled(prefs.isPushEnabled())
-                                .categories(categories)
-                                .quietHours(quietHoursDto)
-                                .soundEnabled(prefs.isSoundEnabled())
-                                .vibrationEnabled(prefs.isVibrationEnabled())
-                                .build();
+                return mapToPushSettingsResponseDto(setting != null ? setting.getPreferences() : null);
         }
 
         @Override
         @Transactional
-        public UpdatePushSettingsResponseDto updatePushSettings(UpdatePushSettingsRequestDto request) {
+        public PushSettingsResponseDto updatePushSettings(UpdatePushSettingsRequestDto request) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 User currentUser = userRepository.findById(currentUserId)
                                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
@@ -258,9 +217,51 @@ public class NotificationServiceImpl implements NotificationService {
                 setting.setUpdatedAt(Instant.now());
                 userPushSettingRepository.save(setting);
 
-                return UpdatePushSettingsResponseDto.builder()
-                                .pushEnabled(request.isPushEnabled())
-                                .effectiveFrom(Instant.now())
+                return mapToPushSettingsResponseDto(preferences);
+        }
+
+        private PushSettingsResponseDto mapToPushSettingsResponseDto(PushPreferences prefs) {
+                if (prefs == null) {
+                        prefs = PushPreferences.createDefault();
+                }
+
+                Map<String, PushCategorySettingDto> categories = new LinkedHashMap<>();
+                if (prefs.getCategories() != null) {
+                        for (Map.Entry<PushNotificationType, CategorySetting> entry : prefs.getCategories()
+                                        .entrySet()) {
+                                CategorySetting cs = entry.getValue();
+                                categories.put(entry.getKey().name().toLowerCase(),
+                                                new PushCategorySettingDto(cs.isEnabled(), cs.getDescription()));
+                        }
+                }
+
+                QuietHoursDto quietHoursDto;
+                if (prefs.getQuietHour() != null) {
+                        QuietHour qh = prefs.getQuietHour();
+                        String startTime = qh.getStartTime() != null
+                                        ? qh.getStartTime().format(Time.TIME_FORMATTER_HH_MM)
+                                        : "22:00";
+                        String endTime = qh.getEndTime() != null ? qh.getEndTime().format(Time.TIME_FORMATTER_HH_MM)
+                                        : "07:00";
+                        quietHoursDto = QuietHoursDto.builder()
+                                        .enabled(qh.isEnabled())
+                                        .startTime(startTime)
+                                        .endTime(endTime)
+                                        .build();
+                } else {
+                        quietHoursDto = QuietHoursDto.builder()
+                                        .enabled(false)
+                                        .startTime("22:00")
+                                        .endTime("07:00")
+                                        .build();
+                }
+
+                return PushSettingsResponseDto.builder()
+                                .pushEnabled(prefs.isPushEnabled())
+                                .categories(categories)
+                                .quietHours(quietHoursDto)
+                                .soundEnabled(prefs.isSoundEnabled())
+                                .vibrationEnabled(prefs.isVibrationEnabled())
                                 .build();
         }
 }

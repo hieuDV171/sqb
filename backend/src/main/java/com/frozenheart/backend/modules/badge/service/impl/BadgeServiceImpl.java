@@ -359,7 +359,7 @@ public class BadgeServiceImpl implements BadgeService {
     private BadgeResponseDto mapToBadgeResponseDto(Badge badge) {
         int totalEarned = userBadgeRepository.countByBadgeId(badge.getId());
         return BadgeResponseDto.builder()
-                .id(badge.getId())
+                .badgeId(badge.getId())
                 .name(badge.getName())
                 .description(badge.getDescription())
                 .badgeTier(badge.getBadgeTier())

@@ -9,14 +9,15 @@ import java.time.Instant;
 
 @Builder
 public record GamePredictionResponse(
-                Long id,
-                GameType gameType,
-                PredictionTargetType targetType,
-                Long targetId,
-                Object predictionData,
-                Object actualData,
-                PredictionStatus status,
-                boolean isCorrect,
-                Instant createdAt,
-                Instant resolvedAt) {
+        Long predictionId,
+        GameType gameType,
+        PredictionTargetType targetType,
+        Long targetId,
+        Object predictionData,
+        Object actualData,
+        PredictionStatus status,
+        boolean isCorrect,
+        Instant createdAt,
+        Instant resolvedAt
+    ) {
 }

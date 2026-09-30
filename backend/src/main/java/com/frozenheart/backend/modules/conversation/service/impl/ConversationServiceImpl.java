@@ -138,7 +138,7 @@ public class ConversationServiceImpl implements ConversationService {
                         : lastMsg.getContent();
 
                 lastMessageDto = LastMessageDto.builder()
-                        .id(lastMsg.getId())
+                        .messageId(lastMsg.getId())
                         .content(content)
                         .messageType(lastMsg.getMessageType())
                         .createdAt(lastMsg.getCreatedAt())

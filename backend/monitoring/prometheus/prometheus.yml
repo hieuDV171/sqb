@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+# Cấu hình nạp các quy tắc cảnh báo
+rule_files:
+  - "/etc/prometheus/alert-rules.yml"
+
+# Kết nối tới Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'sqb-backend'
+    metrics_path: '/api/v1/actuator/prometheus'
+    scrape_interval: 5s
+    # TODO Production:
+    # Khi chạy production, viết docker-compose riêng có Docker bridge network chung,
+    # thay thế 'host.docker.internal:8080' bằng 'backend:8080'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          application: 'sqb-backend'
+          environment: 'development'
+
+  - job_name: 'postgres'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          application: 'sqb-postgres'
+          environment: 'development'
+
+  - job_name: 'redis'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          application: 'sqb-redis'
+          environment: 'development'

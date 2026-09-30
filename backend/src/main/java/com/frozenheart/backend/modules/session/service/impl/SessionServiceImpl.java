@@ -4,11 +4,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.frozenheart.backend.core.entity.user.UserRole;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,13 +35,11 @@ import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
+import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
-import com.frozenheart.backend.modules.session.dto.MySubmissionProjection;
-import com.frozenheart.backend.modules.session.dto.MySubmissionsResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest.QuestionProposeDto;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
-import com.frozenheart.backend.modules.session.dto.SubjectResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
@@ -49,6 +50,11 @@ import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 import com.frozenheart.backend.modules.session.service.SessionService;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
+import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
+import com.frozenheart.backend.core.entity.user.UserCourseClass;
+import com.frozenheart.backend.modules.session.dto.SubjectResponse;
+import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
+import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -69,6 +75,8 @@ public class SessionServiceImpl implements SessionService {
     private final CounterMetricsService counterMetricsService;
     private final MediaService mediaService;
     private final ApplicationEventPublisher eventPublisher;
+    private final MetricService metricService;
+    private final UserCourseClassRepository userCourseClassRepository;
 
     @Transactional
     @Override
@@ -84,8 +92,46 @@ public class SessionServiceImpl implements SessionService {
         Subject subject = subjectRepository.findById(request.subjectId())
                 .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy môn học"));
 
+        // Kiểm tra SV có tham gia môn học này không (nếu là STUDENT)
+        if (proposer.getRole() == UserRole.STUDENT) {
+            boolean isEnrolled = userCourseClassRepository
+                    .findByUserIdFetchCourseClassAndSubject(userId)
+                    .stream()
+                    .anyMatch(ucc -> ucc.getCourseClass() != null 
+                            && ucc.getCourseClass().getSubject() != null 
+                            && Objects.equals(ucc.getCourseClass().getSubject().getId(), request.subjectId()));
+            if (!isEnrolled) {
+                throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn chỉ có thể đề xuất câu hỏi cho các môn học mình đang tham gia");
+            }
+        }
+
         // Mã ẩn danh 6 ký tự của tác giả
         String authorCode = anonymizerUtil.encodeUserId(userId);
+
+        // Fail-Fast: Thu thập toàn bộ URL ảnh từ request và kiểm tra tính toàn vẹn TRƯỚC KHI tạo Session / Question
+        List<String> allRequestedMediaUrls = new ArrayList<>();
+        if (request.questions() != null) {
+            for (var qDto : request.questions()) {
+                if (qDto.mediaUrls() != null) {
+                    allRequestedMediaUrls.addAll(qDto.mediaUrls());
+                }
+                if (qDto.options() != null) {
+                    for (var opt : qDto.options()) {
+                        if (opt != null && opt.getMediaUrl() != null && !opt.getMediaUrl().isBlank()) {
+                            allRequestedMediaUrls.add(opt.getMediaUrl());
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!allRequestedMediaUrls.isEmpty()) {
+            List<String> missingMedias = mediaService.findMissingObjects(allRequestedMediaUrls);
+            if (!missingMedias.isEmpty()) {
+                throw new AppException(ResponseCode.RESOURCE_NOT_FOUND,
+                        "Các tệp ảnh sau đã hết hạn lưu tạm thời trên MinIO hoặc không tồn tại: " + missingMedias + ". Vui lòng tải lại ảnh trước khi đề xuất phiên.");
+            }
+        }
 
         // Khởi tạo & Lưu Session
         Session session = Session.builder()
@@ -224,6 +270,9 @@ public class SessionServiceImpl implements SessionService {
         // Cập nhật chỉ số totalProposedQuestion cho sinh viên đề xuất
         counterMetricsService.incrementProposedQuestions(proposer.getId(), request.questions().size());
 
+        metricService.incrementCounter("sqb.exam.sessions.created", "subject", subject.getCode());
+        metricService.incrementCounter("sqb.exam.questions.proposed", request.questions().size(), "subject", subject.getCode());
+
         // BẮN TASK CHẠY NGẦM CHECK TRÙNG 3 TẦNG
         duplicateDetectionService.asyncCheckDuplicates(session.getId());
 
@@ -239,14 +288,28 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional(readOnly = true)
-    public MySubmissionsResponse getMySubmissions(
+    public SubmissionsResponse getMySubmissions(
             Long after, Integer limit, Long subjectId, SessionStatus status) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+        return getUserSubmissions(currentUserId, after, limit, subjectId, status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SubmissionsResponse getUserSubmissions(
+            Long userId, Long after, Integer limit, Long subjectId, SessionStatus status) {
+        Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+
+        // Business Rule:
+        // - Nếu xem chính mình (userId == currentUserId): cho phép xem theo status yêu cầu (hoặc tất cả nếu status null)
+        // - Nếu xem người khác (userId != currentUserId): bắt buộc chỉ xem các phiên đã được duyệt (RESOLVED)
+        boolean isOwner = currentUserId != null && currentUserId.equals(userId);
+        SessionStatus effectiveStatus = isOwner ? status : SessionStatus.RESOLVED;
+
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
 
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-        List<MySubmissionProjection> mySubmissions = sessionRepository.findMySubmissions(currentUserId, subjectId,
-                status, after, pageable);
+        List<SubmissionProjection> mySubmissions = sessionRepository.findSubmissions(userId, subjectId, effectiveStatus, after, pageable);
 
         boolean hasNext = false;
         if (mySubmissions.size() > pageSize) {
@@ -259,10 +322,13 @@ public class SessionServiceImpl implements SessionService {
             nextAfter = mySubmissions.getLast().getSessionId();
         }
 
-        List<MySubmissionsResponse.MySubmissionSessionSummaryDto> contents = mySubmissions.stream()
+        List<SubmissionsResponse.SubmissionSessionSummaryDto> contents = mySubmissions.stream()
                 .map(s -> {
-                    return MySubmissionsResponse.MySubmissionSessionSummaryDto.builder()
+                    return SubmissionsResponse.SubmissionSessionSummaryDto.builder()
                             .sessionId(s.getSessionId())
+                            .sessionCode(s.getSessionCode())
+                            .title(s.getTitle())
+                            .content(s.getContent())
                             .subjectId(s.getSubjectId())
                             .subjectName(s.getSubjectName())
                             .subjectCode(s.getSubjectCode())
@@ -274,7 +340,7 @@ public class SessionServiceImpl implements SessionService {
                 })
                 .toList();
 
-        return MySubmissionsResponse.builder()
+        return SubmissionsResponse.builder()
                 .contents(contents)
                 .pagination(CursorPaginationDto.builder()
                         .after(nextAfter)
@@ -327,6 +393,9 @@ public class SessionServiceImpl implements SessionService {
 
         return MySubmissionDetailResponse.builder()
                 .sessionId(session.getId())
+                .sessionCode(session.getSessionCode())
+                .title(session.getTitle())
+                .content(session.getContent())
                 .subjectId(subject != null ? subject.getId() : null)
                 .subjectName(subject != null ? subject.getName() : null)
                 .subjectCode(subject != null ? subject.getCode() : null)
@@ -515,14 +584,25 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubjectResponse> getSubjectList() {
-        return subjectRepository.findAllByOrderByNameAsc().stream()
-                .map(sub -> SubjectResponse.builder()
-                        .id(sub.getId())
-                        .code(sub.getCode())
-                        .name(sub.getName())
-                        .build())
-                .toList();
+    public List<SubjectResponse> getMyEnrolledSubjects() {
+        Long userId = JwtPayload.getCurrentUserPayload().getUserId();
+        List<UserCourseClass> enrollments = userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId);
+
+        Map<Long, SubjectResponse> distinctSubjects = new LinkedHashMap<>();
+        for (UserCourseClass ucc : enrollments) {
+            if (ucc.getCourseClass() != null && ucc.getCourseClass().getSubject() != null) {
+                Subject s = ucc.getCourseClass().getSubject();
+                if (!distinctSubjects.containsKey(s.getId())) {
+                    distinctSubjects.put(s.getId(), SubjectResponse.builder()
+                            .subjectId(s.getId())
+                            .code(s.getCode())
+                            .name(s.getName())
+                            .build());
+                }
+            }
+        }
+
+        return new ArrayList<>(distinctSubjects.values());
     }
 
 }

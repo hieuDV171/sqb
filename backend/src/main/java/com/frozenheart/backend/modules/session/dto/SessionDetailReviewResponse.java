@@ -26,7 +26,7 @@ public record SessionDetailReviewResponse(
 
         @Builder
         public record QuestionEditLogDto(
-                        Long id,
+                        Long editLogId,
                         String actorType,
                         String actorName,
                         String status,

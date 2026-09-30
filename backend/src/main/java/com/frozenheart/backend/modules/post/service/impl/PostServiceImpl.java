@@ -22,6 +22,7 @@ import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
 import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
+import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.*;
@@ -63,6 +64,7 @@ public class PostServiceImpl implements PostService {
     private final BlockRepository blockRepository;
     private final FriendshipRepository friendshipRepository;
     private final ReactRepository reactRepository;
+    private final MetricService metricService;
 
     @Override
     @Transactional
@@ -113,6 +115,9 @@ public class PostServiceImpl implements PostService {
         Post savedPost = postRepository.save(post);
         eventPublisher
                 .publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.POST, savedPost.getId()));
+
+        boolean hasMedia = request.getMediaUrls() != null && !request.getMediaUrls().isEmpty();
+        metricService.incrementCounter("sqb.posts.created", "type", postType.name(), "has_media", String.valueOf(hasMedia));
 
         ActionType feedAction = (postType == PostType.LEARNING_VIDEO) ? ActionType.PUBLISHED_LECTURE_VIDEO
                 : ActionType.CREATED_POST;
@@ -244,7 +249,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void deletePost(Long id) {
+    public DeletePostResponseDto deletePost(Long id) {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
         Long currentUserId = payload.getUserId();
         String roleStr = payload.getRole();
@@ -273,6 +278,10 @@ public class PostServiceImpl implements PostService {
         if (!mediaKeysToDelete.isEmpty()) {
             eventPublisher.publishEvent(MediaCleanupEvent.of(mediaKeysToDelete));
         }
+
+        return DeletePostResponseDto.builder()
+                .postId(id)
+                .build();
     }
 
     @Override
@@ -467,7 +476,7 @@ public class PostServiceImpl implements PostService {
         } else {
             UserProfile profile = profileMap.get(post.getPoster().getId());
             authorDto = AuthorDto.builder()
-                    .id(post.getPoster().getId())
+                    .userId(post.getPoster().getId())
                     .fullName(profile != null ? profile.getFullName() : post.getPoster().getEmail())
                     .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
                     .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
@@ -496,7 +505,7 @@ public class PostServiceImpl implements PostService {
         }
         UserProfile profile = userProfileRepository.findByUserId(user.getId()).orElse(null);
         return AuthorDto.builder()
-                .id(user.getId())
+                .userId(user.getId())
                 .fullName(profile != null ? profile.getFullName() : user.getEmail())
                 .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
                 .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)

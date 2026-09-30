@@ -1,9 +1,9 @@
 spring:
   application:
-    name: backend
-
-  profiles:
-    active: dev
+    name: sqb-backend
+  output:
+    ansi:
+      enabled: ALWAYS
 
   datasource:
     url: ${DB_URL}
@@ -37,6 +37,8 @@ spring:
       port: 6379
       timeout: 2000
       password: ${REDIS_PASSWORD}
+      repositories:
+        enabled: false
 
   mail:
     host: smtp.gmail.com
@@ -65,7 +67,7 @@ server:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 86400000 # 24 hours
+  access-token-expiration: 86400000 # 24 hours // TODO: Sửa 15 phút khi lên production
   refresh-token-expiration: 604800000 # 7 days
   issuer: backend # bên phát hành token
 
@@ -77,6 +79,8 @@ minio:
   region: us-east-1
 
 app:
+  security:
+    default-user-password: ${DEFAULT_USER_PASSWORD}
   firebase:
     config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-service-account.json}
     
@@ -108,17 +112,13 @@ logging:
   pattern:
     dateformat: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z', UTC"
   level:
-    root: info
-    com.frozenheart.backend: debug
-    org.springframework.security: debug
-    org.hibernate.sql: debug
     org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
 
-# Embedding service configuration
-embedding:
-  service:
-    url: ${EMBEDDING_SERVICE_URL}
-    timeout: 30000  # 30 seconds
+# AI Sidecar service configuration (Embeddings & BTProp Hallucination Checker)
+ai:
+  sidecar:
+    url: ${AI_SIDECAR_URL:http://localhost:8000}
+    timeout: 45000  # 45 seconds for BTProp belief tree calculations
 
 springdoc:
   api-docs:
@@ -129,4 +129,39 @@ springdoc:
 elasticsearch:
   host: ${ELASTICSEARCH_HOST}
   port: ${ELASTICSEARCH_PORT}
+
+# Actuator & Observability configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    prometheus:
+      access: unrestricted
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
 

@@ -24,8 +24,7 @@ public class Report {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     private String targetType;
     private Long targetId;

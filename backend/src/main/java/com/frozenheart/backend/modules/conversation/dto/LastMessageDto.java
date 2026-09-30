@@ -12,7 +12,7 @@ import java.time.Instant;
 @AllArgsConstructor
 public class LastMessageDto {
 
-    private Long id;
+    private Long messageId;
 
     private String content;
 

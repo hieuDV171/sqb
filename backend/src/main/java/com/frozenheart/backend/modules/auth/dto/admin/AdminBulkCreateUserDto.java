@@ -7,8 +7,6 @@ import com.frozenheart.backend.core.entity.user.Gender;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Size;
-import org.jetbrains.annotations.NotNull;
 
 public class AdminBulkCreateUserDto {
     public record SingleUserImportDto(
@@ -16,25 +14,22 @@ public class AdminBulkCreateUserDto {
             @Email(message = "INVALID_PARAMETER_VALUE") 
             String email,
 
-            @NotBlank(message = "MISSING_REQUIRED_PARAMETER") 
-            @Size(min = 8, message = "INVALID_PARAMETER_VALUE") 
             String password,
 
             @NotBlank(message = "MISSING_REQUIRED_PARAMETER") 
             String fullName,
 
             String studentLecturerCode,
-
-            String faculty,
-
+            
+            String schoolFaculty,
             String major,
+            String className,
 
             Gender gender,
 
             @Past(message = "Ngày sinh phải là ngày trong quá khứ")
             LocalDate dateOfBirth,
 
-            @NotNull 
             UserRoleDto role,
 
             String timezone

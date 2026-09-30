@@ -1,5 +1,6 @@
 package com.frozenheart.backend.core.entity.user;
 
+import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,8 +23,6 @@ public class CourseClass {
     @Column(nullable = false, length = 50)
     private String classCode;
 
-    @Column(nullable = false, length = 20)
-    private String semester;
 
     @Column(updatable = false)
     private Instant createdAt;
@@ -36,6 +35,10 @@ public class CourseClass {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lecturer_id", nullable = false)
     private User lecturer;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "semester_id", nullable = false)
+    private Semester semester;
     // ----------------------
 
     @Singular

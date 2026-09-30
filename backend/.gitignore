@@ -40,3 +40,4 @@ out/
 **/resources/db/changelog/**
 
 firebase-service-account.json
+/logs

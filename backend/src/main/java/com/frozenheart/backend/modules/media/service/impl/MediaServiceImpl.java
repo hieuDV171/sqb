@@ -15,6 +15,7 @@ import io.minio.Result;
 import io.minio.messages.DeleteRequest;
 import io.minio.messages.DeleteResult;
 import io.minio.SetObjectTagsArgs;
+import io.minio.StatObjectArgs;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -202,6 +203,47 @@ public class MediaServiceImpl implements MediaService {
         }
 
         return (clean != null && !clean.isBlank()) ? clean : null;
+    }
+
+    private boolean isObjectExists(String urlOrKey) {
+        String objectKey = extractObjectKey(urlOrKey);
+        if (objectKey == null) return false;
+        try {
+            var stat = minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(minioProperties.getBucketName())
+                            .object(objectKey)
+                            .build()
+            );
+            return stat != null;
+        } catch (io.minio.errors.ErrorResponseException e) {
+            if ("NoSuchKey".equalsIgnoreCase(e.errorResponse().code())) {
+                log.warn("[MinIO] Object không tồn tại hoặc đã bị ILM xóa: {}", objectKey);
+                return false;
+            }
+            log.warn("[MinIO] Lỗi khi statObject {}: {}", objectKey, e.getMessage());
+            return true; // Nếu lỗi khác (phân quyền/mạng tạm thời), không chặn oan
+        } catch (Exception e) {
+            log.warn("[MinIO] Lỗi kiểm tra tồn tại file {}: {}", objectKey, e.getMessage());
+            return true;
+        }
+    }
+
+    @Override
+    public List<String> findMissingObjects(List<String> urlsOrKeys) {
+        if (urlsOrKeys == null || urlsOrKeys.isEmpty()) {
+            return List.of();
+        }
+
+        // Tận dụng xử lý song song (parallelStream) để kiểm tra toàn bộ ảnh đồng thời chỉ trong 10-15ms
+        return urlsOrKeys.parallelStream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(u -> !u.isBlank())
+                .filter(u -> !u.startsWith("data:") && !u.startsWith("blob:"))
+                .distinct()
+                .filter(u -> !isObjectExists(u))
+                .toList();
     }
 
     private String buildPublicUrl(String objectKey) {

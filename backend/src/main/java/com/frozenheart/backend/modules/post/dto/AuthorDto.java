@@ -12,14 +12,14 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class AuthorDto {
-    private Long id;
+    private Long userId;
     private String fullName;
     private String avatarUrl;
     private String frameUrl;
 
     public static AuthorDto getSystemAuthor() {
         return AuthorDto.builder()
-                .id(null)
+                .userId(null)
                 .fullName("Hệ thống")
                 .avatarUrl("/assets/system-avatar.png")
                 .frameUrl(null)

@@ -4,17 +4,19 @@ import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
-import com.frozenheart.backend.modules.session.dto.MySubmissionsResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
-import com.frozenheart.backend.modules.session.dto.SubjectResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
+import com.frozenheart.backend.modules.session.dto.SubjectResponse;
+import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 
 public interface SessionService {
 
     ProposeSessionResponse proposeSession(ProposeSessionRequest request);
 
-    MySubmissionsResponse getMySubmissions(Long after, Integer limit, Long subjectId, SessionStatus status);
+    SubmissionsResponse getMySubmissions(Long after, Integer limit, Long subjectId, SessionStatus status);
+
+    SubmissionsResponse getUserSubmissions(Long userId, Long after, Integer limit, Long subjectId, SessionStatus status);
 
     MySubmissionDetailResponse getMySubmissionDetail(Long sessionId);
 
@@ -22,7 +24,7 @@ public interface SessionService {
 
     void deleteMySubmissionSession(Long sessionId);
 
-    List<SubjectResponse> getSubjectList();
+    List<SubjectResponse> getMyEnrolledSubjects();
 
 }
 

@@ -171,7 +171,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
         if (feed.getUser() != null) {
             UserProfile profile = profileMap.get(feed.getUser().getId());
             actorDto = AuthorDto.builder()
-                    .id(feed.getUser().getId())
+                    .userId(feed.getUser().getId())
                     .fullName(profile != null ? profile.getFullName() : feed.getUser().getEmail())
                     .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
                     .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)

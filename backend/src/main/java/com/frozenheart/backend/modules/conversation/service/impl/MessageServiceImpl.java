@@ -113,7 +113,7 @@ public class MessageServiceImpl implements MessageService {
                 }
 
                 replyPreview = ReplyMessagePreviewDto.builder()
-                        .id(replyMsg.getId())
+                        .messageId(replyMsg.getId())
                         .senderId(replySender.getId())
                         .senderName(replySenderName)
                         .contentPreview(previewContent)

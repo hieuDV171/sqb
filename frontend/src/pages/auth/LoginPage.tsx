@@ -1,14 +1,12 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Button } from "@base-ui/react/button";
-import { Input } from "@base-ui/react/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DevicePlatform } from "@/types/auth.types";
 import { getBrowserDeviceName } from "@/lib/utils";
-import { axiosClient } from "@/api/axiosClient";
-import { GraduationCap, ArrowRight, AlertCircle, Eye, EyeOff, KeyRound, CheckCircle2, X } from "lucide-react";
+import { GraduationCap, ArrowRight, AlertCircle, Eye, EyeOff, Info, HelpCircle, X } from "lucide-react";
 
 function getOrCreateDeviceId() {
     let deviceId = localStorage.getItem("sqb_device_id");
@@ -20,23 +18,16 @@ function getOrCreateDeviceId() {
 }
 
 export function LoginPage() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("an.nv201234@hust.edu.vn");
+    const [password, setPassword] = useState("12345678");
     const [showPassword, setShowPassword] = useState(false);
+    const [showHelpModal, setShowHelpModal] = useState(false);
     const { login, isLoading, error } = useAuth();
 
-    // Reset Password State
-    const [isResetOpen, setIsResetOpen] = useState(false);
-    const [resetEmail, setResetEmail] = useState("");
-    const [newResetPassword, setNewResetPassword] = useState("");
-    const [resetLoading, setResetLoading] = useState(false);
-    const [resetError, setResetError] = useState<string | null>(null);
-    const [resetSuccess, setResetSuccess] = useState(false);
-
-    const handleSubmit = (e: React.SubmitEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         login({
-            email,
+            email: email.trim(),
             password,
             deviceId: getOrCreateDeviceId(),
             platform: DevicePlatform.WEB,
@@ -44,60 +35,33 @@ export function LoginPage() {
         });
     };
 
-    const handleResetPassword = async (e: React.SubmitEvent) => {
-        e.preventDefault();
-        setResetError(null);
-        setResetSuccess(false);
-
-        if (newResetPassword.length < 8) {
-            setResetError("Mật khẩu mới phải từ 8 ký tự trở lên");
-            return;
-        }
-
-        setResetLoading(true);
-        try {
-            await axiosClient.post('/auth/admin/reset-password', {
-                email: resetEmail,
-                newPassword: newResetPassword,
-            });
-            setResetSuccess(true);
-            setTimeout(() => {
-                setIsResetOpen(false);
-                setResetSuccess(false);
-                setEmail(resetEmail);
-            }, 1800);
-        } catch (err: any) {
-            setResetError(err?.message || "Đặt lại mật khẩu thất bại. Vui lòng kiểm tra lại email!");
-        } finally {
-            setResetLoading(false);
-        }
-    };
-    
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans">
-            <Card className="w-full max-w-md bg-white shadow-xl border border-slate-200/80 rounded-2xl overflow-hidden">
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 font-sans transition-colors duration-200">
+            <Card className="w-full max-w-md bg-white dark:bg-slate-900 shadow-xl border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden">
                 <CardHeader className="space-y-2 text-center pt-8 pb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white mx-auto shadow-md shadow-indigo-200">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white mx-auto shadow-md shadow-indigo-200 dark:shadow-none">
                         <GraduationCap className="w-7 h-7" />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-slate-900">
+                    <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                         Đăng nhập SQB Network
                     </CardTitle>
-                    <CardDescription className="text-sm text-slate-500">
+                    <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
                         Mạng xã hội & Ngân hàng đề thi Đại học HUST
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 pt-2">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
-                            <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+                            <div className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50">
                                 <AlertCircle className="w-4 h-4 shrink-0" />
                                 <span>{error}</span>
                             </div>
                         )}
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="email">Email sinh viên / giảng viên</Label>
+                            <Label htmlFor="email" className="text-slate-700 dark:text-slate-200 text-sm font-medium">
+                                Email sinh viên / giảng viên
+                            </Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -105,22 +69,22 @@ export function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full rounded-xl px-3.5 py-2.5 text-sm"
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Mật khẩu</Label>
+                                <Label htmlFor="password" className="text-slate-700 dark:text-slate-200 text-sm font-medium">
+                                    Mật khẩu
+                                </Label>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setResetEmail(email);
-                                        setIsResetOpen(true);
-                                    }}
-                                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
+                                    onClick={() => setShowHelpModal(true)}
+                                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer flex items-center gap-1"
                                 >
-                                    Quên mật khẩu?
+                                    <HelpCircle className="w-3.5 h-3.5" />
+                                    <span>Quên mật khẩu?</span>
                                 </button>
                             </div>
                             <div className="relative">
@@ -131,12 +95,12 @@ export function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full rounded-xl px-3.5 py-2.5 pr-10 text-sm"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                                 >
                                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
@@ -146,99 +110,111 @@ export function LoginPage() {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors cursor-pointer disabled:opacity-50 mt-2 shadow-md shadow-indigo-100"
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors cursor-pointer disabled:opacity-50 mt-2 shadow-md shadow-indigo-100 dark:shadow-none"
                         >
                             {isLoading ? "Đang xác thực..." : "Đăng nhập"}
                             {!isLoading && <ArrowRight className="w-4 h-4" />}
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-slate-500 border-t border-slate-100 pt-4">
-                        Chưa có tài khoản?{" "}
-                        <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-700">
-                            Đăng ký ngay
-                        </Link>
+                    {/* Notice for Students & Lecturers */}
+                    <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 flex items-start gap-2.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                            Tài khoản Sinh viên và Giảng viên được cấp tự động theo danh sách lớp học phần đầu kỳ.
+                        </div>
+                    </div>
+
+                    {/* Quick Mock Login Profiles for Dev Testing */}
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">
+                            Chọn nhanh tài khoản Demo (Kiểm thử)
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEmail('an.nv201234@hust.edu.vn');
+                                    setPassword('12345678');
+                                }}
+                                className="px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-center cursor-pointer"
+                            >
+                                🎓 Sinh viên
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEmail('gv.thanghd@hust.edu.vn');
+                                    setPassword('12345678');
+                                }}
+                                className="px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-center cursor-pointer"
+                            >
+                                👨‍🏫 Giảng viên
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEmail('admin@hust.edu.vn');
+                                    setPassword('12345678');
+                                }}
+                                className="px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-center cursor-pointer"
+                            >
+                                🛡️ Admin
+                            </button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Modal Quên / Đặt lại mật khẩu */}
-            {isResetOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Hướng dẫn Quên mật khẩu / Cấp tài khoản */}
+            {showHelpModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
                         <button
-                            onClick={() => setIsResetOpen(false)}
-                            className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+                            onClick={() => setShowHelpModal(false)}
+                            className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                         >
                             <X className="w-5 h-5" />
                         </button>
 
-                        <div className="flex items-center gap-2 text-indigo-600 mb-2">
-                            <KeyRound className="w-6 h-6" />
-                            <h3 className="text-xl font-bold text-slate-900">Đặt lại mật khẩu</h3>
+                        <div className="flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center">
+                                <HelpCircle className="w-5 h-5" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                                Quy trình cấp lại mật khẩu
+                            </h3>
                         </div>
-                        <p className="text-xs text-slate-500 mb-4">
-                            Nhập email tài khoản và mật khẩu mới của bạn để khôi phục truy cập.
-                        </p>
 
-                        {resetError && (
-                            <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
-                                <AlertCircle className="w-4 h-4 shrink-0" />
-                                <span>{resetError}</span>
+                        <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            <p>
+                                Theo quy định bảo mật của hệ thống SQB Network:
+                            </p>
+                            <div className="bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl p-3.5 space-y-2 text-xs text-indigo-950 dark:text-indigo-200">
+                                <p className="font-semibold text-indigo-900 dark:text-indigo-300">
+                                    📌 Dành cho Sinh viên:
+                                </p>
+                                <p>
+                                    Nếu bạn quên mật khẩu hoặc chưa được tạo tài khoản, vui lòng đăng ký trực tiếp với <strong>Giảng viên phụ trách lớp học phần</strong>.
+                                </p>
+                                <p>
+                                    Giảng viên sẽ tổng hợp danh sách gửi Quản trị viên (Admin) để reset tài khoản về mật khẩu mặc định của hệ thống.
+                                </p>
                             </div>
-                        )}
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Sau khi nhận lại mật khẩu mặc định từ Giảng viên, bạn có thể đăng nhập và chủ động đổi mật khẩu mới trong phần cài đặt tài khoản.
+                            </p>
+                        </div>
 
-                        {resetSuccess && (
-                            <div className="mb-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-700">
-                                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                <span>Đặt lại mật khẩu thành công!</span>
-                            </div>
-                        )}
-
-                        <form onSubmit={handleResetPassword} className="space-y-4">
-                            <div className="space-y-1">
-                                <Label htmlFor="resetEmail">Email sinh viên</Label>
-                                <Input
-                                    id="resetEmail"
-                                    type="email"
-                                    placeholder="a.bc123456@hust.edu.vn"
-                                    value={resetEmail}
-                                    onChange={(e) => setResetEmail(e.target.value)}
-                                    required
-                                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label htmlFor="newResetPassword">Mật khẩu mới</Label>
-                                <Input
-                                    id="newResetPassword"
-                                    type="password"
-                                    placeholder="Tối thiểu 8 ký tự"
-                                    value={newResetPassword}
-                                    onChange={(e) => setNewResetPassword(e.target.value)}
-                                    required
-                                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm"
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-2">
-                                <Button
-                                    type="button"
-                                    onClick={() => setIsResetOpen(false)}
-                                    className="px-4 py-2 border rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                >
-                                    Hủy
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={resetLoading}
-                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium cursor-pointer disabled:opacity-50"
-                                >
-                                    {resetLoading ? "Đang đặt lại..." : "Xác nhận đặt lại"}
-                                </Button>
-                            </div>
-                        </form>
+                        <div className="mt-5 flex justify-end">
+                            <Button
+                                type="button"
+                                onClick={() => setShowHelpModal(false)}
+                                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
+                            >
+                                Đã hiểu
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}

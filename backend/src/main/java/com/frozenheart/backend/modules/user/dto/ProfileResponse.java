@@ -12,7 +12,7 @@ import lombok.Builder;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ProfileResponse(
-        Long id,
+        Long userId,
         String email,
         String fullName,
         String avatarUrl,
@@ -21,8 +21,9 @@ public record ProfileResponse(
         Gender gender,
         LocalDate dateOfBirth,
         String bio,
-        String faculty,
+        String schoolFaculty,
         String major,
+        String className,
         String studentLecturerCode,
         UserRole role,
         String timezone,

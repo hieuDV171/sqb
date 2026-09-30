@@ -119,7 +119,7 @@ public class SearchServiceImpl implements SearchService {
             savedSearches = searchRepository.findRecentSearchesByUserId(currentUserId, PageRequest.of(0, 10))
                     .stream()
                     .map(s -> SavedAndTrendingSearchesResponseDto.SavedSearchDto.builder()
-                            .id(s.getId())
+                            .savedSearchId(s.getId())
                             .queryText(s.getQueryText())
                             .lastSearchedAt(s.getLastSearchedAt())
                             .build())
@@ -145,12 +145,16 @@ public class SearchServiceImpl implements SearchService {
 
     @Override
     @Transactional
-    public void deleteSavedSearch(Long id) {
-        if (id == null)
-            return;
+    public DeleteSavedSearchResponseDto deleteSavedSearch(Long id) {
+        if (id == null) {
+            return null;
+        }
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
         searchRepository.deleteByIdAndUserId(id, currentUserId);
         log.info("[SearchService] 🗑️ User ID {} đã xóa từ khóa tìm kiếm ID {}", currentUserId, id);
+        return DeleteSavedSearchResponseDto.builder()
+                .savedSearchId(id)
+                .build();
     }
 
     @Override
@@ -234,7 +238,7 @@ public class SearchServiceImpl implements SearchService {
         String cleanText = queryText.trim();
 
         List<String> searchFields = List.of(
-                "full_name^4", "student_lecturer_code^3", "bio^1", "faculty^2", "major^2",
+                "full_name^4", "student_lecturer_code^3", "bio^1", "school_faculty^2", "major^2",
                 "subject_code^4", "subject_name^3",
                 "content^4", "author_name^2",
                 "title^4", "topic_name^2", "question_code^5",
@@ -266,7 +270,7 @@ public class SearchServiceImpl implements SearchService {
                                 .bio(doc.getBio())
                                 .avatarUrl(doc.getAvatarUrl())
                                 .avatarFrameUrl(doc.getAvatarFrameUrl())
-                                .faculty(doc.getFaculty())
+                                .schoolFaculty(doc.getSchoolFaculty())
                                 .major(doc.getMajor())
                                 .role(doc.getRole())
                                 .totalProposedQuestions(doc.getTotalProposedQuestions())
@@ -343,11 +347,13 @@ public class SearchServiceImpl implements SearchService {
                                 .difficulty(doc.getDifficulty())
                                 .content(doc.getContent())
                                 .options(doc.getOptions() != null
-                                        ? doc.getOptions().stream().map(opt -> GlobalSearchResponseDto.QuestionOptionDto.builder()
-                                                .key(opt.getKey())
-                                                .text(opt.getText())
-                                                .mediaUrl(opt.getMediaUrl())
-                                                .build()).toList()
+                                        ? doc.getOptions().stream()
+                                                .map(opt -> GlobalSearchResponseDto.QuestionOptionDto.builder()
+                                                        .key(opt.getKey())
+                                                        .text(opt.getText())
+                                                        .mediaUrl(opt.getMediaUrl())
+                                                        .build())
+                                                .toList()
                                         : Collections.emptyList())
                                 .explanation(doc.getExplanation())
                                 .imageUrls(doc.getImageUrls())

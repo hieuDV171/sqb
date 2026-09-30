@@ -5,7 +5,7 @@ import java.time.Instant;
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
 
 public record DeviceResponse(
-        Long id,
+        Long userDeviceId,
         String deviceId,
         String deviceName,
         DevicePlatform platform,

@@ -19,8 +19,7 @@ public class UserProfile {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @Column(nullable = false)
     private String fullName;
@@ -41,10 +40,13 @@ public class UserProfile {
     private String bio;
 
     @Column(length = 100)
-    private String faculty;
+    private String schoolFaculty;
 
     @Column(length = 100)
     private String major;
+
+    @Column(length = 100)
+    private String className;
 
     @Column(length = 20)
     private String studentLecturerCode;

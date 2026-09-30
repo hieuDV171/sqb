@@ -14,11 +14,13 @@ import java.util.Set;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    Optional<User> findByEmail(String email);
+    @Query("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)")
+    Optional<User> findByEmail(@Param("email") String email);
 
-    boolean existsByEmail(String email);
+    @Query("SELECT COUNT(u) > 0 FROM User u WHERE LOWER(u.email) = LOWER(:email)")
+    boolean existsByEmail(@Param("email") String email);
 
-    @Query("SELECT u.email FROM User u WHERE u.email IN :emails")
+    @Query("SELECT LOWER(u.email) FROM User u WHERE LOWER(u.email) IN :emails")
     Set<String> findExistingEmailsByEmailIn(@Param("emails") Collection<String> emails);
 
 }

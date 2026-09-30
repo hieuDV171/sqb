@@ -1,0 +1,24 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'job']
+  group_wait: 10s       # Chờ 10s gom các alert cùng lúc gửi 1 thể
+  group_interval: 10s   # Khoảng cách giữa các thông báo mới
+  repeat_interval: 1h   # Nhắc lại sau 1 tiếng nếu lỗi chưa được giải quyết
+  receiver: 'telegram-receiver'
+
+receivers:
+  - name: 'telegram-receiver'
+    telegram_configs:
+      - bot_token: '8831929623:AAEY8H599mymOo1WHiCwJ8_SevfGPs8UTfA'
+        chat_id: 7368600631          # Số nguyên, không cần dấu nháy nếu là cá nhân
+        send_resolved: true                     # Bật tính năng: khi hệ thống sống lại sẽ báo "RESOLVED"
+        parse_mode: 'HTML'
+        message: |
+          {{ if eq .Status "firing" }}🔥 <b>[ALERT - SỰ CỐ PHÁT SINH]</b>{{ else }}✅ <b>[RESOLVED - ĐÃ PHỤC HỒI]</b>{{ end }}
+          <b>Tên cảnh báo:</b> {{ .CommonAnnotations.summary }}
+          <b>Mức độ:</b> {{ .CommonLabels.severity }}
+          <b>Chi tiết:</b> {{ .CommonAnnotations.description }}
+          {{ range .Alerts }}<b>Thời gian:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}

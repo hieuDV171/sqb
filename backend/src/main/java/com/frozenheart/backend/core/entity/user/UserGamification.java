@@ -20,8 +20,7 @@ public class UserGamification {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @Builder.Default
     @Column(nullable = false)

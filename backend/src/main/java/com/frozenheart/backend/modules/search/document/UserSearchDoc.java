@@ -27,7 +27,7 @@ public class UserSearchDoc {
     private String avatarUrl;
     private String avatarFrameUrl;
 
-    private String faculty; // Khoa / Viện (VD: Viện CNTT&TT)
+    private String schoolFaculty; // Khoa / Viện (VD: Viện CNTT&TT)
     private String major; // Ngành học (VD: Khoa học máy tính)
 
     private UserRole role;

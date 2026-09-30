@@ -1,7 +1,7 @@
 import { DevicePlatform } from './auth.types';
 
 export interface DeviceResponse {
-  id: number;
+  userDeviceId: number;
   deviceId: string;
   deviceName: string;
   platform: DevicePlatform;

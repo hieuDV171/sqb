@@ -43,8 +43,8 @@ public class SearchController {
      * DELETE /search/saved/{id}
      */
     @DeleteMapping("/search/saved/{id}")
-    public ResponseEntity<GlobalResponse<Void>> deleteSavedSearch(@PathVariable Long id) {
-        searchService.deleteSavedSearch(id);
-        return ResponseEntity.ok(GlobalResponse.success(null));
+    public ResponseEntity<GlobalResponse<DeleteSavedSearchResponseDto>> deleteSavedSearch(@PathVariable Long id) {
+        DeleteSavedSearchResponseDto response = searchService.deleteSavedSearch(id);
+        return ResponseEntity.ok(GlobalResponse.success(response));
     }
 }

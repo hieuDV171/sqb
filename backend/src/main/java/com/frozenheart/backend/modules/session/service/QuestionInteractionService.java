@@ -6,11 +6,11 @@ import com.frozenheart.backend.modules.session.dto.QuestionRatingsResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
 import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RateQuestionResponse;
-import com.frozenheart.backend.modules.session.dto.UserQuestionsResponse;
+import com.frozenheart.backend.modules.session.dto.SessionQuestionsResponse;
 
 public interface QuestionInteractionService {
 
-    UserQuestionsResponse getUserProposedQuestions(Long userId, Long after, Integer limit, Long subjectId);
+    SessionQuestionsResponse getSessionQuestions(Long sessionId);
 
     AnswerQuestionResponse answerQuestion(Long questionId, AnswerQuestionRequest request);
 

@@ -13,7 +13,7 @@ public interface PostService {
 
     void updateLecturerNote(Long id, UpdateLecturerNoteRequest request);
 
-    void deletePost(Long id);
+    DeletePostResponseDto deletePost(Long id);
 
     CursorResponse<VideoPostItemDto> getVideoPosts(Long subjectId, Long after, Integer limit);
 

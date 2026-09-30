@@ -12,5 +12,5 @@ public interface NotificationService {
 
     PushSettingsResponseDto getPushSettings();
 
-    UpdatePushSettingsResponseDto updatePushSettings(UpdatePushSettingsRequestDto request);
+    PushSettingsResponseDto updatePushSettings(UpdatePushSettingsRequestDto request);
 }

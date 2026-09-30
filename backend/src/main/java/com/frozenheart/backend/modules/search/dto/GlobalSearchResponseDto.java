@@ -75,7 +75,7 @@ public class GlobalSearchResponseDto {
         private String bio;
         private String avatarUrl;
         private String avatarFrameUrl;
-        private String faculty;
+        private String schoolFaculty;
         private String major;
         private UserRole role;
         private Integer totalProposedQuestions;

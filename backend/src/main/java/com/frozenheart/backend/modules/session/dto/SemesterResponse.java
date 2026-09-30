@@ -5,7 +5,7 @@ import java.time.Instant;
 
 @Builder
 public record SemesterResponse(
-                Long id,
+                Long semesterId,
                 String name,
                 boolean active,
                 boolean isFinalize,

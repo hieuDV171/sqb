@@ -1,5 +1,7 @@
 package com.frozenheart.backend.modules.media.controller;
 
+import java.util.List;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.entity.media.MediaPurpose;
 import com.frozenheart.backend.modules.media.dto.MediaUploadResponse;
+import com.frozenheart.backend.modules.media.dto.MediaVerifyRequest;
+import com.frozenheart.backend.modules.media.dto.MediaVerifyResponse;
 import com.frozenheart.backend.modules.media.dto.PresignMediaRequest;
 import com.frozenheart.backend.modules.media.dto.PresignMediaResponse;
 import com.frozenheart.backend.modules.media.service.MediaService;
@@ -48,6 +52,14 @@ public class MediaController {
 
         return ResponseEntity.ok(GlobalResponse.success(response));
         
+    }
+
+    @PostMapping("/verify")
+    public ResponseEntity<GlobalResponse<MediaVerifyResponse>> verifyMedias(
+            @Valid @RequestBody MediaVerifyRequest request
+    ) {
+        List<String> missingUrls = mediaService.findMissingObjects(request.urls());
+        return ResponseEntity.ok(GlobalResponse.success(new MediaVerifyResponse(missingUrls)));
     }
 
 }

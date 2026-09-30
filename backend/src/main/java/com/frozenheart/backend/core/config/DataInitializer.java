@@ -70,7 +70,7 @@ public class DataInitializer implements CommandLineRunner {
                     .user(savedAdmin)
                     .fullName("Quản Trị Viên Hệ Thống")
                     .studentLecturerCode("ADMIN001")
-                    .faculty("")
+                    .schoolFaculty("")
                     .major("Quản trị hệ thống")
                     .timezone(Time.DEFAULT_TIMEZONE)
                     .avatarUrl("")

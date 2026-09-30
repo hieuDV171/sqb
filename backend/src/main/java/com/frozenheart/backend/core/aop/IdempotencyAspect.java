@@ -4,6 +4,7 @@ import com.frozenheart.backend.core.annotation.Idempotent;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.util.MetricService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class IdempotencyAspect {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final JsonMapper jsonMapper;
+    private final MetricService metricService;
 
     @Getter
     @Setter
@@ -86,6 +88,7 @@ public class IdempotencyAspect {
                     CachedIdempotentResponse cached = jsonMapper.readValue(currentVal, CachedIdempotentResponse.class);
                     if ("COMPLETED".equals(cached.getStatus())) {
                         log.info("[IdempotencyAspect] Hit cached response for key: {}", redisKey);
+                        metricService.incrementCounter("sqb.idempotency.blocked", "result", "cached", "key_prefix", idempotent.keyPrefix());
                         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
                         Class<?> returnType = signature.getReturnType();
 
@@ -104,6 +107,7 @@ public class IdempotencyAspect {
             }
 
             log.warn("[IdempotencyAspect] Duplicate request detected for key: {}, current status: PROCESSING", redisKey);
+            metricService.incrementCounter("sqb.idempotency.blocked", "result", "processing", "key_prefix", idempotent.keyPrefix());
             throw new AppException(ResponseCode.ACTION_ALREADY_PERFORMED,
                     "Yêu cầu này đang được xử lý, vui lòng không thao tác lại liên tục.");
         }

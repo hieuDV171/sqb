@@ -3,7 +3,6 @@ package com.frozenheart.backend.modules.session.repository;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
-import com.frozenheart.backend.core.entity.session.SessionStatus;
 
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
@@ -28,19 +26,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             ORDER BY q.displayOrder ASC
             """)
     List<Question> findQuestionsBySessionId(@Param("sessionId") Long sessionId);
-
-    @Query("""
-            SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.ownedMedias WHERE q.session.proposer.id = :userId
-            AND q.session.status = :status
-            AND (:subjectId IS NULL OR q.session.subject.id = :subjectId)
-            AND (:after IS NULL OR q.id < :after)
-            ORDER BY q.id DESC
-            """)
-    List<Question> findUserQuestionsWithCursor(@Param("userId") Long userId,
-            @Param("status") SessionStatus status,
-            @Param("subjectId") Long subjectId,
-            @Param("after") Long after,
-            Pageable pageable);
 
     @Modifying
     @Query("UPDATE Question q SET q.reactCount = COALESCE(q.reactCount, 0) + :delta WHERE q.id = :questionId")
@@ -58,7 +43,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT q FROM Question q JOIN FETCH q.session WHERE q.id = :questionId")
     Optional<Question> findByIdFetchSession(@Param("questionId") Long questionId);
 
-    @Query("SELECT q FROM Question q JOIN FETCH q.session s LEFT JOIN FETCH s.subject LEFT JOIN FETCH s.proposer WHERE q.id = :questionId")
+    @Query("SELECT q FROM Question q JOIN FETCH q.session s LEFT JOIN FETCH s.subject LEFT JOIN FETCH s.proposer LEFT JOIN FETCH q.topic WHERE q.id = :questionId")
     Optional<Question> findByIdFetchSessionAndSubject(@Param("questionId") Long questionId);
 
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.subject sub LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE q.status IN (com.frozenheart.backend.core.entity.session.QuestionStatus.APPROVED, com.frozenheart.backend.core.entity.session.QuestionStatus.REJECTED)")

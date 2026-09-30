@@ -4,7 +4,9 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +33,7 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserPushSettingRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -53,6 +56,7 @@ import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.security.JwtService;
 import com.frozenheart.backend.core.util.CookieUtils;
+import com.frozenheart.backend.core.util.MetricService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,8 +76,12 @@ public class AuthServiceImpl implements AuthService {
     private final RedisTemplate<String, String> redisTemplate;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final MetricService metricService;
 
     private final ApplicationEventPublisher eventPublisher;
+
+    @Value("${app.security.default-user-password}")
+    private String defaultUserPassword;
 
     private static final String OTP_PREFIX = "otp:";
     private static final String RESEND_LOCK_PREFIX = "resend_lock:";
@@ -83,11 +91,15 @@ public class AuthServiceImpl implements AuthService {
         String email = request.email();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "user_not_found");
+                    return new AppException(ResponseCode.USER_NOT_FOUND, "Không tìm thấy người dùng");
+                });
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             log.error("[AuthServiceImpl]: {}", ResponseCode.INCORRECT_IDENTIFIER);
-            throw new AppException(ResponseCode.INCORRECT_IDENTIFIER);
+            metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "bad_credentials");
+            throw new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không đúng");
         }
 
         Long userId = user.getId();
@@ -96,12 +108,16 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
         if (!user.isVerified()) {
+            metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "not_verified");
             throw new AppException(ResponseCode.USER_NOT_VERIFIED);
         }
 
         if (!user.isActive()) {
-            throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE);
+            metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "not_active");
+            throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE, "Tài khoản đã bị khóa");
         }
+
+        metricService.incrementCounter("sqb.auth.login", "status", "success", "reason", "none");
 
         saveOrUpdateUserDevice(user, request);
 
@@ -114,7 +130,7 @@ public class AuthServiceImpl implements AuthService {
                     Duration.ofMillis(jwtService.getRefreshTokenExpiration()));
 
             return AuthResponse.builder()
-                    .id(authResponse.id())
+                    .userId(authResponse.userId())
                     .username(authResponse.username())
                     .accessToken(authResponse.accessToken())
                     .refreshToken(null) // WEB không nhận refreshToken trong JSON Body
@@ -217,7 +233,7 @@ public class AuthServiceImpl implements AuthService {
                 .coverUrl("")
                 .avatarFrameUrl("")
                 .bio("Nhà tiên tri siu cấp zũ trụ!")
-                .faculty("")
+                .schoolFaculty("")
                 .major("")
                 .studentLecturerCode("")
                 .timezone(userTz)
@@ -266,6 +282,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Kiểm tra mã OTP
         if (savedOtp == null || !savedOtp.equals(request.verifyCode())) {
+            metricService.incrementCounter("sqb.auth.otp", "action", "verify", "status", "failed");
             throw new AppException(ResponseCode.VERIFICATION_CODE_INVALID);
         }
 
@@ -275,6 +292,8 @@ public class AuthServiceImpl implements AuthService {
 
         user.setVerified(true);
         userRepository.save(user);
+
+        metricService.incrementCounter("sqb.auth.otp", "action", "verify", "status", "success");
 
         // Xóa OTP trong Redis sau khi đã verify thành công
         redisTemplate.delete(OTP_PREFIX + email);
@@ -325,8 +344,9 @@ public class AuthServiceImpl implements AuthService {
                 Duration.ofMillis(jwtService.getRefreshTokenExpiration()));
 
         return AuthResponse.builder()
-                .id(userId)
+                .userId(userId)
                 .username(user.getEmail())
+                .role(role)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .avatarUrl(userProfile.getAvatarUrl())
@@ -360,6 +380,7 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(lockKey, "1", Duration.ofSeconds(60));
 
         emailService.sendOtpEmail(email, newOtp);
+        metricService.incrementCounter("sqb.auth.otp", "action", "resend", "status", "success");
     }
 
     private String generateOtpCode() {
@@ -376,7 +397,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         List<String> errorMessages = new ArrayList<>();
-        Set<String> seenInRequest = new HashSet<>();
+        Set<String> seenEmailsInRequest = new HashSet<>();
+        Set<String> seenCodesInRequest = new HashSet<>();
         List<SingleUserImportDto> validDtos = new ArrayList<>();
 
         // 1. Kiểm tra trùng lặp ngay trong payload gửi lên
@@ -386,9 +408,16 @@ public class AuthServiceImpl implements AuthService {
                 continue;
             }
             String emailLower = dto.email().trim().toLowerCase();
-            if (!seenInRequest.add(emailLower)) {
+            if (!seenEmailsInRequest.add(emailLower)) {
                 errorMessages.add("Email " + dto.email() + " bị trùng lặp trong danh sách import.");
                 continue;
+            }
+            if (dto.studentLecturerCode() != null && !dto.studentLecturerCode().isBlank()) {
+                String codeLower = dto.studentLecturerCode().trim().toLowerCase();
+                if (!seenCodesInRequest.add(codeLower)) {
+                    errorMessages.add("Mã cán bộ/SV " + dto.studentLecturerCode() + " bị trùng lặp trong danh sách import.");
+                    continue;
+                }
             }
             validDtos.add(dto);
         }
@@ -397,13 +426,24 @@ public class AuthServiceImpl implements AuthService {
             return new BulkImportResult(0, errorMessages.size(), errorMessages);
         }
 
-        // 2. Query DB đúng 1 câu duy nhất kiểm tra email đã tồn tại (Chống N+1)
+        // 2. Query DB đúng 1 câu duy nhất kiểm tra email và mã cán bộ đã tồn tại (Chống N+1)
         Set<String> requestEmails = validDtos.stream()
                 .map(d -> d.email().trim().toLowerCase())
                 .collect(Collectors.toSet());
         Set<String> existingEmails = userRepository.findExistingEmailsByEmailIn(requestEmails).stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
+
+        Set<String> requestCodes = validDtos.stream()
+                .map(SingleUserImportDto::studentLecturerCode)
+                .filter(c -> c != null && !c.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toSet());
+        Set<String> existingCodes = requestCodes.isEmpty() ? Collections.emptySet()
+                : userProfileRepository.findAllByStudentLecturerCodeIn(requestCodes).stream()
+                        .map(UserProfile::getStudentLecturerCode)
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toSet());
 
         List<User> usersToSave = new ArrayList<>();
         List<SingleUserImportDto> dtosToProcess = new ArrayList<>();
@@ -416,11 +456,31 @@ public class AuthServiceImpl implements AuthService {
                 continue;
             }
 
+            String code = dto.studentLecturerCode() != null ? dto.studentLecturerCode().trim() : "";
+            if (!code.isBlank() && existingCodes.contains(code.toLowerCase())) {
+                errorMessages.add("Mã cán bộ/SV " + code + " đã tồn tại trong hệ thống.");
+                continue;
+            }
+
             try {
-                UserRole ur = UserRole.valueOf(dto.role().name());
+                // Role: Nếu không chỉ định -> Mặc định là LECTURER (tối ưu cho import Giảng viên)
+                UserRole ur = (dto.role() != null) ? UserRole.valueOf(dto.role().name()) : UserRole.LECTURER;
+
+                // Password: Nếu không chỉ định -> Tự sinh thông minh: Ngày sinh ddMMyyyy -> Mã CB -> mật khẩu mặc định
+                String rawPassword;
+                if (dto.password() != null && !dto.password().isBlank()) {
+                    rawPassword = dto.password().trim();
+                } else if (dto.dateOfBirth() != null) {
+                    rawPassword = dto.dateOfBirth().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
+                } else if (!code.isBlank()) {
+                    rawPassword = code;
+                } else {
+                    rawPassword = defaultUserPassword;
+                }
+
                 User user = User.builder()
                         .email(dto.email().trim())
-                        .passwordHash(passwordEncoder.encode(dto.password()))
+                        .passwordHash(passwordEncoder.encode(rawPassword))
                         .role(ur)
                         .verified(true)
                         .active(true)
@@ -461,19 +521,30 @@ public class AuthServiceImpl implements AuthService {
                 }
             }
 
+            String faculty = dto.schoolFaculty() != null ? dto.schoolFaculty().trim() : "";
+            String bio;
+            if (savedUser.getRole() == UserRole.LECTURER) {
+                bio = !faculty.isBlank() ? "Giảng viên tại " + faculty : "Giảng viên";
+            } else if (savedUser.getRole() == UserRole.ADMIN) {
+                bio = "Quản trị viên hệ thống";
+            } else {
+                bio = "Nơi nào có sự sống, nơi đó có công lý!";
+            }
+
             UserProfile profile = UserProfile.builder()
                     .user(savedUser)
-                    .fullName(dto.fullName())
-                    .studentLecturerCode(dto.studentLecturerCode() != null ? dto.studentLecturerCode() : "")
-                    .faculty(dto.faculty() != null ? dto.faculty() : "")
-                    .major(dto.major() != null ? dto.major() : "")
+                    .fullName(dto.fullName().trim())
+                    .studentLecturerCode(dto.studentLecturerCode() != null ? dto.studentLecturerCode().trim() : "")
+                    .schoolFaculty(faculty)
+                    .major(dto.major() != null ? dto.major().trim() : "")
+                    .className(dto.className() != null ? dto.className().trim() : "")
                     .timezone(userTz)
                     .avatarUrl("")
                     .coverUrl("")
                     .avatarFrameUrl("")
                     .gender(dto.gender())
                     .dateOfBirth(dto.dateOfBirth())
-                    .bio("Nơi nào có sự sống, nơi đó có công lý!")
+                    .bio(bio)
                     .totalProposedQuestion(0)
                     .totalApprovedQuestions(0)
                     .badgesCount(0)
@@ -629,7 +700,7 @@ public class AuthServiceImpl implements AuthService {
 
         String targetPassword = (request.newPassword() != null && !request.newPassword().isBlank())
                 ? request.newPassword()
-                : "Hust@123456";
+                : defaultUserPassword;
 
         user.setPasswordHash(passwordEncoder.encode(targetPassword));
         user.setUpdatedAt(Instant.now());

@@ -242,7 +242,7 @@ public class GamificationServiceImpl implements GamificationService {
             return MyCourseClassPredictionDto.builder()
                     .courseClassId(classId)
                     .classCode(cc.getClassCode())
-                    .semester(cc.getSemester())
+                    .semester(cc.getSemester() != null ? cc.getSemester().getName() : null)
                     .subjectId(cc.getSubject() != null ? cc.getSubject().getId() : null)
                     .subjectName(cc.getSubject() != null ? cc.getSubject().getName() : null)
                     .lecturerName(lecturerName)
@@ -348,7 +348,7 @@ public class GamificationServiceImpl implements GamificationService {
         List<Game6ActiveSessionResponse.Game6QuestionDto> dtos = questions.stream()
                 .sorted(Comparator.comparing(Game6LlmQuestion::getId))
                 .map(q -> Game6ActiveSessionResponse.Game6QuestionDto.builder()
-                        .id(q.getId())
+                        .questionId(q.getId())
                         .content(q.getContent())
                         .options(q.getOptions())
                         .explanation(q.getExplanation())
@@ -551,7 +551,7 @@ public class GamificationServiceImpl implements GamificationService {
 
         List<Game6ActiveSessionResponse.Game6QuestionDto> dtos = savedGame6Questions.stream()
                 .map(q -> Game6ActiveSessionResponse.Game6QuestionDto.builder()
-                        .id(q.getId())
+                        .questionId(q.getId())
                         .content(q.getContent())
                         .options(q.getOptions())
                         .explanation(q.getExplanation())
@@ -674,7 +674,7 @@ public class GamificationServiceImpl implements GamificationService {
         Prediction saved = predictionRepository.save(prediction);
 
         return GamePredictionResponse.builder()
-                .id(saved.getId())
+                .predictionId(saved.getId())
                 .gameType(saved.getGameType())
                 .targetType(saved.getTargetType())
                 .targetId(saved.getTargetId())
@@ -703,7 +703,7 @@ public class GamificationServiceImpl implements GamificationService {
 
         List<GamePredictionResponse> dtoList = pageItems.stream()
                 .map(p -> GamePredictionResponse.builder()
-                        .id(p.getId())
+                        .predictionId(p.getId())
                         .gameType(p.getGameType())
                         .targetType(p.getTargetType())
                         .targetId(p.getTargetId())

@@ -64,6 +64,11 @@ public class FriendshipServiceImpl implements FriendshipService {
                 User addressee = userRepository.findById(addresseeId)
                                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
+                if (requester.getRole() != addressee.getRole()) {
+                        throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                                        "Chỉ người dùng đồng cấp (cùng vai trò Sinh viên - Sinh viên hoặc Giảng viên - Giảng viên) mới có thể kết bạn với nhau");
+                }
+
                 Optional<Friendship> existingOpt = friendshipRepository.findFriendshipsBetween(requesterId,
                                 addresseeId);
 
@@ -130,6 +135,11 @@ public class FriendshipServiceImpl implements FriendshipService {
                                 || !Objects.equals(friendship.getReceiver().getId(), currentUserId)) {
                         throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                                         "Bạn không có quyền chấp nhận lời mời kết bạn này");
+                }
+
+                if (friendship.getSender().getRole() != friendship.getReceiver().getRole()) {
+                        throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                                        "Chỉ người dùng đồng cấp (cùng vai trò) mới có thể chấp nhận kết bạn");
                 }
 
                 friendship.setStatus(FriendshipStatus.ACCEPTED);
@@ -296,7 +306,7 @@ public class FriendshipServiceImpl implements FriendshipService {
                                         User requester = f.getSender();
                                         UserProfile profile = profileMap.get(requester.getId());
                                         AuthorDto authorDto = AuthorDto.builder()
-                                                        .id(requester.getId())
+                                                        .userId(requester.getId())
                                                         .fullName(profile != null ? profile.getFullName()
                                                                         : requester.getEmail())
                                                         .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
@@ -352,29 +362,29 @@ public class FriendshipServiceImpl implements FriendshipService {
                                         : null;
                 }
 
-                List<Long> requesteeIds = requestsList.stream()
+                List<Long> receiverIds = requestsList.stream()
                                 .map(f -> f.getReceiver().getId())
                                 .distinct()
                                 .collect(Collectors.toList());
 
-                Map<Long, UserProfile> profileMap = requesteeIds.isEmpty() ? Map.of()
-                                : userProfileRepository.findAllById(requesteeIds).stream()
+                Map<Long, UserProfile> profileMap = receiverIds.isEmpty() ? Map.of()
+                                : userProfileRepository.findAllById(receiverIds).stream()
                                                 .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
 
                 List<FriendRequestSentDto> items = requestsList.stream()
                                 .map(f -> {
-                                        User requestee = f.getReceiver();
-                                        UserProfile profile = profileMap.get(requestee.getId());
+                                        User receiver = f.getReceiver();
+                                        UserProfile profile = profileMap.get(receiver.getId());
                                         AuthorDto authorDto = AuthorDto.builder()
-                                                        .id(requestee.getId())
+                                                        .userId(receiver.getId())
                                                         .fullName(profile != null ? profile.getFullName()
-                                                                        : requestee.getEmail())
+                                                                        : receiver.getEmail())
                                                         .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
                                                         .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
                                                         .build();
 
                                         return FriendRequestSentDto.builder()
-                                                        .requestee(authorDto)
+                                                        .receiver(authorDto)
                                                         .status(f.getStatus())
                                                         .createdAt(f.getCreatedAt())
                                                         .mutualFriendsCount(0)

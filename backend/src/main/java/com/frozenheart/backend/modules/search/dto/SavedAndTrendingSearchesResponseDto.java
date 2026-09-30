@@ -21,7 +21,7 @@ public class SavedAndTrendingSearchesResponseDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SavedSearchDto {
-        private Long id;
+        private Long savedSearchId;
         private String queryText;
         private Instant lastSearchedAt;
     }

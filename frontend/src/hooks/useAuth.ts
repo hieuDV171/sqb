@@ -23,8 +23,9 @@ export function useAuth() {
 
             // Lưu Token và Thông tin User vào Zustand Store (LocalStorage)
             setAuth(authData.accessToken, authData.refreshToken || '', {
-                id: authData.id,
+                id: authData.userId ?? 0,
                 username: authData.username,
+                role: authData.role,
                 avatarUrl: authData.avatarUrl,
                 coverUrl: authData.coverUrl,
                 frameUrl: authData.frameUrl,
@@ -32,8 +33,8 @@ export function useAuth() {
                 profileCompleted: authData.profileCompleted
             })
 
-            // Đăng nhập thành công -> TẠM THỜI chuyển sang màn hình Quản lý thiết bị
-            navigate('/devices');
+            // Đăng nhập thành công -> chuyển sang Bảng tin (/feed)
+            navigate('/feed');
         } catch (err: any) {
             setError(
                 err?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại!",
