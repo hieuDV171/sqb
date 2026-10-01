@@ -115,6 +115,7 @@ jobs:
           username: ${{ env.SERVER_USER }}
           key: ${{ env.SERVER_SSH_KEY }}
           port: ${{ env.SERVER_PORT }}
+          command_timeout: 30m
           script: |
             set -e
             cd /opt/sqb
