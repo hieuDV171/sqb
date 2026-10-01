@@ -3,11 +3,12 @@ name: Build and Deploy SQB Production
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'backend/**'
       - 'ai-sidecar/**'
       - 'docker-compose.prod.yml'
+      - 'docker-compose.monitoring.yml'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -74,34 +75,46 @@ jobs:
     name: Deploy to Production VPS
     needs: build-and-push
     runs-on: ubuntu-latest
-    # Chỉ chạy deploy khi push lên nhánh main và đã cấu hình SERVER_HOST trong Secrets
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT || '22' }}
 
     steps:
+      # Nếu chưa cấu hình SERVER_HOST trong Secrets, hiển thị thông báo và hoàn tất job nhẹ nhàng
+      - name: Check Server Configuration
+        if: env.SERVER_HOST == ''
+        run: |
+          echo "::warning ::SERVER_HOST secret is not configured in GitHub Repository Settings. Skipping SSH deployment."
+          echo "👉 Docker images for Backend and AI-Sidecar have been built and pushed to GHCR successfully."
+
       - name: Checkout Source Code
+        if: env.SERVER_HOST != ''
         uses: actions/checkout@v4
 
       # Đồng bộ file compose và thư mục cấu hình monitoring lên server /opt/sqb
       - name: Copy Compose and Monitoring Configs to Server
-        if: ${{ secrets.SERVER_HOST != '' }}
+        if: env.SERVER_HOST != ''
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
           source: "docker-compose.prod.yml,docker-compose.monitoring.yml,backend/monitoring/**"
           target: "/opt/sqb"
 
       # Thực thi lệnh pull image và reload container không downtime
       - name: Deploy via SSH
-        if: ${{ secrets.SERVER_HOST != '' }}
+        if: env.SERVER_HOST != ''
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
           script: |
             set -e
             cd /opt/sqb
