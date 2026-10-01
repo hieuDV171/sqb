@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/alert-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # 1. Scrape Spring Boot Backend qua mạng Docker nội bộ
+  - job_name: 'sqb-backend'
+    metrics_path: '/api/v1/actuator/prometheus'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['backend:8080']
+        labels:
+          application: 'sqb-backend'
+          environment: 'production'
+
+  # 2. Scrape PostgreSQL Exporter
+  - job_name: 'postgres'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          application: 'sqb-postgres'
+          environment: 'production'
+
+  # 3. Scrape Redis Exporter
+  - job_name: 'redis'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          application: 'sqb-redis'
+          environment: 'production'

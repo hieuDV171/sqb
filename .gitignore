@@ -4,3 +4,6 @@
 .env.prod
 .env.local
 *.log
+.agents
+AGENTS.md
+TASK_TRACKER.md

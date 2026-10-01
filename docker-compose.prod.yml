@@ -63,6 +63,11 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8000
+      - HF_TOKEN=${HF_TOKEN}
+      - TEXT_MODEL=${TEXT_MODEL:-intfloat/multilingual-e5-small}
+      - IMAGE_MODEL=${IMAGE_MODEL:-facebook/dinov2-small}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BTPROP_MODEL=${BTPROP_MODEL:-gpt-4.1-2025-04-14}
     networks:
       - sqb-network
 
@@ -84,6 +89,9 @@ services:
         condition: service_started
     ports:
       - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      # Chia sẻ log đĩa cho Promtail đọc để đẩy lên Loki
+      - sqb_backend_logs:/app/logs
     environment:
       # Database connection
       - DB_URL=jdbc:postgresql://postgres:5432/${DB_NAME:-sqb_db}
@@ -136,3 +144,5 @@ volumes:
     name: sqb_redis_data
   sqb_es_data:
     name: sqb_es_data
+  sqb_backend_logs:
+    name: sqb_backend_logs

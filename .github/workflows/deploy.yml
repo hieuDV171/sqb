@@ -81,8 +81,8 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      # Đồng bộ file docker-compose.prod.yml lên thư mục chạy /opt/sqb trên server
-      - name: Copy docker-compose.prod.yml to Server
+      # Đồng bộ file compose và thư mục cấu hình monitoring lên server /opt/sqb
+      - name: Copy Compose and Monitoring Configs to Server
         if: ${{ secrets.SERVER_HOST != '' }}
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -90,7 +90,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
-          source: "docker-compose.prod.yml"
+          source: "docker-compose.prod.yml,docker-compose.monitoring.yml,backend/monitoring/**"
           target: "/opt/sqb"
 
       # Thực thi lệnh pull image và reload container không downtime

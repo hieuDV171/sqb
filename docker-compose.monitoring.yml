@@ -1,0 +1,149 @@
+services:
+  # ========================================================
+  # 1. PROMETHEUS (METRICS COLLECTION)
+  # ========================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sqb-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./backend/monitoring/prometheus/prometheus-prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ./backend/monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - sqb_prometheus_data:/prometheus
+    networks:
+      - sqb-network
+    depends_on:
+      - alertmanager
+
+  # ========================================================
+  # 2. ALERTMANAGER (TELEGRAM ALERTS NOTIFIER)
+  # ========================================================
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: sqb-alertmanager
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-7368600631}
+    volumes:
+      - ./backend/monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - sqb_alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--config.expand-env"
+    networks:
+      - sqb-network
+
+  # ========================================================
+  # 3. POSTGRES EXPORTER (METRICS TỪ POSTGRESQL)
+  # ========================================================
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: sqb-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-sqb_db}?sslmode=disable"
+    networks:
+      - sqb-network
+
+  # ========================================================
+  # 4. REDIS EXPORTER (METRICS TỪ REDIS)
+  # ========================================================
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: sqb-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    networks:
+      - sqb-network
+
+  # ========================================================
+  # 5. LOKI (LOG AGGREGATOR)
+  # ========================================================
+  loki:
+    image: grafana/loki:latest
+    container_name: sqb-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./backend/monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - sqb_loki_data:/loki
+    networks:
+      - sqb-network
+
+  # ========================================================
+  # 6. PROMTAIL (LOG SHIPPER ĐẨY LOG BACKEND SANG LOKI)
+  # ========================================================
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sqb-promtail
+    restart: unless-stopped
+    volumes:
+      - ./backend/monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - sqb_backend_logs:/var/log/sqb:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - sqb-network
+
+  # ========================================================
+  # 7. TEMPO (DISTRIBUTED TRACING)
+  # ========================================================
+  tempo:
+    image: grafana/tempo:3.0.3
+    container_name: sqb-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./backend/monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
+      - sqb_tempo_data:/var/tempo
+    networks:
+      - sqb-network
+
+  # ========================================================
+  # 8. GRAFANA (UNIFIED DASHBOARD UI)
+  # ========================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sqb-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./backend/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./backend/monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - sqb_grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - sqb-network
+
+networks:
+  sqb-network:
+    name: sqb-network
+    external: true
+
+volumes:
+  sqb_prometheus_data:
+    name: sqb_prometheus_data
+  sqb_alertmanager_data:
+    name: sqb_alertmanager_data
+  sqb_loki_data:
+    name: sqb_loki_data
+  sqb_tempo_data:
+    name: sqb_tempo_data
+  sqb_grafana_data:
+    name: sqb_grafana_data
+  sqb_backend_logs:
+    external: true
+    name: sqb_backend_logs
