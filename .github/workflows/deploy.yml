@@ -28,9 +28,9 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Convert Repository Name to Lowercase
+      - name: Convert Owner Name to Lowercase
         run: |
-          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+          echo "OWNER_LOWER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -50,8 +50,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ env.REPO_LOWER }}/sqb-backend:latest
-            ghcr.io/${{ env.REPO_LOWER }}/sqb-backend:${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LOWER }}/sqb-backend:latest
+            ghcr.io/${{ env.OWNER_LOWER }}/sqb-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -63,8 +63,8 @@ jobs:
           file: ./ai-sidecar/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ env.REPO_LOWER }}/sqb-ai-sidecar:latest
-            ghcr.io/${{ env.REPO_LOWER }}/sqb-ai-sidecar:${{ github.sha }}
+            ghcr.io/${{ env.OWNER_LOWER }}/sqb-ai-sidecar:latest
+            ghcr.io/${{ env.OWNER_LOWER }}/sqb-ai-sidecar:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
