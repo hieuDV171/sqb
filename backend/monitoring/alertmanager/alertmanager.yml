@@ -11,7 +11,7 @@ route:
 receivers:
   - name: 'telegram-receiver'
     telegram_configs:
-      - bot_token: '8831929623:AAEY8H599mymOo1WHiCwJ8_SevfGPs8UTfA'
+      - bot_token: '${TELEGRAM_BOT_TOKEN}' # Hoặc sử dụng bot_token_file
         chat_id: 7368600631          # Số nguyên, không cần dấu nháy nếu là cá nhân
         send_resolved: true                     # Bật tính năng: khi hệ thống sống lại sẽ báo "RESOLVED"
         parse_mode: 'HTML'
