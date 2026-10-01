@@ -10,7 +10,7 @@ RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
 
 # Copy mã nguồn và đóng gói
 COPY src src
-RUN ./gradlew bootJar --nodaemon -x test
+RUN ./gradlew bootJar --no-daemon -x test
 
 # Stage 2: Runtime Image siêu nhẹ
 FROM eclipse-temurin:25-jre-alpine
