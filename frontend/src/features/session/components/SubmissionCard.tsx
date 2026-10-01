@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Clock,
   Eye,
@@ -11,6 +12,7 @@ import {
   Edit3,
   Trash2,
   HelpCircle,
+  PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SubmissionSessionSummaryDto, SessionStatus } from '../types/session.types';
@@ -30,6 +32,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   // Status can be from submission object or the currently selected filter
@@ -193,6 +196,17 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
               className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+
+          {effectiveStatus === 'RESOLVED' && (
+            <button
+              type="button"
+              onClick={() => navigate(`/sessions/${submission.sessionId}/practice`)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+              <span>Luyện tập</span>
             </button>
           )}
 

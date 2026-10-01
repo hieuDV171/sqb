@@ -5,6 +5,8 @@ import { LeaderboardPage } from "./pages/leaderboard/LeaderboardPage";
 import { FeedPage } from "./pages/feed/FeedPage";
 import { SessionsPage } from "./pages/session/SessionsPage";
 import { SubmissionDetailPage } from "./pages/session/SubmissionDetailPage";
+import { PracticeWorkspacePage } from "./pages/session/PracticeWorkspacePage";
+import { UserSessionsPage } from "./pages/session/UserSessionsPage";
 import { MessagesPage } from "./pages/chat/MessagesPage";
 import { ShopPage } from "./pages/shop/ShopPage";
 import { ProfilePage } from "./pages/profile/ProfilePage";
@@ -60,6 +62,9 @@ export default function App() {
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/propose" element={<SessionsPage />} />
           <Route path="/sessions/:sessionId" element={<SubmissionDetailPage />} />
+          <Route path="/sessions/:sessionId/practice" element={<PracticeWorkspacePage />} />
+          <Route path="/sessions/:sessionId/questions" element={<PracticeWorkspacePage />} />
+          <Route path="/users/:userId/sessions" element={<UserSessionsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/shop" element={<ShopPage />} />
 

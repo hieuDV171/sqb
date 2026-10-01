@@ -4,7 +4,7 @@ import type { CursorResponse } from '@/types/user.types';
 import type { CommentResponseDto } from '@/types/post.types';
 
 export interface CreateCommentRequest {
-  targetType: 'POST' | 'COMMENT';
+  targetType: 'POST' | 'COMMENT' | 'QUESTION' | 'SESSION';
   targetId: number;
   content: string;
   parentCommentId?: number;
@@ -30,7 +30,7 @@ export const commentService = {
    * GET /api/v1/comments
    */
   getComments: async (params: {
-    targetType?: 'POST' | 'COMMENT';
+    targetType?: 'POST' | 'COMMENT' | 'QUESTION' | 'SESSION';
     targetId?: number;
     parentCommentId?: number;
     sort?: 'newest' | 'oldest';

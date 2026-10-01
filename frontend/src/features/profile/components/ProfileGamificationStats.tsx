@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   ArrowRight,
   TrendingUp,
+  BookOpen,
 } from 'lucide-react';
 
 interface ProfileGamificationStatsProps {
@@ -116,6 +117,29 @@ export function ProfileGamificationStats({ profile }: ProfileGamificationStatsPr
             className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors shadow-2xs shrink-0"
           >
             Vào cửa hàng
+          </Link>
+        </div>
+
+        {/* User Proposed Sessions Link */}
+        <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-900/60 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                Bộ đề câu hỏi trắc nghiệm
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Xem và luyện tập các câu hỏi do thành viên này đóng góp
+              </p>
+            </div>
+          </div>
+          <Link
+            to={`/users/${profile.userId}/sessions`}
+            className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700/80 transition-colors shadow-2xs shrink-0"
+          >
+            Luyện tập
           </Link>
         </div>
       </CardContent>

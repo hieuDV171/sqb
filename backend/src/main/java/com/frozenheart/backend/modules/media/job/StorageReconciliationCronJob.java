@@ -1,11 +1,12 @@
 package com.frozenheart.backend.modules.media.job;
 
-import com.frozenheart.backend.core.config.property.MinioProperties;
+import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.entity.conversation.Message;
 import com.frozenheart.backend.core.entity.media.MediaItem;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.impl.MediaServiceImpl;
 import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.Result;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +24,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -29,9 +32,10 @@ import java.util.List;
 public class StorageReconciliationCronJob {
 
     private final MinioClient minioClient;
-    private final MinioProperties minioProperties;
+    private final R2Properties r2Properties;
     private final MessageRepository messageRepository;
     private final MediaService mediaService;
+    private final RedisTemplate<String, String> redisTemplate;
 
     private static final int BATCH_SIZE = 100;
 
@@ -44,6 +48,7 @@ public class StorageReconciliationCronJob {
 
         cleanRevokedMessagesMedia();
         cleanStaleExportFiles();
+        cleanStalePendingMedia();
 
         log.info("[StorageReconciliationCronJob] 🏁 Hoàn tất chu trình quét dọn storage định kỳ hàng tuần.");
     }
@@ -93,7 +98,7 @@ public class StorageReconciliationCronJob {
             }
         }
 
-        log.info("[StorageReconciliationCronJob] Đã dọn dẹp media của {} tin nhắn thu hồi (>30 ngày), tổng cộng {} file MinIO.",
+        log.info("[StorageReconciliationCronJob] Đã dọn dẹp media của {} tin nhắn thu hồi (>30 ngày), tổng cộng {} file R2.",
                 totalMessagesCleaned, totalFilesCleaned);
     }
 
@@ -108,7 +113,7 @@ public class StorageReconciliationCronJob {
         try {
             Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
-                            .bucket(minioProperties.getBucketName())
+                            .bucket(r2Properties.getBucketName())
                             .prefix("exports/")
                             .recursive(true)
                             .build()
@@ -130,7 +135,46 @@ public class StorageReconciliationCronJob {
                 log.info("[StorageReconciliationCronJob] Không có file export nào quá hạn 7 ngày.");
             }
         } catch (Exception e) {
-            log.error("[StorageReconciliationCronJob] Lỗi khi quét dọn các file exports trên MinIO: ", e);
+            log.error("[StorageReconciliationCronJob] Lỗi khi quét dọn các file exports trên R2: ", e);
+        }
+    }
+
+    /**
+     * Tác vụ 3: Dọn dẹp các tệp media tải lên tạm thời (Pending) bị mồ côi quá 24h.
+     * Chạy định kỳ lúc 03:30 sáng hàng ngày theo múi giờ Việt Nam.
+     */
+    @Scheduled(cron = "0 30 3 * * *", zone = Time.DEFAULT_TIMEZONE)
+    public void cleanStalePendingMedia() {
+        log.info("[StorageReconciliationCronJob] 🧹 Đang quét các tệp tải lên mồ côi (pending quá 24h)...");
+        long cutoff = Instant.now().minus(24, ChronoUnit.HOURS).toEpochMilli();
+
+        int totalCleaned = 0;
+        while (true) {
+            // Lấy theo từng batch nhỏ (BATCH_SIZE = 100) để không nghẽn mạng hay nghẽn Redis
+            Set<String> expiredKeys = redisTemplate.opsForZSet().rangeByScore(
+                    MediaServiceImpl.REDIS_PENDING_MEDIA_KEY, 0, cutoff, 0, BATCH_SIZE);
+            if (expiredKeys == null || expiredKeys.isEmpty()) {
+                break;
+            }
+
+            log.info("[StorageReconciliationCronJob] Đang dọn dẹp batch {} tệp pending quá hạn 24h...", expiredKeys.size());
+            mediaService.deleteMedia(new ArrayList<>(expiredKeys));
+
+            // Chỉ xóa đúng các key trong batch vừa được xóa thành công trên R2
+            redisTemplate.opsForZSet().remove(
+                    MediaServiceImpl.REDIS_PENDING_MEDIA_KEY, expiredKeys.toArray());
+            totalCleaned += expiredKeys.size();
+
+            // Nếu số lượng ít hơn BATCH_SIZE tức là đã vét sạch toàn bộ hàng đợi
+            if (expiredKeys.size() < BATCH_SIZE) {
+                break;
+            }
+        }
+
+        if (totalCleaned > 0) {
+            log.info("[StorageReconciliationCronJob] 🏁 Đã dọn dẹp sạch tổng cộng {} tệp pending mồ côi khỏi Cloudflare R2 và Redis queue.", totalCleaned);
+        } else {
+            log.info("[StorageReconciliationCronJob] Không có tệp pending nào quá hạn 24h.");
         }
     }
 }

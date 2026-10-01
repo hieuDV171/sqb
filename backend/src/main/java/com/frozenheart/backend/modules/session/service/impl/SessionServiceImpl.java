@@ -129,7 +129,7 @@ public class SessionServiceImpl implements SessionService {
             List<String> missingMedias = mediaService.findMissingObjects(allRequestedMediaUrls);
             if (!missingMedias.isEmpty()) {
                 throw new AppException(ResponseCode.RESOURCE_NOT_FOUND,
-                        "Các tệp ảnh sau đã hết hạn lưu tạm thời trên MinIO hoặc không tồn tại: " + missingMedias + ". Vui lòng tải lại ảnh trước khi đề xuất phiên.");
+                        "Các tệp ảnh sau đã hết hạn lưu tạm thời trên hệ thống lưu trữ hoặc không tồn tại: " + missingMedias + ". Vui lòng tải lại ảnh trước khi đề xuất phiên.");
             }
         }
 

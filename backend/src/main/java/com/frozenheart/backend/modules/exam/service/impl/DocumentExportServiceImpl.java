@@ -1,6 +1,6 @@
 package com.frozenheart.backend.modules.exam.service.impl;
 
-import com.frozenheart.backend.core.config.property.MinioProperties;
+import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.entity.media.MediaTarget;
@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 public class DocumentExportServiceImpl implements DocumentExportService {
 
     private final MinioClient minioClient;
-    private final MinioProperties minioProperties;
+    private final R2Properties r2Properties;
     private final QuestionRepository questionRepository;
 
     @Override
@@ -116,14 +116,14 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         try {
             var stat = minioClient.statObject(
                     StatObjectArgs.builder()
-                            .bucket(minioProperties.getBucketName())
+                            .bucket(r2Properties.getBucketName())
                             .object(objectKey)
                             .build());
             if (stat != null) {
                 String downloadUrl = minioClient.getPresignedObjectUrl(
                         GetPresignedObjectUrlArgs.builder()
                                 .method(Method.GET)
-                                .bucket(minioProperties.getBucketName())
+                                .bucket(r2Properties.getBucketName())
                                 .object(objectKey)
                                 .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
                                 .build());
@@ -147,18 +147,17 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             try (InputStream is = new ByteArrayInputStream(contentBytes)) {
                 minioClient.putObject(
                         PutObjectArgs.builder()
-                                .bucket(minioProperties.getBucketName())
+                                .bucket(r2Properties.getBucketName())
                                 .object(objectKey)
                                 .stream(is, (long) contentBytes.length, -1L)
                                 .contentType(contentType)
-                                .tags(Map.of("status", "temp"))
                                 .build());
             }
 
             String downloadUrl = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
-                            .bucket(minioProperties.getBucketName())
+                            .bucket(r2Properties.getBucketName())
                             .object(objectKey)
                             .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
                             .build());

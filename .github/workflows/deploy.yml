@@ -1,0 +1,127 @@
+name: Build and Deploy SQB Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'ai-sidecar/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ========================================================
+  # JOB 1: BUILD VÀ PUSH DOCKER IMAGES LÊN GHCR
+  # ========================================================
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Convert Repository Name to Lowercase
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- Build & Push Spring Boot Backend ---
+      - name: Build & Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.REPO_LOWER }}/sqb-backend:latest
+            ghcr.io/${{ env.REPO_LOWER }}/sqb-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- Build & Push FastAPI AI Sidecar ---
+      - name: Build & Push AI Sidecar Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ai-sidecar
+          file: ./ai-sidecar/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.REPO_LOWER }}/sqb-ai-sidecar:latest
+            ghcr.io/${{ env.REPO_LOWER }}/sqb-ai-sidecar:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ========================================================
+  # JOB 2: DEPLOY LÊN PRODUCTION SERVER QUA SSH
+  # ========================================================
+  deploy:
+    name: Deploy to Production VPS
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Chỉ chạy deploy khi push lên nhánh main và đã cấu hình SERVER_HOST trong Secrets
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Đồng bộ file docker-compose.prod.yml lên thư mục chạy /opt/sqb trên server
+      - name: Copy docker-compose.prod.yml to Server
+        if: ${{ secrets.SERVER_HOST != '' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: "docker-compose.prod.yml"
+          target: "/opt/sqb"
+
+      # Thực thi lệnh pull image và reload container không downtime
+      - name: Deploy via SSH
+        if: ${{ secrets.SERVER_HOST != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/sqb
+
+            # Kiểm tra nếu file .env.prod đã tồn tại
+            if [ ! -f .env.prod ]; then
+              echo "❌ ERROR: File /opt/sqb/.env.prod chưa tồn tại! Hãy tạo từ .env.prod.example trước khi deploy."
+              exit 1
+            fi
+
+            # Kéo (Pull) phiên bản container mới nhất
+            echo "🚀 Pulling latest images..."
+            docker compose --env-file .env.prod -f docker-compose.prod.yml pull backend ai-sidecar
+
+            # Khởi động / Cập nhật containers
+            echo "🔄 Updating containers..."
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Dọn dẹp images cũ không sử dụng để tiết kiệm dung lượng ổ cứng
+            echo "🧹 Cleaning unused images..."
+            docker image prune -f
+
+            echo "✅ Deployment completed successfully!"

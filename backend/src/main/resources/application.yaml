@@ -33,8 +33,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
       timeout: 2000
       password: ${REDIS_PASSWORD}
       repositories:
@@ -54,8 +54,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 40MB
-      max-request-size: 50MB
+      max-file-size: 15MB
+      max-request-size: 20MB
 
   jackson:
     property-naming-strategy: SNAKE_CASE
@@ -71,12 +71,13 @@ jwt:
   refresh-token-expiration: 604800000 # 7 days
   issuer: backend # bên phát hành token
 
-minio:
-  endpoint: ${MINIO_ENDPOINT}
-  access-key: ${MINIO_ACCESS_KEY}
-  secret-key: ${MINIO_SECRET_KEY}
-  bucket-name: ${MINIO_BUCKET}
-  region: us-east-1
+r2:
+  endpoint: ${R2_ENDPOINT}
+  access-key: ${R2_ACCESS_KEY}
+  secret-key: ${R2_SECRET_KEY}
+  bucket-name: ${R2_BUCKET}
+  region: ${R2_REGION:auto}
+  public-url: ${R2_PUBLIC_URL}
 
 app:
   security:

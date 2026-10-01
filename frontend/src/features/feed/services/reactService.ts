@@ -1,7 +1,7 @@
 import { axiosClient } from '@/api/axiosClient';
 import type { GlobalResponse } from '@/types/response.types';
 
-export type InteractionTargetType = 'POST' | 'COMMENT';
+export type InteractionTargetType = 'POST' | 'COMMENT' | 'QUESTION' | 'SESSION';
 export type ReactionType = 'LIKE' | 'LOVE' | 'WOW';
 
 export interface ReactRequest {

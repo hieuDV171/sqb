@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   AlertCircle,
   RefreshCw,
+  PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -246,6 +247,28 @@ export function SubmissionDetailPage() {
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Practice Launch CTA */}
+        {effectiveStatus === 'RESOLVED' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60">
+            <div>
+              <span className="font-bold text-indigo-950 dark:text-indigo-200 text-xs sm:text-sm block">
+                Phiên câu hỏi đã sẵn sàng để luyện tập!
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Làm bài trắc nghiệm, kiểm tra đúng/sai và đối chiếu giải thích chi tiết
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`/sessions/${detail.sessionId}/practice`)}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              <PlayCircle className="w-4 h-4" />
+              <span>Bắt đầu luyện tập</span>
+            </button>
           </div>
         )}
 
