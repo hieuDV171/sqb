@@ -78,4 +78,13 @@ databaseChangeLog:
             columnName: reason
             tableName: point_histories
             validate: true
+  - changeSet:
+      id: 1788892466061-6
+      author: ADMIN
+      changes:
+        - sql:
+            sql: CREATE INDEX idx_coin_transactions_user_created ON coin_transactions(user_id, created_at DESC);
+        - sql:
+            sql: CREATE INDEX idx_coin_transactions_target ON coin_transactions(target_type, target_id);
+
 
