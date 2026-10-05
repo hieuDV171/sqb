@@ -44,6 +44,9 @@ public class DataInitializer implements CommandLineRunner {
     @Value("${spring.mail.username}")
     private String adminEmail;
 
+    @Value("${app.admin.password}")
+    private String adminPassword;
+
     @Override
     @Transactional
     public void run(String @NonNull ... args) {
@@ -52,10 +55,10 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Khởi tạo tài khoản ADMIN mặc định: {}", adminEmail);
 
             Instant now = Instant.now();
-            // Tạo User Admin (Password: Admin@123456)
+            // Tạo User Admin
             User adminUser = User.builder()
                     .email(adminEmail)
-                    .passwordHash(passwordEncoder.encode("Admin@123456")) // Băm mật khẩu BCrypt
+                    .passwordHash(passwordEncoder.encode(adminPassword)) // Băm mật khẩu BCrypt
                     .role(UserRole.ADMIN)
                     .verified(true)
                     .active(true)

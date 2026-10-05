@@ -80,6 +80,8 @@ r2:
   public-url: ${R2_PUBLIC_URL}
 
 app:
+  admin:
+    password: ${ADMIN_PASSWORD}
   security:
     default-user-password: ${DEFAULT_USER_PASSWORD}
   firebase:

@@ -16,11 +16,14 @@ RUN ./gradlew bootJar --no-daemon -x test
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
-# Tạo user bảo mật không dùng root
-RUN addgroup -S sqbgroup && adduser -S sqbuser -G sqbgroup
-USER sqbuser
+# Tạo user bảo mật và tạo sẵn thư mục logs với quyền sở hữu cho sqbuser
+RUN addgroup -S sqbgroup && adduser -S sqbuser -G sqbgroup && \
+    mkdir -p /app/logs && \
+    chown -R sqbuser:sqbgroup /app
 
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY --from=builder --chown=sqbuser:sqbgroup /app/build/libs/*.jar app.jar
+
+USER sqbuser
 
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
