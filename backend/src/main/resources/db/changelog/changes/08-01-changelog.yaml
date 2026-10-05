@@ -1,0 +1,86 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1788871532695-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+            tableName: conversations
+  - changeSet:
+      id: 1788871532695-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+            tableName: posts
+  - changeSet:
+      id: 1788871532695-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+            tableName: questions
+  - changeSet:
+      id: 1788871532695-6
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+            tableName: reports
+  - changeSet:
+      id: 1788871532695-7
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+            tableName: sessions
+  - changeSet:
+      id: 1788871532695-8
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+            tableName: user_profiles
+  - changeSet:
+      id: 1788871532695-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - modifyDataType:
+            columnName: target_type
+            newDataType: VARCHAR(50)
+            tableName: point_histories
+  - changeSet:
+      id: 1788871532695-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - modifyDataType:
+            columnName: target_type
+            newDataType: VARCHAR(50)
+            tableName: predictions
+

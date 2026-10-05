@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1788797392709-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: date_of_birth
+                  type: DATE
+              - column:
+                  name: gender
+                  type: VARCHAR(20)
+            tableName: user_profiles
+  - changeSet:
+      id: 1788797392709-7
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: date_of_birth
+            tableName: users
+        - dropColumn:
+            columnName: gender
+            tableName: users
+  - changeSet:
+      id: 1788797392709-9
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: original_content
+            tableName: questions
+        - dropColumn:
+            columnName: original_explanation
+            tableName: questions
+        - dropColumn:
+            columnName: original_options
+            tableName: questions
+

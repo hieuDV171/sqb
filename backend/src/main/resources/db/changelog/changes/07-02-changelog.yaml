@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0
+      author: ADMIN
+      changes:
+        - sql:
+            sql: CREATE UNIQUE INDEX idx_semesters_single_active ON semesters (active) WHERE active = TRUE;
+        - sql:
+            sql: CREATE INDEX idx_user_device_actives ON user_devices (user_id) WHERE is_active = TRUE;
+        - sql:
+            sql: CREATE INDEX idx_activity_feeds_user_id_id ON activity_feeds (user_id, id DESC);
+        - sql:
+            sql: CREATE INDEX idx_activity_feeds_created_at_desc ON activity_feeds (created_at DESC);
+  - changeSet:
+      id: 1
+      author: ADMIN
+      changes:
+        - sql:
+            sql: CREATE INDEX idx_coin_transactions_user_created ON coin_transactions(user_id, created_at DESC);
+        - sql:
+            sql: CREATE INDEX idx_coin_transactions_target ON coin_transactions(target_type, target_id);

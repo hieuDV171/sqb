@@ -1,0 +1,2894 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1788743703541-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: activity_feeds_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: ai_chat_messages_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: ai_chat_sessions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: badges_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: comments_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-6
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: conversations_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-7
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: cosmetic_items_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-8
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: course_classes_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-9
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: exams_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-10
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: game6_llm_questions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-11
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: legacy_questions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-12
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: messages_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-13
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: minigame_llm_sessions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-14
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: notifications_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-15
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: point_histories_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-16
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: posts_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-17
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: predictions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-18
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: question_edit_logs_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-19
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: question_medias_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-20
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: questions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-21
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: reacts_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-22
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: reports_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-23
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: searches_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-24
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: semesters_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-25
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: sessions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-26
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: subjects_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-27
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: topics_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-28
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: user_devices_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-29
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: users_seq
+            startValue: 1
+  - changeSet:
+      id: 1788743703541-30
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_activity_feeds
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: action_type
+                  type: VARCHAR(30)
+              - column:
+                  name: target_type
+                  type: VARCHAR(255)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: meta_data
+                  type: JSONB
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: user_id
+                  type: BIGINT
+            tableName: activity_feeds
+  - changeSet:
+      id: 1788743703541-31
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_ai_chat_messages
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: session_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: role
+                  type: VARCHAR(20)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: content
+                  type: TEXT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: ai_chat_messages
+  - changeSet:
+      id: 1788743703541-32
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_ai_chat_sessions
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: session_id
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: ai_chat_sessions
+  - changeSet:
+      id: 1788743703541-33
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_badges
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: badge_tier
+                  type: VARCHAR(20)
+              - column:
+                  name: badge_trigger_event
+                  type: VARCHAR(30)
+              - column:
+                  name: icon_url
+                  type: VARCHAR(255)
+              - column:
+                  name: criteria
+                  type: JSONB
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: active
+                  type: BOOLEAN
+            tableName: badges
+  - changeSet:
+      id: 1788743703541-34
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_comments
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: media_urls
+                  type: JSONB
+              - column:
+                  name: target_type
+                  type: VARCHAR(255)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: deleted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: parent_comment_id
+                  type: BIGINT
+              - column:
+                  name: user_id
+                  type: BIGINT
+            tableName: comments
+  - changeSet:
+      id: 1788743703541-35
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_conversations
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+              - column:
+                  name: avatar_url
+                  type: VARCHAR(500)
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: last_message_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: creadted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: last_message_id
+                  type: BIGINT
+              - column:
+                  name: creater_id
+                  type: BIGINT
+            tableName: conversations
+  - changeSet:
+      id: 1788743703541-36
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_cosmetic_items
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+              - column:
+                  name: rarity
+                  type: VARCHAR(20)
+              - column:
+                  name: asset_url
+                  type: VARCHAR(500)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: original_price
+                  type: DOUBLE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: price
+                  type: DOUBLE
+              - column:
+                  name: available_util
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: prerequisites
+                  type: JSONB
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: cosmetic_items
+  - changeSet:
+      id: 1788743703541-37
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_course_classes
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: class_code
+                  type: VARCHAR(50)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: semester
+                  type: VARCHAR(20)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: subject_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: lecturer_id
+                  type: BIGINT
+            tableName: course_classes
+  - changeSet:
+      id: 1788743703541-38
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: exam_code
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_exam_course_classes
+                  name: exam_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_exam_course_classes
+                  name: course_class_id
+                  type: BIGINT
+            tableName: exam_course_classes
+  - changeSet:
+      id: 1788743703541-39
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                  name: display_order
+                  type: INT
+              - column:
+                  name: options_snapshot
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_exam_questions
+                  name: exam_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_exam_questions
+                  name: question_id
+                  type: BIGINT
+            tableName: exam_questions
+  - changeSet:
+      id: 1788743703541-40
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_exams
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: question_count
+                  type: INT
+              - column:
+                  name: difficulty_distribution_json
+                  type: JSONB
+              - column:
+                  name: topic_weights_json
+                  type: JSONB
+              - column:
+                  name: pdf_file_url
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: subject_id
+                  type: BIGINT
+              - column:
+                  name: lecturer_id
+                  type: BIGINT
+            tableName: exams
+  - changeSet:
+      id: 1788743703541-41
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: message
+                  type: VARCHAR(255)
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+              - column:
+                  name: accepted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_friendships
+                  name: sender_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_friendships
+                  name: receiver_id
+                  type: BIGINT
+            tableName: friendships
+  - changeSet:
+      id: 1788743703541-42
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_game6_llm_questions
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: content
+                  type: TEXT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: options
+                  type: JSONB
+              - column:
+                  name: explanation
+                  type: TEXT
+              - column:
+                  name: image_urls
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                  name: llm_generated
+                  type: BOOLEAN
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: source_type
+                  type: SMALLINT
+              - column:
+                  name: original_question_id
+                  type: BIGINT
+              - column:
+                  name: game_session_id
+                  type: BIGINT
+            tableName: game6_llm_questions
+  - changeSet:
+      id: 1788743703541-43
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_legacy_questions
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: content
+                  type: TEXT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: options
+                  type: JSONB
+              - column:
+                  name: explanation
+                  type: TEXT
+              - column:
+                  name: image_urls
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                  name: llm_generated
+                  type: BOOLEAN
+              - column:
+                  constraints:
+                    nullable: false
+                  name: used
+                  type: BOOLEAN
+              - column:
+                  name: subject_code
+                  type: VARCHAR(50)
+              - column:
+                  name: imported_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: legacy_questions
+  - changeSet:
+      id: 1788743703541-44
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_messages
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: message_type
+                  type: VARCHAR(20)
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: media_urls
+                  type: JSONB
+              - column:
+                  name: edited_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: deleted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: reply_to_message_id
+                  type: BIGINT
+              - column:
+                  name: conversation_id
+                  type: BIGINT
+              - column:
+                  name: sender_id
+                  type: BIGINT
+            tableName: messages
+  - changeSet:
+      id: 1788743703541-45
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_minigame_llm_sessions
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: week_number
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: year
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: correct_answers
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                  name: start_time
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: end_time
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: status
+                  type: VARCHAR(20)
+            tableName: minigame_llm_sessions
+  - changeSet:
+      id: 1788743703541-46
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_notifications
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: type
+                  type: VARCHAR(255)
+              - column:
+                  name: category
+                  type: VARCHAR(255)
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  name: body
+                  type: VARCHAR(255)
+              - column:
+                  name: icon_url
+                  type: VARCHAR(255)
+              - column:
+                  name: target_type
+                  type: SMALLINT
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: target_url
+                  type: VARCHAR(255)
+              - column:
+                  name: metadata
+                  type: JSONB
+              - column:
+                  name: read_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: creadted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: actor_id
+                  type: BIGINT
+              - column:
+                  name: receiver_id
+                  type: BIGINT
+            tableName: notifications
+  - changeSet:
+      id: 1788743703541-47
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_point_histories
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: points
+                  type: DOUBLE
+              - column:
+                  name: reason
+                  type: VARCHAR(255)
+              - column:
+                  name: target_type
+                  type: VARCHAR(255)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  name: subject_id
+                  type: BIGINT
+              - column:
+                  name: semester_id
+                  type: BIGINT
+            tableName: point_histories
+  - changeSet:
+      id: 1788743703541-48
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_posts
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: post_type
+                  type: VARCHAR(255)
+              - column:
+                  name: media_urls
+                  type: JSONB
+              - column:
+                  name: visibility
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: deleted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: react_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: comment_count
+                  type: INT
+              - column:
+                  name: lecturer_note
+                  type: VARCHAR(255)
+              - column:
+                  name: lecturer_note_added_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: subject_id
+                  type: BIGINT
+              - column:
+                  name: poster_id
+                  type: BIGINT
+              - column:
+                  name: noted_lecturer_id
+                  type: BIGINT
+              - column:
+                  name: session_id
+                  type: BIGINT
+            tableName: posts
+  - changeSet:
+      id: 1788743703541-49
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_predictions
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: game_type
+                  type: VARCHAR(50)
+              - column:
+                  name: target_type
+                  type: VARCHAR(255)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: prediction_data
+                  type: JSONB
+              - column:
+                  name: actual_data
+                  type: JSONB
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: is_correct
+                  type: BOOLEAN
+              - column:
+                  name: target_date
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: resolved_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: gambler_id
+                  type: BIGINT
+            tableName: predictions
+  - changeSet:
+      id: 1788743703541-50
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_question_edit_logs
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: ai_prompt
+                  type: TEXT
+              - column:
+                  name: ai_response
+                  type: TEXT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: actor_type
+                  type: VARCHAR(20)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: status
+                  type: VARCHAR(20)
+              - column:
+                  name: before_state
+                  type: JSONB
+              - column:
+                  name: after_state
+                  type: JSONB
+              - column:
+                  name: hallucination_audit
+                  type: JSONB
+              - column:
+                  name: ai_metadata
+                  type: JSONB
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: actor_id
+                  type: BIGINT
+              - column:
+                  name: question_id
+                  type: BIGINT
+              - column:
+                  name: session_id
+                  type: BIGINT
+            tableName: question_edit_logs
+  - changeSet:
+      id: 1788743703541-51
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_question_medias
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: p_hash
+                  type: BIGINT
+              - column:
+                  name: ai_analysis_result
+                  type: JSONB
+              - column:
+                  name: media_embedding
+                  type: vector(384)
+              - column:
+                  name: object_key
+                  type: VARCHAR(255)
+              - column:
+                  name: url
+                  type: VARCHAR(500)
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: width
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: height
+                  type: INT
+              - column:
+                  name: media_target
+                  type: VARCHAR(30)
+              - column:
+                  name: processing_status
+                  type: VARCHAR(50)
+              - column:
+                  name: uploaded_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: processed_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: deleted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: owner_id
+                  type: BIGINT
+              - column:
+                  name: question_id
+                  type: BIGINT
+            tableName: question_medias
+  - changeSet:
+      id: 1788743703541-52
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_questions
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: question_code
+                  type: VARCHAR(255)
+              - column:
+                  name: original_content
+                  type: TEXT
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: difficulty
+                  type: VARCHAR(20)
+              - column:
+                  name: text_embedding
+                  type: vector(384)
+              - column:
+                  name: original_options
+                  type: JSONB
+              - column:
+                  name: options
+                  type: JSONB
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+              - column:
+                  name: original_explanation
+                  type: TEXT
+              - column:
+                  name: explanation
+                  type: TEXT
+              - column:
+                  name: confidence_score
+                  type: DOUBLE
+              - column:
+                  name: avg_rating
+                  type: DOUBLE
+              - column:
+                  name: rating_count
+                  type: INT
+              - column:
+                  name: react_count
+                  type: INT
+              - column:
+                  name: comment_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: display_order
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: llm_generated
+                  type: BOOLEAN
+              - column:
+                  name: duplicate_warnings
+                  type: JSONB
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: topic_id
+                  type: BIGINT
+              - column:
+                  name: session_id
+                  type: BIGINT
+            tableName: questions
+  - changeSet:
+      id: 1788743703541-53
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_reacts
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: target_type
+                  type: VARCHAR(255)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: reaction_type
+                  type: VARCHAR(20)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: user_id
+                  type: BIGINT
+            tableName: reacts
+  - changeSet:
+      id: 1788743703541-54
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_reports
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: target_type
+                  type: VARCHAR(255)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  name: violation_type
+                  type: VARCHAR(50)
+              - column:
+                  name: evidence_urls
+                  type: JSONB
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+              - column:
+                  name: reviewed_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: resolution_note
+                  type: VARCHAR(500)
+              - column:
+                  name: reporter_id
+                  type: BIGINT
+              - column:
+                  name: reviewer_id
+                  type: BIGINT
+            tableName: reports
+  - changeSet:
+      id: 1788743703541-55
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_searches
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: query_text
+                  type: VARCHAR(255)
+              - column:
+                  name: last_searched_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: user_id
+                  type: BIGINT
+            tableName: searches
+  - changeSet:
+      id: 1788743703541-56
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_semesters
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: name
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: active
+                  type: BOOLEAN
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: is_finalized
+                  type: BOOLEAN
+            tableName: semesters
+  - changeSet:
+      id: 1788743703541-57
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_sessions
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: session_code
+                  type: VARCHAR(255)
+              - column:
+                  name: source_url
+                  type: VARCHAR(255)
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  name: content
+                  type: VARCHAR(255)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: react_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: comment_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: anonymous
+                  type: BOOLEAN
+              - column:
+                  name: reviewed_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: proposer_id
+                  type: BIGINT
+              - column:
+                  name: reviewer_id
+                  type: BIGINT
+              - column:
+                  name: subject_id
+                  type: BIGINT
+            tableName: sessions
+  - changeSet:
+      id: 1788743703541-58
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_subjects
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: name
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: code
+                  type: VARCHAR(10)
+            tableName: subjects
+  - changeSet:
+      id: 1788743703541-59
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_topics
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: name
+                  type: VARCHAR(100)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: code
+                  type: VARCHAR(10)
+              - column:
+                  name: subject_id
+                  type: BIGINT
+            tableName: topics
+  - changeSet:
+      id: 1788743703541-60
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: selected_options
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                  name: is_correct
+                  type: BOOLEAN
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_answers
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_answers
+                  name: question_id
+                  type: BIGINT
+            tableName: user_answers
+  - changeSet:
+      id: 1788743703541-61
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: earned_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_badges
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_badges
+                  name: badge_id
+                  type: BIGINT
+            tableName: user_badges
+  - changeSet:
+      id: 1788743703541-62
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: reason
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_blocks
+                  name: blocker_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_blocks
+                  name: blocked_id
+                  type: BIGINT
+            tableName: user_blocks
+  - changeSet:
+      id: 1788743703541-63
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: acquire_method
+                  type: VARCHAR(30)
+              - column:
+                  name: acquire_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: metadata
+                  type: JSONB
+              - column:
+                  name: equipped_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_cosmetics
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_cosmetics
+                  name: cosmetic_id
+                  type: BIGINT
+            tableName: user_cosmetics
+  - changeSet:
+      id: 1788743703541-64
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: enrolled_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_course_classes
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_course_classes
+                  name: course_class_id
+                  type: BIGINT
+            tableName: user_course_classes
+  - changeSet:
+      id: 1788743703541-65
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: deleted_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_deleted_message_only_mes
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_deleted_message_only_mes
+                  name: deleted_message_only_me_id
+                  type: BIGINT
+            tableName: user_deleted_message_only_mes
+  - changeSet:
+      id: 1788743703541-66
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_devices
+                  name: id
+                  type: BIGINT
+              - column:
+                  name: device_id
+                  type: VARCHAR(500)
+              - column:
+                  name: fcm_token
+                  type: VARCHAR(500)
+              - column:
+                  name: platform
+                  type: VARCHAR(100)
+              - column:
+                  name: os_version
+                  type: VARCHAR(255)
+              - column:
+                  name: screen_size
+                  type: VARCHAR(255)
+              - column:
+                  name: device_name
+                  type: VARCHAR(255)
+              - column:
+                  name: app_version
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: is_active
+                  type: BOOLEAN
+              - column:
+                  name: last_active_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: user_id
+                  type: BIGINT
+            tableName: user_devices
+  - changeSet:
+      id: 1788743703541-67
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_follows
+                  name: follower_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_follows
+                  name: followed_user_id
+                  type: BIGINT
+            tableName: user_follows
+  - changeSet:
+      id: 1788743703541-68
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: nick_name
+                  type: VARCHAR(255)
+              - column:
+                  name: role
+                  type: VARCHAR(20)
+              - column:
+                  name: joined_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: left_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: is_muted
+                  type: BOOLEAN
+              - column:
+                  name: hidden_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: last_message_read_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: last_read_message_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_participants
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_participants
+                  name: conversation_id
+                  type: BIGINT
+            tableName: user_participants
+  - changeSet:
+      id: 1788743703541-69
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_profiles
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: full_name
+                  type: VARCHAR(255)
+              - column:
+                  name: avatar_url
+                  type: VARCHAR(255)
+              - column:
+                  name: cover_url
+                  type: VARCHAR(255)
+              - column:
+                  name: avatar_frame_url
+                  type: VARCHAR(255)
+              - column:
+                  name: chat_bubble_url
+                  type: VARCHAR(255)
+              - column:
+                  name: bio
+                  type: VARCHAR(500)
+              - column:
+                  name: faculty
+                  type: VARCHAR(100)
+              - column:
+                  name: major
+                  type: VARCHAR(100)
+              - column:
+                  name: student_lecturer_code
+                  type: VARCHAR(20)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: total_proposed_question
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: total_approved_questions
+                  type: INT
+              - column:
+                  name: gamification_points
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                  name: badges_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: friends_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: followers_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: following_count
+                  type: INT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: profile_completed
+                  type: BOOLEAN
+              - column:
+                  name: hidden_chat_pin
+                  type: VARCHAR(255)
+              - column:
+                  name: timezone
+                  type: VARCHAR(50)
+            tableName: user_profiles
+  - changeSet:
+      id: 1788743703541-70
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_push_settings
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  name: preferences
+                  type: JSONB
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: user_push_settings
+  - changeSet:
+      id: 1788743703541-71
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                  name: rating
+                  type: DOUBLE
+              - column:
+                  name: comment
+                  type: VARCHAR(500)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: is_error
+                  type: BOOLEAN
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_ratings
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_ratings
+                  name: rated_question_id
+                  type: BIGINT
+            tableName: user_ratings
+  - changeSet:
+      id: 1788743703541-72
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_users
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: email
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: password_hash
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: role
+                  type: VARCHAR(20)
+              - column:
+                  name: gender
+                  type: VARCHAR(10)
+              - column:
+                  name: date_of_birth
+                  type: DATE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: verified
+                  type: BOOLEAN
+              - column:
+                  constraints:
+                    nullable: false
+                  name: active
+                  type: BOOLEAN
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: users
+  - changeSet:
+      id: 1788743703541-73
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: session_id
+            constraintName: uc_ai_chat_sessions_sessionid
+            tableName: ai_chat_sessions
+  - changeSet:
+      id: 1788743703541-74
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: last_message_id
+            constraintName: uc_conversations_last_message
+            tableName: conversations
+  - changeSet:
+      id: 1788743703541-75
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: session_id
+            constraintName: uc_posts_session
+            tableName: posts
+  - changeSet:
+      id: 1788743703541-76
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: code
+            constraintName: uc_subjects_code
+            tableName: subjects
+  - changeSet:
+      id: 1788743703541-77
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: code
+            constraintName: uc_topics_code
+            tableName: topics
+  - changeSet:
+      id: 1788743703541-78
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: user_id, device_id
+            constraintName: uc_user_devices_user_id_device_id
+            tableName: user_devices
+  - changeSet:
+      id: 1788743703541-79
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: last_read_message_id
+            constraintName: uc_user_participants_last_read_message
+            tableName: user_participants
+  - changeSet:
+      id: 1788743703541-80
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: email
+            constraintName: uc_users_email
+            tableName: users
+  - changeSet:
+      id: 1788743703541-81
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: user_id, query_text
+            constraintName: uk_user_query_text
+            tableName: searches
+  - changeSet:
+      id: 1788743703541-82
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: activity_feeds
+            constraintName: FK_ACTIVITY_FEEDS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-83
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: session_id
+            baseTableName: ai_chat_messages
+            constraintName: FK_AI_CHAT_MESSAGES_ON_SESSION
+            referencedColumnNames: id
+            referencedTableName: ai_chat_sessions
+  - changeSet:
+      id: 1788743703541-84
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: ai_chat_sessions
+            constraintName: FK_AI_CHAT_SESSIONS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-85
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: parent_comment_id
+            baseTableName: comments
+            constraintName: FK_COMMENTS_ON_PARENT_COMMENT
+            referencedColumnNames: id
+            referencedTableName: comments
+  - changeSet:
+      id: 1788743703541-86
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: comments
+            constraintName: FK_COMMENTS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-87
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: creater_id
+            baseTableName: conversations
+            constraintName: FK_CONVERSATIONS_ON_CREATER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-88
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: last_message_id
+            baseTableName: conversations
+            constraintName: FK_CONVERSATIONS_ON_LAST_MESSAGE
+            referencedColumnNames: id
+            referencedTableName: messages
+  - changeSet:
+      id: 1788743703541-89
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: lecturer_id
+            baseTableName: course_classes
+            constraintName: FK_COURSE_CLASSES_ON_LECTURER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-90
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: subject_id
+            baseTableName: course_classes
+            constraintName: FK_COURSE_CLASSES_ON_SUBJECT
+            referencedColumnNames: id
+            referencedTableName: subjects
+  - changeSet:
+      id: 1788743703541-91
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: lecturer_id
+            baseTableName: exams
+            constraintName: FK_EXAMS_ON_LECTURER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-92
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: subject_id
+            baseTableName: exams
+            constraintName: FK_EXAMS_ON_SUBJECT
+            referencedColumnNames: id
+            referencedTableName: subjects
+  - changeSet:
+      id: 1788743703541-93
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: course_class_id
+            baseTableName: exam_course_classes
+            constraintName: FK_EXAM_COURSE_CLASSES_ON_COURSE_CLASS
+            referencedColumnNames: id
+            referencedTableName: course_classes
+  - changeSet:
+      id: 1788743703541-94
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: exam_id
+            baseTableName: exam_course_classes
+            constraintName: FK_EXAM_COURSE_CLASSES_ON_EXAM
+            referencedColumnNames: id
+            referencedTableName: exams
+  - changeSet:
+      id: 1788743703541-95
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: exam_id
+            baseTableName: exam_questions
+            constraintName: FK_EXAM_QUESTIONS_ON_EXAM
+            referencedColumnNames: id
+            referencedTableName: exams
+  - changeSet:
+      id: 1788743703541-96
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: question_id
+            baseTableName: exam_questions
+            constraintName: FK_EXAM_QUESTIONS_ON_QUESTION
+            referencedColumnNames: id
+            referencedTableName: questions
+  - changeSet:
+      id: 1788743703541-97
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: receiver_id
+            baseTableName: friendships
+            constraintName: FK_FRIENDSHIPS_ON_RECEIVER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-98
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: sender_id
+            baseTableName: friendships
+            constraintName: FK_FRIENDSHIPS_ON_SENDER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-99
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: game_session_id
+            baseTableName: game6_llm_questions
+            constraintName: FK_GAME6_LLM_QUESTIONS_ON_GAME_SESSION
+            referencedColumnNames: id
+            referencedTableName: minigame_llm_sessions
+  - changeSet:
+      id: 1788743703541-100
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: conversation_id
+            baseTableName: messages
+            constraintName: FK_MESSAGES_ON_CONVERSATION
+            referencedColumnNames: id
+            referencedTableName: conversations
+  - changeSet:
+      id: 1788743703541-101
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: reply_to_message_id
+            baseTableName: messages
+            constraintName: FK_MESSAGES_ON_REPLY_TO_MESSAGE
+            referencedColumnNames: id
+            referencedTableName: messages
+  - changeSet:
+      id: 1788743703541-102
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: sender_id
+            baseTableName: messages
+            constraintName: FK_MESSAGES_ON_SENDER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-103
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: actor_id
+            baseTableName: notifications
+            constraintName: FK_NOTIFICATIONS_ON_ACTOR
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-104
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: receiver_id
+            baseTableName: notifications
+            constraintName: FK_NOTIFICATIONS_ON_RECEIVER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-105
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: semester_id
+            baseTableName: point_histories
+            constraintName: FK_POINT_HISTORIES_ON_SEMESTER
+            referencedColumnNames: id
+            referencedTableName: semesters
+  - changeSet:
+      id: 1788743703541-106
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: subject_id
+            baseTableName: point_histories
+            constraintName: FK_POINT_HISTORIES_ON_SUBJECT
+            referencedColumnNames: id
+            referencedTableName: subjects
+  - changeSet:
+      id: 1788743703541-107
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: point_histories
+            constraintName: FK_POINT_HISTORIES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-108
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: noted_lecturer_id
+            baseTableName: posts
+            constraintName: FK_POSTS_ON_NOTED_LECTURER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-109
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: poster_id
+            baseTableName: posts
+            constraintName: FK_POSTS_ON_POSTER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-110
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: session_id
+            baseTableName: posts
+            constraintName: FK_POSTS_ON_SESSION
+            referencedColumnNames: id
+            referencedTableName: sessions
+  - changeSet:
+      id: 1788743703541-111
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: subject_id
+            baseTableName: posts
+            constraintName: FK_POSTS_ON_SUBJECT
+            referencedColumnNames: id
+            referencedTableName: subjects
+  - changeSet:
+      id: 1788743703541-112
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: gambler_id
+            baseTableName: predictions
+            constraintName: FK_PREDICTIONS_ON_GAMBLER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-113
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: session_id
+            baseTableName: questions
+            constraintName: FK_QUESTIONS_ON_SESSION
+            referencedColumnNames: id
+            referencedTableName: sessions
+  - changeSet:
+      id: 1788743703541-114
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: topic_id
+            baseTableName: questions
+            constraintName: FK_QUESTIONS_ON_TOPIC
+            referencedColumnNames: id
+            referencedTableName: topics
+  - changeSet:
+      id: 1788743703541-115
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: actor_id
+            baseTableName: question_edit_logs
+            constraintName: FK_QUESTION_EDIT_LOGS_ON_ACTOR
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-116
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: question_id
+            baseTableName: question_edit_logs
+            constraintName: FK_QUESTION_EDIT_LOGS_ON_QUESTION
+            referencedColumnNames: id
+            referencedTableName: questions
+  - changeSet:
+      id: 1788743703541-117
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: session_id
+            baseTableName: question_edit_logs
+            constraintName: FK_QUESTION_EDIT_LOGS_ON_SESSION
+            referencedColumnNames: id
+            referencedTableName: sessions
+  - changeSet:
+      id: 1788743703541-118
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: owner_id
+            baseTableName: question_medias
+            constraintName: FK_QUESTION_MEDIAS_ON_OWNER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-119
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: question_id
+            baseTableName: question_medias
+            constraintName: FK_QUESTION_MEDIAS_ON_QUESTION
+            referencedColumnNames: id
+            referencedTableName: questions
+  - changeSet:
+      id: 1788743703541-120
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: reacts
+            constraintName: FK_REACTS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-121
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: reporter_id
+            baseTableName: reports
+            constraintName: FK_REPORTS_ON_REPORTER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-122
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: reviewer_id
+            baseTableName: reports
+            constraintName: FK_REPORTS_ON_REVIEWER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-123
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: searches
+            constraintName: FK_SEARCHES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-124
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: proposer_id
+            baseTableName: sessions
+            constraintName: FK_SESSIONS_ON_PROPOSER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-125
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: reviewer_id
+            baseTableName: sessions
+            constraintName: FK_SESSIONS_ON_REVIEWER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-126
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: subject_id
+            baseTableName: sessions
+            constraintName: FK_SESSIONS_ON_SUBJECT
+            referencedColumnNames: id
+            referencedTableName: subjects
+  - changeSet:
+      id: 1788743703541-127
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: subject_id
+            baseTableName: topics
+            constraintName: FK_TOPICS_ON_SUBJECT
+            referencedColumnNames: id
+            referencedTableName: subjects
+  - changeSet:
+      id: 1788743703541-128
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: question_id
+            baseTableName: user_answers
+            constraintName: FK_USER_ANSWERS_ON_QUESTION
+            referencedColumnNames: id
+            referencedTableName: questions
+  - changeSet:
+      id: 1788743703541-129
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_answers
+            constraintName: FK_USER_ANSWERS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-130
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: badge_id
+            baseTableName: user_badges
+            constraintName: FK_USER_BADGES_ON_BADGE
+            referencedColumnNames: id
+            referencedTableName: badges
+  - changeSet:
+      id: 1788743703541-131
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_badges
+            constraintName: FK_USER_BADGES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-132
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: blocked_id
+            baseTableName: user_blocks
+            constraintName: FK_USER_BLOCKS_ON_BLOCKED
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-133
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: blocker_id
+            baseTableName: user_blocks
+            constraintName: FK_USER_BLOCKS_ON_BLOCKER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-134
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: cosmetic_id
+            baseTableName: user_cosmetics
+            constraintName: FK_USER_COSMETICS_ON_COSMETIC
+            referencedColumnNames: id
+            referencedTableName: cosmetic_items
+  - changeSet:
+      id: 1788743703541-135
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_cosmetics
+            constraintName: FK_USER_COSMETICS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-136
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: course_class_id
+            baseTableName: user_course_classes
+            constraintName: FK_USER_COURSE_CLASSES_ON_COURSE_CLASS
+            referencedColumnNames: id
+            referencedTableName: course_classes
+  - changeSet:
+      id: 1788743703541-137
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_course_classes
+            constraintName: FK_USER_COURSE_CLASSES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-138
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: deleted_message_only_me_id
+            baseTableName: user_deleted_message_only_mes
+            constraintName: FK_USER_DELETED_MESSAGE_ONLY_MES_ON_DELETED_MESSAGE_ONLY_ME
+            referencedColumnNames: id
+            referencedTableName: messages
+  - changeSet:
+      id: 1788743703541-139
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_deleted_message_only_mes
+            constraintName: FK_USER_DELETED_MESSAGE_ONLY_MES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-140
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_devices
+            constraintName: FK_USER_DEVICES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-141
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: followed_user_id
+            baseTableName: user_follows
+            constraintName: FK_USER_FOLLOWS_ON_FOLLOWED_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-142
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: follower_id
+            baseTableName: user_follows
+            constraintName: FK_USER_FOLLOWS_ON_FOLLOWER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-143
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: conversation_id
+            baseTableName: user_participants
+            constraintName: FK_USER_PARTICIPANTS_ON_CONVERSATION
+            referencedColumnNames: id
+            referencedTableName: conversations
+  - changeSet:
+      id: 1788743703541-144
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: last_read_message_id
+            baseTableName: user_participants
+            constraintName: FK_USER_PARTICIPANTS_ON_LAST_READ_MESSAGE
+            referencedColumnNames: id
+            referencedTableName: messages
+  - changeSet:
+      id: 1788743703541-145
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_participants
+            constraintName: FK_USER_PARTICIPANTS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-146
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_profiles
+            constraintName: FK_USER_PROFILES_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-147
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_push_settings
+            constraintName: FK_USER_PUSH_SETTINGS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788743703541-148
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: rated_question_id
+            baseTableName: user_ratings
+            constraintName: FK_USER_RATINGS_ON_RATED_QUESTION
+            referencedColumnNames: id
+            referencedTableName: questions
+  - changeSet:
+      id: 1788743703541-149
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_ratings
+            constraintName: FK_USER_RATINGS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+

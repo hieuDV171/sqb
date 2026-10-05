@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1788872303424-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: BIGINT
+            columnName: version
+            tableName: conversations
+            validate: true
+  - changeSet:
+      id: 1788872303424-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: BIGINT
+            columnName: version
+            tableName: posts
+            validate: true
+  - changeSet:
+      id: 1788872303424-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: BIGINT
+            columnName: version
+            tableName: questions
+            validate: true
+  - changeSet:
+      id: 1788872303424-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: BIGINT
+            columnName: version
+            tableName: reports
+            validate: true
+  - changeSet:
+      id: 1788872303424-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: BIGINT
+            columnName: version
+            tableName: sessions
+            validate: true
+  - changeSet:
+      id: 1788872303424-6
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: BIGINT
+            columnName: version
+            tableName: user_profiles
+            validate: true
+

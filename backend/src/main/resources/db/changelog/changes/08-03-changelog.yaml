@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1788884584759-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_gamifications
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: version
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: public_points
+                  type: DOUBLE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: secret_points
+                  type: DOUBLE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: coin_balance
+                  type: DOUBLE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: current_streak
+                  type: INT
+              - column:
+                  name: last_check_in_date
+                  type: DATE
+              - column:
+                  name: updated_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: user_gamifications
+  - changeSet:
+      id: 1788884584759-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: user_gamifications
+            constraintName: FK_USER_GAMIFICATIONS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788884584759-7
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: gamification_points
+            tableName: user_profiles
+

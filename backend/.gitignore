@@ -37,7 +37,6 @@ out/
 .vscode/
 
 .env
-**/resources/db/changelog/**
 
 firebase-service-account.json
 /logs

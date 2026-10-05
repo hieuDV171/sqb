@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1789256068204-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: class_name
+                  type: VARCHAR(100)
+              - column:
+                  name: school_faculty
+                  type: VARCHAR(100)
+            tableName: user_profiles
+  - changeSet:
+      id: 1789256068204-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: semester_id
+                  type: BIGINT
+            tableName: course_classes
+  - changeSet:
+      id: 1789256068204-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnName: semester_id
+            tableName: course_classes
+  - changeSet:
+      id: 1789256068204-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: semester_id
+            baseTableName: course_classes
+            constraintName: FK_COURSE_CLASSES_ON_SEMESTER
+            referencedColumnNames: id
+            referencedTableName: semesters
+  - changeSet:
+      id: 1789256068204-12
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: faculty
+            tableName: user_profiles
+  - changeSet:
+      id: 1789256068204-13
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: semester
+            tableName: course_classes
+

@@ -1,0 +1,81 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1788892466061-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: coin_transactions_seq
+            startValue: 1
+  - changeSet:
+      id: 1788892466061-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_coin_transactions
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: amount
+                  type: DOUBLE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: balance_after
+                  type: DOUBLE
+              - column:
+                  constraints:
+                    nullable: false
+                  name: type
+                  type: VARCHAR(30)
+              - column:
+                  name: description
+                  type: VARCHAR(255)
+              - column:
+                  name: target_type
+                  type: VARCHAR(30)
+              - column:
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: coin_transactions
+  - changeSet:
+      id: 1788892466061-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: coin_transactions
+            constraintName: FK_COIN_TRANSACTIONS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1788892466061-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnDataType: VARCHAR(50)
+            columnName: reason
+            tableName: point_histories
+            validate: true
+
