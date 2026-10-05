@@ -1,5 +1,11 @@
 databaseChangeLog:
   - changeSet:
+      id: 00-create-vector-extension
+      author: ADMIN
+      changes:
+        - sql:
+            sql: CREATE EXTENSION IF NOT EXISTS vector;
+  - changeSet:
       id: 1788743703541-1
       author: ADMIN
       objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
