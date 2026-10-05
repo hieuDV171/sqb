@@ -7,7 +7,6 @@ import {
   X,
   GraduationCap,
   LogOut,
-  Sparkles,
   User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,7 +17,7 @@ interface MobileNavProps {
 }
 
 export function MobileNav({ isOpen, onClose }: MobileNavProps) {
-  const { user, setUserRole } = useAuthStore();
+  const { user } = useAuthStore();
   const { logout } = useAuth();
   const location = useLocation();
 
@@ -105,32 +104,6 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
               </Link>
             );
           })}
-        </div>
-
-        {/* Dev Role Quick Switcher */}
-        <div className="p-3 border-t border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/30">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-              <Sparkles className="w-3 h-3 text-amber-500" /> Xem vai trò:
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {(['STUDENT', 'LECTURER', 'ADMIN'] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setUserRole(r)}
-                  className={cn(
-                    'px-1 py-1 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center',
-                    currentRole === r
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  )}
-                >
-                  {r === 'STUDENT' ? 'SV' : r === 'LECTURER' ? 'GV' : 'AD'}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Drawer Footer (Logout) */}

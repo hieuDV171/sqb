@@ -15,7 +15,6 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   UserCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -141,7 +140,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
-  const { user, setUserRole } = useAuthStore();
+  const { user } = useAuthStore();
   const location = useLocation();
   const currentRole: UserRole = user?.role || 'STUDENT';
   const navItems = ROLE_NAV_ITEMS[currentRole] || ROLE_NAV_ITEMS.STUDENT;
@@ -217,50 +216,6 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
             </Link>
           );
         })}
-      </div>
-
-      {/* Dev Role Quick Switcher (Tiện ích chuyển vai trò để kiểm thử đa giao diện) */}
-      <div className={cn('p-3 border-t border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/30 shrink-0', isCollapsed && 'p-2')}>
-        {!isCollapsed ? (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" /> Xem trước vai trò:
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {(['STUDENT', 'LECTURER', 'ADMIN'] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setUserRole(r)}
-                  className={cn(
-                    'px-1.5 py-1 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center truncate',
-                    currentRole === r
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  )}
-                >
-                  {r === 'STUDENT' ? 'SV' : r === 'LECTURER' ? 'GV' : 'AD'}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                const next: UserRole = currentRole === 'STUDENT' ? 'LECTURER' : currentRole === 'LECTURER' ? 'ADMIN' : 'STUDENT';
-                setUserRole(next);
-              }}
-              title={`Đổi nhanh vai trò (Hiện tại: ${currentRole})`}
-              className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors text-[10px] font-black"
-            >
-              {currentRole === 'STUDENT' ? 'SV' : currentRole === 'LECTURER' ? 'GV' : 'AD'}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Collapse Toggle Button */}

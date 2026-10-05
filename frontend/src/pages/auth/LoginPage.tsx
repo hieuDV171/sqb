@@ -18,8 +18,8 @@ function getOrCreateDeviceId() {
 }
 
 export function LoginPage() {
-    const [email, setEmail] = useState("an.nv201234@hust.edu.vn");
-    const [password, setPassword] = useState("12345678");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
     const { login, isLoading, error } = useAuth();
@@ -122,45 +122,6 @@ export function LoginPage() {
                         <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                         <div>
                             Tài khoản Sinh viên và Giảng viên được cấp tự động theo danh sách lớp học phần đầu kỳ.
-                        </div>
-                    </div>
-
-                    {/* Quick Mock Login Profiles for Dev Testing */}
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">
-                            Chọn nhanh tài khoản Demo (Kiểm thử)
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setEmail('an.nv201234@hust.edu.vn');
-                                    setPassword('12345678');
-                                }}
-                                className="px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-center cursor-pointer"
-                            >
-                                🎓 Sinh viên
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setEmail('gv.thanghd@hust.edu.vn');
-                                    setPassword('12345678');
-                                }}
-                                className="px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-center cursor-pointer"
-                            >
-                                👨‍🏫 Giảng viên
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setEmail('admin@hust.edu.vn');
-                                    setPassword('12345678');
-                                }}
-                                className="px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors text-center cursor-pointer"
-                            >
-                                🛡️ Admin
-                            </button>
                         </div>
                     </div>
                 </CardContent>

@@ -30,7 +30,7 @@ interface CreatePostCardProps {
 }
 
 export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) {
-  const { user, setUserRole } = useAuthStore();
+  const { user } = useAuthStore();
   const currentRole: UserRole = user?.role || 'STUDENT';
   const isLecturerOrAdmin = currentRole === 'LECTURER' || currentRole === 'ADMIN';
 
@@ -109,25 +109,6 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
               Sinh viên (Student)
             </span>
           )}
-        </div>
-
-        {/* Dev Mode Role Toggle Tool */}
-        <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-          <span className="hidden sm:inline">Chuyển vai trò test:</span>
-          {(['STUDENT', 'LECTURER', 'ADMIN'] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setUserRole(r)}
-              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                currentRole === r
-                  ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {r === 'STUDENT' ? 'SV' : r === 'LECTURER' ? 'GV' : 'Admin'}
-            </button>
-          ))}
         </div>
       </div>
 
