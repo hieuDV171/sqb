@@ -130,7 +130,12 @@ services:
       # Mail Service
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
+
+      # Firebase Push Notification (Optional: Base64 string hoặc file path)
+      - FIREBASE_CREDENTIALS_BASE64=${FIREBASE_CREDENTIALS_BASE64:-}
+      - FIREBASE_CONFIG_PATH=${FIREBASE_CONFIG_PATH:-}
     networks:
+
       - sqb-network
 
 networks:

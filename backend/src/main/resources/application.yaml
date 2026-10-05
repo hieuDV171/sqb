@@ -86,7 +86,8 @@ app:
     default-user-password: ${DEFAULT_USER_PASSWORD}
   firebase:
     config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-service-account.json}
-    
+    credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
+
   ai-server:
     url: ${AI_SERVER_URL}
     model: ${AI_MODEL}
