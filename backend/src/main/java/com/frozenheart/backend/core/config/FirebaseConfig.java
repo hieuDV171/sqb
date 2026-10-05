@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.io.InputStream;
+import java.util.Optional;
 
 @Slf4j
 @Configuration
@@ -46,10 +47,8 @@ public class FirebaseConfig {
     }
 
     @Bean
-    public FirebaseMessaging firebaseMessaging(FirebaseApp firebaseApp) {
-        if (firebaseApp == null) {
-            return null;
-        }
-        return FirebaseMessaging.getInstance(firebaseApp);
+    public FirebaseMessaging firebaseMessaging(Optional<FirebaseApp> firebaseApp) {
+        return firebaseApp.map(FirebaseMessaging::getInstance).orElse(null);
     }
+
 }
