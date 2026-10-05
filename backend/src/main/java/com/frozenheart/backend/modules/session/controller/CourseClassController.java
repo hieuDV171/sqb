@@ -68,4 +68,12 @@ public class CourseClassController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
+    @GetMapping("/lecturers")
+    public ResponseEntity<GlobalResponse<List<LecturerSummaryResponse>>> getLecturers() {
+        List<LecturerSummaryResponse> response = courseClassManagementService.getAllActiveLecturers();
+        return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
+
 }
+

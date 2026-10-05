@@ -672,4 +672,20 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         throw new AppException(ResponseCode.USER_NOT_FOUND,
                 "Không tìm thấy tài khoản Giảng viên" + nameHint + " trong hệ thống. Vui lòng tạo tài khoản cho Giảng viên trước hoặc chọn Giảng viên phụ trách khi import!");
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LecturerSummaryResponse> getAllActiveLecturers() {
+        List<UserProfile> lecturers = userProfileRepository.findAllActiveLecturers();
+        return lecturers.stream()
+                .map(up -> LecturerSummaryResponse.builder()
+                        .id(up.getUserId())
+                        .fullName(up.getFullName())
+                        .email(up.getUser().getEmail())
+                        .studentLecturerCode(up.getStudentLecturerCode() != null ? up.getStudentLecturerCode() : "")
+                        .schoolFaculty(up.getSchoolFaculty() != null ? up.getSchoolFaculty() : "")
+                        .build())
+                .toList();
+    }
 }
+

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { toast } from "@/stores/useToastStore";
 import type {
   BulkImportResult,
   ExcelImportClassResult,
+  LecturerSummary,
   SingleUserImportDto,
   UserRole,
 } from "@/types/auth.types";
@@ -37,9 +38,26 @@ export function AdminUsersPage() {
   // =========================================================================
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lecturerId, setLecturerId] = useState<string>("");
+  const [lecturers, setLecturers] = useState<LecturerSummary[]>([]);
+  const [isLoadingLecturers, setIsLoadingLecturers] = useState(false);
   const [isExcelUploading, setIsExcelUploading] = useState(false);
   const [excelResult, setExcelResult] = useState<ExcelImportClassResult | null>(null);
   const [excelError, setExcelError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLecturers = async () => {
+      try {
+        setIsLoadingLecturers(true);
+        const res = await adminService.getLecturers();
+        setLecturers(res.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải danh sách giảng viên:", err);
+      } finally {
+        setIsLoadingLecturers(false);
+      }
+    };
+    fetchLecturers();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -321,15 +339,38 @@ export function AdminUsersPage() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="lecturerId" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    ID Giảng viên phụ trách (Tùy chọn)
+                    Giảng viên phụ trách lớp (Tùy chọn)
                   </Label>
-                  <Input
-                    id="lecturerId"
-                    type="number"
-                    placeholder="VD: 88 (Bỏ trống nếu không chỉ định)"
-                    value={lecturerId}
-                    onChange={(e) => setLecturerId(e.target.value)}
-                  />
+                  <div className="relative">
+                    <select
+                      id="lecturerId"
+                      value={lecturerId}
+                      onChange={(e) => setLecturerId(e.target.value)}
+                      disabled={isLoadingLecturers}
+                      className="w-full h-10 px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100 cursor-pointer disabled:opacity-50"
+                    >
+                      <option value="">
+                        {isLoadingLecturers
+                          ? "-- Đang tải danh sách giảng viên... --"
+                          : "-- Bỏ trống (Hệ thống tự tìm hoặc không chỉ định) --"}
+                      </option>
+                      {lecturers.map((lec) => {
+                        const extraDetails = [
+                          lec.studentLecturerCode ? `Mã CB: ${lec.studentLecturerCode}` : null,
+                          lec.schoolFaculty ? lec.schoolFaculty : null,
+                        ].filter(Boolean).join(" - ");
+
+                        return (
+                          <option key={lec.id} value={lec.id.toString()}>
+                            {lec.fullName} (ID: {lec.id}){extraDetails ? ` | ${extraDetails}` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Chọn giảng viên từ hệ thống để phân công lớp hoặc để trống nếu tự động nhận diện từ file Excel.
+                  </p>
                 </div>
               </div>
 
@@ -338,9 +379,10 @@ export function AdminUsersPage() {
                 <div className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
                   <Info className="w-4 h-4" /> Định dạng file Excel hợp lệ:
                 </div>
-                <p>• File Excel phải có thông tin <strong>Mã lớp học phần</strong> và <strong>Mã môn học</strong> ở phần thông tin chung.</p>
-                <p>• Bảng danh sách sinh viên phải có các cột: <strong>Email sinh viên</strong> (*@hust.edu.vn), <strong>MSSV</strong>, <strong>Họ và tên</strong>.</p>
-                <p>• Tài khoản sinh viên mới tạo sẽ có mật khẩu mặc định của trường và được kích hoạt sẵn để có thể đăng nhập ngay.</p>
+                <p>• Hỗ trợ cả <strong>file mẫu chuẩn</strong> và <strong>file rút gọn</strong> (Mã học phần, Tên học phần, MSSV, Họ và tên SV).</p>
+                <p>• Nếu file không có cột <em>Mã lớp</em>, hệ thống sẽ <strong>tự động trích xuất mã lớp từ tên file</strong> (VD: <code>171146-IT4409.xlsx</code> ➔ Mã lớp <code>171146</code>).</p>
+                <p>• Email và mật khẩu sẽ tự động được sinh theo chuẩn HUST (<code>*@sis.hust.edu.vn</code>) nếu file không chứa cột Email / Ngày sinh.</p>
+                <p>• Môn học (VD: <code>IT4409</code>) và Học kỳ hiện tại phải được tạo và kích hoạt sẵn trong hệ thống trước khi import.</p>
               </div>
 
               <div className="flex justify-end pt-2">

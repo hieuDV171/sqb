@@ -137,6 +137,16 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                         .build());
             }
 
+            // Nếu chưa tìm thấy classCode từ các ô trong sheet, trích xuất từ tên file (ví dụ: 171146-IT4409.xlsx -> 171146)
+            if (classCode == null || classCode.isBlank()) {
+                classCode = extractClassCodeFromFileName(file.getOriginalFilename());
+            }
+
+            // Nếu chưa tìm thấy subjectCode từ các ô trong sheet, trích xuất từ tên file
+            if (subjectCode == null || subjectCode.isBlank()) {
+                subjectCode = extractSubjectCodeFromFileName(file.getOriginalFilename());
+            }
+
             log.info("[ExcelParser] Đã đọc thành công file Excel: classCode={}, subjectCode={}, semester={}, totalStudents={}",
                     classCode, subjectCode, semesterName, students.size());
 
@@ -166,7 +176,7 @@ public class ExcelParserServiceImpl implements ExcelParserService {
             if (row == null) continue;
             for (int c = 0; c < row.getLastCellNum(); c++) {
                 String val = formatter.formatCellValue(row.getCell(c)).trim().toLowerCase();
-                if (val.contains("mssv") || val.contains("mã lớp") || val.contains("mã học phần")) {
+                if (val.contains("mssv") || val.contains("mã lớp") || val.contains("mã học") || val.contains("mã môn")) {
                     return r;
                 }
             }
@@ -189,9 +199,9 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                 colMap.putIfAbsent("department", c);
             } else if (text.contains("loại lớp")) {
                 colMap.putIfAbsent("classtype", c);
-            } else if (text.contains("mã học phần") || text.contains("ma hoc phan")) {
+            } else if (text.contains("mã học phần") || text.contains("ma hoc phan") || text.contains("mã học") || text.contains("ma hoc") || text.contains("mã hp") || text.contains("ma hp") || text.contains("mã môn") || text.contains("ma mon")) {
                 colMap.putIfAbsent("subjectcode", c);
-            } else if (text.contains("tên học phần") || text.contains("ten hoc phan")) {
+            } else if (text.contains("tên học phần") || text.contains("ten hoc phan") || text.contains("tên hp") || text.contains("ten hp") || text.contains("tên môn") || text.contains("ten mon")) {
                 colMap.putIfAbsent("subjectname", c);
             } else if (text.contains("mã lớp") && !text.contains("mã lớp thi")) {
                 colMap.putIfAbsent("classcode", c);
@@ -212,22 +222,48 @@ public class ExcelParserServiceImpl implements ExcelParserService {
             }
         }
 
-        // Fallback sang vị trí cột cố định nếu tiêu đề không phát hiện đủ
-        colMap.putIfAbsent("semester", 0);
-        colMap.putIfAbsent("department", 1);
-        colMap.putIfAbsent("classcode", 2);
-        colMap.putIfAbsent("classtype", 3);
-        colMap.putIfAbsent("subjectcode", 4);
-        colMap.putIfAbsent("subjectname", 5);
-        colMap.putIfAbsent("mssv", 6);
-        colMap.putIfAbsent("fullname", 7);
-        colMap.putIfAbsent("gender", 8);
-        colMap.putIfAbsent("dob", 9);
-        colMap.putIfAbsent("email", 10);
-        colMap.putIfAbsent("classname", 11);
-        colMap.putIfAbsent("lecturer", 19);
+        // Chỉ fallback sang vị trí cột cố định nếu hoàn toàn không nhận diện được cột nào qua header
+        if (colMap.isEmpty()) {
+            colMap.put("semester", 0);
+            colMap.put("department", 1);
+            colMap.put("classcode", 2);
+            colMap.put("classtype", 3);
+            colMap.put("subjectcode", 4);
+            colMap.put("subjectname", 5);
+            colMap.put("mssv", 6);
+            colMap.put("fullname", 7);
+            colMap.put("gender", 8);
+            colMap.put("dob", 9);
+            colMap.put("email", 10);
+            colMap.put("classname", 11);
+            colMap.put("lecturer", 19);
+        }
 
         return colMap;
+    }
+
+    public static String extractClassCodeFromFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return "";
+        }
+        // Tìm dãy 5-7 chữ số (chuẩn mã lớp học phần HUST, ví dụ 171146-IT4409.xlsx -> 171146)
+        Matcher matcher = Pattern.compile("(?<!\\d)(\\d{5,7})(?!\\d)").matcher(fileName);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "";
+    }
+
+    public static String extractSubjectCodeFromFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return "";
+        }
+        // Tìm mã môn học (ví dụ: IT4409, MI1111, ED3220, ...)
+        Matcher matcher = Pattern.compile("(?i)(?<![A-Z0-9])([A-Z]{2,4}\\d{4})(?![A-Z0-9])").matcher(fileName);
+        if (matcher.find()) {
+            return matcher.group(1).toUpperCase();
+        }
+        return "";
     }
 
     private ParsedDob parseDateOfBirth(Cell cell, DataFormatter formatter, String fallbackMssv) {

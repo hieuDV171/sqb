@@ -880,6 +880,16 @@ Phụ trách bởi Controller: [`CourseClassController`](file:///c:/Users/ADMIN/
   - `lecturerId` (Long, optional): ID giảng viên phân công.
 - **Response Data (`ExcelImportClassResult`):** Số lượng bản ghi thêm thành công và cảnh báo.
 
+### 18.8. Lấy danh sách giảng viên đang hoạt động trong hệ thống
+- **Method & URL:** `GET /api/v1/lecturer/course-classes/lecturers`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts)
+- **Response Data (`List<LecturerSummaryResponse>`):**
+  - `id` (Long): User ID của giảng viên
+  - `fullName` (String): Họ và tên giảng viên
+  - `email` (String): Email
+  - `studentLecturerCode` (String): Mã cán bộ giảng viên
+  - `schoolFaculty` (String): Khoa / Viện trực thuộc
+
 ---
 
 ## 19. Quản trị Môn học (Admin Subjects)

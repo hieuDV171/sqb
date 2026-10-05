@@ -4,11 +4,21 @@ import type {
   BulkImportRequest,
   BulkImportResult,
   ExcelImportClassResult,
+  LecturerSummary,
   UserRole,
 } from '@/types/auth.types';
 import type { GlobalResponse } from '@/types/response.types';
 
 export const adminService = {
+  /**
+   * Lấy danh sách Giảng viên hoạt động trong hệ thống
+   */
+  getLecturers: async (): Promise<GlobalResponse<LecturerSummary[]>> => {
+    return (await axiosClient.get<GlobalResponse<LecturerSummary[]>>(
+      '/lecturer/course-classes/lecturers'
+    )) as any;
+  },
+
   /**
    * Import danh sách lớp và sinh viên đầu kỳ từ file Excel
    * Tự động tạo tài khoản SV mới (verified = true, pass mặc định) và ghi danh vào lớp
@@ -33,6 +43,7 @@ export const adminService = {
       }
     )) as any;
   },
+
 
   /**
    * Tạo tài khoản tùy chỉnh hàng loạt hoặc đơn lẻ

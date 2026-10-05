@@ -89,3 +89,12 @@ export interface ExcelImportClassResult {
     newEnrollments: number;
     alreadyEnrolledCount: number;
 }
+
+export interface LecturerSummary {
+    id: number;
+    fullName: string;
+    email: string;
+    studentLecturerCode?: string;
+    schoolFaculty?: string;
+}
+

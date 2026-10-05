@@ -29,4 +29,8 @@ public interface CourseClassManagementService {
     // 4. Import 2 giai đoạn từ file Excel
     ExcelImportClassResult importAndEnrollFromExcel(MultipartFile file, Long lecturerId);
 
+    // 5. Danh sách Giảng viên hoạt động (dùng cho dropdown phân công / import)
+    List<LecturerSummaryResponse> getAllActiveLecturers();
+
 }
+
