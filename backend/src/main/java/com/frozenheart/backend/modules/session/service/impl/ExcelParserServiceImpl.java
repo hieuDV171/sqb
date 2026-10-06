@@ -108,8 +108,10 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                     lecturerName = getCellValue(row, colMap.get("lecturer"), formatter);
                 }
 
-                // Bóc tách ngày sinh và tạo mật khẩu mặc định ddMMyyyy
-                ParsedDob parsedDob = parseDateOfBirth(row.getCell(colMap.getOrDefault("dob", -1)), formatter, mssv);
+                // Bóc tách ngày sinh và tạo mật khẩu mặc định ddMMyyyy (an toàn khi file thiếu cột ngày sinh)
+                Integer dobCol = colMap.get("dob");
+                Cell dobCell = (dobCol != null && dobCol >= 0) ? row.getCell(dobCol) : null;
+                ParsedDob parsedDob = parseDateOfBirth(dobCell, formatter, mssv);
 
                 // Giới tính
                 String rawGender = getCellValue(row, colMap.get("gender"), formatter);
