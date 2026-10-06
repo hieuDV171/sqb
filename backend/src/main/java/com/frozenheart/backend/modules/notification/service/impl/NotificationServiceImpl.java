@@ -175,15 +175,12 @@ public class NotificationServiceImpl implements NotificationService {
 
                 Map<PushNotificationType, CategorySetting> categories = new EnumMap<>(PushNotificationType.class);
                 if (request.getCategories() != null) {
-                        for (Map.Entry<String, PushCategorySettingDto> entry : request.getCategories().entrySet()) {
-                                try {
-                                        PushNotificationType type = PushNotificationType
-                                                        .valueOf(entry.getKey().toUpperCase());
-                                        PushCategorySettingDto dto = entry.getValue();
+                        for (Map.Entry<PushNotificationType, PushCategorySettingDto> entry : request.getCategories().entrySet()) {
+                                PushNotificationType type = entry.getKey();
+                                PushCategorySettingDto dto = entry.getValue();
+                                if (type != null && dto != null) {
                                         categories.put(type,
                                                         new CategorySetting(dto.isEnabled(), type.getDescription()));
-                                } catch (IllegalArgumentException ignored) {
-                                        log.warn("Unknown push category type: {}", entry.getKey());
                                 }
                         }
                 }
@@ -225,12 +222,12 @@ public class NotificationServiceImpl implements NotificationService {
                         prefs = PushPreferences.createDefault();
                 }
 
-                Map<String, PushCategorySettingDto> categories = new LinkedHashMap<>();
+                Map<PushNotificationType, PushCategorySettingDto> categories = new EnumMap<>(PushNotificationType.class);
                 if (prefs.getCategories() != null) {
                         for (Map.Entry<PushNotificationType, CategorySetting> entry : prefs.getCategories()
                                         .entrySet()) {
                                 CategorySetting cs = entry.getValue();
-                                categories.put(entry.getKey().name().toLowerCase(),
+                                categories.put(entry.getKey(),
                                                 new PushCategorySettingDto(cs.isEnabled(), cs.getDescription()));
                         }
                 }

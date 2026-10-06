@@ -127,8 +127,13 @@ ai:
 springdoc:
   api-docs:
     enabled: true
+    path: /docs/openapi.json
   swagger-ui:
     enabled: true
+    path: /docs
+    tags-sorter: alpha
+    operations-sorter: alpha
+    try-it-out-enabled: true
 
 elasticsearch:
   host: ${ELASTICSEARCH_HOST}

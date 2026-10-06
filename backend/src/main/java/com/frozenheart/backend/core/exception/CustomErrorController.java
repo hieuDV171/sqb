@@ -4,12 +4,14 @@ import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Hidden
 @RestController
 public class CustomErrorController implements ErrorController {
 

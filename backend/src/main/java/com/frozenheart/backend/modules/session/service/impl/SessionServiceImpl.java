@@ -381,7 +381,7 @@ public class SessionServiceImpl implements SessionService {
                             .imageUrls(imageUrls)
                             .options(q.getOptions())
                             .explanation(q.getExplanation())
-                            .source(q.isLlmGenerated() ? "LLM" : "HOMO_SAPIENS")
+                            .source(q.isLlmGenerated() ? QuestionSource.LLM : QuestionSource.HOMO_SAPIENS)
                             .confidenceScore(q.getConfidenceScore())
                             .commentCount(q.getCommentCount() != null ? q.getCommentCount() : 0)
                             .reactCount(q.getReactCount() != null ? q.getReactCount() : 0)
