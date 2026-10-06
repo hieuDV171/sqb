@@ -111,6 +111,7 @@ export function AdminUsersPage() {
       fullName: "",
       password: "",
       studentLecturerCode: "",
+      dateOfBirth: "",
       schoolFaculty: "Trường CNTT&TT",
       major: "Khoa học máy tính",
       className: "IT1-01",
@@ -130,6 +131,7 @@ export function AdminUsersPage() {
         fullName: "",
         password: "",
         studentLecturerCode: "",
+        dateOfBirth: "",
         schoolFaculty: "Trường CNTT&TT",
         major: "",
         className: "",
@@ -166,9 +168,20 @@ export function AdminUsersPage() {
       }
     }
 
+    // Chuẩn hóa payload: biến chuỗi rỗng thành undefined để backend tự động fallback mật khẩu & ngày sinh
+    const sanitizedUsers = usersToImport.map((u) => ({
+      ...u,
+      password: u.password?.trim() ? u.password.trim() : undefined,
+      dateOfBirth: u.dateOfBirth?.trim() ? u.dateOfBirth.trim() : undefined,
+      studentLecturerCode: u.studentLecturerCode?.trim() ? u.studentLecturerCode.trim() : undefined,
+      className: u.className?.trim() ? u.className.trim() : undefined,
+      schoolFaculty: u.schoolFaculty?.trim() ? u.schoolFaculty.trim() : undefined,
+      major: u.major?.trim() ? u.major.trim() : undefined,
+    }));
+
     setIsBulkLoading(true);
     try {
-      const res = await adminService.bulkImportUsers({ users: usersToImport });
+      const res = await adminService.bulkImportUsers({ users: sanitizedUsers });
       setBulkResult(res.data);
       if (res.data.totalSuccess > 0) {
         toast.success(
@@ -777,8 +790,8 @@ export function AdminUsersPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="space-y-1 sm:col-span-1">
                         <Label className="text-xs">Email tài khoản *</Label>
                         <Input
                           type="email"
@@ -790,7 +803,7 @@ export function AdminUsersPage() {
                         />
                       </div>
 
-                      <div className="space-y-1">
+                      <div className="space-y-1 sm:col-span-1">
                         <Label className="text-xs">Họ và tên *</Label>
                         <Input
                           placeholder="Nguyễn Văn An"
@@ -813,6 +826,19 @@ export function AdminUsersPage() {
                           <option value="ADMIN">🛡️ Quản trị viên (ADMIN)</option>
                         </select>
                       </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Giới tính</Label>
+                        <select
+                          value={user.gender || "MALE"}
+                          onChange={(e) => handleUserFieldChange(idx, "gender", e.target.value)}
+                          className="w-full h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                        >
+                          <option value="MALE">Nam</option>
+                          <option value="FEMALE">Nữ</option>
+                          <option value="OTHER">Khác</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
@@ -822,6 +848,16 @@ export function AdminUsersPage() {
                           placeholder="20211234"
                           value={user.studentLecturerCode || ""}
                           onChange={(e) => handleUserFieldChange(idx, "studentLecturerCode", e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Ngày sinh (dd/MM/yyyy)</Label>
+                        <Input
+                          type="date"
+                          value={user.dateOfBirth || ""}
+                          onChange={(e) => handleUserFieldChange(idx, "dateOfBirth", e.target.value)}
                           className="text-xs"
                         />
                       </div>
@@ -845,12 +881,19 @@ export function AdminUsersPage() {
                           className="text-xs"
                         />
                       </div>
+                    </div>
 
+                    <div className="pt-1">
                       <div className="space-y-1">
-                        <Label className="text-xs">Mật khẩu (Trống = Mặc định)</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Mật khẩu tùy chỉnh</Label>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            (Nếu để trống: Ưu tiên Ngày sinh (ddMMyyyy) ➔ Mã SV/CB ➔ Mật khẩu hệ thống)
+                          </span>
+                        </div>
                         <Input
                           type="password"
-                          placeholder="Mặc định nếu để trống"
+                          placeholder="Để trống để hệ thống tự sinh theo Ngày sinh (ddMMyyyy) hoặc Mã SV/CB"
                           value={user.password || ""}
                           onChange={(e) => handleUserFieldChange(idx, "password", e.target.value)}
                           className="text-xs"
