@@ -55,10 +55,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<GlobalResponse<List<FieldErrorDetail>>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
         List<FieldErrorDetail> errors = getErrors(ex.getBindingResult());
+        String defaultMsg = "Dữ liệu yêu cầu không hợp lệ";
+        if (!errors.isEmpty()) {
+            FieldErrorDetail firstError = errors.get(0);
+            if (firstError.message() != null && !firstError.message().isBlank()) {
+                defaultMsg = "Trường '" + firstError.field() + "' không hợp lệ (" + firstError.message() + ")";
+            }
+        }
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(GlobalResponse.error(ResponseCode.MISSING_REQUIRED_PARAMETER, "Validation failed", errors));
+                .body(GlobalResponse.error(ResponseCode.MISSING_REQUIRED_PARAMETER, defaultMsg, errors));
     }
 
     private List<FieldErrorDetail> getErrors(BindingResult bindingResult) {
@@ -81,7 +88,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_VALUE, "Validation failed", errors));
+                .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_VALUE, "Dữ liệu tham số không hợp lệ", errors));
     }
 
     @ExceptionHandler(BindException.class)
@@ -90,14 +97,14 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(GlobalResponse.error(ResponseCode.MISSING_REQUIRED_PARAMETER, "Binding failed", errors));
+                .body(GlobalResponse.error(ResponseCode.MISSING_REQUIRED_PARAMETER, "Liên kết dữ liệu thất bại", errors));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<GlobalResponse<Void>> handleHttpMessageNotReadableException() {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_TYPE, "Malformed JSON request body"));
+                .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_TYPE, "Dữ liệu JSON gửi lên không đúng định dạng"));
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

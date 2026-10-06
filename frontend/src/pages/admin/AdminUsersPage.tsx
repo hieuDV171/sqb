@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CustomSelect, type CustomSelectOption } from "@/components/ui/custom-select";
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/useToastStore";
 import type {
@@ -22,7 +23,6 @@ import {
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  FileCheck,
   RefreshCw,
   ShieldCheck,
   Trash2,
@@ -52,6 +52,43 @@ export function AdminUsersPage() {
   const [isExcelUploading, setIsExcelUploading] = useState(false);
   const [excelResult, setExcelResult] = useState<ExcelImportClassResult | null>(null);
   const [excelError, setExcelError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+        setSelectedFile(file);
+        setExcelError(null);
+        setExcelResult(null);
+      } else {
+        setExcelError("Chỉ chấp nhận file định dạng Excel (.xlsx, .xls)!");
+      }
+    }
+  };
+
+  const lecturerOptions: CustomSelectOption[] = useMemo(() => {
+    return lecturers.map((lec) => ({
+      value: lec.id.toString(),
+      label: `${lec.fullName} (ID: ${lec.id})`,
+      badge: lec.studentLecturerCode ? `#${lec.studentLecturerCode}` : undefined,
+      subLabel: lec.schoolFaculty || undefined,
+    }));
+  }, [lecturers]);
 
   useEffect(() => {
     const fetchLecturers = async () => {
@@ -614,21 +651,90 @@ export function AdminUsersPage() {
             <form onSubmit={handleExcelImport} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="excelFile" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     File Excel danh sách lớp (.xlsx, .xls) *
                   </Label>
-                  <Input
+
+                  {/* Hidden native input */}
+                  <input
+                    ref={fileInputRef}
                     id="excelFile"
                     type="file"
                     accept=".xlsx,.xls"
                     onChange={handleFileChange}
-                    required
-                    className="cursor-pointer"
+                    className="hidden"
                   />
-                  {selectedFile && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
-                      <FileCheck className="w-3.5 h-3.5" /> Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                    </p>
+
+                  {selectedFile ? (
+                    <div className="p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center justify-between gap-3 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <FileSpreadsheet className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {(selectedFile.size / 1024).toFixed(1)} KB • Sẵn sàng nạp dữ liệu
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-8 px-2.5 text-xs rounded-xl cursor-pointer"
+                        >
+                          Đổi file
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                          className="h-8 px-2 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer"
+                          title="Gỡ bỏ file"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fileInputRef.current?.click()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${
+                        isDragging
+                          ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30"
+                          : "border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/40 dark:bg-slate-900/30"
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-2">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Nhấp để chọn hoặc kéo thả file Excel vào đây
+                      </p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                        Chấp nhận file định dạng .xlsx, .xls
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -636,33 +742,19 @@ export function AdminUsersPage() {
                   <Label htmlFor="lecturerId" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Giảng viên phụ trách lớp (Tùy chọn)
                   </Label>
-                  <div className="relative">
-                    <select
-                      id="lecturerId"
-                      value={lecturerId}
-                      onChange={(e) => setLecturerId(e.target.value)}
-                      disabled={isLoadingLecturers}
-                      className="w-full h-10 px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100 cursor-pointer disabled:opacity-50"
-                    >
-                      <option value="">
-                        {isLoadingLecturers
-                          ? "-- Đang tải danh sách giảng viên... --"
-                          : "-- Bỏ trống (Hệ thống tự tìm hoặc không chỉ định) --"}
-                      </option>
-                      {lecturers.map((lec) => {
-                        const extraDetails = [
-                          lec.studentLecturerCode ? `Mã CB: ${lec.studentLecturerCode}` : null,
-                          lec.schoolFaculty ? lec.schoolFaculty : null,
-                        ].filter(Boolean).join(" - ");
-
-                        return (
-                          <option key={lec.id} value={lec.id.toString()}>
-                            {lec.fullName} (ID: {lec.id}){extraDetails ? ` | ${extraDetails}` : ""}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                  <CustomSelect
+                    id="lecturerId"
+                    value={lecturerId}
+                    onChange={setLecturerId}
+                    options={lecturerOptions}
+                    placeholder={
+                      isLoadingLecturers
+                        ? "Đang tải danh sách giảng viên..."
+                        : "Chọn giảng viên từ hệ thống (hoặc để trống)..."
+                    }
+                    emptyLabel="-- Bỏ trống (Hệ thống tự tìm hoặc không chỉ định) --"
+                    disabled={isLoadingLecturers}
+                  />
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Chọn giảng viên từ hệ thống để phân công lớp hoặc để trống nếu tự động nhận diện từ file Excel.
                   </p>

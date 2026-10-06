@@ -494,6 +494,24 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
             throw new AppException(ResponseCode.NO_ACTIVE_SEMESTER, "Không có học kỳ nào đang mở trong hệ thống");
         }
 
+        // Kiểm tra tính nhất quán: Nếu trong file Excel có chứa thông tin học kỳ thì phải khớp với kỳ đang kích hoạt
+        if (parsedData.semesterName() != null && !parsedData.semesterName().isBlank()) {
+            String excelSemesterClean = parsedData.semesterName().replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+            String activeSemesterClean = semester.getName().replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+
+            boolean isMatch = excelSemesterClean.equals(activeSemesterClean)
+                    || activeSemesterClean.contains(excelSemesterClean)
+                    || excelSemesterClean.contains(activeSemesterClean);
+
+            if (!isMatch) {
+                log.warn("[CourseClassManagement] Học kỳ trong Excel ('{}') không khớp với học kỳ active ('{}')",
+                        parsedData.semesterName(), semester.getName());
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                        String.format("Học kỳ trong file Excel ('%s') không khớp với học kỳ đang kích hoạt hiện tại ('%s')!",
+                                parsedData.semesterName(), semester.getName()));
+            }
+        }
+
         // 2. Môn học: Chỉ tìm kiếm theo mã môn học (Không tạo mới)
         String cleanSubjectCode = parsedData.subjectCode().trim().toUpperCase();
         Subject subject = subjectRepository.findByCode(cleanSubjectCode)
