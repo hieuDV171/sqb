@@ -1,0 +1,74 @@
+/* ==========================================================================
+   SQB - Custom Swagger UI Styling
+   Fixes Authorize / Close button gap and polishes modal experience
+   ========================================================================== */
+
+/* 1. Tách rời 2 nút Authorize và Close trong Modal Authorization */
+.swagger-ui .auth-btn-wrapper {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-top: 20px !important;
+    padding: 10px 0 !important;
+}
+
+.swagger-ui .auth-btn-wrapper .btn {
+    margin: 0 !important;
+    padding: 8px 24px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* Nút Authorize xanh lá nổi bật */
+.swagger-ui .auth-btn-wrapper .btn.authorize {
+    border: 1.5px solid #10b981 !important;
+    color: #10b981 !important;
+    background: transparent !important;
+}
+
+.swagger-ui .auth-btn-wrapper .btn.authorize:hover {
+    background: rgba(16, 185, 129, 0.15) !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Nút Close xám thanh lịch có khoảng cách rõ ràng */
+.swagger-ui .auth-btn-wrapper .btn.btn-done {
+    border: 1.5px solid #6b7280 !important;
+    color: #d1d5db !important;
+    background: transparent !important;
+    margin-left: 12px !important; /* Fallback an toàn nếu trình duyệt cũ không nhận flex-gap */
+}
+
+.swagger-ui .auth-btn-wrapper .btn.btn-done:hover {
+    background: rgba(107, 114, 128, 0.2) !important;
+    border-color: #9ca3af !important;
+    color: #ffffff !important;
+}
+
+/* 2. Cải thiện giao diện Input token trong Modal */
+.swagger-ui .auth-container input[type="text"],
+.swagger-ui .auth-container input[type="password"] {
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    border: 1px solid #4b5563 !important;
+    background: #1f2937 !important;
+    color: #f3f4f6 !important;
+    outline: none !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.swagger-ui .auth-container input[type="text"]:focus,
+.swagger-ui .auth-container input[type="password"]:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important;
+}
+
+/* 3. Tinh chỉnh khung Modal Authorization */
+.swagger-ui .dialog-ux .modal-ux {
+    border-radius: 12px !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4) !important;
+}

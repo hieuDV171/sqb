@@ -134,6 +134,7 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
     try-it-out-enabled: true
+    custom-css-path: /swagger-ui/custom.css
 
 elasticsearch:
   host: ${ELASTICSEARCH_HOST}
@@ -172,5 +173,6 @@ management:
     tracing:
       export:
         otlp:
-          endpoint: http://localhost:4318/v1/traces
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
 

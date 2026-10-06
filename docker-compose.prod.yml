@@ -127,6 +127,9 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SPRING_PROFILES_ACTIVE=prod
 
+      # Distributed Tracing (Tempo OTLP Exporter on sqb-network)
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318/v1/traces}
+
       # Mail Service
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}

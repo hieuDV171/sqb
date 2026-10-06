@@ -8,7 +8,6 @@ import com.frozenheart.backend.modules.badge.dto.UpdateBadgeRequestDto;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,8 +37,8 @@ public class AdminBadgeController {
     @Operation(summary = "Tạo mới huy hiệu danh hiệu", description = "Tạo một huy hiệu mới với tên, cấp bậc (BRONZE/SILVER/GOLD/PLATINUM/DIAMOND), sự kiện kích hoạt và điều kiện criteria.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Tạo huy hiệu thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ", content = @Content),
-            @ApiResponse(responseCode = "409", description = "Tên huy hiệu đã tồn tại (BADGE_NAME_ALREADY_EXISTS)", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
+            @ApiResponse(responseCode = "409", description = "Tên huy hiệu đã tồn tại (BADGE_NAME_ALREADY_EXISTS)")
     })
     @PostMapping
     public ResponseEntity<GlobalResponse<BadgeResponseDto>> createBadge(@Valid @RequestBody CreateBadgeRequestDto request) {
@@ -50,9 +49,9 @@ public class AdminBadgeController {
     @Operation(summary = "Cập nhật thông tin huy hiệu", description = "Chỉnh sửa tên, mô tả, cấp bậc, ảnh đại diện, tiêu chí hoặc kích hoạt lại huy hiệu.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cập nhật huy hiệu thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)", content = @Content),
-            @ApiResponse(responseCode = "409", description = "Tên huy hiệu mới bị trùng lặp (BADGE_NAME_ALREADY_EXISTS)", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
+            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)"),
+            @ApiResponse(responseCode = "409", description = "Tên huy hiệu mới bị trùng lặp (BADGE_NAME_ALREADY_EXISTS)")
     })
     @PutMapping("/{badgeId}")
     public ResponseEntity<GlobalResponse<BadgeResponseDto>> updateBadge(
@@ -65,7 +64,7 @@ public class AdminBadgeController {
     @Operation(summary = "Vô hiệu hóa (Soft Delete) huy hiệu", description = "Đánh dấu huy hiệu thành không hoạt động (active = false) để người dùng không thể nhận mới nhưng vẫn giữ lại cho những ai đã nhận trước đó.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Vô hiệu hóa huy hiệu thành công"),
-            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)")
     })
     @DeleteMapping("/{badgeId}")
     public ResponseEntity<GlobalResponse<Void>> deleteBadge(
@@ -77,8 +76,8 @@ public class AdminBadgeController {
     @Operation(summary = "Cấp phát huy hiệu thủ công cho người dùng", description = "Quản trị viên trao tặng huy hiệu trực tiếp cho danh sách userIds mà không cần qua điều kiện trigger tự động.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cấp phát huy hiệu thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
+            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)")
     })
     @PostMapping("/{badgeId}/grant")
     public ResponseEntity<GlobalResponse<Void>> grantManualBadge(

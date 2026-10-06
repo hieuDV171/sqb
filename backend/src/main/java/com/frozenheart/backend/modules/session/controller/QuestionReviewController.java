@@ -21,8 +21,6 @@ import com.frozenheart.backend.modules.session.service.QuestionReviewService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -40,8 +38,7 @@ public class QuestionReviewController {
 
     @Operation(summary = "Lấy danh sách phiên đề xuất chờ duyệt", description = "Dành cho giảng viên: lấy danh sách các phiên đề xuất câu hỏi đang ở trạng thái PENDING/REVIEWING, hỗ trợ phân trang con trỏ và lọc theo môn học.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên chờ duyệt thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên chờ duyệt thành công")
     })
     @GetMapping("/sessions/pending")
     public ResponseEntity<GlobalResponse<PendingSessionsResponse>> getPendingSessions(
@@ -63,12 +60,9 @@ public class QuestionReviewController {
 
     @Operation(summary = "Xem chi tiết phiên đề xuất để duyệt", description = "Giảng viên mở xem toàn bộ câu hỏi trong phiên để duyệt. Phiên sẽ chuyển sang trạng thái REVIEWING và hệ thống trả về cảnh báo trùng lặp tự động (nếu có).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy chi tiết phiên để duyệt thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Sinh viên không có quyền duyệt câu hỏi",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Lấy chi tiết phiên để duyệt thành công"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Sinh viên không có quyền duyệt câu hỏi"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất")
     })
     @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<GlobalResponse<SessionDetailReviewResponse>> getSessionDetailForReview(
@@ -81,10 +75,8 @@ public class QuestionReviewController {
 
     @Operation(summary = "Phê duyệt danh sách câu hỏi", description = "Phê duyệt các câu hỏi đạt chuẩn vào Ngân hàng câu hỏi chính thức. Tự động thưởng điểm cho tác giả và tự động hoàn tất phiên nếu tất cả câu hỏi đã được xử lý.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Phê duyệt câu hỏi thành công và trả về số điểm thưởng",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Danh sách câu hỏi trống hoặc không hợp lệ",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Phê duyệt câu hỏi thành công và trả về số điểm thưởng"),
+            @ApiResponse(responseCode = "400", description = "Danh sách câu hỏi trống hoặc không hợp lệ")
     })
     @PostMapping("/sessions/approve")
     public ResponseEntity<GlobalResponse<ApproveQuestionsResponse>> approveQuestions(
@@ -96,10 +88,8 @@ public class QuestionReviewController {
 
     @Operation(summary = "Từ chối danh sách câu hỏi", description = "Từ chối các câu hỏi không đạt chất lượng hoặc trùng lặp. Tự động cập nhật trạng thái phiên nếu tất cả câu hỏi đã được xử lý.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Từ chối câu hỏi thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Danh sách câu hỏi trống hoặc không hợp lệ",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Từ chối câu hỏi thành công"),
+            @ApiResponse(responseCode = "400", description = "Danh sách câu hỏi trống hoặc không hợp lệ")
     })
     @PostMapping("/sessions/reject")
     public ResponseEntity<GlobalResponse<Void>> rejectQuestions(
@@ -111,12 +101,9 @@ public class QuestionReviewController {
 
     @Operation(summary = "Giảng viên chỉnh sửa câu hỏi", description = "Cho phép giảng viên chỉnh sửa nội dung, đáp án, giải thích của câu hỏi và tùy chọn tự động duyệt ngay vào ngân hàng đề.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Chỉnh sửa câu hỏi thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Chỉ giảng viên mới có quyền sửa câu hỏi",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy câu hỏi",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Chỉnh sửa câu hỏi thành công"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Chỉ giảng viên mới có quyền sửa câu hỏi"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy câu hỏi")
     })
     @PutMapping("/questions/{questionId}")
     public ResponseEntity<GlobalResponse<EditQuestionResponse>> editQuestion(
@@ -130,12 +117,9 @@ public class QuestionReviewController {
 
     @Operation(summary = "Chốt hoàn tất duyệt phiên đề xuất", description = "Giảng viên chốt kết thúc quá trình duyệt phiên. Các câu hỏi chưa được duyệt (còn PENDING) sẽ tự động bị từ chối (REJECTED), phiên chuyển sang RESOLVED và gửi thông báo cho tác giả.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Chốt hoàn tất duyệt phiên thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Chỉ giảng viên mới có quyền hoàn tất duyệt",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Chốt hoàn tất duyệt phiên thành công"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Chỉ giảng viên mới có quyền hoàn tất duyệt"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất")
     })
     @PostMapping("/sessions/{sessionId}/complete-review")
     public ResponseEntity<GlobalResponse<Void>> completeSessionReview(

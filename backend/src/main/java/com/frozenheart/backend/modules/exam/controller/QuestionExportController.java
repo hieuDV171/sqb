@@ -5,8 +5,6 @@ import com.frozenheart.backend.modules.exam.dto.ExportResponse;
 import com.frozenheart.backend.modules.exam.service.DocumentExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,10 +25,8 @@ public class QuestionExportController {
 
     @Operation(summary = "Giảng viên xuất toàn bộ câu hỏi môn học", description = "Xuất danh sách tất cả câu hỏi của một môn học ra định dạng PDF hoặc Excel (có kèm đáp án và lời giải hoặc chỉ đề bài), hỗ trợ cơ chế lưu cache S3/MinIO.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Xuất file câu hỏi thành công và trả về URL tải về",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Không tìm thấy câu hỏi nào thuộc môn học này",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Xuất file câu hỏi thành công và trả về URL tải về"),
+            @ApiResponse(responseCode = "400", description = "Không tìm thấy câu hỏi nào thuộc môn học này")
     })
     @GetMapping("/lecturer/questions/export")
     public ResponseEntity<GlobalResponse<ExportResponse>> exportQuestions(

@@ -6,7 +6,6 @@ import com.frozenheart.backend.modules.badge.dto.UserBadgeResponseDto;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,7 +33,7 @@ public class BadgeController {
     @Operation(summary = "Lấy danh sách huy hiệu của chính người dùng hiện tại", description = "Trả về danh sách tất cả các huy hiệu mà người dùng đang đăng nhập đã đạt được.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lấy danh sách huy hiệu của bản thân thành công"),
-            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng", content = @Content)
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng")
     })
     @GetMapping("/me")
     public ResponseEntity<GlobalResponse<List<UserBadgeResponseDto>>> getMyBadges() {
@@ -52,7 +51,7 @@ public class BadgeController {
     @Operation(summary = "Xem chi tiết một huy hiệu", description = "Lấy thông tin chi tiết, cấp bậc, tiêu chí và tổng số người đã đạt của một huy hiệu.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lấy chi tiết huy hiệu thành công"),
-            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)")
     })
     @GetMapping("/{badgeId}")
     public ResponseEntity<GlobalResponse<BadgeResponseDto>> getBadgeById(

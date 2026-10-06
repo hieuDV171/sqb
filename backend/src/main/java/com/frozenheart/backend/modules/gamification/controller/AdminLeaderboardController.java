@@ -4,8 +4,6 @@ import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.modules.gamification.dto.RebuildLeaderboardRequest;
 import com.frozenheart.backend.modules.gamification.service.LeaderboardService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,8 +26,7 @@ public class AdminLeaderboardController {
 
     @Operation(summary = "Tái tạo Bảng xếp hạng trong Redis (Admin)", description = "Quản trị viên kích hoạt đồng bộ và tính toán lại toàn bộ điểm số trên Redis ZSet cho bảng xếp hạng.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Tái tạo bảng xếp hạng thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Tái tạo bảng xếp hạng thành công")
     })
     @PostMapping("/rebuild")
     public ResponseEntity<GlobalResponse<Void>> rebuildLeaderboard(

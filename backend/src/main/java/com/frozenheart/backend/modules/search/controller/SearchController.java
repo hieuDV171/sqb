@@ -5,7 +5,6 @@ import com.frozenheart.backend.modules.search.dto.*;
 import com.frozenheart.backend.modules.search.service.SearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,7 +35,7 @@ public class SearchController {
     @Operation(summary = "Lấy lịch sử tìm kiếm cá nhân & Top từ khóa thịnh hành", description = "Truy vấn tối đa 20 từ khóa tìm kiếm gần nhất của người dùng hiện tại và top 10 từ khóa tìm kiếm phổ biến nhất toàn hệ thống từ Redis.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lấy lịch sử và từ khóa thịnh hành thành công"),
-            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng", content = @Content)
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng")
     })
     @GetMapping("/search/saved")
     public ResponseEntity<GlobalResponse<SavedAndTrendingSearchesResponseDto>> getSavedAndTrendingSearches() {
@@ -47,7 +46,7 @@ public class SearchController {
     @Operation(summary = "Xóa một từ khóa khỏi lịch sử tìm kiếm cá nhân", description = "Xóa bản ghi từ khóa tìm kiếm đã lưu của người dùng theo ID.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Xóa từ khóa tìm kiếm thành công"),
-            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng", content = @Content)
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng")
     })
     @DeleteMapping("/search/saved/{id}")
     public ResponseEntity<GlobalResponse<DeleteSavedSearchResponseDto>> deleteSavedSearch(

@@ -26,8 +26,6 @@ import com.frozenheart.backend.modules.session.service.SessionService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -46,14 +44,10 @@ public class SessionController {
 
     @Operation(summary = "Đề xuất phiên câu hỏi mới", description = "Sinh viên/người dùng đề xuất danh sách câu hỏi trắc nghiệm kèm đáp án và hình ảnh cho một môn học đang theo học.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Đề xuất phiên câu hỏi thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc môn học không tồn tại",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Sinh viên chưa đăng ký lớp học phần thuộc môn này",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng hoặc tệp ảnh đính kèm đã hết hạn lưu tạm thời",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "201", description = "Đề xuất phiên câu hỏi thành công"),
+            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc môn học không tồn tại"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Sinh viên chưa đăng ký lớp học phần thuộc môn này"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng hoặc tệp ảnh đính kèm đã hết hạn lưu tạm thời")
     })
     @PostMapping("/propose")
     public ResponseEntity<GlobalResponse<ProposeSessionResponse>> proposeSession(
@@ -65,8 +59,7 @@ public class SessionController {
 
     @Operation(summary = "Lấy danh sách môn học người dùng đang tham gia", description = "Trả về danh sách các môn học mà sinh viên đang theo học dựa trên các lớp học phần đã tham gia.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy danh sách môn học thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Lấy danh sách môn học thành công")
     })
     @GetMapping("/my-enrolled-subjects")
     public ResponseEntity<GlobalResponse<List<SubjectResponse>>> getMyEnrolledSubjects() {
@@ -76,8 +69,7 @@ public class SessionController {
 
     @Operation(summary = "Lấy danh sách phiên đề xuất của chính mình", description = "Truy vấn danh sách các phiên đề xuất câu hỏi do chính người dùng hiện tại nộp, hỗ trợ phân trang dạng con trỏ và lọc theo trạng thái/môn học.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên đề xuất thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên đề xuất thành công")
     })
     @GetMapping("/my-submissions")
     public ResponseEntity<GlobalResponse<SubmissionsResponse>> getMySubmissions(
@@ -99,12 +91,9 @@ public class SessionController {
 
     @Operation(summary = "Xem chi tiết phiên đề xuất của chính mình", description = "Xem thông tin chi tiết phiên đề xuất bao gồm tất cả câu hỏi, danh sách đáp án, ảnh minh họa, điểm tự tin và thông tin giảng viên duyệt (nếu đã duyệt).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy chi tiết phiên đề xuất thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Phiên đề xuất không thuộc quyền sở hữu của người dùng hiện tại",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Lấy chi tiết phiên đề xuất thành công"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Phiên đề xuất không thuộc quyền sở hữu của người dùng hiện tại"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất")
     })
     @GetMapping("/my-submissions/{sessionId}")
     public ResponseEntity<GlobalResponse<MySubmissionDetailResponse>> getMySubmissionDetail(
@@ -117,14 +106,10 @@ public class SessionController {
 
     @Operation(summary = "Cập nhật phiên đề xuất của chính mình", description = "Cho phép tác giả cập nhật thông tin phiên hoặc danh sách câu hỏi/đáp án. Chỉ áp dụng cho phiên đang ở trạng thái chờ duyệt (PENDING).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Cập nhật phiên đề xuất thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc môn học không tồn tại",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Không phải chủ sở hữu hoặc phiên đã được xử lý/duyệt",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Cập nhật phiên đề xuất thành công"),
+            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc môn học không tồn tại"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Không phải chủ sở hữu hoặc phiên đã được xử lý/duyệt"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất")
     })
     @PutMapping("/my-submissions/{sessionId}")
     public ResponseEntity<GlobalResponse<Void>> updateMySubmissionSession(
@@ -138,12 +123,9 @@ public class SessionController {
 
     @Operation(summary = "Xóa phiên đề xuất của chính mình", description = "Cho phép tác giả hủy và xóa phiên đề xuất kèm toàn bộ câu hỏi và hình ảnh liên quan. Chỉ áp dụng khi phiên đang ở trạng thái chờ duyệt (PENDING).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Xóa phiên đề xuất thành công",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Không phải chủ sở hữu hoặc phiên đã được xử lý/duyệt",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất",
-                    content = @Content(schema = @Schema(implementation = GlobalResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Xóa phiên đề xuất thành công"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Không phải chủ sở hữu hoặc phiên đã được xử lý/duyệt"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy phiên đề xuất")
     })
     @DeleteMapping("/my-submissions/{sessionId}")
     public ResponseEntity<GlobalResponse<Void>> deleteMySubmissionSession(

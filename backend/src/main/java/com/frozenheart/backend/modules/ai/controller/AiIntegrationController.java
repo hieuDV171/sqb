@@ -23,7 +23,6 @@ import com.frozenheart.backend.modules.ai.service.AiIntegrationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,9 +39,9 @@ public class AiIntegrationController {
     @Operation(summary = "AI tinh chỉnh câu hỏi trắc nghiệm", description = "Sử dụng LLM để hoàn thiện nội dung câu hỏi, điều chỉnh phương án nhiễu, viết giải thích chi tiết và tự động chạy quy trình kiểm định ảo giác Btprop.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "AI tinh chỉnh câu hỏi thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ", content = @Content),
-            @ApiResponse(responseCode = "403", description = "Lời nhắc vi phạm chính sách hoặc chứa dấu hiệu Prompt Injection (CONTENT_VIOLATES_POLICY)", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Câu hỏi không tồn tại (QUESTION_NOT_FOUND)", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
+            @ApiResponse(responseCode = "403", description = "Lời nhắc vi phạm chính sách hoặc chứa dấu hiệu Prompt Injection (CONTENT_VIOLATES_POLICY)"),
+            @ApiResponse(responseCode = "404", description = "Câu hỏi không tồn tại (QUESTION_NOT_FOUND)")
     })
     @PostMapping("/questions/{questionId}/ai-refine")
     public ResponseEntity<GlobalResponse<AiRefineResponse>> refineQuestion(
@@ -55,8 +54,8 @@ public class AiIntegrationController {
     @Operation(summary = "Trò chuyện tương tác với trợ lý AI", description = "Gửi lời nhắc và ngữ cảnh môn học đến mô hình AI nội bộ để nhận phản hồi học thuật.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Phản hồi từ AI thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ", content = @Content),
-            @ApiResponse(responseCode = "403", description = "Lời nhắc vi phạm chính sách an toàn", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
+            @ApiResponse(responseCode = "403", description = "Lời nhắc vi phạm chính sách an toàn")
     })
     @PostMapping("/admin/ai/chat")
     public ResponseEntity<GlobalResponse<AiChatResponse>> chatWithAi(
@@ -90,9 +89,9 @@ public class AiIntegrationController {
     @Operation(summary = "Phê duyệt hoặc loại bỏ kết quả chỉnh sửa của AI", description = "Giảng viên/Người kiểm duyệt chấp thuận để ghi đè nội dung do AI đề xuất vào câu hỏi gốc hoặc từ chối.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Áp dụng kết quả chỉnh sửa AI thành công"),
-            @ApiResponse(responseCode = "400", description = "Không tìm thấy nhật ký chỉnh sửa AI (INVALID_PARAMETER_VALUE)", content = @Content),
-            @ApiResponse(responseCode = "403", description = "Không có quyền thực hiện thao tác này (ACCESS_DENIED)", content = @Content),
-            @ApiResponse(responseCode = "404", description = "Câu hỏi liên kết không tồn tại (QUESTION_NOT_FOUND)", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Không tìm thấy nhật ký chỉnh sửa AI (INVALID_PARAMETER_VALUE)"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền thực hiện thao tác này (ACCESS_DENIED)"),
+            @ApiResponse(responseCode = "404", description = "Câu hỏi liên kết không tồn tại (QUESTION_NOT_FOUND)")
     })
     @PostMapping("/questions/{questionId}/ai-apply")
     public ResponseEntity<GlobalResponse<AiApplyResponse>> applyAiRefinement(
