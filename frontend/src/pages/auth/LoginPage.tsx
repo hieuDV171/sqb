@@ -22,18 +22,33 @@ export function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
     const { login, isLoading, error } = useAuth();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setValidationError(null);
+
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail) {
+            setValidationError("Vui lòng nhập địa chỉ email của bạn.");
+            return;
+        }
+        if (!password) {
+            setValidationError("Vui lòng nhập mật khẩu tài khoản.");
+            return;
+        }
+
         login({
-            email: email.trim(),
+            email: trimmedEmail,
             password,
             deviceId: getOrCreateDeviceId(),
             platform: DevicePlatform.WEB,
             deviceName: getBrowserDeviceName(),
         });
     };
+
+    const activeError = validationError || error;
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 font-sans transition-colors duration-200">
@@ -50,11 +65,11 @@ export function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 pt-2">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {error && (
-                            <div className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50">
+                    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                        {activeError && (
+                            <div className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 animate-in fade-in duration-150">
                                 <AlertCircle className="w-4 h-4 shrink-0" />
-                                <span>{error}</span>
+                                <span>{activeError}</span>
                             </div>
                         )}
 
@@ -67,8 +82,10 @@ export function LoginPage() {
                                 type="email"
                                 placeholder="a.bc123456@hust.edu.vn"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if (validationError) setValidationError(null);
+                                }}
                                 className="w-full rounded-xl px-3.5 py-2.5 text-sm"
                             />
                         </div>
@@ -93,8 +110,10 @@ export function LoginPage() {
                                     type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if (validationError) setValidationError(null);
+                                    }}
                                     className="w-full rounded-xl px-3.5 py-2.5 pr-10 text-sm"
                                 />
                                 <button

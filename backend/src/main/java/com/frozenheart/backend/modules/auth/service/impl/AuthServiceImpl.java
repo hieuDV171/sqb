@@ -93,13 +93,13 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "user_not_found");
-                    return new AppException(ResponseCode.USER_NOT_FOUND, "Không tìm thấy người dùng");
+                    return new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không chính xác");
                 });
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             log.error("[AuthServiceImpl]: {}", ResponseCode.INCORRECT_IDENTIFIER);
             metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "bad_credentials");
-            throw new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không đúng");
+            throw new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không chính xác");
         }
 
         Long userId = user.getId();
@@ -132,6 +132,7 @@ public class AuthServiceImpl implements AuthService {
             return AuthResponse.builder()
                     .userId(authResponse.userId())
                     .username(authResponse.username())
+                    .role(authResponse.role())
                     .accessToken(authResponse.accessToken())
                     .refreshToken(null) // WEB không nhận refreshToken trong JSON Body
                     .avatarUrl(authResponse.avatarUrl())

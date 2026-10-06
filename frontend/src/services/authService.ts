@@ -4,7 +4,7 @@ import type { GlobalResponse } from '../types/response.types';
 
 export const authService = {
   login: async (data: LoginRequest): Promise<GlobalResponse<AuthResponse>> => {
-    return await axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data) as any;
+    return await axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data, { skipToast: true } as any) as any;
   },
 
   logout: async (): Promise<GlobalResponse<void>> => {

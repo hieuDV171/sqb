@@ -14,9 +14,6 @@ export function PublicRoute({ children }: PublicRouteProps) {
     if (user?.role === 'ADMIN') {
       return <Navigate to="/admin/users" replace />;
     }
-    if (user?.role === 'LECTURER') {
-      return <Navigate to="/lecturer/sessions" replace />;
-    }
     return <Navigate to="/feed" replace />;
   }
 
