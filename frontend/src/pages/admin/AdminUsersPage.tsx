@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/useToastStore";
 import type {
+  AdminSubjectResponse,
   BulkImportResult,
   ExcelImportClassResult,
   LecturerSummary,
+  SemesterResponse,
   SingleUserImportDto,
   UserRole,
 } from "@/types/auth.types";
@@ -26,9 +28,15 @@ import {
   Trash2,
   PlusCircle,
   Info,
+  Calendar,
+  BookOpen,
+  Search,
+  Award,
+  Check,
+  XCircle,
 } from "lucide-react";
 
-type ActiveTab = "excel" | "bulk" | "reset";
+type ActiveTab = "excel" | "bulk" | "reset" | "semesters" | "subjects";
 
 export function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("excel");
@@ -224,6 +232,138 @@ export function AdminUsersPage() {
     toast.info("Đã hoàn tất quy trình xử lý danh sách reset mật khẩu.", "Kết quả Reset");
   };
 
+  // =========================================================================
+  // TAB 4: QUẢN LÝ HỌC KỲ (SEMESTERS) STATE & HANDLERS
+  // =========================================================================
+  const [semesters, setSemesters] = useState<SemesterResponse[]>([]);
+  const [isLoadingSemesters, setIsLoadingSemesters] = useState(false);
+  const [newSemesterName, setNewSemesterName] = useState("");
+  const [isCreatingSemester, setIsCreatingSemester] = useState(false);
+  const [activatingSemesterId, setActivatingSemesterId] = useState<number | null>(null);
+  const [isFinalizingSemester, setIsFinalizingSemester] = useState(false);
+
+  const fetchSemesters = async () => {
+    try {
+      setIsLoadingSemesters(true);
+      const res = await adminService.getAllSemesters();
+      setSemesters(res.data || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể tải danh sách học kỳ");
+    } finally {
+      setIsLoadingSemesters(false);
+    }
+  };
+
+  const handleCreateSemester = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSemesterName.trim()) {
+      toast.error("Vui lòng nhập tên học kỳ");
+      return;
+    }
+    try {
+      setIsCreatingSemester(true);
+      const res = await adminService.createSemester({ name: newSemesterName.trim() });
+      toast.success(`Đã tạo học kỳ ${res.data.name} thành công`);
+      setNewSemesterName("");
+      fetchSemesters();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Lỗi khi tạo học kỳ");
+    } finally {
+      setIsCreatingSemester(false);
+    }
+  };
+
+  const handleActivateSemester = async (id: number, name: string) => {
+    try {
+      setActivatingSemesterId(id);
+      await adminService.activateSemester(id);
+      toast.success(`Đã kích hoạt học kỳ ${name} thành công`);
+      fetchSemesters();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Lỗi khi kích hoạt học kỳ");
+    } finally {
+      setActivatingSemesterId(null);
+    }
+  };
+
+  const handleDeactivateAllSemesters = async () => {
+    if (!window.confirm("Bạn có chắc chắn muốn hủy kích hoạt toàn bộ học kỳ không?")) return;
+    try {
+      await adminService.deactivateAllSemesters();
+      toast.success("Đã hủy kích hoạt toàn bộ học kỳ");
+      fetchSemesters();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Lỗi khi hủy kích hoạt học kỳ");
+    }
+  };
+
+  const handleFinalizeSemester = async () => {
+    if (!window.confirm("XÁC NHẬN CHỐT SỔ HỌC KỲ: Hệ thống sẽ tính toán và lưu bảng xếp hạng Gamification học kỳ, các hoạt động sau thời điểm này sẽ tính vào kỳ tiếp theo. Bạn có chắc chắn không?")) return;
+    try {
+      setIsFinalizingSemester(true);
+      await adminService.finalizeSemester();
+      toast.success("Đã chốt sổ học kỳ thành công!");
+      fetchSemesters();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Lỗi khi chốt sổ học kỳ");
+    } finally {
+      setIsFinalizingSemester(false);
+    }
+  };
+
+  // =========================================================================
+  // TAB 5: QUẢN LÝ MÔN HỌC (SUBJECTS) STATE & HANDLERS
+  // =========================================================================
+  const [subjects, setSubjects] = useState<AdminSubjectResponse[]>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [newSubjectCode, setNewSubjectCode] = useState("");
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [isCreatingSubject, setIsCreatingSubject] = useState(false);
+  const [subjectSearch, setSubjectSearch] = useState("");
+
+  const fetchSubjects = async () => {
+    try {
+      setIsLoadingSubjects(true);
+      const res = await adminService.getAllSubjects();
+      setSubjects(res.data || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể tải danh sách môn học");
+    } finally {
+      setIsLoadingSubjects(false);
+    }
+  };
+
+  const handleCreateSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubjectCode.trim() || !newSubjectName.trim()) {
+      toast.error("Vui lòng nhập đầy đủ mã và tên môn học");
+      return;
+    }
+    try {
+      setIsCreatingSubject(true);
+      const res = await adminService.createSubject({
+        code: newSubjectCode.trim().toUpperCase(),
+        name: newSubjectName.trim(),
+      });
+      toast.success(`Đã thêm môn học ${res.data.code} - ${res.data.name} thành công`);
+      setNewSubjectCode("");
+      setNewSubjectName("");
+      fetchSubjects();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Lỗi khi tạo môn học");
+    } finally {
+      setIsCreatingSubject(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "semesters") {
+      fetchSemesters();
+    } else if (activeTab === "subjects") {
+      fetchSubjects();
+    }
+  }, [activeTab]);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
       {/* Top Banner Header */}
@@ -283,14 +423,40 @@ export function AdminUsersPage() {
         <button
           type="button"
           onClick={() => setActiveTab("reset")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
             activeTab === "reset"
               ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
           }`}
         >
           <KeyRound className="w-4 h-4" />
-          <span>Reset Mật Khẩu Mặc Định</span>
+          <span>Reset Mật Khẩu</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("semesters")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeTab === "semesters"
+              ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Quản Lý Học Kỳ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("subjects")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeTab === "subjects"
+              ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Quản Lý Môn Học</span>
         </button>
       </div>
 
@@ -720,6 +886,307 @@ export function AdminUsersPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: QUẢN LÝ HỌC KỲ                                                    */}
+      {/* ========================================================================= */}
+      {activeTab === "semesters" && (
+        <div className="space-y-6">
+          {/* Create Semester Card */}
+          <Card className="rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                <Calendar className="w-5 h-5" />
+                <CardTitle className="text-lg">Tạo Học Kỳ Mới</CardTitle>
+              </div>
+              <CardDescription>
+                Thêm học kỳ mới vào hệ thống (ví dụ: <code>2024.1</code>, <code>2024.2</code>). Sau khi tạo, bạn có thể kích hoạt học kỳ để làm việc chính thức.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateSemester} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="semesterName" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Tên học kỳ *
+                  </Label>
+                  <Input
+                    id="semesterName"
+                    placeholder="VD: 2024.1, 2024.2, 2024.3..."
+                    value={newSemesterName}
+                    onChange={(e) => setNewSemesterName(e.target.value)}
+                    required
+                    className="rounded-xl text-sm"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isCreatingSemester || !newSemesterName.trim()}
+                  className="gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md shadow-indigo-200 dark:shadow-none shrink-0"
+                >
+                  {isCreatingSemester ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" /> Thêm Học Kỳ
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Semesters List Card */}
+          <Card className="rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+              <div>
+                <CardTitle className="text-lg">Danh Sách Học Kỳ Trong Hệ Thống</CardTitle>
+                <CardDescription>
+                  Hệ thống chỉ cho phép duy nhất một học kỳ hoạt động (Active) tại một thời điểm.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeactivateAllSemesters}
+                  className="text-xs text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-xl cursor-pointer"
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1" /> Hủy kích hoạt tất cả
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isFinalizingSemester}
+                  onClick={handleFinalizeSemester}
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-xs cursor-pointer"
+                >
+                  {isFinalizingSemester ? (
+                    <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Award className="w-3.5 h-3.5 mr-1" />
+                  )}
+                  Chốt sổ học kỳ
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingSemesters ? (
+                <div className="flex items-center justify-center py-10 text-slate-500 gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-indigo-500" />
+                  <span className="text-sm">Đang tải danh sách học kỳ...</span>
+                </div>
+              ) : semesters.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-sm">
+                  Chưa có học kỳ nào được tạo trong hệ thống.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left text-xs sm:text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider font-semibold text-[11px] border-b border-slate-200 dark:border-slate-800">
+                      <tr>
+                        <th className="py-3 px-4">ID</th>
+                        <th className="py-3 px-4">Tên học kỳ</th>
+                        <th className="py-3 px-4">Trạng thái</th>
+                        <th className="py-3 px-4">Chốt sổ</th>
+                        <th className="py-3 px-4 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                      {semesters.map((s) => (
+                        <tr key={s.semesterId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4 font-mono text-slate-400">{s.semesterId}</td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">
+                            {s.name}
+                          </td>
+                          <td className="py-3 px-4">
+                            {s.active ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                <Check className="w-3 h-3" /> Đang kích hoạt
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs text-slate-400 bg-slate-100 dark:bg-slate-800">
+                                Chưa kích hoạt
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {s.isFinalize ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+                                <Award className="w-3 h-3" /> Đã chốt sổ
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-xs">Chưa</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {!s.active && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={activatingSemesterId === s.semesterId}
+                                onClick={() => handleActivateSemester(s.semesterId, s.name)}
+                                className="text-xs h-8 px-3 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900 cursor-pointer"
+                              >
+                                {activatingSemesterId === s.semesterId ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                                ) : (
+                                  <Check className="w-3 h-3 mr-1" />
+                                )}
+                                Kích hoạt
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 5: QUẢN LÝ MÔN HỌC                                                    */}
+      {/* ========================================================================= */}
+      {activeTab === "subjects" && (
+        <div className="space-y-6">
+          {/* Create Subject Card */}
+          <Card className="rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                <BookOpen className="w-5 h-5" />
+                <CardTitle className="text-lg">Tạo Môn Học Mới</CardTitle>
+              </div>
+              <CardDescription>
+                Khai báo mã môn học (ví dụ: <code>IT4409</code>, <code>IT3080</code>) và tên học phần đầy đủ trước khi import sinh viên và mở ngân hàng câu hỏi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateSubject} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="subjectCode" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Mã môn học *
+                    </Label>
+                    <Input
+                      id="subjectCode"
+                      placeholder="VD: IT4409"
+                      value={newSubjectCode}
+                      onChange={(e) => setNewSubjectCode(e.target.value.toUpperCase())}
+                      maxLength={10}
+                      required
+                      className="rounded-xl text-sm font-mono uppercase"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label htmlFor="subjectName" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Tên môn học / học phần *
+                    </Label>
+                    <Input
+                      id="subjectName"
+                      placeholder="VD: Công nghệ Web và dịch vụ trực tuyến"
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      maxLength={100}
+                      required
+                      className="rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="submit"
+                    disabled={isCreatingSubject || !newSubjectCode.trim() || !newSubjectName.trim()}
+                    className="gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer"
+                  >
+                    {isCreatingSubject ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo môn học...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="w-4 h-4" /> Thêm Môn Học
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Subjects List Card */}
+          <Card className="rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+              <div>
+                <CardTitle className="text-lg">Danh Sách Môn Học Hệ Thống</CardTitle>
+                <CardDescription>
+                  Tổng số môn học đang quản lý: {subjects.length} môn
+                </CardDescription>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Tìm theo mã hoặc tên..."
+                  value={subjectSearch}
+                  onChange={(e) => setSubjectSearch(e.target.value)}
+                  className="pl-9 h-9 text-xs rounded-xl"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingSubjects ? (
+                <div className="flex items-center justify-center py-10 text-slate-500 gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-indigo-500" />
+                  <span className="text-sm">Đang tải danh sách môn học...</span>
+                </div>
+              ) : subjects.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-sm">
+                  Chưa có môn học nào được tạo trong hệ thống.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left text-xs sm:text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider font-semibold text-[11px] border-b border-slate-200 dark:border-slate-800">
+                      <tr>
+                        <th className="py-3 px-4">ID</th>
+                        <th className="py-3 px-4">Mã môn</th>
+                        <th className="py-3 px-4">Tên môn học</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                      {subjects
+                        .filter(
+                          (sub) =>
+                            sub.code.toLowerCase().includes(subjectSearch.toLowerCase()) ||
+                            sub.name.toLowerCase().includes(subjectSearch.toLowerCase())
+                        )
+                        .map((sub) => (
+                          <tr key={sub.subjectId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-4 font-mono text-slate-400">{sub.subjectId}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-900">
+                                {sub.code}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-medium text-slate-900 dark:text-slate-100">
+                              {sub.name}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

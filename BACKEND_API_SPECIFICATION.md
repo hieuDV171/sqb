@@ -899,11 +899,13 @@ Phụ trách bởi Controller: [`AdminSubjectController`](file:///c:/Users/ADMIN
 
 ### 19.1. Tạo môn học mới
 - **Method & URL:** `POST /api/v1/admin/subjects`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`createSubject`)
 - **Request Body (`CreateSubjectRequest`)**
 - **Response Data (`SubjectResponse`)**
 
 ### 19.2. Lấy danh sách tất cả môn học
 - **Method & URL:** `GET /api/v1/admin/subjects`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`getAllSubjects`)
 - **Response Data:** `GlobalResponse<List<SubjectResponse>>`
 
 ---
@@ -915,20 +917,24 @@ Phụ trách bởi Controller: [`AdminSemesterController`](file:///c:/Users/ADMI
 
 ### 20.1. Tạo học kỳ mới
 - **Method & URL:** `POST /api/v1/admin/semesters`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`createSemester`)
 - **Request Body (`CreateSemesterRequest`)**
 - **Response Data (`SemesterResponse`)**
 
 ### 20.2. Lấy danh sách tất cả học kỳ
 - **Method & URL:** `GET /api/v1/admin/semesters`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`getAllSemesters`)
 - **Response Data:** `GlobalResponse<List<SemesterResponse>>`
 
 ### 20.3. Kích hoạt một học kỳ (Active Semester)
 - **Method & URL:** `PUT /api/v1/admin/semesters/{semesterId}/activate`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`activateSemester`)
 - **Path Variables:** `semesterId` (Long)
 - **Response Data (`SemesterResponse`):** Trạng thái học kỳ kích hoạt.
 
 ### 20.4. Hủy kích hoạt tất cả học kỳ
 - **Method & URL:** `PUT /api/v1/admin/semesters/deactive-all`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`deactivateAllSemesters`)
 - **Response Data:** `GlobalResponse<String>` (`data: "Đã hủy kích hoạt toàn bộ học kỳ"`).
 
 ---

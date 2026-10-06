@@ -98,3 +98,17 @@ export interface LecturerSummary {
     schoolFaculty?: string;
 }
 
+export interface SemesterResponse {
+    semesterId: number;
+    name: string;
+    active: boolean;
+    isFinalize: boolean;
+    createdAt?: string;
+}
+
+export interface AdminSubjectResponse {
+    subjectId: number;
+    code: string;
+    name: string;
+}
+
