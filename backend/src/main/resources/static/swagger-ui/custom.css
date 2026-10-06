@@ -1,10 +1,14 @@
 /* ==========================================================================
    SQB - Custom Swagger UI Styling
-   1. Tách rời dứt khoát 2 nút Authorize và Close trong Modal Authorization
-   2. Tối ưu typography, khoảng cách bảng biểu và inline code badges
+   1. Tách rời dứt khoát 2 nút Authorize và Close trong Modal
+   2. Tối ưu typography, bảng biểu (tỷ lệ cột cân đối, max-width chống giãn)
+   3. Màu tím Swagger đặc trưng cho code badge (sắc nét, dễ nhìn)
+   4. Cố định chữ màu đậm (#1f2937) trên nền sáng, triệt tiêu lỗi chữ trắng trên nền trắng
    ========================================================================== */
 
-/* 1. Tách rời dứt khoát 2 nút Authorize và Close trong Modal Authorization */
+/* --------------------------------------------------------------------------
+   1. MODAL AUTHORIZATION (Tách rời 2 nút Authorize & Close)
+   -------------------------------------------------------------------------- */
 .swagger-ui .auth-btn-wrapper {
     display: flex !important;
     justify-content: center !important;
@@ -34,7 +38,7 @@
     border: 1.5px solid #10b981 !important;
     color: #10b981 !important;
     background: transparent !important;
-    margin-right: 12px !important; /* Fallback an toàn nếu trình duyệt cũ không nhận flex-gap */
+    margin-right: 12px !important;
 }
 
 .swagger-ui .auth-btn-wrapper .btn.authorize:hover,
@@ -45,13 +49,13 @@
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.25) !important;
 }
 
-/* Nút Close xám thanh lịch có khoảng cách rõ ràng */
+/* Nút Close xám thanh lịch */
 .swagger-ui .auth-btn-wrapper .btn.btn-done,
 .swagger-ui .auth-btn-wrapper .btn-done {
-    border: 1.5px solid #4b5563 !important;
+    border: 1.5px solid #6b7280 !important;
     color: #374151 !important;
     background: transparent !important;
-    margin-left: 12px !important; /* Fallback an toàn nếu trình duyệt cũ không nhận flex-gap */
+    margin-left: 12px !important;
 }
 
 .swagger-ui .auth-btn-wrapper .btn.btn-done:hover,
@@ -61,7 +65,7 @@
     color: #111827 !important;
 }
 
-/* 2. Cải thiện giao diện Input token trong Modal */
+/* Input token trong Modal */
 .swagger-ui .auth-container input[type="text"],
 .swagger-ui .auth-container input[type="password"] {
     border-radius: 6px !important;
@@ -72,7 +76,6 @@
     font-size: 13.5px !important;
     outline: none !important;
     transition: all 0.2s ease !important;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
 .swagger-ui .auth-container input[type="text"]:focus,
@@ -81,7 +84,6 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
 }
 
-/* 3. Tinh chỉnh khung Modal Authorization */
 .swagger-ui .dialog-ux .modal-ux {
     border-radius: 12px !important;
     border: 1px solid #e5e7eb !important;
@@ -100,18 +102,22 @@
     font-weight: 700 !important;
 }
 
-/* 4. Giãn cách và làm đẹp Typography Markdown (Tránh chữ dính sát nhau) */
+
+/* --------------------------------------------------------------------------
+   2. TYPOGRAPHY & BADGE CODE (MÀU TÍM SWAGGER ĐẶC TRƯNG)
+   -------------------------------------------------------------------------- */
 .swagger-ui .markdown,
 .swagger-ui .renderedMarkdown {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     line-height: 1.8 !important;
-    color: #374151 !important;
+    color: #1f2937 !important; /* Luôn là màu chữ đậm rõ nét trên nền sáng */
 }
 
 .swagger-ui .markdown p,
 .swagger-ui .renderedMarkdown p {
     margin: 10px 0 !important;
     line-height: 1.8 !important;
+    color: #1f2937 !important;
 }
 
 .swagger-ui .markdown ul,
@@ -126,45 +132,53 @@
 .swagger-ui .renderedMarkdown li {
     margin: 6px 0 !important;
     line-height: 1.8 !important;
+    color: #1f2937 !important;
 }
 
-/* Badge inline code: giãn cách rõ ràng, không dính sát chữ xung quanh */
+/* Badge inline code: Màu tím #9012fe kinh điển của Swagger, nổi bật, dễ nhìn */
 .swagger-ui .markdown code,
 .swagger-ui .renderedMarkdown code {
     display: inline-block !important;
     margin: 1px 4px !important;
     padding: 2px 7px !important;
-    font-size: 12.5px !important;
+    font-size: 13px !important;
     font-weight: 600 !important;
     font-family: "JetBrains Mono", Consolas, Monaco, "Courier New", monospace !important;
-    color: #4338ca !important;
-    background-color: #f1f5f9 !important;
-    border: 1px solid #e2e8f0 !important;
+    color: #9012fe !important; /* Tím đậm Swagger cổ điển */
+    background-color: rgba(144, 18, 254, 0.08) !important;
+    border: 1px solid rgba(144, 18, 254, 0.22) !important;
     border-radius: 5px !important;
-    line-height: 1.4 !important;
+    line-height: 1.45 !important;
     vertical-align: baseline !important;
 }
 
-/* Bảng Markdown trong phần mô tả */
+
+/* --------------------------------------------------------------------------
+   3. BẢNG BIỂU MARKDOWN (CÂN ĐỐI TỶ LỆ CỘT, CHỐNG GIÃN TRÀN MÀN HÌNH)
+   -------------------------------------------------------------------------- */
 .swagger-ui .markdown table,
 .swagger-ui .renderedMarkdown table {
     width: 100% !important;
+    max-width: 980px !important; /* Ngăn dãn bè quá mức trên màn hình lớn */
+    table-layout: fixed !important;
     border-collapse: separate !important;
     border-spacing: 0 !important;
-    margin: 16px 0 !important;
+    margin: 18px 0 !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
     overflow: hidden !important;
     font-size: 13.5px !important;
+    background-color: #ffffff !important;
 }
 
+/* Tiêu đề bảng: Nền xám sáng nhẹ nhàng, chữ đen đậm tương phản cao */
 .swagger-ui .markdown table th,
 .swagger-ui .renderedMarkdown table th {
-    background-color: #f8fafc !important;
+    background-color: #f1f5f9 !important;
     color: #0f172a !important;
-    font-weight: 600 !important;
-    padding: 10px 14px !important;
-    border-bottom: 1px solid #e2e8f0 !important;
+    font-weight: 700 !important;
+    padding: 11px 14px !important;
+    border-bottom: 1.5px solid #cbd5e1 !important;
     border-right: 1px solid #e2e8f0 !important;
     text-align: left !important;
 }
@@ -174,6 +188,7 @@
     border-right: none !important;
 }
 
+/* Nội dung ô bảng: Chữ đen xám đậm (#1f2937), cực kỳ rõ ràng trên nền trắng */
 .swagger-ui .markdown table td,
 .swagger-ui .renderedMarkdown table td {
     padding: 10px 14px !important;
@@ -181,6 +196,8 @@
     border-right: 1px solid #f1f5f9 !important;
     vertical-align: top !important;
     line-height: 1.65 !important;
+    word-break: break-word !important;
+    color: #1f2937 !important; /* Đảm bảo chữ KHÔNG BAO GIỜ bị trắng trên nền trắng */
 }
 
 .swagger-ui .markdown table td:last-child,
@@ -193,7 +210,166 @@
     border-bottom: none !important;
 }
 
+/* Zebra striping bán trong suốt nhẹ nhàng */
 .swagger-ui .markdown table tr:nth-child(even) td,
 .swagger-ui .renderedMarkdown table tr:nth-child(even) td {
-    background-color: #fcfdfe !important;
+    background-color: #f8fafc !important;
+}
+
+/* Căn chỉnh tỷ lệ cột cân đối cho Bảng 1: Publish Destinations */
+.swagger-ui .markdown table:first-of-type th:nth-child(1),
+.swagger-ui .renderedMarkdown table:first-of-type th:nth-child(1) {
+    width: 24% !important;
+}
+.swagger-ui .markdown table:first-of-type th:nth-child(2),
+.swagger-ui .renderedMarkdown table:first-of-type th:nth-child(2) {
+    width: 32% !important;
+}
+.swagger-ui .markdown table:first-of-type th:nth-child(3),
+.swagger-ui .renderedMarkdown table:first-of-type th:nth-child(3) {
+    width: 44% !important;
+}
+
+/* Căn chỉnh tỷ lệ cột cân đối cho Bảng 2: Subscribe Topics / Queues */
+.swagger-ui .markdown table:nth-of-type(2) th:nth-child(1),
+.swagger-ui .renderedMarkdown table:nth-of-type(2) th:nth-child(1) {
+    width: 34% !important;
+}
+.swagger-ui .markdown table:nth-of-type(2) th:nth-child(2),
+.swagger-ui .renderedMarkdown table:nth-of-type(2) th:nth-child(2) {
+    width: 36% !important;
+}
+.swagger-ui .markdown table:nth-of-type(2) th:nth-child(3),
+.swagger-ui .renderedMarkdown table:nth-of-type(2) th:nth-child(3) {
+    width: 30% !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. HỖ TRỢ DARK MODE (CHỈ ÁP DỤNG KHI TRANG CÓ CLASS / ATTRIBUTE NỀN TỐI)
+   -------------------------------------------------------------------------- */
+html.dark-mode .swagger-ui .markdown,
+html.dark-mode .swagger-ui .renderedMarkdown,
+html.dark-mode .swagger-ui .markdown p,
+html.dark-mode .swagger-ui .renderedMarkdown p,
+html.dark-mode .swagger-ui .markdown li,
+html.dark-mode .swagger-ui .renderedMarkdown li,
+html.dark-mode .swagger-ui .markdown table td,
+html.dark-mode .swagger-ui .renderedMarkdown table td,
+body.dark-mode .swagger-ui .markdown,
+body.dark-mode .swagger-ui .renderedMarkdown,
+body.dark-mode .swagger-ui .markdown p,
+body.dark-mode .swagger-ui .renderedMarkdown p,
+body.dark-mode .swagger-ui .markdown li,
+body.dark-mode .swagger-ui .renderedMarkdown li,
+body.dark-mode .swagger-ui .markdown table td,
+body.dark-mode .swagger-ui .renderedMarkdown table td,
+[data-theme='dark'] .swagger-ui .markdown,
+[data-theme='dark'] .swagger-ui .renderedMarkdown,
+[data-theme='dark'] .swagger-ui .markdown table td,
+[data-theme='dark'] .swagger-ui .renderedMarkdown table td,
+.dark .swagger-ui .markdown,
+.dark .swagger-ui .renderedMarkdown,
+.dark .swagger-ui .markdown table td,
+.dark .swagger-ui .renderedMarkdown table td {
+    color: #e2e8f0 !important;
+}
+
+html.dark-mode .swagger-ui .markdown code,
+html.dark-mode .swagger-ui .renderedMarkdown code,
+body.dark-mode .swagger-ui .markdown code,
+body.dark-mode .swagger-ui .renderedMarkdown code,
+[data-theme='dark'] .swagger-ui .markdown code,
+[data-theme='dark'] .swagger-ui .renderedMarkdown code,
+.dark .swagger-ui .markdown code,
+.dark .swagger-ui .renderedMarkdown code {
+    color: #c084fc !important;
+    background-color: rgba(192, 132, 252, 0.16) !important;
+    border-color: rgba(192, 132, 252, 0.35) !important;
+}
+
+html.dark-mode .swagger-ui .markdown table,
+html.dark-mode .swagger-ui .renderedMarkdown table,
+body.dark-mode .swagger-ui .markdown table,
+body.dark-mode .swagger-ui .renderedMarkdown table,
+[data-theme='dark'] .swagger-ui .markdown table,
+[data-theme='dark'] .swagger-ui .renderedMarkdown table,
+.dark .swagger-ui .markdown table,
+.dark .swagger-ui .renderedMarkdown table {
+    border-color: #334155 !important;
+    background-color: #0f172a !important;
+}
+
+html.dark-mode .swagger-ui .markdown table th,
+html.dark-mode .swagger-ui .renderedMarkdown table th,
+body.dark-mode .swagger-ui .markdown table th,
+body.dark-mode .swagger-ui .renderedMarkdown table th,
+[data-theme='dark'] .swagger-ui .markdown table th,
+[data-theme='dark'] .swagger-ui .renderedMarkdown table th,
+.dark .swagger-ui .markdown table th,
+.dark .swagger-ui .renderedMarkdown table th {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-bottom-color: #334155 !important;
+    border-right-color: #334155 !important;
+}
+
+html.dark-mode .swagger-ui .markdown table td,
+html.dark-mode .swagger-ui .renderedMarkdown table td,
+body.dark-mode .swagger-ui .markdown table td,
+body.dark-mode .swagger-ui .renderedMarkdown table td,
+[data-theme='dark'] .swagger-ui .markdown table td,
+[data-theme='dark'] .swagger-ui .renderedMarkdown table td,
+.dark .swagger-ui .markdown table td,
+.dark .swagger-ui .renderedMarkdown table td {
+    border-bottom-color: #1e293b !important;
+    border-right-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+html.dark-mode .swagger-ui .markdown table tr:nth-child(even) td,
+html.dark-mode .swagger-ui .renderedMarkdown table tr:nth-child(even) td,
+body.dark-mode .swagger-ui .markdown table tr:nth-child(even) td,
+body.dark-mode .swagger-ui .renderedMarkdown table tr:nth-child(even) td,
+[data-theme='dark'] .swagger-ui .markdown table tr:nth-child(even) td,
+[data-theme='dark'] .swagger-ui .renderedMarkdown table tr:nth-child(even) td,
+.dark .swagger-ui .markdown table tr:nth-child(even) td,
+.dark .swagger-ui .renderedMarkdown table tr:nth-child(even) td {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+html.dark-mode .swagger-ui .dialog-ux .modal-ux,
+body.dark-mode .swagger-ui .dialog-ux .modal-ux,
+[data-theme='dark'] .swagger-ui .dialog-ux .modal-ux,
+.dark .swagger-ui .dialog-ux .modal-ux {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+html.dark-mode .swagger-ui .dialog-ux .modal-ux-header h3,
+body.dark-mode .swagger-ui .dialog-ux .modal-ux-header h3,
+[data-theme='dark'] .swagger-ui .dialog-ux .modal-ux-header h3,
+.dark .swagger-ui .dialog-ux .modal-ux-header h3 {
+    color: #f8fafc !important;
+}
+
+html.dark-mode .swagger-ui .auth-container input[type="text"],
+html.dark-mode .swagger-ui .auth-container input[type="password"],
+body.dark-mode .swagger-ui .auth-container input[type="text"],
+body.dark-mode .swagger-ui .auth-container input[type="password"],
+[data-theme='dark'] .swagger-ui .auth-container input[type="text"],
+[data-theme='dark'] .swagger-ui .auth-container input[type="password"],
+.dark .swagger-ui .auth-container input[type="text"],
+.dark .swagger-ui .auth-container input[type="password"] {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
+
+html.dark-mode .swagger-ui .auth-btn-wrapper .btn.btn-done,
+body.dark-mode .swagger-ui .auth-btn-wrapper .btn.btn-done,
+[data-theme='dark'] .swagger-ui .auth-btn-wrapper .btn.btn-done,
+.dark .swagger-ui .auth-btn-wrapper .btn.btn-done {
+    border-color: #64748b !important;
+    color: #cbd5e1 !important;
 }
