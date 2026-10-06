@@ -34,6 +34,7 @@ import {
   Award,
   Check,
   XCircle,
+  X,
 } from "lucide-react";
 
 type ActiveTab = "excel" | "bulk" | "reset" | "semesters" | "subjects";
@@ -233,6 +234,37 @@ export function AdminUsersPage() {
   };
 
   // =========================================================================
+  // TAB 4 & 5: CONFIRM MODAL STATE & ACTIONS
+  // =========================================================================
+  interface ConfirmModalState {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'primary' | 'warning' | 'purple';
+    onConfirm: () => void | Promise<void>;
+  }
+
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  const openConfirm = (opts: Omit<ConfirmModalState, 'isOpen'>) => {
+    setConfirmModal({
+      isOpen: true,
+      ...opts,
+    });
+  };
+
+  const closeConfirm = () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // =========================================================================
   // TAB 4: QUẢN LÝ HỌC KỲ (SEMESTERS) STATE & HANDLERS
   // =========================================================================
   const [semesters, setSemesters] = useState<SemesterResponse[]>([]);
@@ -240,7 +272,10 @@ export function AdminUsersPage() {
   const [newSemesterName, setNewSemesterName] = useState("");
   const [isCreatingSemester, setIsCreatingSemester] = useState(false);
   const [activatingSemesterId, setActivatingSemesterId] = useState<number | null>(null);
+  const [deletingSemesterId, setDeletingSemesterId] = useState<number | null>(null);
   const [isFinalizingSemester, setIsFinalizingSemester] = useState(false);
+
+  const activeSemester = semesters.find((s) => s.active);
 
   const fetchSemesters = async () => {
     try {
@@ -248,7 +283,7 @@ export function AdminUsersPage() {
       const res = await adminService.getAllSemesters();
       setSemesters(res.data || []);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Không thể tải danh sách học kỳ");
+      console.error("Lỗi khi tải danh sách học kỳ:", err);
     } finally {
       setIsLoadingSemesters(false);
     }
@@ -257,58 +292,139 @@ export function AdminUsersPage() {
   const handleCreateSemester = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSemesterName.trim()) {
-      toast.error("Vui lòng nhập tên học kỳ");
+      toast.warning("Vui lòng nhập tên học kỳ!", "Dữ liệu thiếu");
       return;
     }
     try {
       setIsCreatingSemester(true);
       const res = await adminService.createSemester({ name: newSemesterName.trim() });
-      toast.success(`Đã tạo học kỳ ${res.data.name} thành công`);
+      toast.success(`Đã tạo học kỳ "${res.data.name}" thành công.`);
       setNewSemesterName("");
       fetchSemesters();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Lỗi khi tạo học kỳ");
+      console.error("Lỗi khi tạo học kỳ:", err);
     } finally {
       setIsCreatingSemester(false);
     }
   };
 
-  const handleActivateSemester = async (id: number, name: string) => {
-    try {
-      setActivatingSemesterId(id);
-      await adminService.activateSemester(id);
-      toast.success(`Đã kích hoạt học kỳ ${name} thành công`);
-      fetchSemesters();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Lỗi khi kích hoạt học kỳ");
-    } finally {
-      setActivatingSemesterId(null);
+  const handleActivateSemester = (sem: SemesterResponse) => {
+    if (activeSemester) {
+      toast.warning(
+        `Không thể kích hoạt! Học kỳ "${activeSemester.name}" đang hoạt động. Bạn cần chốt sổ và đóng học kỳ này trước khi mở kỳ mới.`,
+        "Cần hoàn tất kỳ trước"
+      );
+      return;
     }
+    if (sem.isFinalize) {
+      toast.warning(`Học kỳ "${sem.name}" đã được chốt sổ kết thúc, không thể kích hoạt lại.`, "Học kỳ đã đóng");
+      return;
+    }
+
+    openConfirm({
+      title: `Kích hoạt học kỳ "${sem.name}"`,
+      message: `Bạn có chắc chắn muốn kích hoạt học kỳ "${sem.name}" làm học kỳ hoạt động chính thức? Toàn bộ các lớp học và dữ liệu sinh viên import sắp tới sẽ ghi nhận vào kỳ này.`,
+      confirmText: "Kích hoạt ngay",
+      variant: "primary",
+      onConfirm: async () => {
+        try {
+          setActivatingSemesterId(sem.semesterId);
+          await adminService.activateSemester(sem.semesterId);
+          toast.success(`Đã kích hoạt học kỳ "${sem.name}" thành công!`);
+          fetchSemesters();
+        } catch (err) {
+          console.error("Lỗi kích hoạt học kỳ:", err);
+        } finally {
+          setActivatingSemesterId(null);
+        }
+      },
+    });
   };
 
-  const handleDeactivateAllSemesters = async () => {
-    if (!window.confirm("Bạn có chắc chắn muốn hủy kích hoạt toàn bộ học kỳ không?")) return;
-    try {
-      await adminService.deactivateAllSemesters();
-      toast.success("Đã hủy kích hoạt toàn bộ học kỳ");
-      fetchSemesters();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Lỗi khi hủy kích hoạt học kỳ");
+  const handleDeactivateAllSemesters = () => {
+    if (!activeSemester) {
+      toast.warning("Hiện không có học kỳ nào đang được kích hoạt để hủy kích hoạt.", "Không có kỳ hoạt động");
+      return;
     }
+    if (!activeSemester.isFinalize) {
+      toast.warning(
+        `Học kỳ "${activeSemester.name}" đang hoạt động nhưng CHƯA ĐƯỢC CHỐT SỔ. Bạn bắt buộc phải thực hiện Chốt Sổ Học Kỳ trước khi đóng!`,
+        "Yêu cầu chốt sổ trước"
+      );
+      return;
+    }
+
+    openConfirm({
+      title: `Đóng và Hủy kích hoạt học kỳ "${activeSemester.name}"`,
+      message: `Học kỳ "${activeSemester.name}" đã được chốt sổ. Bạn có chắc chắn muốn hủy kích hoạt kỳ này? Hệ thống sẽ chuyển về trạng thái không có học kỳ active cho tới khi bạn kích hoạt kỳ mới.`,
+      confirmText: "Đóng học kỳ",
+      variant: "warning",
+      onConfirm: async () => {
+        try {
+          await adminService.deactivateAllSemesters();
+          toast.success("Đã hủy kích hoạt toàn bộ học kỳ thành công.");
+          fetchSemesters();
+        } catch (err) {
+          console.error("Lỗi hủy kích hoạt học kỳ:", err);
+        }
+      },
+    });
   };
 
-  const handleFinalizeSemester = async () => {
-    if (!window.confirm("XÁC NHẬN CHỐT SỔ HỌC KỲ: Hệ thống sẽ tính toán và lưu bảng xếp hạng Gamification học kỳ, các hoạt động sau thời điểm này sẽ tính vào kỳ tiếp theo. Bạn có chắc chắn không?")) return;
-    try {
-      setIsFinalizingSemester(true);
-      await adminService.finalizeSemester();
-      toast.success("Đã chốt sổ học kỳ thành công!");
-      fetchSemesters();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Lỗi khi chốt sổ học kỳ");
-    } finally {
-      setIsFinalizingSemester(false);
+  const handleFinalizeSemester = () => {
+    if (!activeSemester) {
+      toast.warning("Hiện không có học kỳ nào đang được kích hoạt để thực hiện chốt sổ!", "Chưa kích hoạt học kỳ");
+      return;
     }
+    if (activeSemester.isFinalize) {
+      toast.info(`Học kỳ "${activeSemester.name}" đang kích hoạt đã được chốt sổ trước đó.`, "Đã chốt sổ rồi");
+      return;
+    }
+
+    openConfirm({
+      title: `Xác nhận Chốt Sổ Học Kỳ "${activeSemester.name}"`,
+      message: `Hệ thống sẽ thực hiện tính toán điểm Gamification, trao thưởng Top 3 môn học, lưu snapshot bảng xếp hạng và chuyển giao câu hỏi cho kỳ sau. Thao tác này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?`,
+      confirmText: "Đồng ý Chốt Sổ",
+      variant: "purple",
+      onConfirm: async () => {
+        try {
+          setIsFinalizingSemester(true);
+          await adminService.finalizeSemester();
+          toast.success(`Đã chốt sổ học kỳ "${activeSemester.name}" thành công!`);
+          fetchSemesters();
+        } catch (err) {
+          console.error("Lỗi chốt sổ học kỳ:", err);
+        } finally {
+          setIsFinalizingSemester(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteSemester = (sem: SemesterResponse) => {
+    if (sem.active) {
+      toast.warning("Không thể xóa học kỳ đang hoạt động! Vui lòng đóng hoặc chuyển học kỳ trước.", "Thao tác không được phép");
+      return;
+    }
+
+    openConfirm({
+      title: `Xác nhận xóa học kỳ "${sem.name}"`,
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn học kỳ "${sem.name}" khỏi hệ thống? Thao tác này chỉ thành công nếu học kỳ chưa có lớp học phần trực thuộc.`,
+      confirmText: "Xóa học kỳ",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          setDeletingSemesterId(sem.semesterId);
+          await adminService.deleteSemester(sem.semesterId);
+          toast.success(`Đã xóa học kỳ "${sem.name}" thành công.`);
+          fetchSemesters();
+        } catch (err) {
+          console.error("Lỗi xóa học kỳ:", err);
+        } finally {
+          setDeletingSemesterId(null);
+        }
+      },
+    });
   };
 
   // =========================================================================
@@ -938,6 +1054,38 @@ export function AdminUsersPage() {
             </CardContent>
           </Card>
 
+          {/* Status Overview Banner */}
+          <div className="p-4 rounded-2xl border bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-3 h-3 rounded-full shrink-0 ${activeSemester ? (activeSemester.isFinalize ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-400'}`} />
+              <div>
+                <div className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  {activeSemester ? (
+                    <>
+                      <span>Học kỳ đang hoạt động:</span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 text-sm">{activeSemester.name}</span>
+                      <span className="text-slate-500">
+                        ({activeSemester.isFinalize ? "Đã chốt sổ - Sẵn sàng để đóng kỳ" : "Đang mở nhận đề xuất & làm bài"})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Hiện tại không có học kỳ nào đang được kích hoạt. Hãy kích hoạt một học kỳ để hệ thống hoạt động.
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Quy trình chuẩn: Kích hoạt kỳ ➔ Thu thập câu hỏi & Làm bài ➔ Chốt sổ học kỳ ➔ Đóng kỳ ➔ Kích hoạt kỳ kế tiếp.
+                </p>
+              </div>
+            </div>
+            {activeSemester && (
+              <Badge variant={activeSemester.isFinalize ? "gold" : "success"} className="shrink-0 self-start sm:self-auto">
+                {activeSemester.isFinalize ? "Kỳ hiện tại đã chốt sổ" : "Kỳ hiện tại đang mở"}
+              </Badge>
+            )}
+          </div>
+
           {/* Semesters List Card */}
           <Card className="rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
@@ -952,17 +1100,32 @@ export function AdminUsersPage() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={!activeSemester || !activeSemester.isFinalize}
                   onClick={handleDeactivateAllSemesters}
-                  className="text-xs text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-xl cursor-pointer"
+                  title={
+                    !activeSemester
+                      ? "Hiện không có học kỳ nào đang hoạt động"
+                      : !activeSemester.isFinalize
+                      ? `Cần chốt sổ học kỳ "${activeSemester.name}" trước khi đóng`
+                      : "Đóng học kỳ hiện tại"
+                  }
+                  className="text-xs text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <XCircle className="w-3.5 h-3.5 mr-1" /> Hủy kích hoạt tất cả
+                  <XCircle className="w-3.5 h-3.5 mr-1" /> Đóng kỳ hiện tại
                 </Button>
                 <Button
                   type="button"
                   size="sm"
-                  disabled={isFinalizingSemester}
+                  disabled={!activeSemester || activeSemester.isFinalize || isFinalizingSemester}
                   onClick={handleFinalizeSemester}
-                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-xs cursor-pointer"
+                  title={
+                    !activeSemester
+                      ? "Hiện không có học kỳ nào đang hoạt động để chốt sổ"
+                      : activeSemester.isFinalize
+                      ? "Học kỳ hiện tại đã được chốt sổ rồi"
+                      : "Chốt sổ điểm và xếp hạng học kỳ này"
+                  }
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isFinalizingSemester ? (
                     <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" />
@@ -1023,22 +1186,53 @@ export function AdminUsersPage() {
                             )}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            {!s.active && (
+                            <div className="flex items-center justify-end gap-1.5">
+                              {s.active ? (
+                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold px-2 py-1">
+                                  Đang hoạt động
+                                </span>
+                              ) : s.isFinalize ? (
+                                <span className="text-xs text-slate-400 italic px-2 py-1">
+                                  Đã kết thúc
+                                </span>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={Boolean(activeSemester) || activatingSemesterId === s.semesterId}
+                                  onClick={() => handleActivateSemester(s)}
+                                  title={
+                                    activeSemester
+                                      ? `Đang có kỳ "${activeSemester.name}" hoạt động. Cần chốt sổ và đóng kỳ hiện tại trước.`
+                                      : "Kích hoạt học kỳ này"
+                                  }
+                                  className="text-xs h-8 px-3 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  {activatingSemesterId === s.semesterId ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                                  ) : (
+                                    <Check className="w-3 h-3 mr-1" />
+                                  )}
+                                  Kích hoạt
+                                </Button>
+                              )}
+
+                              {/* Delete Semester Button */}
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={activatingSemesterId === s.semesterId}
-                                onClick={() => handleActivateSemester(s.semesterId, s.name)}
-                                className="text-xs h-8 px-3 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900 cursor-pointer"
+                                disabled={s.active || deletingSemesterId === s.semesterId}
+                                onClick={() => handleDeleteSemester(s)}
+                                title={s.active ? "Không thể xóa học kỳ đang hoạt động" : "Xóa học kỳ"}
+                                className="text-xs h-8 px-2 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                               >
-                                {activatingSemesterId === s.semesterId ? (
-                                  <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                                {deletingSemesterId === s.semesterId ? (
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                                 ) : (
-                                  <Check className="w-3 h-3 mr-1" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 )}
-                                Kích hoạt
                               </Button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1186,6 +1380,89 @@ export function AdminUsersPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Custom Confirmation Modal (Thay thế window.confirm / alert) */}
+      {confirmModal.isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                className={`p-3 rounded-2xl shrink-0 ${
+                  confirmModal.variant === "danger"
+                    ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"
+                    : confirmModal.variant === "warning"
+                    ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+                    : confirmModal.variant === "purple"
+                    ? "bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400"
+                    : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400"
+                }`}
+              >
+                {confirmModal.variant === "danger" ? (
+                  <AlertCircle className="w-6 h-6" />
+                ) : confirmModal.variant === "warning" ? (
+                  <AlertCircle className="w-6 h-6" />
+                ) : confirmModal.variant === "purple" ? (
+                  <Award className="w-6 h-6" />
+                ) : (
+                  <Info className="w-6 h-6" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {confirmModal.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                  {confirmModal.message}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeConfirm}
+                className="text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeConfirm}
+                className="rounded-xl px-4 py-2 text-xs font-medium cursor-pointer"
+              >
+                {confirmModal.cancelText || "Hủy bỏ"}
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  const action = confirmModal.onConfirm;
+                  closeConfirm();
+                  await action();
+                }}
+                className={`rounded-xl px-4 py-2 text-xs font-medium text-white shadow-xs cursor-pointer ${
+                  confirmModal.variant === "danger"
+                    ? "bg-rose-600 hover:bg-rose-700"
+                    : confirmModal.variant === "warning"
+                    ? "bg-amber-600 hover:bg-amber-700"
+                    : confirmModal.variant === "purple"
+                    ? "bg-purple-600 hover:bg-purple-700"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
+              >
+                {confirmModal.confirmText || "Xác nhận"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

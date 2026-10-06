@@ -44,4 +44,10 @@ public class AdminSemesterController {
         semesterManagementService.deactivateAllSemesters();
         return ResponseEntity.ok(GlobalResponse.success("Đã hủy kích hoạt toàn bộ học kỳ"));
     }
+
+    @DeleteMapping("/{semesterId}")
+    public ResponseEntity<GlobalResponse<String>> deleteSemester(@PathVariable Long semesterId) {
+        semesterManagementService.deleteSemester(semesterId);
+        return ResponseEntity.ok(GlobalResponse.success("Đã xóa học kỳ thành công"));
+    }
 }

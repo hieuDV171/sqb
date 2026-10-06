@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 
 @Slf4j
@@ -24,6 +25,7 @@ import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 public class SemesterManagementServiceImpl implements SemesterManagementService {
 
     private final SemesterRepository semesterRepository;
+    private final CourseClassRepository courseClassRepository;
     private final CurrentSemesterHolder currentSemesterHolder;
 
     @Override
@@ -48,61 +50,87 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
                 .toList();
     }
 
-@Override
-@Transactional
-public SemesterResponse activateSemester(Long semesterId) {
-    // Kiểm tra an toàn: Đảm bảo không có học kỳ nào đang hoạt động
-    Optional<Semester> currentActiveOpt = semesterRepository.findByActiveTrue();
-    if (currentActiveOpt.isPresent()) {
-        Semester currentActive = currentActiveOpt.get();
-        // Nếu học kỳ Admin muốn kích hoạt chính là học kỳ đang mở thì bỏ qua
-        if (currentActive.getId().equals(semesterId)) {
-            return mapToResponse(currentActive);
+    @Override
+    @Transactional
+    public SemesterResponse activateSemester(Long semesterId) {
+        // Kiểm tra an toàn: Đảm bảo không có học kỳ nào đang hoạt động
+        Optional<Semester> currentActiveOpt = semesterRepository.findByActiveTrue();
+        if (currentActiveOpt.isPresent()) {
+            Semester currentActive = currentActiveOpt.get();
+            // Nếu học kỳ Admin muốn kích hoạt chính là học kỳ đang mở thì bỏ qua
+            if (currentActive.getId().equals(semesterId)) {
+                return mapToResponse(currentActive);
+            }
+
+            // Nếu có một học kỳ khác đang mở, ném lỗi chặn lại
+            throw new AppException(
+                ResponseCode.ACTION_NOT_ALLOWED,
+                String.format("Không thể kích hoạt! Học kỳ '%s' đang hoạt động. Vui lòng thực hiện Tổng kết/Chốt sổ và Đóng học kỳ này trước.", currentActive.getName())
+            );
         }
 
-        // Nếu có một học kỳ khác đang mở, ném lỗi chặn lại
-        throw new AppException(
-            ResponseCode.ACTION_NOT_ALLOWED,
-            String.format("Không thể kích hoạt! Học kỳ '%s' đang hoạt động. Vui lòng thực hiện Tổng kết học kỳ này trước.", currentActive.getName())
-        );
+        // Lấy học kỳ cần kích hoạt
+        Semester semester = semesterRepository.findById(semesterId)
+                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ"));
+
+        if (semester.isFinalized()) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Học kỳ này đã được chốt sổ, không thể kích hoạt lại.");
+        }
+
+        // Kích hoạt học kỳ được chọn
+        semester.setActive(true);
+        Semester saved = semesterRepository.save(semester);
+
+        // Đồng bộ cache RAM ngay lập tức
+        currentSemesterHolder.setCurrentSemester(saved);
+
+        log.info("[SemesterManagement] Activated semester id={}, name={}", saved.getId(), saved.getName());
+        return mapToResponse(saved);
     }
-
-    // Lấy học kỳ cần kích hoạt
-    Semester semester = semesterRepository.findById(semesterId)
-            .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ"));
-
-    // Kích hoạt học kỳ được chọn
-    semester.setActive(true);
-    Semester saved = semesterRepository.save(semester);
-
-    // Đồng bộ cache RAM ngay lập tức
-    currentSemesterHolder.setCurrentSemester(saved);
-
-    log.info("[SemesterManagement] Activated semester id={}, name={}", saved.getId(), saved.getName());
-    return mapToResponse(saved);
-}
 
     @Override
     @Transactional
     public void deactivateAllSemesters() {
-
         Optional<Semester> activeOpt = semesterRepository.findByActiveTrue();
 
-        if (activeOpt.isPresent()) {
+        if (activeOpt.isEmpty()) {
+            throw new AppException(
+                ResponseCode.ACTION_NOT_ALLOWED,
+                "Hiện không có học kỳ nào đang hoạt động để hủy kích hoạt."
+            );
+        }
+
         Semester activeSemester = activeOpt.get();
 
-        // Kiểm tra cờ tổng kết
+        // Kiểm tra cờ tổng kết / chốt sổ
         if (!activeSemester.isFinalized()) {
             throw new AppException(
                 ResponseCode.ACTION_NOT_ALLOWED,
-                "Không thể đóng học kỳ! Bạn phải chạy Tổng Kết Học Kỳ trước."
+                String.format("Không thể đóng học kỳ! Học kỳ '%s' đang hoạt động chưa được chốt sổ. Bạn phải chạy Chốt Sổ Học Kỳ trước.", activeSemester.getName())
             );
         }
-    }
 
         semesterRepository.deactivateAllSemesters();
         currentSemesterHolder.clearCache();
         log.info("[SemesterManagement] Deactivated all semesters");
+    }
+
+    @Override
+    @Transactional
+    public void deleteSemester(Long semesterId) {
+        Semester semester = semesterRepository.findById(semesterId)
+                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ để xóa"));
+
+        if (semester.isActive()) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Không thể xóa học kỳ đang hoạt động. Vui lòng đóng học kỳ trước khi xóa.");
+        }
+
+        if (courseClassRepository.existsBySemesterId(semesterId)) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Không thể xóa học kỳ đã có lớp học phần trực thuộc.");
+        }
+
+        semesterRepository.delete(semester);
+        log.info("[SemesterManagement] Deleted semester id={}, name={}", semesterId, semester.getName());
     }
 
     private SemesterResponse mapToResponse(Semester s) {

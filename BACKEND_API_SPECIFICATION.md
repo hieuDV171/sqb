@@ -937,6 +937,12 @@ Phụ trách bởi Controller: [`AdminSemesterController`](file:///c:/Users/ADMI
 - **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`deactivateAllSemesters`)
 - **Response Data:** `GlobalResponse<String>` (`data: "Đã hủy kích hoạt toàn bộ học kỳ"`).
 
+### 20.5. Xóa một học kỳ
+- **Method & URL:** `DELETE /api/v1/admin/semesters/{semesterId}`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`deleteSemester`)
+- **Path Variables:** `semesterId` (Long)
+- **Response Data:** `GlobalResponse<String>` (`data: "Đã xóa học kỳ thành công"`).
+
 ---
 
 ## 21. Tạo & Xuất đề thi (Exams)

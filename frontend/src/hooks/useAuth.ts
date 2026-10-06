@@ -33,8 +33,14 @@ export function useAuth() {
                 profileCompleted: authData.profileCompleted
             })
 
-            // Đăng nhập thành công -> chuyển sang Bảng tin (/feed)
-            navigate('/feed');
+            // Đăng nhập thành công -> Điều hướng về trang mặc định theo vai trò (Role-based Navigation)
+            if (authData.role === 'ADMIN') {
+                navigate('/admin/users');
+            } else if (authData.role === 'LECTURER') {
+                navigate('/lecturer/sessions');
+            } else {
+                navigate('/feed');
+            }
         } catch (err: any) {
             setError(
                 err?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại!",

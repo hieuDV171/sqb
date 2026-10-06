@@ -953,10 +953,18 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     @Transactional
     public void finalizeSemester() {
+        Semester current = currentSemesterHolder.getCurrentSemester();
+        if (current == null) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Không thể chốt sổ! Hiện tại không có học kỳ nào đang được kích hoạt trong hệ thống.");
+        }
+        if (current.isFinalized()) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, String.format("Học kỳ '%s' đang hoạt động đã được chốt sổ trước đó.", current.getName()));
+        }
+
         counterMetricsService.finalizeSemesterPoints();
 
         // Gửi thông báo tổng kết Game 5 (Recap) cho những người báo lỗi chính xác trong kỳ
-        sendGame5SemesterRecapNotifications(currentSemesterHolder.getCurrentSemester().getId());
+        sendGame5SemesterRecapNotifications(current.getId());
 
         // =========================================================================
         // TỔNG KẾT GAME 4
@@ -1035,8 +1043,6 @@ public class GamificationServiceImpl implements GamificationService {
 
         // Reset toàn bộ is_used = false trong legacy_questions cho học kỳ mới
         legacyQuestionRepository.resetAllIsUsedToFalse();
-
-        Semester current = currentSemesterHolder.getCurrentSemester();
 
         // Trao huy hiệu thứ hạng Leaderboard cho các sinh viên đạt Top cuối kỳ (Chống N+1)
         try {

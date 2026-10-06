@@ -14,4 +14,6 @@ public interface SemesterManagementService {
     SemesterResponse activateSemester(Long semesterId);
 
     void deactivateAllSemesters();
+ 
+    void deleteSemester(Long semesterId);
 }

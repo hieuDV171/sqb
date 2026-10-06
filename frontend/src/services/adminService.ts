@@ -149,6 +149,15 @@ export const adminService = {
   },
 
   /**
+   * Xóa một học kỳ
+   */
+  deleteSemester: async (semesterId: number): Promise<GlobalResponse<string>> => {
+    return (await axiosClient.delete<GlobalResponse<string>>(
+      `/admin/semesters/${semesterId}`
+    )) as any;
+  },
+
+  /**
    * Tạo môn học mới
    */
   createSubject: async (data: { code: string; name: string }): Promise<GlobalResponse<AdminSubjectResponse>> => {
