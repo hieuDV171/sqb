@@ -82,12 +82,15 @@ export function AdminUsersPage() {
   };
 
   const lecturerOptions: CustomSelectOption[] = useMemo(() => {
-    return lecturers.map((lec) => ({
-      value: lec.id.toString(),
-      label: `${lec.fullName} (ID: ${lec.id})`,
-      badge: lec.studentLecturerCode ? `#${lec.studentLecturerCode}` : undefined,
-      subLabel: lec.schoolFaculty || undefined,
-    }));
+    return lecturers.map((lec) => {
+      const cleanCode = lec.studentLecturerCode ? lec.studentLecturerCode.trim().replace(/^#+/, "") : "";
+      return {
+        value: lec.id.toString(),
+        label: `${lec.fullName} (ID: ${lec.id})`,
+        badge: cleanCode ? `#${cleanCode}` : undefined,
+        subLabel: lec.schoolFaculty || undefined,
+      };
+    });
   }, [lecturers]);
 
   useEffect(() => {
