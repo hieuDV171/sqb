@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "14. Quản trị Môn học (Subjects)", description = "Các API dành cho Quản trị viên quản lý danh mục môn học trong hệ thống")
+@Tag(name = "14a. Quản trị Môn học (Subjects)", description = "Các API dành cho Quản trị viên quản lý danh mục môn học trong hệ thống")
 @RestController
 @RequestMapping("/admin/subjects")
 @RequiredArgsConstructor
