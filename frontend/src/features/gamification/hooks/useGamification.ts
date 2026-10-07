@@ -49,6 +49,7 @@ export function useLeaderboard(params?: {
       const res = await gamificationService.getLeaderboard(params);
       return res.data;
     },
+    enabled: params?.period !== 'SUBJECT' || (typeof params?.subjectId === 'number' && params.subjectId > 0),
     staleTime: 60 * 1000,
   });
 }

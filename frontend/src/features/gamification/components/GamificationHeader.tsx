@@ -1,7 +1,5 @@
 import { Trophy, ShoppingBag, Target, Award, Flame, CheckCircle, Sparkles, ShieldAlert } from 'lucide-react';
 import { useGamificationStore, type GamificationTab } from '../stores/useGamificationStore';
-import { calculateUserLevel } from '../types/gamification.types';
-
 import { SqbCoin } from '@/components/common/SqbCoin';
 
 interface GamificationHeaderProps {
@@ -16,8 +14,6 @@ export function GamificationHeader({
   hasCheckedInToday = false,
 }: GamificationHeaderProps) {
   const { activeTab, setActiveTab, setCheckInModalOpen } = useGamificationStore();
-
-  const levelInfo = calculateUserLevel(userCoins);
 
   const navTabs: { id: GamificationTab; label: string; icon: typeof Trophy; badge?: string }[] = [
     { id: 'leaderboard', label: 'Bảng Xếp Hạng', icon: Trophy },
@@ -36,17 +32,17 @@ export function GamificationHeader({
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* User Level & Title */}
+          {/* Main Title & Description */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase bg-amber-400/20 border border-amber-300/40 text-amber-300">
                 <Sparkles className="w-3.5 h-3.5" />
-                Cấp {levelInfo.level} • {levelInfo.levelTitle}
+                Hệ Thống Gamification
               </span>
               {hasCheckedInToday && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 border border-emerald-400/30 text-emerald-300">
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Đã điểm danh
+                  Đã điểm danh hôm nay
                 </span>
               )}
             </div>
@@ -55,22 +51,8 @@ export function GamificationHeader({
               Trung Tâm Vinh Danh & Gamification
             </h1>
             <p className="text-sm text-indigo-200/90 max-w-xl">
-              Tích lũy SQB Coins qua hoạt động học tập, tranh tài trên bảng vinh danh và đổi các trang bị cá nhân hóa độc quyền.
+              Tích lũy xu SQB qua hoạt động học tập, tranh tài trên bảng vinh danh và đổi các trang bị cá nhân hóa độc quyền.
             </p>
-
-            {/* Level Progress Bar */}
-            <div className="pt-2 max-w-md">
-              <div className="flex items-center justify-between text-xs text-indigo-200 mb-1.5 font-medium">
-                <span>Tiến độ cấp {levelInfo.level}</span>
-                <span>{levelInfo.currentPointsInLevel} / {levelInfo.pointsForNextLevel} XP</span>
-              </div>
-              <div className="w-full h-2.5 bg-indigo-950/60 rounded-full overflow-hidden border border-indigo-700/50 p-0.5">
-                <div
-                  className="h-full bg-linear-to-r from-amber-400 to-yellow-300 rounded-full transition-all duration-700"
-                  style={{ width: `${levelInfo.progressPercent}%` }}
-                />
-              </div>
-            </div>
           </div>
 
           {/* Quick Stats & Check-in CTA Button */}
@@ -81,7 +63,7 @@ export function GamificationHeader({
                 <SqbCoin className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-[11px] font-medium text-indigo-200 uppercase tracking-wider">Số dư SQB Coins</p>
+                <p className="text-[11px] font-medium text-indigo-200 uppercase tracking-wider">Số dư xu SQB</p>
                 <p className="text-xl sm:text-2xl font-black font-mono tracking-tight text-amber-300">
                   {userCoins.toLocaleString()}
                 </p>
@@ -120,7 +102,7 @@ export function GamificationHeader({
                 <>
                   <Flame className="w-4 h-4 fill-indigo-950" />
                   <span className="flex items-center gap-1.5">
-                    <span>Điểm Danh Ngay (+1</span>
+                    <span>Điểm Danh Ngay (+1 xu SQB</span>
                     <SqbCoin className="w-4 h-4" />
                     <span>)</span>
                   </span>

@@ -45,13 +45,13 @@ export function ErrorHunterTab() {
             Thợ Săn Lỗi Câu Hỏi (Error Hunter)
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-            Khi phát hiện câu hỏi trong ngân hàng đề có lỗi sai về kiến thức, thiếu dữ kiện hoặc đáp án không chính xác, hãy bấm báo lỗi trong khi làm bài luyện tập. Khi được Giảng viên xác nhận, bạn sẽ nhận ngay <strong className="text-rose-600 dark:text-rose-400">+50 SQB Coins</strong> và mở khóa Huy hiệu Thợ Săn Lỗi!
+            Khi phát hiện câu hỏi trong ngân hàng đề có lỗi sai về kiến thức, thiếu dữ kiện hoặc đáp án không chính xác, hãy bấm báo lỗi trong khi làm bài luyện tập. Khi được Giảng viên xác nhận, bạn sẽ nhận ngay <strong className="text-rose-600 dark:text-rose-400">+50 điểm cống hiến</strong> và mở khóa Huy hiệu Thợ Săn Lỗi!
           </p>
         </div>
 
         <div className="flex flex-col gap-2 shrink-0">
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-            <p className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono">+50 XP</p>
+            <p className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono">+50 pts</p>
             <p className="text-[11px] font-bold text-slate-500 uppercase">Thưởng mỗi lỗi chuẩn</p>
           </div>
         </div>

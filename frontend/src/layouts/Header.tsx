@@ -9,9 +9,9 @@ import { useStompStatus } from '@/lib/stompClient';
 import { Badge } from '@/components/ui/badge';
 import { NotificationDropdown } from '@/features/notification';
 import { GlobalSearchModal } from '@/features/search';
+import { SqbCoin } from '@/components/common/SqbCoin';
 import {
   GraduationCap,
-  Coins,
   Zap,
   Bell,
   Search,
@@ -114,16 +114,14 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
             {/* Gamification Wallet: Coins HUD (dành cho Sinh viên) */}
             {user?.role !== 'ADMIN' && (
               <div
-                title="Ví Xu Sinh Viên (Dùng để đổi vật phẩm)"
+                title="Ví xu SQB (Dùng để đổi vật phẩm)"
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100/80 dark:hover:bg-amber-900/50 border border-amber-200/80 dark:border-amber-800/60 rounded-full transition-all cursor-pointer shadow-2xs"
               >
-                <div className="w-5 h-5 rounded-full bg-linear-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-white shadow-xs">
-                  <Coins className="w-3.5 h-3.5" />
-                </div>
+                <SqbCoin className="w-4 h-4" />
                 <span className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300 tracking-tight">
                   {coins.toLocaleString()}
                 </span>
-                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 hidden sm:inline">xu</span>
+                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hidden sm:inline">xu</span>
               </div>
             )}
 
@@ -139,7 +137,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                 <span className="text-xs sm:text-sm font-bold text-indigo-900 dark:text-indigo-300 tracking-tight">
                   {points.toLocaleString()}
                 </span>
-                <span className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-400">pts</span>
+                <span className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-400">điểm</span>
               </div>
             )}
 

@@ -143,20 +143,8 @@ export const mediaService = {
         publicUrl: presignedItem.publicUrl,
         expiresInSeconds: presignedItem.expiresInSeconds,
       };
-    } catch {
-      // Giả lập luồng Presigned Upload khi offline hoặc server chưa cấu hình
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      const objectUrl = URL.createObjectURL(file);
-      const mockKey = `${purpose.toLowerCase()}s/${new Date().getFullYear()}/${(new Date().getMonth() + 1)
-        .toString()
-        .padStart(2, '0')}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-
-      return {
-        objectKey: mockKey,
-        publicUrl: objectUrl,
-        expiresInSeconds: 7200,
-      };
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || 'Tải tệp media lên S3/R2 thất bại');
     }
   },
 
@@ -167,48 +155,25 @@ export const mediaService = {
     file: File,
     purpose: MediaPurpose = 'QUESTION'
   ): Promise<GlobalResponse<MediaUploadResponse>> => {
-    try {
-      const processedFile = await compressImageIfNeeded(file, purpose);
+    const processedFile = await compressImageIfNeeded(file, purpose);
 
-      const formData = new FormData();
-      formData.append('file', processedFile);
+    const formData = new FormData();
+    formData.append('file', processedFile);
 
-      const response = await axiosClient.post<GlobalResponse<MediaUploadResponse>>(
-        `/medias/upload?purpose=${purpose}`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      if (response?.data?.data) {
-        return response.data;
-      }
-      throw new Error('Không nhận được thông tin tệp tải lên từ máy chủ');
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      const objectUrl = URL.createObjectURL(file);
-      const mockKey = `${purpose.toLowerCase()}s/${new Date().getFullYear()}/${(new Date().getMonth() + 1)
-        .toString()
-        .padStart(2, '0')}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-
-      return {
-        code: '1000',
-        message: 'Tải tệp media lên thành công (Giả lập)',
-        data: {
-          objectKey: mockKey,
-          url: objectUrl,
-          fileSize: file.size,
-          contentType: file.type || 'image/png',
-          mediaType: 'IMAGE',
-          width: 800,
-          height: 600,
+    const response = await axiosClient.post<GlobalResponse<MediaUploadResponse>>(
+      `/medias/upload?purpose=${purpose}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
         },
-      };
+      }
+    );
+
+    if (response?.data?.data) {
+      return response.data;
     }
+    throw new Error('Không nhận được thông tin tệp tải lên từ máy chủ');
   },
 
   /**

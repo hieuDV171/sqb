@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { SubjectItem, PostVisibility, PostType } from '@/types/post.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import type { UserRole } from '@/stores/useAuthStore';
+import { mediaService } from '@/services/mediaService';
 import {
   Image,
   BookOpen,
@@ -15,7 +16,8 @@ import {
   AlertCircle,
   GraduationCap,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Loader2
 } from 'lucide-react';
 
 interface CreatePostCardProps {
@@ -40,16 +42,33 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
   const [visibility, setVisibility] = useState<PostVisibility>('PUBLIC');
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Giả lập chọn ảnh mẫu
-  const handleAddSampleImage = () => {
-    if (attachedImages.length >= 4) return;
-    const sampleImages = [
-      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80',
-    ];
-    setAttachedImages([...attachedImages, sampleImages[attachedImages.length % sampleImages.length]]);
+  // Chọn ảnh thật từ máy và tải lên qua presigned URL
+  const handleSelectFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (attachedImages.length + files.length > 4) {
+      setErrorMessage('Tối đa chỉ được đính kèm 4 hình ảnh');
+      return;
+    }
+
+    setIsUploading(true);
+    setErrorMessage(null);
+    try {
+      const uploadPromises = Array.from(files).map((f) => mediaService.uploadViaPresign(f, 'POST'));
+      const results = await Promise.all(uploadPromises);
+      const newUrls = results.map((r) => r.publicUrl);
+      setAttachedImages((prev) => [...prev, ...newUrls]);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Lỗi khi tải ảnh lên máy chủ');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleRemoveImage = (index: number) => {
@@ -299,14 +318,29 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
             </div>
 
             {/* Attach Image Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleSelectFiles}
+            />
             <button
               type="button"
-              onClick={handleAddSampleImage}
-              title="Đính kèm hình ảnh"
-              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
+              disabled={isUploading || attachedImages.length >= 4}
+              onClick={() => fileInputRef.current?.click()}
+              title="Đính kèm hình ảnh từ máy tính"
+              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium disabled:opacity-50"
             >
-              <Image className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-              <span className="hidden sm:inline">Ảnh ({attachedImages.length}/4)</span>
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+              ) : (
+                <Image className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              )}
+              <span className="hidden sm:inline">
+                {isUploading ? 'Đang tải...' : `Ảnh (${attachedImages.length}/4)`}
+              </span>
             </button>
           </div>
 

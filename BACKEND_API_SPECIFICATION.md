@@ -33,7 +33,8 @@ Hệ thống cung cấp **129 REST HTTP Endpoints**, **1 Spring Error Dispatcher
 |      16       | [Duyệt & Biên tập câu hỏi (Question Review)](#16-duyệt--biên-tập-câu-hỏi-question-review)             |          6           | [QuestionReviewController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/QuestionReviewController.java)           |
 |      17       | [Luyện tập & Đánh giá câu hỏi (Question Practice)](#17-luyện-tập--đánh-giá-câu-hỏi-question-practice) |          5           | [QuestionInteractionController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/QuestionInteractionController.java) |
 |      18       | [Quản lý Lớp học phần (Course Classes)](#18-quản-lý-lớp-học-phần-course-classes)                      |          7           | [CourseClassController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/CourseClassController.java)                 |
-|      19       | [Quản trị Môn học (Admin Subjects)](#19-quản-trị-môn-học-admin-subjects)                              |          2           | [AdminSubjectController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminSubjectController.java)               |
+|      19a      | [Quản trị Môn học (Admin Subjects)](#19-quản-trị-môn-học-admin-subjects)                              |          1           | [AdminSubjectController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminSubjectController.java)               |
+|      19b      | [Danh mục Môn học (Subjects Catalog)](#19b-danh-mục-môn-học-subjects-catalog)                         |          1           | [SubjectController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/SubjectController.java)                           |
 |      20       | [Quản trị Học kỳ (Admin Semesters)](#20-quản-trị-học-kỳ-admin-semesters)                              |          4           | [AdminSemesterController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminSemesterController.java)             |
 |      21       | [Tạo & Xuất đề thi (Exams)](#21-tạo--xuất-đề-thi-exams)                                               |          4           | [ExamController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/exam/controller/ExamController.java)                                  |
 |      22       | [Xuất ngân hàng câu hỏi (Lecturer Export)](#22-xuất-ngân-hàng-câu-hỏi-lecturer-export)                |          1           | [QuestionExportController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/exam/controller/QuestionExportController.java)              |
@@ -930,9 +931,17 @@ Phụ trách bởi Controller: [`AdminSubjectController`](file:///c:/Users/ADMIN
 - **Request Body (`CreateSubjectRequest`)**
 - **Response Data (`SubjectResponse`)**
 
-### 19.2. Lấy danh sách tất cả môn học
-- **Method & URL:** `GET /api/v1/admin/subjects`
-- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts) (`getAllSubjects`)
+---
+
+## 19b. Danh mục Môn học (Subjects Catalog)
+Phụ trách bởi Controller: [`SubjectController`](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/SubjectController.java)  
+Đường dẫn gốc: `/api/v1/subjects`  
+**Yêu cầu quyền hạn:** Đã đăng nhập (`Authenticated`: Sinh viên, Giảng viên, Quản trị viên)
+
+### 19b.1. Lấy danh sách tất cả môn học
+- **Method & URL:** `GET /api/v1/subjects`
+- **Frontend Client:** ✅ [`sessionService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/session/services/sessionService.ts#L30-L36) (`getAllSubjects`)
+- **Mô tả:** Trả về toàn bộ danh mục môn học trong hệ thống được sắp xếp theo thứ tự bảng chữ cái A-Z, phục vụ chọn môn trên Bảng xếp hạng và tra cứu chung.
 - **Response Data:** `GlobalResponse<List<SubjectResponse>>`
 
 ---

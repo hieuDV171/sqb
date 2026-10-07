@@ -139,7 +139,7 @@ export function DailyCheckInModal({
             Điểm Danh Chuyên Cần 7 Ngày
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto flex items-center justify-center flex-wrap gap-1">
-            <span>Duy trì chuỗi điểm danh hằng ngày để tích lũy SQB Coins</span>
+            <span>Duy trì chuỗi điểm danh hằng ngày để tích lũy xu SQB</span>
             <SqbCoin className="w-4 h-4" />
             <span>và mở khóa Huy hiệu Chiến Binh Điểm Danh!</span>
           </p>
@@ -238,7 +238,7 @@ export function DailyCheckInModal({
                   'Đang xác nhận...'
                 ) : (
                   <>
-                    <span>Điểm Danh Ngay (+1 SQB Coin</span>
+                    <span>Điểm Danh Ngay (+1 xu SQB</span>
                     <SqbCoin className="w-5 h-5" />
                     <span>)</span>
                   </>

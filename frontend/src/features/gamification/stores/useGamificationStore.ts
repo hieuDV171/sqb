@@ -24,12 +24,31 @@ interface GamificationState {
 
 const getStoredStreak = (): { streak: number; checkedInToday: boolean } => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().slice(0, 10);
+
     const lastDate = localStorage.getItem('sqb_checkin_last_date');
     const savedStreak = parseInt(localStorage.getItem('sqb_checkin_streak') || '0', 10);
+
+    if (!lastDate) {
+      return { streak: 0, checkedInToday: false };
+    }
+
+    const checkedInToday = lastDate === today;
+    const checkedInYesterday = lastDate === yesterday;
+
+    // Nếu không điểm danh hôm nay và cũng không điểm danh hôm qua -> Chuỗi đã đứt về 0
+    if (!checkedInToday && !checkedInYesterday) {
+      return { streak: 0, checkedInToday: false };
+    }
+
     return {
       streak: isNaN(savedStreak) ? 0 : savedStreak,
-      checkedInToday: lastDate === today,
+      checkedInToday,
     };
   } catch {
     return { streak: 0, checkedInToday: false };

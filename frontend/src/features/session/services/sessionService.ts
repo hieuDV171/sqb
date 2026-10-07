@@ -28,6 +28,15 @@ export const sessionService = {
   },
 
   /**
+   * 14b.1 Lấy danh mục tất cả môn học trong hệ thống
+   * GET /api/v1/subjects
+   */
+  getAllSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
+    const response = await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects');
+    return response.data;
+  },
+
+  /**
    * 15.2 Lấy danh sách môn học sinh viên đang tham gia
    * GET /api/v1/sessions/my-enrolled-subjects
    */

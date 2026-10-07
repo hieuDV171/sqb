@@ -28,39 +28,8 @@ export function PostCard({ post, onToggleLike, onAddComment }: PostCardProps) {
 
   const isSystemRewardPost = post.postType === 'LEADERBOARD_HONOR';
 
-  // Mock comments cho demo nếu chưa có
-  const [comments, setComments] = useState<CommentResponseDto[]>(
-    post.commentCount > 0
-      ? [
-          {
-            commentId: 1001,
-            targetType: 'POST',
-            targetId: post.postId,
-            content: 'Bài giải thích phần này rất trực quan, cảm ơn bạn nhiều nhé!',
-            author: {
-              userId: 201,
-              fullName: 'Trần Thị Bình',
-              role: 'STUDENT',
-            },
-            createdAt: '10 phút trước',
-            replyCount: 1,
-            replies: [
-              {
-                commentId: 1002,
-                targetType: 'POST',
-                targetId: post.postId,
-                parentCommentId: 1001,
-                content: 'Mình có bổ sung thêm tài liệu tham khảo ở link bên dưới nhé.',
-                author: post.author,
-                createdAt: '5 phút trước',
-                replyCount: 0,
-                replies: [],
-              },
-            ],
-          },
-        ]
-      : []
-  );
+  // Danh sách bình luận
+  const [comments, setComments] = useState<CommentResponseDto[]>([]);
 
   const handleAddCommentLocal = (postId: number, content: string, parentCommentId?: number) => {
     const newComment: CommentResponseDto = {

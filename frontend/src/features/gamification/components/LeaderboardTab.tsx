@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Trophy, Search, ChevronDown, Check } from 'lucide-react';
 import { useLeaderboard } from '../hooks/useGamification';
 import type { LeaderboardPeriod } from '../types/gamification.types';
-import { axiosClient } from '@/api/axiosClient';
+import { sessionService } from '@/features/session/services/sessionService';
 
 interface SubjectItem {
   id: number;
@@ -18,32 +18,27 @@ export function LeaderboardTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
 
-  // Fetch subjects for SUBJECT scope filter
+  // Fetch subjects for SUBJECT scope filter (dùng danh mục môn học GET /subjects chung cho mọi người dùng)
   useEffect(() => {
     let isMounted = true;
     const loadSubjects = async () => {
       try {
-        const res: any = await axiosClient.get('/admin/subjects');
-        const list = res.data?.content || res.data || [];
+        const res = await sessionService.getAllSubjects();
+        const list = res?.data || [];
         if (isMounted && Array.isArray(list)) {
-          setSubjects(
-            list.map((s: any) => ({
-              id: s.id || s.subjectId,
-              code: s.code || s.subjectCode,
-              name: s.name || s.subjectName,
-            }))
-          );
+          const mapped = list.map((s: any) => ({
+            id: s.id || s.subjectId,
+            code: s.code || s.subjectCode,
+            name: s.name || s.subjectName,
+          }));
+          setSubjects(mapped);
+          if (mapped.length > 0) {
+            setSelectedSubjectId((prev) => prev ?? mapped[0].id);
+          }
         }
       } catch (err) {
-        // Fallback default subjects
         if (isMounted) {
-          setSubjects([
-            { id: 1, code: 'IT3040', name: 'Kỹ thuật lập trình' },
-            { id: 2, code: 'MI1111', name: 'Giải tích 1' },
-            { id: 3, code: 'IT3080', name: 'Mạng máy tính' },
-            { id: 4, code: 'MI1141', name: 'Đại số tuyến tính' },
-            { id: 5, code: 'IT3120', name: 'Hệ quản trị CSDL' },
-          ]);
+          setSubjects([]);
         }
       }
     };
@@ -131,26 +126,32 @@ export function LeaderboardTab() {
 
             {isSubjectDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 z-30 max-h-56 overflow-y-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-1 space-y-0.5">
-                {subjects.map((sub) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedSubjectId(sub.id);
-                      setIsSubjectDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                      selectedSubjectId === sub.id
-                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <span className="truncate">
-                      <span className="font-mono font-bold">{sub.code}</span> - {sub.name}
-                    </span>
-                    {selectedSubjectId === sub.id && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
+                {subjects.length === 0 ? (
+                  <div className="px-3 py-3 text-center text-xs text-slate-400">
+                    Bạn chưa tham gia lớp học phần nào
+                  </div>
+                ) : (
+                  subjects.map((sub) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSubjectId(sub.id);
+                        setIsSubjectDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
+                        selectedSubjectId === sub.id
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="truncate">
+                        <span className="font-mono font-bold">{sub.code}</span> - {sub.name}
+                      </span>
+                      {selectedSubjectId === sub.id && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -323,7 +324,7 @@ export function LeaderboardTab() {
           <div className="text-right">
             <p className="text-xs text-slate-500 uppercase font-semibold">Điểm tích lũy</p>
             <p className="text-lg font-black font-mono text-indigo-600 dark:text-indigo-400">
-              {myRank.totalPoints.toLocaleString()} XP
+              {myRank.totalPoints.toLocaleString()} điểm
             </p>
           </div>
         </div>
@@ -369,10 +370,27 @@ export function LeaderboardTab() {
                 <tr>
                   <td colSpan={4} className="py-12 text-center text-slate-400">
                     <Trophy className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="font-semibold text-sm">Chưa có dữ liệu xếp hạng</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Hãy tham gia đóng góp câu hỏi và luyện tập để xuất hiện tại đây!
-                    </p>
+                    {period === 'SUBJECT' && !selectedSubjectId ? (
+                      <>
+                        <p className="font-semibold text-sm">
+                          {subjects.length === 0
+                            ? 'Chưa tìm thấy môn học nào gắn với tài khoản của bạn'
+                            : 'Vui lòng chọn môn học để xem Bảng xếp hạng'}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {subjects.length === 0
+                            ? 'Bảng xếp hạng theo môn học chỉ hiển thị khi tài khoản có môn học theo học hoặc giảng dạy.'
+                            : 'Chọn một môn từ menu thả xuống bên trên để tải danh sách vinh danh.'}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-sm">Chưa có dữ liệu xếp hạng</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Hãy tham gia đóng góp câu hỏi và luyện tập để xuất hiện tại đây!
+                        </p>
+                      </>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -464,7 +482,7 @@ export function LeaderboardTab() {
                         <span className="font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">
                           {entry.totalPoints.toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-slate-400 ml-1">XP</span>
+                        <span className="text-[10px] text-slate-400 ml-1">điểm</span>
                       </td>
                     </tr>
                   );
