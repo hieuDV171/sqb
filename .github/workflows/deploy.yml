@@ -130,13 +130,13 @@ jobs:
             echo "🚀 Pulling latest images..."
             docker compose --env-file .env.prod -f docker-compose.prod.yml pull backend ai-sidecar
 
-            # Khởi động / Cập nhật containers
-            echo "🔄 Updating containers..."
-            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --remove-orphans
+            # Khởi động / Cập nhật containers ứng dụng chính (Project: sqb)
+            echo "🔄 Updating application containers..."
+            docker compose -p sqb --env-file .env.prod -f docker-compose.prod.yml up -d --remove-orphans
 
-            # (Tùy chọn) Bỏ comment 2 dòng dưới đây nếu sau này server đủ RAM và muốn tự động bật Monitoring Stack:
+            # Khởi động / Cập nhật monitoring stack (Project riêng biệt: sqb-monitor)
             echo "📊 Updating monitoring stack..."
-            docker compose --env-file .env.prod -f docker-compose.monitoring.yml up -d --remove-orphans
+            docker compose -p sqb-monitor --env-file .env.prod -f docker-compose.monitoring.yml up -d --remove-orphans
 
             # Dọn dẹp images cũ không sử dụng để tiết kiệm dung lượng ổ cứng
             echo "🧹 Cleaning unused images..."
