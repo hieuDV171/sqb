@@ -10,7 +10,7 @@ import java.io.Serializable;
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
         property = "type",
-        visible = true
+        visible = false
 )
 @JsonSubTypes({
         @JsonSubTypes.Type(value = CounterThresholdCriteria.class, name = "COUNTER_THRESHOLD"),

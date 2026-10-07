@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '@/services/userService';
+import { chatService } from '@/features/chat';
 import { toast } from '@/stores/useToastStore';
 import { AvatarWithFrame } from '@/features/profile/components/AvatarWithFrame';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -274,8 +275,17 @@ export function FriendsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => navigate('/messages')}
-                        className="flex-1 gap-1.5 text-xs rounded-xl"
+                        onClick={async () => {
+                          try {
+                            const res = await chatService.createDirectConversation({ targetUserId: friend.userId });
+                            if (res?.data?.conversationId) {
+                              navigate(`/messages/${res.data.conversationId}`);
+                            }
+                          } catch (err: any) {
+                            toast.error(err?.message || 'Không thể mở cuộc trò chuyện');
+                          }
+                        }}
+                        className="flex-1 gap-1.5 text-xs rounded-xl cursor-pointer"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>Nhắn tin</span>

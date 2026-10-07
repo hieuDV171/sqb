@@ -5,6 +5,7 @@ import { stompClient } from '@/lib/stompClient';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
+import { useChatRealtimeListener, FloatingChatWidget } from '@/features/chat';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -14,6 +15,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { isAuthenticated } = useAuthStore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Lắng nghe các sự kiện WebSocket STOMP toàn cục (tin nhắn mới, biên nhận đọc)
+  useChatRealtimeListener();
 
   // Khởi tạo kết nối STOMP WebSocket khi người dùng đã xác thực
   useEffect(() => {
@@ -57,6 +61,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </main>
       </div>
+
+      {/* Floating Chat Widget (Bong bóng chat mini góc phải màn hình) */}
+      <FloatingChatWidget />
     </div>
   );
 }

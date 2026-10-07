@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
+import { chatService } from '@/features/chat';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { toast } from '@/stores/useToastStore';
 import type { ProfileResponse } from '@/types/user.types';
@@ -97,6 +98,17 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       toast.error(err?.message || 'Thao tác kết bạn không thành công');
     },
   });
+
+  const handleDirectMessage = async () => {
+    try {
+      const res = await chatService.createDirectConversation({ targetUserId: profile.userId });
+      if (res?.data?.conversationId) {
+        navigate(`/messages/${res.data.conversationId}`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể mở cuộc trò chuyện với người dùng này');
+    }
+  };
 
   return (
     <>
@@ -243,8 +255,8 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
                   {/* Nhắn tin */}
                   <Button
                     variant="outline"
-                    onClick={() => navigate('/messages')}
-                    className="gap-1.5 text-xs sm:text-sm"
+                    onClick={handleDirectMessage}
+                    className="gap-1.5 text-xs sm:text-sm cursor-pointer"
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>Nhắn tin</span>
@@ -353,8 +365,8 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
                   {/* Nhắn tin */}
                   <Button
                     variant="outline"
-                    onClick={() => navigate('/messages')}
-                    className="gap-1.5 text-xs sm:text-sm"
+                    onClick={handleDirectMessage}
+                    className="gap-1.5 text-xs sm:text-sm cursor-pointer"
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>Nhắn tin</span>

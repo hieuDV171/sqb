@@ -19,6 +19,8 @@ import { LecturerExamsPage } from "./pages/lecturer/LecturerExamsPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
+import { NotificationsPage } from "./pages/notification/NotificationsPage";
+import { SearchPage } from "./pages/search/SearchPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ProtectedRoute } from "./components/routing/ProtectedRoute";
@@ -57,6 +59,7 @@ export default function App() {
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/blocked-users" element={<BlockedUsersPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/gamification" element={<LeaderboardPage />} />
           <Route path="/devices" element={<DeviceManagementPage />} />
           <Route path="/questions" element={<SessionsPage />} />
           <Route path="/sessions" element={<SessionsPage />} />
@@ -66,7 +69,10 @@ export default function App() {
           <Route path="/sessions/:sessionId/questions" element={<PracticeWorkspacePage />} />
           <Route path="/users/:userId/sessions" element={<UserSessionsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/messages/:conversationId" element={<MessagesPage />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/search" element={<SearchPage />} />
 
           {/* Lecturer Restricted Routes */}
           <Route element={<RoleGuard allowedRoles={['LECTURER', 'ADMIN']} />}>

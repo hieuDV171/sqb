@@ -4,6 +4,7 @@ import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { CommentSection } from './CommentSection';
 import { LecturerNoteModal } from './LecturerNoteModal';
+import { ReportModal } from '@/features/report';
 import type { ActivityFeedItemDto } from '../types/feed.types';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -17,6 +18,7 @@ import {
   Lock,
   Tag,
   Trash2,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface PostFeedCardProps {
@@ -36,6 +38,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
   const [showComments, setShowComments] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [isLecturerModalOpen, setIsLecturerModalOpen] = useState<boolean>(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isContentExpanded, setIsContentExpanded] = useState<boolean>(false);
 
   const isAuthor = user?.id === actor.userId;
@@ -209,6 +212,20 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
                   <Share2 className="w-3.5 h-3.5" />
                   <span>Chia sẻ liên kết</span>
                 </button>
+
+                {!isAuthor && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      setIsReportModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-t border-slate-100 dark:border-slate-700 cursor-pointer"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Báo cáo bài viết</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -357,6 +374,15 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
         initialNote={content.lecturerNote}
         isOpen={isLecturerModalOpen}
         onClose={() => setIsLecturerModalOpen(false)}
+      />
+
+      {/* 8. Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        targetType="POST"
+        targetId={targetId}
+        targetTitle={`bài viết của ${actor.fullName || 'người dùng'}`}
       />
     </div>
   );

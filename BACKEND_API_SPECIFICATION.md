@@ -465,54 +465,63 @@ Phụ trách bởi Controller: [`ConversationController`](file:///c:/Users/ADMIN
 
 ### 10.1. Lấy danh sách cuộc hội thoại của tôi
 - **Method & URL:** `GET /api/v1/conversations`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L27-L34)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:** `after` (Long), `limit` (Integer, default: 20).
 - **Response Data (`ConversationListResponseDto`):** Danh sách cuộc hội thoại, tin nhắn cuối cùng, số tin chưa đọc.
 
 ### 10.2. Tạo cuộc hội thoại 1-1 (Direct Chat)
 - **Method & URL:** `POST /api/v1/conversations/direct`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L40-L44)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`CreateDirectConversationDto`)**
 - **Response Data (`ConversationDetailDto`)**
 
 ### 10.3. Tạo cuộc hội thoại nhóm (Group Chat)
 - **Method & URL:** `POST /api/v1/conversations/group`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L50-L54)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`CreateGroupConversationDto`)**
 - **Response Data (`ConversationDetailDto`)**
 
 ### 10.4. Ẩn cuộc hội thoại vào kho bí mật
 - **Method & URL:** `PATCH /api/v1/conversations/{id}/hide`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L60-L62)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID cuộc hội thoại.
 - **Response Data:** `GlobalResponse<Void>` (`message: "Đã ẩn cuộc hội thoại vào kho bí mật"`).
 
 ### 10.5. Bỏ ẩn cuộc hội thoại khỏi kho bí mật
 - **Method & URL:** `PATCH /api/v1/conversations/{id}/unhide`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L68-L70)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID cuộc hội thoại.
 - **Response Data:** `GlobalResponse<Void>` (`message: "Đã bỏ ẩn cuộc hội thoại"`).
 
 ### 10.6. Cài đặt / Đổi mã PIN kho chat ẩn
 - **Method & URL:** `POST /api/v1/users/me/hidden-chat-pin`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L76-L78)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`SetHiddenChatPinDto`)**
 - **Response Data:** `GlobalResponse<Void>` (`message: "Cài đặt mã PIN kho ẩn trò chuyện thành công"`).
 
 ### 10.7. Mở khóa kho chat ẩn bằng mã PIN
 - **Method & URL:** `POST /api/v1/conversations/hidden/unlock`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L84-L86)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`UnlockHiddenChatDto`)**
 - **Response Data:** `GlobalResponse<Void>` (`message: "Mở khóa kho ẩn trò chuyện thành công"`).
 
 ### 10.8. Lấy danh sách cuộc trò chuyện trong kho ẩn
 - **Method & URL:** `GET /api/v1/conversations/hidden`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L92-L99)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:** `after` (Long), `limit` (Integer, default: 20).
 - **Response Data (`ConversationListResponseDto`)**
 
 ### 10.9. Cập nhật thông tin nhóm trò chuyện
 - **Method & URL:** `PUT /api/v1/conversations/{id}`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L105-L110)
 - **Quyền hạn:** `Authenticated` (Admin nhóm)
 - **Path Variables:** `id` (Long) - ID nhóm chat.
 - **Request Body (`UpdateGroupInfoDto`):** Tên nhóm mới, avatar URL mới.
@@ -520,12 +529,14 @@ Phụ trách bởi Controller: [`ConversationController`](file:///c:/Users/ADMIN
 
 ### 10.10. Lấy danh sách thành viên trong nhóm
 - **Method & URL:** `GET /api/v1/conversations/{id}/members`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L116-L120)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID nhóm chat.
 - **Response Data:** `GlobalResponse<List<ConversationMemberDto>>`
 
 ### 10.11. Thêm thành viên vào nhóm chat
 - **Method & URL:** `POST /api/v1/conversations/{id}/members`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L126-L131)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID nhóm chat.
 - **Request Body (`AddGroupMembersRequestDto`)**
@@ -533,6 +544,7 @@ Phụ trách bởi Controller: [`ConversationController`](file:///c:/Users/ADMIN
 
 ### 10.12. Xóa thành viên khỏi nhóm chat
 - **Method & URL:** `DELETE /api/v1/conversations/{id}/members/{userId}`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L137-L142)
 - **Quyền hạn:** `Authenticated` (Admin nhóm)
 - **Path Variables:**
   - `id` (Long): ID nhóm chat.
@@ -541,6 +553,7 @@ Phụ trách bởi Controller: [`ConversationController`](file:///c:/Users/ADMIN
 
 ### 10.13. Cập nhật vai trò thành viên nhóm chat
 - **Method & URL:** `PUT /api/v1/conversations/{id}/members/{userId}/role`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L148-L154)
 - **Quyền hạn:** `Authenticated` (Trưởng nhóm / Group Owner)
 - **Path Variables:**
   - `id` (Long): ID nhóm chat.
@@ -550,6 +563,7 @@ Phụ trách bởi Controller: [`ConversationController`](file:///c:/Users/ADMIN
 
 ### 10.14. Rời khỏi nhóm chat
 - **Method & URL:** `POST /api/v1/conversations/{id}/leave`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L160-L165)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID nhóm chat.
 - **Request Body (`LeaveGroupRequestDto`, optional)**
@@ -563,6 +577,7 @@ Phụ trách bởi Controller: [`MessageController`](file:///c:/Users/ADMIN/Idea
 
 ### 11.1. Lấy danh sách tin nhắn trong cuộc hội thoại (Cursor Pagination)
 - **Method & URL:** `GET /api/v1/conversations/{id}/messages`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L171-L178)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID cuộc hội thoại.
 - **Query Params:**
@@ -572,6 +587,7 @@ Phụ trách bởi Controller: [`MessageController`](file:///c:/Users/ADMIN/Idea
 
 ### 11.2. Xóa / Thu hồi tin nhắn
 - **Method & URL:** `DELETE /api/v1/messages/{id}`
+- **Frontend Client:** ✅ [`chatService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/services/chatService.ts#L184-L191)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID tin nhắn.
 - **Request Body (`DeleteMessageRequestDto`)**
@@ -585,27 +601,33 @@ Cấu hình: [`WebSocketConfig`](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend
 
 ### 12.1. Handshake & Kết nối STOMP
 - **Endpoint:** `GET /api/v1/ws` (Hỗ trợ SockJS fallback)
+- **Frontend Client:** ✅ [`stompClient.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/lib/stompClient.ts) & [`AppLayout.tsx`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/layouts/AppLayout.tsx)
 - **Xác thực:** Qua Header `Authorization: Bearer <access_token>` tại bước CONNECT frame qua [`WebSocketAuthInterceptor`](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/core/security/WebSocketAuthInterceptor.java).
 
 ### 12.2. Inbound STOMP Mappings (Client gửi lên Server)
 1. **Gửi tin nhắn realtime:**
    - **Destination:** `/app/chat.send`
+   - **Frontend Client:** ✅ [`useChatStore.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/stores/useChatStore.ts#L125-L135)
    - **Payload (`SendWsMessageRequestDto`)**
 2. **Đánh dấu đã đọc tin nhắn:**
    - **Destination:** `/app/chat.read`
+   - **Frontend Client:** ✅ [`useChatStore.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/stores/useChatStore.ts#L137-L142)
    - **Payload (`ReadWsMessageRequestDto`)**
 3. **Gửi trạng thái đang gõ phím (Typing Indicator):**
    - **Destination:** `/app/chat.typing`
+   - **Frontend Client:** ✅ [`useChatStore.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/stores/useChatStore.ts#L144-L149)
    - **Payload (`TypingWsRequestDto`)**
 
 ### 12.3. Outbound STOMP Subscriptions (Server đẩy về Client)
 1. **Nhận tin nhắn mới & thông báo đã đọc cá nhân:**
    - **Client Subscribe:** `/user/queue/messages`
+   - **Frontend Client:** ✅ [`useChatRealtime.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/hooks/useChatRealtime.ts#L11-L26)
    - **Payload Đẩy về:**
      - Sự kiện `NEW_MESSAGE` (`WsMessageBroadcastDto`): Tin nhắn mới kèm thông tin sender.
      - Sự kiện `MESSAGE_READ` (`WsReadReceiptBroadcastDto`): Người đọc và thời điểm đọc.
 2. **Nhận trạng thái đang gõ phím theo cuộc hội thoại:**
    - **Client Subscribe:** `/topic/conv.{conversationId}.typing`
+   - **Frontend Client:** ✅ [`useChatRealtime.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/chat/hooks/useChatRealtime.ts#L32-L46)
    - **Payload Đẩy về (`WsTypingBroadcastDto`):** Người đang gõ và cờ `is_typing`.
 
 ---
@@ -616,28 +638,33 @@ Phụ trách bởi Controller: [`NotificationController`](file:///c:/Users/ADMIN
 
 ### 13.1. Lấy danh sách thông báo của tôi (Cursor Pagination)
 - **Method & URL:** `GET /api/v1/notifications`
+- **Frontend Client:** ✅ [`notificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/notification/services/notificationService.ts#L18-L32)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:** `after` (Long), `limit` (Integer, default: 20).
 - **Response Data (`NotificationListResponseDto`):** Danh sách thông báo, phân loại (hệ thống, tương tác, điểm thưởng, kết bạn), trạng thái đã đọc.
 
 ### 13.2. Đánh dấu 1 thông báo là đã đọc
 - **Method & URL:** `POST /api/v1/notifications/{id}/read`
+- **Frontend Client:** ✅ [`notificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/notification/services/notificationService.ts#L38-L46)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID thông báo.
 - **Response Data (`ReadNotificationResponseDto`)**
 
 ### 13.3. Đánh dấu tất cả thông báo là đã đọc
 - **Method & URL:** `POST /api/v1/notifications/read-all`
+- **Frontend Client:** ✅ [`notificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/notification/services/notificationService.ts#L52-L58)
 - **Quyền hạn:** `Authenticated`
 - **Response Data:** `GlobalResponse<Void>` (`message: "Đã đánh dấu đọc tất cả thông báo"`).
 
 ### 13.4. Lấy cài đặt nhận thông báo đẩy (Push Settings)
 - **Method & URL:** `GET /api/v1/settings/push`
+- **Frontend Client:** ✅ [`notificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/notification/services/notificationService.ts#L64-L70)
 - **Quyền hạn:** `Authenticated`
 - **Response Data (`PushSettingsResponseDto`):** Trạng thái bật/tắt thông báo cho từng danh mục, chế độ không làm phiền.
 
 ### 13.5. Cập nhật cài đặt nhận thông báo đẩy
 - **Method & URL:** `PUT /api/v1/settings/push`
+- **Frontend Client:** ✅ [`notificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/notification/services/notificationService.ts#L76-L84)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`UpdatePushSettingsRequestDto`):** Cấu hình bật/tắt các loại thông báo.
 - **Response Data (`PushSettingsResponseDto`)**
@@ -951,18 +978,21 @@ Phụ trách bởi Controller: [`ExamController`](file:///c:/Users/ADMIN/IdeaPro
 
 ### 21.1. Tạo đề thi tự động từ ngân hàng câu hỏi
 - **Method & URL:** `POST /api/v1/exams/generate`
+- **Frontend Client:** ✅ [`examService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/exam/services/examService.ts#L17-L24)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`GenerateExamRequest`)**
 - **Response Data (`ExamDetailResponse`):** Đề thi được tạo kèm các câu hỏi đã chọn ngẫu nhiên theo trọng số.
 
 ### 21.2. Lấy chi tiết đề thi theo ID
 - **Method & URL:** `GET /api/v1/exams/{examId}`
+- **Frontend Client:** ✅ [`examService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/exam/services/examService.ts#L30-L36)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `examId` (Long)
 - **Response Data (`ExamDetailResponse`)**
 
 ### 21.3. Lấy danh sách đề thi của tôi
 - **Method & URL:** `GET /api/v1/exams/my-exams`
+- **Frontend Client:** ✅ [`examService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/exam/services/examService.ts#L42-L57)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:**
   - `after` (Long, optional)
@@ -972,6 +1002,7 @@ Phụ trách bởi Controller: [`ExamController`](file:///c:/Users/ADMIN/IdeaPro
 
 ### 21.4. Xuất file đề thi (PDF / DOCX)
 - **Method & URL:** `GET /api/v1/exams/{examId}/export`
+- **Frontend Client:** ✅ [`examService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/exam/services/examService.ts#L63-L77)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `examId` (Long)
 - **Query Params:**
@@ -988,6 +1019,7 @@ Phụ trách bởi Controller: [`QuestionExportController`](file:///c:/Users/ADM
 
 ### 22.1. Giảng viên xuất toàn bộ câu hỏi môn học thành tài liệu
 - **Method & URL:** `GET /api/v1/lecturer/questions/export`
+- **Frontend Client:** ✅ [`examService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/exam/services/examService.ts#L83-L96)
 - **Quyền hạn:** `ROLE_LECTURER`, `ROLE_ADMIN`
 - **Query Params:**
   - `subject_id` (Long, bắt buộc): ID môn học.
@@ -1003,47 +1035,54 @@ Phụ trách bởi Controller: [`GamificationController`](file:///c:/Users/ADMIN
 
 ### 23.1. Lấy danh sách lớp học phần để dự đoán (Game 1)
 - **Method & URL:** `GET /api/v1/games/prediction/game-1/classes`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L173-L181)
 - **Quyền hạn:** `Authenticated`
 - **Response Data:** `GlobalResponse<List<MyCourseClassPredictionDto>>`
 
 ### 23.2. Tham gia dự đoán số sinh viên tham gia nộp câu hỏi (Game 1)
 - **Method & URL:** `POST /api/v1/games/prediction/participants`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L183-L193)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`Game1PredictionRequest`)**
 - **Response Data (`GamePredictionResponse`)**
 
 ### 23.3. Tham gia dự đoán số lượng câu hỏi được duyệt trong phiên (Game 2)
 - **Method & URL:** `POST /api/v1/games/prediction/approved-questions`
-- **Frontend Client:** ✅ [`sessionService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/sessionService.ts#L113-L124)
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L195-L203)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`Game2PredictionRequest`)**
 - **Response Data (`GamePredictionResponse`)**
 
 ### 23.4. Tham gia dự đoán quy mô ngân hàng câu hỏi cuối kỳ (Game 4)
 - **Method & URL:** `POST /api/v1/games/prediction/bank-size`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L205-L213)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`Game4PredictionRequest`)**
 - **Response Data (`GamePredictionResponse`)**
 
 ### 23.5. Lấy phiên nộp đang mở để dự đoán kết quả (Game 6)
 - **Method & URL:** `GET /api/v1/games/prediction/active-session`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L215-L223)
 - **Quyền hạn:** `Authenticated`
 - **Response Data (`Game6ActiveSessionResponse`)**
 
 ### 23.6. Gửi dự đoán kết quả duyệt phiên (Game 6)
 - **Method & URL:** `POST /api/v1/games/prediction/submit`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L225-L233)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`Game6SubmitRequest`)**
 - **Response Data (`GamePredictionResponse`)**
 
 ### 23.7. Xem danh sách các lượt dự đoán của tôi
 - **Method & URL:** `GET /api/v1/games/my-predictions`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L235-L246)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:** `after` (Long), `limit` (Integer, default: 10).
 - **Response Data (`MyPredictionsResponse`)**
 
 ### 23.8. Giảng viên xử lý khiếu nại báo lỗi câu hỏi (Game 5 - Error Hunter)
 - **Method & URL:** `POST /api/v1/questions/{questionId}/ratings/{ratingUserId}/review-error`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L248-L260)
 - **Quyền hạn:** `Authenticated` (Giảng viên / Admin)
 - **Path Variables:** `questionId` (Long), `ratingUserId` (Long).
 - **Request Body (`ReviewErrorRequest`):** Xác nhận có lỗi hay không, cộng điểm thợ săn lỗi.
@@ -1051,12 +1090,14 @@ Phụ trách bởi Controller: [`GamificationController`](file:///c:/Users/ADMIN
 
 ### 23.9. Quản trị viên tổng kết mùa giải gamification học kỳ
 - **Method & URL:** `POST /api/v1/admin/semesters/finalize-semester`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L64-L68)
 - **Quyền hạn:** `ROLE_ADMIN`
 - **Mô tả:** Trao huy hiệu top leaderboard, khóa sổ điểm học kỳ.
 - **Response Data:** `GlobalResponse<String>`
 
 ### 23.10. Xem Bảng xếp hạng người dùng (Leaderboard)
 - **Method & URL:** `GET /api/v1/games/leaderboard`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L43-L52)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:**
   - `period` (Enum: `SEMESTER`, `MONTH`, `WEEK`, default: `SEMESTER`)
@@ -1068,6 +1109,7 @@ Phụ trách bởi Controller: [`GamificationController`](file:///c:/Users/ADMIN
 
 ### 23.11. Điểm danh nhận thưởng hàng ngày (Daily Check-in)
 - **Method & URL:** `POST /api/v1/games/check-in`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L54-L58)
 - **Quyền hạn:** `Authenticated`
 - **Ghi chú:** Hỗ trợ `@Idempotent` chống spam liên tục.
 - **Response Data (`CheckInResponse`):** Số điểm thưởng nhận được, số ngày điểm danh liên tiếp (streak).
@@ -1081,6 +1123,7 @@ Phụ trách bởi Controller: [`AdminLeaderboardController`](file:///c:/Users/A
 
 ### 24.1. Tái tạo / Tính toán lại Bảng xếp hạng
 - **Method & URL:** `POST /api/v1/admin/leaderboards/rebuild`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L60-L62)
 - **Request Body (`RebuildLeaderboardRequest`)**
 - **Response Data:** `GlobalResponse<Void>` (`data: null`).
 
@@ -1092,22 +1135,26 @@ Phụ trách bởi Controller: [`BadgeController`](file:///c:/Users/ADMIN/IdeaPr
 
 ### 25.1. Lấy danh sách tất cả các huy hiệu trong hệ thống
 - **Method & URL:** `GET /api/v1/badges`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L76-L80)
 - **Quyền hạn:** `Authenticated`
 - **Response Data:** `GlobalResponse<List<BadgeResponseDto>>`
 
 ### 25.2. Lấy danh sách huy hiệu của chính mình
 - **Method & URL:** `GET /api/v1/badges/me`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L82-L86)
 - **Quyền hạn:** `Authenticated`
 - **Response Data:** `GlobalResponse<List<UserBadgeResponseDto>>`: Danh sách huy hiệu đã đạt, ngày đạt, tiến độ hiện tại.
 
 ### 25.3. Lấy danh sách huy hiệu của người dùng khác
 - **Method & URL:** `GET /api/v1/badges/users/{userId}`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L88-L92)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `userId` (Long)
 - **Response Data:** `GlobalResponse<List<UserBadgeResponseDto>>`
 
 ### 25.4. Lấy thông tin chi tiết một huy hiệu
 - **Method & URL:** `GET /api/v1/badges/{badgeId}`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L94-L98)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `badgeId` (Long)
 - **Response Data:** `GlobalResponse<BadgeResponseDto>`
@@ -1121,26 +1168,31 @@ Phụ trách bởi Controller: [`AdminBadgeController`](file:///c:/Users/ADMIN/I
 
 ### 26.1. Admin lấy danh sách toàn bộ huy hiệu (kèm cấu hình)
 - **Method & URL:** `GET /api/v1/admin/badges`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L100-L104)
 - **Response Data:** `GlobalResponse<List<BadgeResponseDto>>`
 
 ### 26.2. Tạo huy hiệu mới
 - **Method & URL:** `POST /api/v1/admin/badges`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L106-L110)
 - **Request Body (`CreateBadgeRequestDto`):** Tên huy hiệu, mô tả, icon URL, điều kiện mở khóa.
 - **Response Data (`BadgeResponseDto`)**
 
 ### 26.3. Cập nhật thông tin huy hiệu
 - **Method & URL:** `PUT /api/v1/admin/badges/{badgeId}`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L112-L119)
 - **Path Variables:** `badgeId` (Long)
 - **Request Body (`UpdateBadgeRequestDto`)**
 - **Response Data (`BadgeResponseDto`)**
 
 ### 26.4. Xóa huy hiệu
 - **Method & URL:** `DELETE /api/v1/admin/badges/{badgeId}`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L121-L125)
 - **Path Variables:** `badgeId` (Long)
 - **Response Data:** `GlobalResponse<Void>` (`data: null`).
 
 ### 26.5. Trao huy hiệu thủ công cho người dùng
 - **Method & URL:** `POST /api/v1/admin/badges/{badgeId}/grant`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L127-L135)
 - **Path Variables:** `badgeId` (Long)
 - **Request Body (`ManualGrantBadgeRequestDto`)**
 - **Response Data:** `GlobalResponse<Void>` (`data: null`).
@@ -1153,6 +1205,7 @@ Phụ trách bởi Controller: [`CosmeticController`](file:///c:/Users/ADMIN/Ide
 
 ### 27.1. Lấy kho đồ cá nhân (My Inventory)
 - **Method & URL:** `GET /api/v1/cosmetics/my-inventory`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L143-L153)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:**
   - `type` (Enum: `AVATAR_FRAME`, `PROFILE_PIN`, `CHAT_BUBBLE`, optional)
@@ -1164,6 +1217,7 @@ Phụ trách bởi Controller: [`CosmeticController`](file:///c:/Users/ADMIN/Ide
 
 ### 27.2. Xem danh mục cửa hàng vật phẩm (Cosmetic Shop)
 - **Method & URL:** `GET /api/v1/cosmetics/shop`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L155-L165)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:**
   - `type` (Enum, optional)
@@ -1174,6 +1228,7 @@ Phụ trách bởi Controller: [`CosmeticController`](file:///c:/Users/ADMIN/Ide
 
 ### 27.3. Mua vật phẩm từ cửa hàng bằng điểm
 - **Method & URL:** `POST /api/v1/cosmetics/{id}/buy`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L167-L171)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID vật phẩm.
 - **Ghi chú:** Hỗ trợ `@Idempotent` chống trừ điểm 2 lần.
@@ -1181,12 +1236,14 @@ Phụ trách bởi Controller: [`CosmeticController`](file:///c:/Users/ADMIN/Ide
 
 ### 27.4. Trang bị / Sử dụng vật phẩm
 - **Method & URL:** `PUT /api/v1/cosmetics/equip`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L173-L177)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`EquipCosmeticRequestDto`)**
 - **Response Data (`EquipCosmeticResponseDto`)**
 
 ### 27.5. Tháo gỡ vật phẩm trang trí
 - **Method & URL:** `PUT /api/v1/cosmetics/unequip`
+- **Frontend Client:** ✅ [`gamificationService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/gamification/services/gamificationService.ts#L179-L183)
 - **Quyền hạn:** `Authenticated`
 - **Request Body (`UnequipCosmeticRequestDto`)**
 - **Response Data (`UnequipCosmeticResponseDto`)**
@@ -1252,6 +1309,7 @@ Phụ trách bởi Controller: [`ReportController`](file:///c:/Users/ADMIN/IdeaP
 
 ### 30.1. Gửi báo cáo vi phạm nội dung (Polymorphic Report)
 - **Method & URL:** `POST /api/v1/report`
+- **Frontend Client:** ✅ [`reportService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/report/services/reportService.ts#L14-L23)
 - **Quyền hạn:** `Authenticated`
 - **Mô tả:** Báo cáo bài viết, bình luận, tin nhắn, câu hỏi hoặc người dùng có hành vi vi phạm chuẩn mực.
 - **Request Body (`CreateReportRequestDto`)**
@@ -1265,6 +1323,7 @@ Phụ trách bởi Controller: [`SearchController`](file:///c:/Users/ADMIN/IdeaP
 
 ### 31.1. Tìm kiếm toàn cục đa thực thể
 - **Method & URL:** `GET /api/v1/search`
+- **Frontend Client:** ✅ [`searchService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/search/services/searchService.ts#L15-L33)
 - **Quyền hạn:** `Authenticated`
 - **Query Params:**
   - `query` (String, optional): Từ khóa tìm kiếm.
@@ -1275,11 +1334,13 @@ Phụ trách bởi Controller: [`SearchController`](file:///c:/Users/ADMIN/IdeaP
 
 ### 31.2. Lấy lịch sử tìm kiếm cá nhân & Top từ khóa thịnh hành
 - **Method & URL:** `GET /api/v1/search/saved`
+- **Frontend Client:** ✅ [`searchService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/search/services/searchService.ts#L39-L47)
 - **Quyền hạn:** `Authenticated`
 - **Response Data (`SavedAndTrendingSearchesResponseDto`):** Danh sách từ khóa đã tìm gần đây và Top trending trong trường.
 
 ### 31.3. Xóa một từ khóa khỏi lịch sử tìm kiếm cá nhân
 - **Method & URL:** `DELETE /api/v1/search/saved/{id}`
+- **Frontend Client:** ✅ [`searchService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/features/search/services/searchService.ts#L53-L61)
 - **Quyền hạn:** `Authenticated`
 - **Path Variables:** `id` (Long) - ID bản ghi tìm kiếm đã lưu.
 - **Response Data (`DeleteSavedSearchResponseDto`)**
