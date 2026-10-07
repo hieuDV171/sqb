@@ -88,7 +88,8 @@ services:
       ai-sidecar:
         condition: service_started
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      # CHỈ BIND VÀO 127.0.0.1 (Localhost), chặn đứng mọi truy cập trực tiếp từ Internet
+      - "127.0.0.1:8085:8080"
     volumes:
       # Chia sẻ log đĩa cho Promtail đọc để đẩy lên Loki
       - sqb_backend_logs:/app/logs
