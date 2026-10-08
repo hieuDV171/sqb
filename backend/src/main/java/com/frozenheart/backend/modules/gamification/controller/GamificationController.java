@@ -18,7 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-@Tag(name = "20. Gamification & Minigames", description = "Các API trò chơi dự đoán học thuật (Game 1, 2, 4, 5, 6), điểm danh hàng ngày và Bảng xếp hạng vinh danh")
+@Tag(name = "21. Gamification & Minigames", description = "Các API trò chơi dự đoán học thuật (Game 1, 2, 4, 5, 6), điểm danh hàng ngày và Bảng xếp hạng vinh danh")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequiredArgsConstructor

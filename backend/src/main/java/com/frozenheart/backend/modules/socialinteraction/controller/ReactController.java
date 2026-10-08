@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "05. Tương tác - Cảm xúc (Reactions)", description = "Các API thả và gỡ tương tác cảm xúc đa hình (LIKE, LOVE, WOW) trên Bài viết, Bình luận, Câu hỏi...")
+@Tag(name = "06. Tương tác - Cảm xúc (Reactions)", description = "Các API thả và gỡ tương tác cảm xúc đa hình (LIKE, LOVE, WOW) trên Bài viết, Bình luận, Câu hỏi...")
 public class ReactController {
 
     private final ReactService reactService;

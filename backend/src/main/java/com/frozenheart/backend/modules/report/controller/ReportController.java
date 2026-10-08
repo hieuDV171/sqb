@@ -14,7 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "25. Báo cáo & Khiếu nại (Reports)", description = "APIs gửi đơn báo cáo vi phạm nội dung hoặc hành vi người dùng")
+@Tag(name = "26. Báo cáo & Khiếu nại (Reports)", description = "APIs gửi đơn báo cáo vi phạm nội dung hoặc hành vi người dùng")
 @RestController
 @RequestMapping
 @RequiredArgsConstructor

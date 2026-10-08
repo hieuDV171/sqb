@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "07. Quan hệ - Theo dõi (Follows)", description = "Các API theo dõi, bỏ theo dõi người dùng và xem thống kê quan hệ (Followers, Following, Friends)")
+@Tag(name = "08. Quan hệ - Theo dõi (Follows)", description = "Các API theo dõi, bỏ theo dõi người dùng và xem thống kê quan hệ (Followers, Following, Friends)")
 public class FollowController {
 
     private final FollowService followService;

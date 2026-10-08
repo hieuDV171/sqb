@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "03. Mạng xã hội - Bài viết (Posts)", description = "Các API đăng bài viết, video bài giảng, cập nhật, xóa và đọc danh sách bài viết theo dòng thời gian")
+@Tag(name = "04. Mạng xã hội - Bài viết (Posts)", description = "Các API đăng bài viết, video bài giảng, cập nhật, xóa và đọc danh sách bài viết theo dòng thời gian")
 public class PostController {
 
     private final PostService postService;

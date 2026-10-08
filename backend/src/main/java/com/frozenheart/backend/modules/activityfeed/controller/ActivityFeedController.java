@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "12. Dòng hoạt động (Activity Feed)", description = "Các API đọc bảng tin dòng sự kiện cá nhân hóa và mạng lưới bạn bè (đăng bài, chia sẻ câu hỏi, video bài giảng, thành tích huy hiệu)")
+@Tag(name = "13. Dòng hoạt động (Activity Feed)", description = "Các API đọc bảng tin dòng sự kiện cá nhân hóa và mạng lưới bạn bè (đăng bài, chia sẻ câu hỏi, video bài giảng, thành tích huy hiệu)")
 public class ActivityFeedController {
 
     private final ActivityFeedService activityFeedService;

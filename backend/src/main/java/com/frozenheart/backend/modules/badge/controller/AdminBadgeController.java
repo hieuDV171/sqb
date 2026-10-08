@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "21. Huy hiệu & Danh hiệu (Badges)", description = "APIs quản lý và cấu hình huy hiệu dành cho Quản trị viên")
+@Tag(name = "22. Huy hiệu & Danh hiệu (Badges)", description = "APIs quản lý và cấu hình huy hiệu dành cho Quản trị viên")
 @RestController
 @RequestMapping("/admin/badges")
 @RequiredArgsConstructor

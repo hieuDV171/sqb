@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "13. Quản trị Học kỳ (Semesters)", description = "Các API dành cho Quản trị viên quản lý vòng đời học kỳ: tạo học kỳ, kích hoạt, đóng kỳ, và xóa học kỳ")
+@Tag(name = "14. Quản trị Học kỳ (Semesters)", description = "Các API dành cho Quản trị viên quản lý vòng đời học kỳ: tạo học kỳ, kích hoạt, đóng kỳ, và xóa học kỳ")
 @RestController
 @RequestMapping("/admin/semesters")
 @RequiredArgsConstructor

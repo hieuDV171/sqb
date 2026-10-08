@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "04. Tương tác - Bình luận (Comments)", description = "Các API tạo bình luận, phản hồi bình luận phân cấp (nested replies), cập nhật, xóa và đọc danh sách bình luận")
+@Tag(name = "05. Tương tác - Bình luận (Comments)", description = "Các API tạo bình luận, phản hồi bình luận phân cấp (nested replies), cập nhật, xóa và đọc danh sách bình luận")
 public class CommentController {
 
     private final CommentService commentService;

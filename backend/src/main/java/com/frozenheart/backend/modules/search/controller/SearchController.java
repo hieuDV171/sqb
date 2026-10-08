@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "24. Tìm kiếm Toàn văn (Search)", description = "APIs tìm kiếm toàn văn đa thực thể (Elasticsearch) và quản lý lịch sử tìm kiếm")
+@Tag(name = "25. Tìm kiếm Toàn văn (Search)", description = "APIs tìm kiếm toàn văn đa thực thể (Elasticsearch) và quản lý lịch sử tìm kiếm")
 @RestController
 @RequiredArgsConstructor
 public class SearchController {

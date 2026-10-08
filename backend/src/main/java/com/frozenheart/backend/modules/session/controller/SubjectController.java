@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Tag(name = "14b. Danh mục Môn học (Subjects Catalog)", description = "Các API tra cứu danh mục môn học chung dành cho Sinh viên, Giảng viên và Quản trị viên")
+@Tag(name = "15b. Danh mục Môn học (Subjects Catalog)", description = "Các API tra cứu danh mục môn học chung dành cho Sinh viên, Giảng viên và Quản trị viên")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/subjects")

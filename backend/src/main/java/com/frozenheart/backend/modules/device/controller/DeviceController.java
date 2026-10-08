@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/devices")
 @RequiredArgsConstructor
-@Tag(name = "29. Quản lý Thiết bị (Devices)", description = "Các API kiểm tra danh sách thiết bị đang đăng nhập và thu hồi phiên từ xa")
+@Tag(name = "28. Quản lý Thiết bị (Devices)", description = "Các API kiểm tra danh sách thiết bị đang đăng nhập và thu hồi phiên từ xa")
 public class DeviceController {
 
     private final DeviceService deviceService;

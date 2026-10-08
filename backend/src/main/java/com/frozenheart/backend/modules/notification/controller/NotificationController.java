@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping
 @RequiredArgsConstructor
-@Tag(name = "11. Thông báo (Notifications)", description = "Các API đọc thông báo người dùng, đánh dấu đã đọc và cấu hình tùy chọn nhận thông báo đẩy (Push Notifications, Quiet Hours)")
+@Tag(name = "12. Thông báo (Notifications)", description = "Các API đọc thông báo người dùng, đánh dấu đã đọc và cấu hình tùy chọn nhận thông báo đẩy (Push Notifications, Quiet Hours)")
 public class NotificationController {
 
     private final NotificationService notificationService;

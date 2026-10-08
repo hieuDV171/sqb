@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "19. Đề thi & Xuất Đề (Exams)", description = "Các API tự động tạo đề thi từ ngân hàng câu hỏi, xem chi tiết, quản lý danh sách đề và xuất file đề thi")
+@Tag(name = "20. Đề thi & Xuất Đề (Exams)", description = "Các API tự động tạo đề thi từ ngân hàng câu hỏi, xem chi tiết, quản lý danh sách đề và xuất file đề thi")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequiredArgsConstructor

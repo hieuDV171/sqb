@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping
 @RequiredArgsConstructor
-@Tag(name = "09. Trò chuyện - Cuộc hội thoại (Conversations)", description = "Các API nhắn tin trực tiếp (Direct 1-1), nhóm chat, quản trị nhóm (Tù trưởng, Già làng, Dân làng) và kho ẩn hội thoại bảo mật bằng mã PIN")
+@Tag(name = "10. Trò chuyện - Cuộc hội thoại (Conversations)", description = "Các API nhắn tin trực tiếp (Direct 1-1), nhóm chat, quản trị nhóm (Tù trưởng, Già làng, Dân làng) và kho ẩn hội thoại bảo mật bằng mã PIN")
 public class ConversationController {
 
         private final ConversationService conversationService;

@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "22. Cửa hàng & Vật phẩm Trang trí (Cosmetics)", description = "APIs quản lý túi đồ, cửa hàng và trang bị vật phẩm cá nhân hóa")
+@Tag(name = "23. Cửa hàng & Vật phẩm Trang trí (Cosmetics)", description = "APIs quản lý túi đồ, cửa hàng và trang bị vật phẩm cá nhân hóa")
 @RestController
 @RequestMapping("/cosmetics")
 @RequiredArgsConstructor

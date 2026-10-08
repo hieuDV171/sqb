@@ -32,7 +32,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/medias")
 @RequiredArgsConstructor
-@Tag(name = "28. Tải lên Media (Cloudflare R2)", description = "Các API tải lên tệp tin và hình ảnh: Upload trực tiếp, Cấp presigned URL, Xác minh tệp tồn tại")
+@Tag(name = "27. Tải lên Media (Cloudflare R2)", description = "Các API tải lên tệp tin và hình ảnh: Upload trực tiếp, Cấp presigned URL, Xác minh tệp tồn tại")
 public class MediaController {
 
     private final MediaService mediaService;

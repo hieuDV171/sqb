@@ -33,7 +33,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "16. Phiên Đề xuất Câu hỏi (Sessions)", description = "Quản lý tạo mới, tra cứu, chỉnh sửa và xóa phiên đề xuất câu hỏi trắc nghiệm của sinh viên/người dùng")
+@Tag(name = "17. Phiên Đề xuất Câu hỏi (Sessions)", description = "Quản lý tạo mới, tra cứu, chỉnh sửa và xóa phiên đề xuất câu hỏi trắc nghiệm của sinh viên/người dùng")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/sessions")

@@ -30,7 +30,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "18. Luyện tập & Đánh giá Câu hỏi (Question Interaction)", description = "Các API sinh viên luyện tập, nộp câu trả lời, xem thống kê, chấm điểm và đánh giá chất lượng câu hỏi")
+@Tag(name = "19. Luyện tập & Đánh giá Câu hỏi (Question Interaction)", description = "Các API sinh viên luyện tập, nộp câu trả lời, xem thống kê, chấm điểm và đánh giá chất lượng câu hỏi")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequiredArgsConstructor

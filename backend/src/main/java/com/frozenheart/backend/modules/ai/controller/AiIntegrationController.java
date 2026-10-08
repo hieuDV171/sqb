@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "23. Tích hợp Trí tuệ Nhân tạo (AI Integration)", description = "APIs trợ lý AI, tinh chỉnh câu hỏi thi và phát hiện ảo giác (Btprop)")
+@Tag(name = "24. Tích hợp Trí tuệ Nhân tạo (AI Integration)", description = "APIs trợ lý AI, tinh chỉnh câu hỏi thi và phát hiện ảo giác (Btprop)")
 @RestController
 @RequiredArgsConstructor
 public class AiIntegrationController {

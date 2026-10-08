@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-@Tag(name = "15a. Quản trị Lớp học phần (Admin Course Classes)", description = "Các API dành riêng cho Quản trị viên quản lý, import danh sách lớp học phần và sinh viên từ file Excel")
+@Tag(name = "16b. Quản trị Lớp học phần (Admin Course Classes)", description = "Các API dành riêng cho Quản trị viên quản lý, import danh sách lớp học phần và sinh viên từ file Excel")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/admin/course-classes")

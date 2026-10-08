@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-@Tag(name = "15. Quản lý Lớp học phần (Course Classes)", description = "Các API dành cho Giảng viên và Quản trị viên quản lý lớp học phần, gán sinh viên, import danh sách lớp từ Excel và tra cứu thông tin lớp")
+@Tag(name = "16a. Quản lý Lớp học phần (Course Classes)", description = "Các API dành cho Giảng viên và Quản trị viên quản lý lớp học phần, gán sinh viên, import danh sách lớp từ Excel và tra cứu thông tin lớp")
 @RestController
 @RequestMapping("/lecturer/course-classes")
 @RequiredArgsConstructor

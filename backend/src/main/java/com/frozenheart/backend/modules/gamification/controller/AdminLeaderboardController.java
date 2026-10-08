@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "20. Gamification & Minigames", description = "Các API trò chơi dự đoán học thuật (Game 1, 2, 4, 5, 6), điểm danh hàng ngày và Bảng xếp hạng vinh danh")
+@Tag(name = "21. Gamification & Minigames", description = "Các API trò chơi dự đoán học thuật (Game 1, 2, 4, 5, 6), điểm danh hàng ngày và Bảng xếp hạng vinh danh")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/admin/leaderboards")

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/blocks")
 @RequiredArgsConstructor
-@Tag(name = "08. Quan hệ - Chặn (Blocks)", description = "Các API chặn, bỏ chặn người dùng và xem danh sách những tài khoản đang bị chặn")
+@Tag(name = "09. Quan hệ - Chặn (Blocks)", description = "Các API chặn, bỏ chặn người dùng và xem danh sách những tài khoản đang bị chặn")
 public class BlockController {
 
     private final BlockService blockService;

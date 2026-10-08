@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping
 @RequiredArgsConstructor
-@Tag(name = "10. Trò chuyện - Tin nhắn (Messages)", description = "Các API đọc lịch sử tin nhắn, tự động cập nhật biên nhận đã đọc (Read Receipt) và thu hồi tin nhắn (ME vs EVERYONE)")
+@Tag(name = "11. Trò chuyện - Tin nhắn (Messages)", description = "Các API đọc lịch sử tin nhắn, tự động cập nhật biên nhận đã đọc (Read Receipt) và thu hồi tin nhắn (ME vs EVERYONE)")
 public class MessageController {
 
     private final MessageService messageService;
