@@ -171,6 +171,17 @@ public class GamificationController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
+    @Operation(summary = "Lấy trạng thái điểm danh hôm nay của người dùng", description = "Kiểm tra xem người dùng hiện tại đã điểm danh hôm nay chưa và số ngày chuỗi liên tiếp (Streak).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lấy trạng thái điểm danh thành công"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng")
+    })
+    @GetMapping("/games/check-in")
+    public ResponseEntity<GlobalResponse<CheckInStatusResponse>> getCheckInStatus() {
+        CheckInStatusResponse response = gamificationService.getCheckInStatus();
+        return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
     @Operation(summary = "Điểm danh chuyên cần hàng ngày", description = "Điểm danh hàng ngày nhận ngay +1 Xu 🪙 và tích lũy chuỗi ngày liên tiếp (Streak) để thăng hạng và nhận huy hiệu.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Điểm danh thành công"),

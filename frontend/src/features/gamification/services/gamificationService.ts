@@ -4,6 +4,7 @@ import type {
   LeaderboardResponse,
   LeaderboardPeriod,
   CheckInResponse,
+  CheckInStatusResponse,
   RebuildLeaderboardRequest,
   BadgeResponseDto,
   UserBadgeResponseDto,
@@ -58,6 +59,14 @@ export const gamificationService = {
    */
   checkInDaily: async (): Promise<GlobalResponse<CheckInResponse>> => {
     return (await axiosClient.post<GlobalResponse<CheckInResponse>>('/games/check-in')) as any;
+  },
+
+  /**
+   * 23.12 Lấy trạng thái điểm danh hôm nay của người dùng
+   * GET /api/v1/games/check-in
+   */
+  getCheckInStatus: async (): Promise<GlobalResponse<CheckInStatusResponse>> => {
+    return (await axiosClient.get<GlobalResponse<CheckInStatusResponse>>('/games/check-in')) as any;
   },
 
   /**

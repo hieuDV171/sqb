@@ -38,4 +38,6 @@ public interface GamificationService {
 
     CheckInResponse checkInDaily();
 
+    CheckInStatusResponse getCheckInStatus();
+
 }

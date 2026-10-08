@@ -1407,6 +1407,53 @@ public class GamificationServiceImpl implements GamificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public CheckInStatusResponse getCheckInStatus() {
+        Long userId = JwtPayload.getCurrentUserPayload().getUserId();
+
+        UserProfile profile = userProfileRepository.findByUserIdWithUser(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        String tz = (profile.getTimezone() != null && !profile.getTimezone().isBlank())
+                ? profile.getTimezone() : Time.DEFAULT_TIMEZONE;
+        ZoneId userZone;
+        try {
+            userZone = ZoneId.of(tz);
+        } catch (Exception e) {
+            userZone = ZoneId.of(Time.DEFAULT_TIMEZONE);
+        }
+        LocalDate today = LocalDate.now(userZone);
+
+        UserGamification gamification = userGamificationRepository.findById(userId)
+                .orElse(null);
+
+        if (gamification == null) {
+            return CheckInStatusResponse.builder()
+                    .currentStreak(0)
+                    .hasCheckedInToday(false)
+                    .lastCheckInDate(null)
+                    .today(today)
+                    .build();
+        }
+
+        LocalDate lastCheckIn = gamification.getLastCheckInDate();
+        boolean hasCheckedInToday = lastCheckIn != null && lastCheckIn.equals(today);
+
+        // Chuỗi streak hợp lệ: nếu hôm nay chưa điểm danh và ngày điểm danh cuối trước ngày hôm qua => streak đã bị đứt
+        int validStreak = gamification.getCurrentStreak();
+        if (lastCheckIn != null && !hasCheckedInToday && !lastCheckIn.equals(today.minusDays(1))) {
+            validStreak = 0;
+        }
+
+        return CheckInStatusResponse.builder()
+                .currentStreak(validStreak)
+                .hasCheckedInToday(hasCheckedInToday)
+                .lastCheckInDate(lastCheckIn)
+                .today(today)
+                .build();
+    }
+
+    @Override
     @Transactional
     public void publishMonthlyLeaderboardHonorPost() {
         Semester current = currentSemesterHolder.getCurrentSemester();

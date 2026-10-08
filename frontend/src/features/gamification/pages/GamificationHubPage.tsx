@@ -8,7 +8,7 @@ import { PredictionArenaTab } from '../components/PredictionArenaTab';
 import { BadgesTab } from '../components/BadgesTab';
 import { ErrorHunterTab } from '../components/ErrorHunterTab';
 import { useGamificationStore, type GamificationTab } from '../stores/useGamificationStore';
-import { useShop, useLeaderboard } from '../hooks/useGamification';
+import { useShop, useLeaderboard, useCheckInStatus } from '../hooks/useGamification';
 
 interface GamificationHubPageProps {
   initialTab?: GamificationTab;
@@ -18,7 +18,7 @@ const VALID_TABS: GamificationTab[] = ['leaderboard', 'shop', 'predictions', 'ba
 
 export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeTab, setActiveTab, currentStreak, hasCheckedInToday } = useGamificationStore();
+  const { activeTab, setActiveTab } = useGamificationStore();
 
   // Xác định tab hiện tại: Ưu tiên query param trên URL -> initialTab -> fallback 'leaderboard'
   const tabParam = searchParams.get('tab') as GamificationTab | null;
@@ -44,11 +44,14 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
     setSearchParams({ tab }, { replace: true });
   };
 
-  // Fetch quick user gamification data (coins from shop endpoint, myRank from leaderboard)
+  // Fetch quick user gamification data (coins from shop endpoint, myRank from leaderboard, check-in status from DB)
   const { data: shopData } = useShop({ limit: 1 });
   const { data: leaderboardData } = useLeaderboard({ limit: 1 });
+  const { data: checkInStatus } = useCheckInStatus();
 
   const userCoins = shopData?.userPoints ?? leaderboardData?.myRank?.totalPoints ?? 0;
+  const currentStreak = checkInStatus?.currentStreak ?? 0;
+  const hasCheckedInToday = checkInStatus?.hasCheckedInToday ?? false;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-16">

@@ -41,6 +41,13 @@ export interface CheckInResponse {
   message: string;
 }
 
+export interface CheckInStatusResponse {
+  currentStreak: number;
+  hasCheckedInToday: boolean;
+  lastCheckInDate?: string;
+  today: string;
+}
+
 export interface RebuildLeaderboardRequest {
   type: string;
   subjectId?: number;

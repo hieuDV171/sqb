@@ -14,7 +14,6 @@ import type {
   ReviewErrorRequest,
 } from '../types/gamification.types';
 import { toast } from '@/stores/useToastStore';
-import { useGamificationStore } from '../stores/useGamificationStore';
 
 export const GAMIFICATION_KEYS = {
   all: ['gamification'] as const,
@@ -30,11 +29,23 @@ export const GAMIFICATION_KEYS = {
   game1Classes: () => [...GAMIFICATION_KEYS.all, 'game1', 'classes'] as const,
   activeGame6: () => [...GAMIFICATION_KEYS.all, 'game6', 'active'] as const,
   myPredictions: () => [...GAMIFICATION_KEYS.all, 'my-predictions'] as const,
+  checkInStatus: () => [...GAMIFICATION_KEYS.all, 'check-in-status'] as const,
 };
 
 // ==========================================
 // 1. LEADERBOARD & CHECK-IN
 // ==========================================
+
+export function useCheckInStatus() {
+  return useQuery({
+    queryKey: GAMIFICATION_KEYS.checkInStatus(),
+    queryFn: async () => {
+      const res = await gamificationService.getCheckInStatus();
+      return res.data;
+    },
+    staleTime: 60 * 1000,
+  });
+}
 
 export function useLeaderboard(params?: {
   period?: LeaderboardPeriod;
@@ -56,18 +67,15 @@ export function useLeaderboard(params?: {
 
 export function useDailyCheckIn() {
   const queryClient = useQueryClient();
-  const { setCheckInResult } = useGamificationStore();
 
   return useMutation({
     mutationFn: () => gamificationService.checkInDaily(),
     onSuccess: (res) => {
-      if (res.data) {
-        setCheckInResult(res.data.currentStreak, res.data.checkInDate);
-      }
       toast.success(
         res.data?.message ||
           `Điểm danh thành công! +${res.data?.coinEarned} xu. Streak: ${res.data?.currentStreak} ngày.`
       );
+      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.checkInStatus() });
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.myBadges() });
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.shop() });
