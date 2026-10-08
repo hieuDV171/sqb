@@ -157,7 +157,7 @@ public class GamificationController {
             @RequestParam(defaultValue = "SEMESTER") LeaderboardPeriod period,
 
             @Parameter(description = "ID môn học (bắt buộc nếu period = SUBJECT)", example = "10")
-            @RequestParam(required = false) Long subjectId,
+            @RequestParam(required = false, name = "subject_id") Long subjectId,
 
             @Parameter(description = "Cursor phân trang sau", example = "20")
             @RequestParam(required = false) Long after,

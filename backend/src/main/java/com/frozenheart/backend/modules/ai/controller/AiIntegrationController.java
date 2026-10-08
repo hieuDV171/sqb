@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
+import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.modules.ai.dto.AiApplyRequest;
 import com.frozenheart.backend.modules.ai.dto.AiApplyResponse;
 import com.frozenheart.backend.modules.ai.dto.AiChatHistoryResponse;
@@ -68,9 +70,15 @@ public class AiIntegrationController {
     @ApiResponse(responseCode = "200", description = "Lấy lịch sử hội thoại AI thành công")
     @GetMapping("/admin/ai/chat/history")
     public ResponseEntity<GlobalResponse<CursorResponse<AiChatHistoryResponse>>> getChatHistory(
-            @Parameter(description = "Mã định danh phiên chat", example = "session_a1b2c3d4") @RequestParam String sessionId,
-            @Parameter(description = "Con trỏ phân trang (ID tin nhắn)") @RequestParam(required = false) Long after,
-            @Parameter(description = "Số lượng tin nhắn trả về mỗi trang", example = "20") @RequestParam(required = false, defaultValue = "20") int limit
+            @Parameter(description = "Mã định danh phiên chat", example = "session_a1b2c3d4")
+            @RequestParam(name = "session_id", required = false)
+            String sessionId,
+            @Parameter(description = "Con trỏ phân trang (ID tin nhắn)")
+            @RequestParam(required = false)
+            Long after,
+            @Parameter(description = "Số lượng tin nhắn trả về mỗi trang", example = "20")
+            @RequestParam(required = false, defaultValue = "20")
+            int limit
     ) {
         CursorResponse<AiChatHistoryResponse> history = aiIntegrationService.getChatHistory(sessionId, after, limit);
         return ResponseEntity.ok(GlobalResponse.success("Lấy lịch sử hội thoại AI thành công", history));

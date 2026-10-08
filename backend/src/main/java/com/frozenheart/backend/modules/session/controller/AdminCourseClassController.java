@@ -37,7 +37,7 @@ public class AdminCourseClassController {
             @Parameter(description = "File bảng điểm danh sinh viên Excel (.xlsx, .xls)", required = true)
             @RequestParam("file") MultipartFile file,
             @Parameter(description = "ID giảng viên phụ trách chỉ định (tùy chọn)", example = "2")
-            @RequestParam(value = "lecturerId", required = false) Long lecturerId) {
+            @RequestParam(value = "lecturer_id", required = false) Long lecturerId) {
 
         ExcelImportClassResult response = courseClassManagementService.importAndEnrollFromExcel(file, lecturerId);
         return ResponseEntity.ok(GlobalResponse.success(response));

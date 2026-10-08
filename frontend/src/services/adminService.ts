@@ -32,7 +32,7 @@ export const adminService = {
     const formData = new FormData();
     formData.append('file', file);
     if (lecturerId) {
-      formData.append('lecturerId', lecturerId.toString());
+      formData.append('lecturer_id', lecturerId.toString());
     }
 
     return (await axiosClient.post<GlobalResponse<ExcelImportClassResult>>(

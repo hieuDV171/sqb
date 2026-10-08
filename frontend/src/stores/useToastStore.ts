@@ -23,8 +23,9 @@ export const useToastStore = create<ToastStore>((set) => ({
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const duration = item.duration ?? 4000;
 
-    set((state) => ({
-      toasts: [...state.toasts, { ...item, id, duration }],
+    // Khi thông báo mới xuất hiện thì thông báo trước đó kết thúc ngay lập tức
+    set(() => ({
+      toasts: [{ ...item, id, duration }],
     }));
 
     if (duration > 0) {
