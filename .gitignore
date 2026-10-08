@@ -6,5 +6,6 @@
 *.log
 .agents
 AGENTS.md
+BACKEND_API_SPECIFICATION.md
 TASK_TRACKER.md
 /design-system
