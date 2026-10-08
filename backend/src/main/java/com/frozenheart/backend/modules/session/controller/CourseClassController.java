@@ -10,11 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 
 @Tag(name = "15. Quản lý Lớp học phần (Course Classes)", description = "Các API dành cho Giảng viên và Quản trị viên quản lý lớp học phần, gán sinh viên, import danh sách lớp từ Excel và tra cứu thông tin lớp")
@@ -105,24 +102,7 @@ public class CourseClassController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Import lớp học phần và sinh viên từ file Excel", description = "Quy trình import 2 giai đoạn: Tự động bóc tách mã lớp, mã môn, tự tạo tài khoản sinh viên mới nếu chưa có trong hệ thống, và ghi danh vào lớp học phần tương ứng trong học kỳ đang mở.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Import file Excel thành công"),
-            @ApiResponse(responseCode = "400", description = "File không có dữ liệu sinh viên, thiếu mã lớp/mã môn, học kỳ trong Excel không khớp học kỳ active, hoặc không có học kỳ nào active (INVALID_PARAMETER_VALUE / NO_ACTIVE_SEMESTER)"),
-            @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy môn học theo mã môn bóc tách từ Excel (SUBJECT_NOT_FOUND)")
-    })
-    @PostMapping(value = "/import-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<GlobalResponse<ExcelImportClassResult>> importCourseClassFromExcel(
-            @Parameter(description = "File bảng điểm danh sinh viên Excel (.xlsx, .xls)", required = true)
-            @RequestParam("file") MultipartFile file,
-            @Parameter(description = "ID giảng viên phụ trách chỉ định (tùy chọn, mặc định lấy người đăng nhập)", example = "2")
-            @RequestParam(value = "lecturerId", required = false) Long lecturerId) {
-        ExcelImportClassResult response = courseClassManagementService.importAndEnrollFromExcel(file, lecturerId);
-        return ResponseEntity.ok(GlobalResponse.success(response));
-    }
-
-    @Operation(summary = "Lấy danh sách tất cả giảng viên đang hoạt động", description = "Phục vụ cho dropdown chọn giảng viên phụ trách lớp học phần khi tạo lớp hoặc import Excel.")
+    @Operation(summary = "Lấy danh sách tất cả giảng viên đang hoạt động", description = "Phục vụ cho dropdown chọn giảng viên phụ trách lớp học phần khi tạo lớp.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách giảng viên thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")

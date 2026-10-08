@@ -36,7 +36,7 @@ export const adminService = {
     }
 
     return (await axiosClient.post<GlobalResponse<ExcelImportClassResult>>(
-      '/lecturer/course-classes/import-excel',
+      '/admin/course-classes/import-excel',
       formData,
       {
         headers: {

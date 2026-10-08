@@ -329,6 +329,10 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         Long currentUserId = payload.getUserId();
         String currentRole = payload.getRole();
 
+        if (!UserRole.ADMIN.name().equals(currentRole)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ ADMIN mới có quyền");
+        }
+
         // 1. Phân tích cú pháp file Excel
         ExcelParsedClassData parsedData = excelParserService.parseCourseClassExcel(file);
         List<ExcelStudentRow> studentRows = parsedData.students();

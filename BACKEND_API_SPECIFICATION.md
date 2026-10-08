@@ -32,7 +32,8 @@ Hệ thống cung cấp **129 REST HTTP Endpoints**, **1 Spring Error Dispatcher
 |      15       | [Ngân hàng câu hỏi - Phiên đề xuất (Submissions)](#15-ngân-hàng-câu-hỏi---phiên-đề-xuất-submissions)  |          6           | [SessionController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/SessionController.java)                         |
 |      16       | [Duyệt & Biên tập câu hỏi (Question Review)](#16-duyệt--biên-tập-câu-hỏi-question-review)             |          6           | [QuestionReviewController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/QuestionReviewController.java)           |
 |      17       | [Luyện tập & Đánh giá câu hỏi (Question Practice)](#17-luyện-tập--đánh-giá-câu-hỏi-question-practice) |          5           | [QuestionInteractionController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/QuestionInteractionController.java) |
-|      18       | [Quản lý Lớp học phần (Course Classes)](#18-quản-lý-lớp-học-phần-course-classes)                      |          7           | [CourseClassController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/CourseClassController.java)                 |
+|      18       | [Quản lý Lớp học phần (Course Classes)](#18-quản-lý-lớp-học-phần-course-classes)                      |          6           | [CourseClassController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/CourseClassController.java)                 |
+|      18b      | [Quản trị Lớp học phần (Admin Course Classes)](#18b-quản-trị-lớp-học-phần-admin-course-classes)        |          1           | [AdminCourseClassController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminCourseClassController.java)       |
 |      19a      | [Quản trị Môn học (Admin Subjects)](#19-quản-trị-môn-học-admin-subjects)                              |          1           | [AdminSubjectController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminSubjectController.java)               |
 |      19b      | [Danh mục Môn học (Subjects Catalog)](#19b-danh-mục-môn-học-subjects-catalog)                         |          1           | [SubjectController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/SubjectController.java)                           |
 |      20       | [Quản trị Học kỳ (Admin Semesters)](#20-quản-trị-học-kỳ-admin-semesters)                              |          4           | [AdminSemesterController.java](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminSemesterController.java)             |
@@ -899,16 +900,7 @@ Phụ trách bởi Controller: [`CourseClassController`](file:///c:/Users/ADMIN/
 - **Path Variables:** `courseClassId` (Long)
 - **Response Data:** `GlobalResponse<List<ClassStudentResponse>>`
 
-### 18.7. Import danh sách lớp và sinh viên từ file Excel
-- **Method & URL:** `POST /api/v1/lecturer/course-classes/import-excel`
-- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts#L16-L35)
-- **Content-Type:** `multipart/form-data`
-- **Form Data Parameters:**
-  - `file` (MultipartFile): Tệp tin Excel (.xlsx) chứa danh sách sinh viên.
-  - `lecturerId` (Long, optional): ID giảng viên phân công.
-- **Response Data (`ExcelImportClassResult`):** Số lượng bản ghi thêm thành công và cảnh báo.
-
-### 18.8. Lấy danh sách giảng viên đang hoạt động trong hệ thống
+### 18.7. Lấy danh sách giảng viên đang hoạt động trong hệ thống
 - **Method & URL:** `GET /api/v1/lecturer/course-classes/lecturers`
 - **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts)
 - **Response Data (`List<LecturerSummaryResponse>`):**
@@ -917,6 +909,23 @@ Phụ trách bởi Controller: [`CourseClassController`](file:///c:/Users/ADMIN/
   - `email` (String): Email
   - `studentLecturerCode` (String): Mã cán bộ giảng viên
   - `schoolFaculty` (String): Khoa / Viện trực thuộc
+
+---
+
+## 18b. Quản trị Lớp học phần (Admin Course Classes)
+Phụ trách bởi Controller: [`AdminCourseClassController`](file:///c:/Users/ADMIN/IdeaProjects/sqb/backend/src/main/java/com/frozenheart/backend/modules/session/controller/AdminCourseClassController.java)  
+Đường dẫn gốc: `/api/v1/admin/course-classes`  
+**Yêu cầu quyền hạn:** Quản trị viên (`ROLE_ADMIN`)
+
+### 18b.1. Import danh sách lớp và sinh viên từ file Excel
+- **Method & URL:** `POST /api/v1/admin/course-classes/import-excel`
+- **Frontend Client:** ✅ [`adminService.ts`](file:///c:/Users/ADMIN/IdeaProjects/sqb/frontend/src/services/adminService.ts#L28-L47) (`importExcelCourseClass`)
+- **Content-Type:** `multipart/form-data`
+- **Form Data Parameters:**
+  - `file` (MultipartFile): Tệp tin Excel (.xlsx) chứa danh sách sinh viên.
+  - `lecturerId` (Long, optional): ID giảng viên phân công.
+- **Mô tả:** Quy trình import 2 giai đoạn dành cho Admin: Tự động bóc tách mã lớp, mã môn, tự động tạo tài khoản sinh viên mới (Role STUDENT, verified = true) và ghi danh vào lớp học phần tương ứng trong học kỳ đang mở.
+- **Response Data (`ExcelImportClassResult`):** Số lượng bản ghi thêm thành công và cảnh báo.
 
 ---
 
