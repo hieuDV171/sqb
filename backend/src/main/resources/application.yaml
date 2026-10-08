@@ -41,7 +41,7 @@ spring:
         enabled: false
 
   mail:
-    host: smtp.gmail.com
+    host: mail.hieudv.id.vn
     port: 587
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
@@ -62,6 +62,7 @@ spring:
 
 server:
   port: 8080
+  forward-headers-strategy: framework
   servlet:
     context-path: /api/v1
 
@@ -81,6 +82,7 @@ r2:
 
 app:
   admin:
+    username: ${ADMIN_USERNAME}
     password: ${ADMIN_PASSWORD}
   security:
     default-user-password: ${DEFAULT_USER_PASSWORD}

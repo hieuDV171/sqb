@@ -54,24 +54,40 @@ class StompManager {
       return;
     }
 
-    if (this.client && (this.status === 'CONNECTED' || this.status === 'CONNECTING')) {
+    if (this.client && this.status === 'CONNECTED') {
       return;
+    }
+
+    // Nếu client cũ đang chạy nhưng chưa connected (có thể đang kẹt reconnect hoặc lỗi), dọn dẹp trước
+    if (this.client) {
+      try {
+        this.client.deactivate();
+      } catch (e) {
+        console.error('[StompManager] Error deactivating stale client:', e);
+      }
+      this.client = null;
     }
 
     this.setStatus('CONNECTING');
 
     this.client = new Client({
       webSocketFactory: () => new SockJS(this.socketUrl),
+      beforeConnect: () => {
+        const latestToken = useAuthStore.getState().accessToken;
+        if (this.client && latestToken) {
+          this.client.connectHeaders = {
+            Authorization: `Bearer ${latestToken}`,
+          };
+        }
+      },
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
-      debug: (_msg: string) => {
-        if (import.meta.env.DEV) {
-          // console.debug('[STOMP Debug]:', _msg);
-        }
+      debug: (msg: string) => {
+        console.log('[STOMP Debug]:', msg);
       },
       onConnect: () => {
         console.log('[StompManager] Connected to STOMP broker at', this.socketUrl);
@@ -82,8 +98,19 @@ class StompManager {
         this.setStatus('DISCONNECTED');
       },
       onStompError: (frame) => {
-        console.error('[StompManager] Broker error:', frame.headers['message'], frame.body);
+        const errorMsg = frame.headers['message'] || '';
+        console.error('[StompManager] Broker error:', errorMsg, frame.body);
         this.setStatus('ERROR');
+
+        // Nếu là lỗi xác thực (Token hết hạn / không hợp lệ), ngắt kết nối ngay để tránh reconnect loop vô tận
+        if (
+          errorMsg.toLowerCase().includes('unauthorized') ||
+          errorMsg.toLowerCase().includes('jwt') ||
+          errorMsg.toLowerCase().includes('expired')
+        ) {
+          console.warn('[StompManager] Token authentication failed. Stopping reconnect loop.');
+          this.disconnect();
+        }
       },
       onWebSocketClose: () => {
         if (this.status !== 'DISCONNECTED') {
@@ -151,6 +178,13 @@ class StompManager {
 }
 
 export const stompClient = new StompManager();
+
+// Tự động ngắt kết nối WebSocket STOMP khi người dùng đăng xuất (isAuthenticated = false)
+useAuthStore.subscribe((state) => {
+  if (!state.isAuthenticated && stompClient.getStatus() !== 'DISCONNECTED') {
+    stompClient.disconnect();
+  }
+});
 
 /**
  * React Hook theo dõi trạng thái kết nối STOMP

@@ -28,7 +28,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
 
     return () => {
-      // Dọn dẹp khi unmount toàn bộ layout
+      stompClient.disconnect();
     };
   }, [isAuthenticated]);
 

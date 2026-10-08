@@ -41,7 +41,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private final BadgeRepository badgeRepository;
 
-    @Value("${spring.mail.username}")
+    @Value("${app.admin.username}")
     private String adminEmail;
 
     @Value("${app.admin.password}")

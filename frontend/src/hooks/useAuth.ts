@@ -5,6 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { LoginRequest } from '@/types/auth.types';
 import { authService } from '@/services/authService';
 
+import { stompClient } from '@/lib/stompClient';
+
 export function useAuth() {
 
     const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +63,7 @@ export function useAuth() {
         } catch (e) {
             console.error('Logout error', e);
         } finally {
+            stompClient.disconnect();
             logoutStore();
             queryClient.clear();
             navigate('/login');
