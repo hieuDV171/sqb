@@ -20,11 +20,10 @@ export const sessionService = {
   proposeSession: async (
     data: ProposeSessionRequest
   ): Promise<GlobalResponse<ProposeSessionResponse>> => {
-    const response = await axiosClient.post<GlobalResponse<ProposeSessionResponse>>(
+    return (await axiosClient.post<GlobalResponse<ProposeSessionResponse>>(
       '/sessions/propose',
       data
-    );
-    return response.data;
+    )) as any;
   },
 
   /**
@@ -32,8 +31,7 @@ export const sessionService = {
    * GET /api/v1/subjects
    */
   getAllSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
-    const response = await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects');
-    return response.data;
+    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects')) as any;
   },
 
   /**
@@ -41,10 +39,9 @@ export const sessionService = {
    * GET /api/v1/sessions/my-enrolled-subjects
    */
   getMyEnrolledSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
-    const response = await axiosClient.get<GlobalResponse<SubjectResponse[]>>(
+    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>(
       '/sessions/my-enrolled-subjects'
-    );
-    return response.data;
+    )) as any;
   },
 
   /**
@@ -55,7 +52,7 @@ export const sessionService = {
   getMySubmissions: async (
     params?: GetMySubmissionsParams
   ): Promise<GlobalResponse<SubmissionsResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<SubmissionsResponse>>(
+    return (await axiosClient.get<GlobalResponse<SubmissionsResponse>>(
       '/sessions/my-submissions',
       {
         params: {
@@ -65,8 +62,7 @@ export const sessionService = {
           status: params?.status,
         },
       }
-    );
-    return response.data;
+    )) as any;
   },
 
   /**
@@ -76,10 +72,9 @@ export const sessionService = {
   getMySubmissionDetail: async (
     sessionId: number
   ): Promise<GlobalResponse<MySubmissionDetailResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<MySubmissionDetailResponse>>(
+    return (await axiosClient.get<GlobalResponse<MySubmissionDetailResponse>>(
       `/sessions/my-submissions/${sessionId}`
-    );
-    return response.data;
+    )) as any;
   },
 
   /**
@@ -90,11 +85,10 @@ export const sessionService = {
     sessionId: number,
     data: UpdateSubmissionSessionRequest
   ): Promise<GlobalResponse<void>> => {
-    const response = await axiosClient.put<GlobalResponse<void>>(
+    return (await axiosClient.put<GlobalResponse<void>>(
       `/sessions/my-submissions/${sessionId}`,
       data
-    );
-    return response.data;
+    )) as any;
   },
 
   /**
@@ -104,10 +98,9 @@ export const sessionService = {
   deleteSubmission: async (
     sessionId: number
   ): Promise<GlobalResponse<void>> => {
-    const response = await axiosClient.delete<GlobalResponse<void>>(
+    return (await axiosClient.delete<GlobalResponse<void>>(
       `/sessions/my-submissions/${sessionId}`
-    );
-    return response.data;
+    )) as any;
   },
 
   /**
@@ -117,10 +110,9 @@ export const sessionService = {
   predictGame2: async (
     data: Game2PredictionRequest
   ): Promise<GlobalResponse<GamePredictionResponse>> => {
-    const response = await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
+    return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/approved-questions',
       data
-    );
-    return response.data;
+    )) as any;
   },
 };

@@ -168,11 +168,11 @@ export const adminService = {
   },
 
   /**
-   * Lấy danh sách tất cả môn học (admin)
+   * Lấy danh sách tất cả môn học (danh mục dùng chung toàn trường)
    */
   getAllSubjects: async (): Promise<GlobalResponse<AdminSubjectResponse[]>> => {
     return (await axiosClient.get<GlobalResponse<AdminSubjectResponse[]>>(
-      '/admin/subjects'
+      '/subjects'
     )) as any;
   },
 };

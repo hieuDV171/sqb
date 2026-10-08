@@ -73,9 +73,11 @@ export const CreatePostBox: React.FC = () => {
 
           // 3. Nếu là Admin, lấy tất cả môn học trong hệ thống
           if (user?.role === 'ADMIN') {
-            const adminRes = await axiosClient.get<any>('/admin/subjects');
+            const adminRes = await axiosClient.get<any>('/subjects');
             if (adminRes?.data?.data && Array.isArray(adminRes.data.data)) {
               setSubjects(adminRes.data.data);
+            } else if (adminRes?.data && Array.isArray(adminRes.data)) {
+              setSubjects(adminRes.data);
             }
           }
         } catch (err) {

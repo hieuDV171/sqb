@@ -23,9 +23,10 @@ export function LeaderboardTab() {
     let isMounted = true;
     const loadSubjects = async () => {
       try {
-        const res = await sessionService.getAllSubjects();
-        const list = res?.data || [];
-        if (isMounted && Array.isArray(list)) {
+        const res: any = await sessionService.getAllSubjects();
+        const rawList = Array.isArray(res) ? res : res?.data;
+        const list = Array.isArray(rawList) ? rawList : [];
+        if (isMounted) {
           const mapped = list.map((s: any) => ({
             id: s.id || s.subjectId,
             code: s.code || s.subjectCode,
@@ -128,7 +129,7 @@ export function LeaderboardTab() {
               <div className="absolute top-full left-0 right-0 mt-1 z-30 max-h-56 overflow-y-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-1 space-y-0.5">
                 {subjects.length === 0 ? (
                   <div className="px-3 py-3 text-center text-xs text-slate-400">
-                    Bạn chưa tham gia lớp học phần nào
+                    Chưa có môn học nào trong hệ thống
                   </div>
                 ) : (
                   subjects.map((sub) => (

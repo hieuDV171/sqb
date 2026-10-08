@@ -1371,7 +1371,8 @@ public class GamificationServiceImpl implements GamificationService {
             currentStreak = 1;
         }
 
-        double coinEarned = 1.0;
+        // Thưởng điểm danh: Mốc chu kỳ 7 ngày nhận 5 xu, các ngày bình thường nhận 1 xu
+        double coinEarned = (currentStreak % 7 == 0) ? 5.0 : 1.0;
         gamification.setCurrentStreak(currentStreak);
         gamification.setLastCheckInDate(today);
         gamification.setCoinBalance(gamification.getCoinBalance() + coinEarned);
@@ -1385,7 +1386,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .amount(coinEarned)
                 .balanceAfter(gamification.getCoinBalance())
                 .type(CoinTransactionType.DAILY_CHECK_IN)
-                .description("Điểm danh hàng ngày: +" + coinEarned + " xu (Chuỗi " + currentStreak + " ngày)")
+                .description("Điểm danh hàng ngày: +" + (long) coinEarned + " xu (Chuỗi " + currentStreak + " ngày)")
                 .targetType(CoinTransactionTargetType.DAILY_CHECK_IN)
                 .targetId(null)
                 .createdAt(Instant.now())
@@ -1400,7 +1401,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .currentCoinBalance(gamification.getCoinBalance())
                 .currentStreak(currentStreak)
                 .checkInDate(today)
-                .message("Điểm danh thành công! Bạn nhận được +" + coinEarned + " coin. Chuỗi hiện tại: "
+                .message("Điểm danh thành công! Bạn nhận được +" + (long) coinEarned + " xu SQB. Chuỗi hiện tại: "
                         + currentStreak + " ngày.")
                 .build();
     }

@@ -49,9 +49,11 @@ export const PendingReviewsPage: React.FC = () => {
         }
 
         if (user?.role === 'ADMIN') {
-          const adminRes = await axiosClient.get<any>('/admin/subjects');
+          const adminRes = await axiosClient.get<any>('/subjects');
           if (adminRes?.data?.data && Array.isArray(adminRes.data.data)) {
             setSubjects(adminRes.data.data);
+          } else if (adminRes?.data && Array.isArray(adminRes.data)) {
+            setSubjects(adminRes.data);
           }
         }
       } catch (err) {

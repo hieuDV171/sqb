@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { GamificationHeader } from '../components/GamificationHeader';
 import { DailyCheckInModal } from '../components/DailyCheckInModal';
@@ -14,26 +14,35 @@ interface GamificationHubPageProps {
   initialTab?: GamificationTab;
 }
 
+const VALID_TABS: GamificationTab[] = ['leaderboard', 'shop', 'predictions', 'badges', 'error-hunter'];
+
 export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeTab, setActiveTab, currentStreak, hasCheckedInToday } = useGamificationStore();
 
-  // Sync tab with URL search parameter
-  useEffect(() => {
-    const tabParam = searchParams.get('tab') as GamificationTab | null;
-    if (tabParam && ['leaderboard', 'shop', 'predictions', 'badges', 'error-hunter'].includes(tabParam)) {
-      setActiveTab(tabParam);
-    } else if (initialTab) {
-      setActiveTab(initialTab);
+  // Xác định tab hiện tại: Ưu tiên query param trên URL -> initialTab -> fallback 'leaderboard'
+  const tabParam = searchParams.get('tab') as GamificationTab | null;
+  const currentTab: GamificationTab = useMemo(() => {
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      return tabParam;
     }
-  }, [searchParams, initialTab, setActiveTab]);
+    return initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'leaderboard';
+  }, [tabParam, initialTab]);
 
-  // Update URL when activeTab changes
+  // Đồng bộ trạng thái tab vào store và đảm bảo query param ?tab= luôn hiện diện
   useEffect(() => {
-    if (searchParams.get('tab') !== activeTab) {
-      setSearchParams({ tab: activeTab }, { replace: true });
+    if (activeTab !== currentTab) {
+      setActiveTab(currentTab);
     }
-  }, [activeTab, searchParams, setSearchParams]);
+    if (searchParams.get('tab') !== currentTab) {
+      setSearchParams({ tab: currentTab }, { replace: true });
+    }
+  }, [currentTab, activeTab, setActiveTab, searchParams, setSearchParams]);
+
+  const handleTabChange = (tab: GamificationTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
 
   // Fetch quick user gamification data (coins from shop endpoint, myRank from leaderboard)
   const { data: shopData } = useShop({ limit: 1 });
@@ -48,6 +57,8 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
         userCoins={userCoins}
         streakCount={currentStreak}
         hasCheckedInToday={hasCheckedInToday}
+        currentTab={currentTab}
+        onTabChange={handleTabChange}
       />
 
       {/* Daily Check-in Modal */}
@@ -58,11 +69,11 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
 
       {/* Main Tab Content */}
       <div className="pt-2">
-        {activeTab === 'leaderboard' && <LeaderboardTab />}
-        {activeTab === 'shop' && <ShopInventoryTab />}
-        {activeTab === 'predictions' && <PredictionArenaTab />}
-        {activeTab === 'badges' && <BadgesTab />}
-        {activeTab === 'error-hunter' && <ErrorHunterTab />}
+        {currentTab === 'leaderboard' && <LeaderboardTab />}
+        {currentTab === 'shop' && <ShopInventoryTab />}
+        {currentTab === 'predictions' && <PredictionArenaTab />}
+        {currentTab === 'badges' && <BadgesTab />}
+        {currentTab === 'error-hunter' && <ErrorHunterTab />}
       </div>
     </div>
   );

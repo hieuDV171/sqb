@@ -16,9 +16,9 @@ interface GamificationState {
 export const useGamificationStore = create<GamificationState>()(
   persist(
     (set, get) => ({
-      coins: 320, // Số dư xu khởi tạo mặc định cho demo sinh viên
-      points: 1450, // Điểm cống hiến tích lũy
-      unreadNotifications: 3,
+      coins: 0, // Số dư xu
+      points: 0, // Điểm cống hiến tích lũy
+      unreadNotifications: 0,
 
       addCoins: (amount) => set((state) => ({ coins: state.coins + amount })),
       

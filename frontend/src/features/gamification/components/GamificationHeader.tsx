@@ -6,14 +6,19 @@ interface GamificationHeaderProps {
   userCoins?: number;
   streakCount?: number;
   hasCheckedInToday?: boolean;
+  currentTab?: GamificationTab;
+  onTabChange?: (tab: GamificationTab) => void;
 }
 
 export function GamificationHeader({
   userCoins = 0,
   streakCount = 0,
   hasCheckedInToday = false,
+  currentTab,
+  onTabChange,
 }: GamificationHeaderProps) {
   const { activeTab, setActiveTab, setCheckInModalOpen } = useGamificationStore();
+  const selectedTab = currentTab ?? activeTab;
 
   const navTabs: { id: GamificationTab; label: string; icon: typeof Trophy; badge?: string }[] = [
     { id: 'leaderboard', label: 'Bảng Xếp Hạng', icon: Trophy },
@@ -102,7 +107,7 @@ export function GamificationHeader({
                 <>
                   <Flame className="w-4 h-4 fill-indigo-950" />
                   <span className="flex items-center gap-1.5">
-                    <span>Điểm Danh Ngay (+1 xu SQB</span>
+                    <span>Điểm Danh Ngay (+{(streakCount + 1) % 7 === 0 ? '5' : '1'} xu SQB</span>
                     <SqbCoin className="w-4 h-4" />
                     <span>)</span>
                   </span>
@@ -117,12 +122,15 @@ export function GamificationHeader({
       <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto scrollbar-none">
         {navTabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+          const isActive = selectedTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                onTabChange?.(tab.id);
+              }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all duration-200 ${
                 isActive
                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'

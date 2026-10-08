@@ -238,7 +238,7 @@ export function DailyCheckInModal({
                   'Đang xác nhận...'
                 ) : (
                   <>
-                    <span>Điểm Danh Ngay (+1 xu SQB</span>
+                    <span>Điểm Danh Ngay (+{(currentStreak + 1) % 7 === 0 ? '5' : '1'} xu SQB</span>
                     <SqbCoin className="w-5 h-5" />
                     <span>)</span>
                   </>
