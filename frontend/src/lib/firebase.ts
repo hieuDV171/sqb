@@ -88,6 +88,21 @@ function bindFidLifecycleListeners(messaging: Messaging) {
 }
 
 /**
+ * Tạo URL Service Worker chứa các tham số cấu hình Firebase động qua Query String.
+ */
+function getFirebaseSwUrl(): string {
+  const params = new URLSearchParams({
+    apiKey: firebaseConfig.apiKey || '',
+    authDomain: firebaseConfig.authDomain || '',
+    projectId: firebaseConfig.projectId || '',
+    storageBucket: firebaseConfig.storageBucket || '',
+    messagingSenderId: firebaseConfig.messagingSenderId || '',
+    appId: firebaseConfig.appId || '',
+  });
+  return `/firebase-messaging-sw.js?${params.toString()}`;
+}
+
+/**
  * Xin quyền thông báo trình duyệt và đăng ký FID theo chuẩn mới register() & onRegistered()
  */
 export async function requestFid(): Promise<string | null> {
@@ -110,8 +125,9 @@ export async function requestFid(): Promise<string | null> {
     // Gắn listener onRegistered trước khi gọi register()
     bindFidLifecycleListeners(messaging);
 
-    // Đăng ký Service Worker
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+    // Đăng ký Service Worker với query params cấu hình động
+    const swUrl = getFirebaseSwUrl();
+    const registration = await navigator.serviceWorker.register(swUrl, {
       scope: '/',
     });
 

@@ -2,31 +2,38 @@
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
-// Initialize the Firebase app in the service worker
-firebase.initializeApp({
-  apiKey: "AIzaSyDpLnKruSFi5Wb9Zt1cE0RNSoFlD4eqjCk",
-  authDomain: "vanxuan-21496.firebaseapp.com",
-  projectId: "vanxuan-21496",
-  storageBucket: "vanxuan-21496.firebasestorage.app",
-  messagingSenderId: "978984558611",
-  appId: "1:978984558611:web:90adf7cd5fce8f925d5fe6",
-});
+// Parse Firebase config dynamically from Service Worker registration URL query parameters
+const params = new URLSearchParams(self.location.search);
 
-// Retrieve an instance of Firebase Messaging so that it can handle background messages
-const messaging = firebase.messaging();
+const firebaseConfig = {
+  apiKey: params.get('apiKey'),
+  authDomain: params.get('authDomain'),
+  projectId: params.get('projectId'),
+  storageBucket: params.get('storageBucket'),
+  messagingSenderId: params.get('messagingSenderId'),
+  appId: params.get('appId'),
+};
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message: ', payload);
-  
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'Thông báo mới từ SQB';
-  const notificationOptions = {
-    body: payload.notification?.body || payload.data?.body || '',
-    icon: '/favicon.svg',
-    data: payload.data,
-  };
+// Initialize the Firebase app in the service worker only if required parameters exist
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  firebase.initializeApp(firebaseConfig);
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+  // Retrieve an instance of Firebase Messaging so that it can handle background messages
+  const messaging = firebase.messaging();
+
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[firebase-messaging-sw.js] Received background message: ', payload);
+    
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'Thông báo mới từ SQB';
+    const notificationOptions = {
+      body: payload.notification?.body || payload.data?.body || '',
+      icon: '/favicon.svg',
+      data: payload.data,
+    };
+
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+}
 
 // Lắng nghe sự kiện người dùng bấm vào thông báo hệ thống
 self.addEventListener('notificationclick', (event) => {
