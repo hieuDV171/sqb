@@ -18,9 +18,6 @@ export function DailyCheckInModal({
   const checkInMutation = useDailyCheckIn();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // 7-day cycle calculations
-  const streakDayInCycle = currentStreak % 7 === 0 && currentStreak > 0 ? 7 : (currentStreak % 7);
-
   // Particle Confetti Launcher
   const triggerConfetti = () => {
     const canvas = canvasRef.current;
