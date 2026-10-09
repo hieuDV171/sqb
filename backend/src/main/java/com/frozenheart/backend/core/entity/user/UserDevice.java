@@ -23,7 +23,7 @@ public class UserDevice {
     private String deviceId;
 
     @Column(length = 500)
-    private String fcmToken;
+    private String fid;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 100)

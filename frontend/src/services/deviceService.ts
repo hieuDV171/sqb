@@ -14,4 +14,12 @@ export const deviceService = {
   deleteDevice: async (deviceId: string): Promise<GlobalResponse<void>> => {
     return (await axiosClient.delete<GlobalResponse<void>>(`/devices/${deviceId}`)) as any;
   },
+
+  unregisterFid: async (fid: string): Promise<GlobalResponse<void>> => {
+    return (await axiosClient.post<GlobalResponse<void>>('/devices/fid/unregister', { fid })) as any;
+  },
+
+  syncFid: async (fid: string): Promise<GlobalResponse<void>> => {
+    return (await axiosClient.post<GlobalResponse<void>>('/devices/fid', { fid })) as any;
+  },
 };

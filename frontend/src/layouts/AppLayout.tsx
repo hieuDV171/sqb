@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { stompClient } from '@/lib/stompClient';
+import { onForegroundMessage, syncCurrentFidIfAuthenticated } from '@/lib/firebase';
+import { toast } from '@/stores/useToastStore';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
@@ -29,6 +31,30 @@ export function AppLayout({ children }: AppLayoutProps) {
 
     return () => {
       stompClient.disconnect();
+    };
+  }, [isAuthenticated]);
+
+  // Đồng bộ FID và lắng nghe Push Notification Foreground khi đã xác thực
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // 1. Tự động đồng bộ FID nếu trình duyệt đã được cấp quyền trước đó
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      syncCurrentFidIfAuthenticated().catch(() => {});
+    }
+
+    // 2. Lắng nghe thông báo khi người dùng đang mở tab (Foreground Toast)
+    let unsubscribe: (() => void) | undefined;
+    onForegroundMessage((payload: any) => {
+      const title = payload?.notification?.title || payload?.data?.title || 'Thông báo mới từ SQB';
+      const body = payload?.notification?.body || payload?.data?.body || '';
+      toast.info(body || title, title);
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    }).catch(() => {});
+
+    return () => {
+      if (unsubscribe) unsubscribe();
     };
   }, [isAuthenticated]);
 

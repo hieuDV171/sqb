@@ -5,17 +5,22 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.modules.device.dto.DeviceListResponse;
 import com.frozenheart.backend.modules.device.service.DeviceService;
+import com.frozenheart.backend.modules.device.dto.SyncFidRequest;
+import com.frozenheart.backend.modules.device.dto.UnregisterFidRequest;
 
 import lombok.RequiredArgsConstructor;
 
@@ -67,6 +72,31 @@ public class DeviceController {
             @PathVariable String deviceId
     ) {
         deviceService.deleteDevice(deviceId);
+        return ResponseEntity.ok(GlobalResponse.success());
+    }
+
+    @Operation(summary = "Hủy đăng ký Firebase Installation ID (FID)", description = "Vô hiệu hóa thiết bị và xóa FID khi người dùng tắt quyền thông báo hoặc sự kiện onUnregistered xảy ra.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Hủy đăng ký FID thành công")
+    })
+    @PostMapping("/fid/unregister")
+    public ResponseEntity<GlobalResponse<Void>> unregisterFid(
+            @Valid @RequestBody UnregisterFidRequest request
+    ) {
+        deviceService.unregisterFid(request.fid());
+        return ResponseEntity.ok(GlobalResponse.success());
+    }
+
+    @Operation(summary = "Đồng bộ Firebase Installation ID (FID)", description = "Cập nhật hoặc liên kết FID mới cho thiết bị hiện tại của người dùng đang đăng nhập.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Đồng bộ FID thành công"),
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
+    })
+    @PostMapping("/fid")
+    public ResponseEntity<GlobalResponse<Void>> syncFid(
+            @Valid @RequestBody SyncFidRequest request
+    ) {
+        deviceService.syncFid(request.fid());
         return ResponseEntity.ok(GlobalResponse.success());
     }
 }

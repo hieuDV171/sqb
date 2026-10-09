@@ -18,6 +18,8 @@ public interface UserDeviceRepository extends JpaRepository<UserDevice, Long> {
 
     Optional<UserDevice> findByUserIdAndDeviceId(Long userId, String deviceId);
 
+    Optional<UserDevice> findByFid(String fid);
+
     @Query("SELECT ud FROM UserDevice ud JOIN FETCH ud.user WHERE ud.deviceId = :deviceId AND ud.isActive = true")
     List<UserDevice> findActiveDevicesByDeviceIdWithUser(@Param("deviceId") String deviceId);
 

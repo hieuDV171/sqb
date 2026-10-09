@@ -149,10 +149,15 @@ export function DailyCheckInModal({
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5">
           {Array.from({ length: 7 }, (_, i) => {
             const dayNum = i + 1;
-            const isDayPast = dayNum < streakDayInCycle || (dayNum === streakDayInCycle && hasCheckedInToday);
+            // Số ngày đã tích lũy hoàn tất trong chu kỳ 7 ngày hiện tại
+            const completedDaysInCycle = hasCheckedInToday
+              ? (currentStreak % 7 === 0 && currentStreak > 0 ? 7 : currentStreak % 7)
+              : (currentStreak % 7);
+
+            const isDayPast = dayNum <= completedDaysInCycle;
             const isDayToday = hasCheckedInToday
-              ? dayNum === streakDayInCycle
-              : dayNum === (streakDayInCycle + 1);
+              ? dayNum === completedDaysInCycle
+              : dayNum === completedDaysInCycle + 1;
             const isGrandPrize = dayNum === 7;
 
             return (
@@ -195,8 +200,16 @@ export function DailyCheckInModal({
                       : 'text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  <span>{isGrandPrize ? '+5' : '+1'}</span>
-                  <SqbCoin className="w-3.5 h-3.5" />
+                  {isDayPast ? (
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      Đã nhận
+                    </span>
+                  ) : (
+                    <>
+                      <span>{isGrandPrize ? '+5' : '+1'}</span>
+                      <SqbCoin className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -230,16 +243,16 @@ export function DailyCheckInModal({
               type="button"
               disabled={checkInMutation.isPending}
               onClick={handleCheckIn}
-              className="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-indigo-950 font-black text-base shadow-xl shadow-amber-500/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2.5"
             >
-              <Flame className="w-5 h-5 fill-indigo-950" />
+              <Flame className="w-5 h-5 fill-amber-300 text-amber-300 animate-pulse" />
               <span className="flex items-center gap-1.5">
                 {checkInMutation.isPending ? (
                   'Đang xác nhận...'
                 ) : (
                   <>
                     <span>Điểm Danh Ngay (+{(currentStreak + 1) % 7 === 0 ? '5' : '1'} xu SQB</span>
-                    <SqbCoin className="w-5 h-5" />
+                    <SqbCoin className="w-5 h-5 drop-shadow-md" />
                     <span>)</span>
                   </>
                 )}

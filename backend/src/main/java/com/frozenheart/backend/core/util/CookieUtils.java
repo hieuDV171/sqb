@@ -26,8 +26,6 @@ public class CookieUtils {
             HttpServletRequest request = attributes.getRequest();
             HttpServletResponse response = attributes.getResponse();
 
-            // TODO: Tự động bật secure = true nếu Request tới là HTTPS HOẶC cấu hình profile là
-            // Production
             boolean isSecure = request.isSecure() || secureConfig;
 
             ResponseCookie cookie = ResponseCookie.from(name, value)

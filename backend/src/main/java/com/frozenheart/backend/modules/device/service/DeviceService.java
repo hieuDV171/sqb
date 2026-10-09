@@ -8,4 +8,8 @@ public interface DeviceService {
     DeviceListResponse getMyDevices();
 
     void deleteDevice(String targetDeviceId);
+
+    void unregisterFid(String fid);
+
+    void syncFid(String fid);
 }

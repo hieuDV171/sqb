@@ -12,6 +12,7 @@ import type {
   EquipCosmeticRequestDto,
   UnequipCosmeticRequestDto,
   ReviewErrorRequest,
+  MyInventoryResponseDto,
 } from '../types/gamification.types';
 import { toast } from '@/stores/useToastStore';
 
@@ -183,13 +184,65 @@ export function useEquipCosmetic() {
 
   return useMutation({
     mutationFn: (data: EquipCosmeticRequestDto) => gamificationService.equipCosmetic(data),
+    onMutate: async (data: EquipCosmeticRequestDto) => {
+      // 1. Dừng các query inventory đang chạy ngầm
+      await queryClient.cancelQueries({ queryKey: ['gamification', 'inventory'] });
+
+      // 2. Snapshot dữ liệu hiện tại để rollback khi lỗi
+      const previousQueries = queryClient.getQueriesData<MyInventoryResponseDto>({
+        queryKey: ['gamification', 'inventory'],
+      });
+
+      // Tìm thông tin item được trang bị từ cache
+      let targetItem: { cosmeticId: number; name: string; type: CosmeticType; assetUrl?: string } | undefined;
+      for (const [, cache] of previousQueries) {
+        if (cache?.inventory) {
+          const found = cache.inventory.find((i) => i.cosmeticId === data.cosmeticId);
+          if (found) {
+            targetItem = found;
+            break;
+          }
+        }
+      }
+
+      // 3. Cập nhật lạc quan (0ms) trên tất cả các inventory caches
+      queryClient.setQueriesData<MyInventoryResponseDto>(
+        { queryKey: ['gamification', 'inventory'] },
+        (old) => {
+          if (!old) return old;
+          const slot = targetItem?.type;
+          const newEquipped = { ...(old.currentlyEquipped || {}) };
+          if (slot && targetItem) {
+            newEquipped[slot] = {
+              cosmeticId: targetItem.cosmeticId,
+              name: targetItem.name,
+              assetUrl: targetItem.assetUrl,
+            };
+          }
+          return {
+            ...old,
+            currentlyEquipped: newEquipped,
+          };
+        }
+      );
+
+      return { previousQueries };
+    },
+    onError: (err: any, _vars, context) => {
+      // Rollback về snapshot ban đầu
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, oldData]) => {
+          queryClient.setQueryData(queryKey, oldData);
+        });
+      }
+      toast.error(err.response?.data?.message || 'Không thể trang bị vật phẩm này.');
+    },
     onSuccess: (res) => {
       toast.success(res.message || 'Trang bị thành công!');
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() });
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Không thể trang bị vật phẩm này.');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['gamification', 'inventory'] });
+      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
     },
   });
 }
@@ -199,13 +252,50 @@ export function useUnequipCosmetic() {
 
   return useMutation({
     mutationFn: (data: UnequipCosmeticRequestDto) => gamificationService.unequipCosmetic(data),
+    onMutate: async (data: UnequipCosmeticRequestDto) => {
+      // 1. Dừng các query inventory đang chạy ngầm
+      await queryClient.cancelQueries({ queryKey: ['gamification', 'inventory'] });
+
+      // 2. Snapshot dữ liệu hiện tại
+      const previousQueries = queryClient.getQueriesData<MyInventoryResponseDto>({
+        queryKey: ['gamification', 'inventory'],
+      });
+
+      // 3. Cập nhật lạc quan (0ms) xóa slot khỏi currentlyEquipped
+      queryClient.setQueriesData<MyInventoryResponseDto>(
+        { queryKey: ['gamification', 'inventory'] },
+        (old) => {
+          if (!old || !old.currentlyEquipped) return old;
+          const newEquipped = { ...old.currentlyEquipped };
+          for (const [slotKey, equipped] of Object.entries(newEquipped)) {
+            if (equipped.cosmeticId === data.cosmeticId) {
+              delete newEquipped[slotKey];
+            }
+          }
+          return {
+            ...old,
+            currentlyEquipped: newEquipped,
+          };
+        }
+      );
+
+      return { previousQueries };
+    },
+    onError: (err: any, _vars, context) => {
+      // Rollback về snapshot ban đầu
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, oldData]) => {
+          queryClient.setQueryData(queryKey, oldData);
+        });
+      }
+      toast.error(err.response?.data?.message || 'Không thể gỡ trang bị này.');
+    },
     onSuccess: (res) => {
       toast.success(res.message || 'Đã tháo trang bị!');
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() });
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Không thể gỡ trang bị này.');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['gamification', 'inventory'] });
+      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
     },
   });
 }

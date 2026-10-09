@@ -18,7 +18,7 @@ export interface LoginRequest {
     deviceName?: string;
     osVersion?: string;
     appVersion?: string;
-    fcmToken?: string;
+    fid?: string;
 }
 
 export interface AuthResponse {

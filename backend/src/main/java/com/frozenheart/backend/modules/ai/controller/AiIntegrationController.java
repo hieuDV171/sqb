@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
-import com.frozenheart.backend.core.exception.AppException;
-import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.modules.ai.dto.AiApplyRequest;
 import com.frozenheart.backend.modules.ai.dto.AiApplyResponse;
 import com.frozenheart.backend.modules.ai.dto.AiChatHistoryResponse;

@@ -55,17 +55,17 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             return;
         }
 
-        List<String> tokens = activeDevices.stream()
-                .map(UserDevice::getFcmToken)
+        List<String> fids = activeDevices.stream()
+                .map(UserDevice::getFid)
                 .filter(t -> t != null && !t.isBlank())
                 .distinct()
                 .toList();
 
-        if (tokens.isEmpty()) {
+        if (fids.isEmpty()) {
             return;
         }
 
-        sendMulticastToDevices(tokens, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
+        sendMulticastToDevices(fids, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
     }
 
     @Override
@@ -105,25 +105,25 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             return;
         }
 
-        List<String> tokens = activeDevices.stream()
-                .map(UserDevice::getFcmToken)
+        List<String> fids = activeDevices.stream()
+                .map(UserDevice::getFid)
                 .filter(t -> t != null && !t.isBlank())
                 .distinct()
                 .toList();
 
-        if (tokens.isEmpty()) {
+        if (fids.isEmpty()) {
             return;
         }
 
-        // Chia nhóm tối đa 500 token/lần gửi theo giới hạn của FCM Multicast
+        // Chia nhóm tối đa 500 FID/lần gửi theo giới hạn của FCM Multicast
         int batchSize = 500;
-        for (int i = 0; i < tokens.size(); i += batchSize) {
-            List<String> subTokens = tokens.subList(i, Math.min(i + batchSize, tokens.size()));
-            sendMulticastToDevices(subTokens, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
+        for (int i = 0; i < fids.size(); i += batchSize) {
+            List<String> subFids = fids.subList(i, Math.min(i + batchSize, fids.size()));
+            sendMulticastToDevices(subFids, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
         }
     }
 
-    private void sendMulticastToDevices(List<String> tokens, List<UserDevice> devices,
+    private void sendMulticastToDevices(List<String> fids, List<UserDevice> devices,
                                         String title, String body, String iconUrl,
                                         NotificationTargetType targetType, Long targetId,
                                         String targetUrl, PushNotificationType pushType) {
@@ -134,7 +134,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
         try {
             MulticastMessage.Builder messageBuilder = MulticastMessage.builder()
-                    .addAllFids(tokens)
+                    .addAllFids(fids)
                     .setNotification(Notification.builder()
                             .setTitle(title)
                             .setBody(body)
@@ -150,21 +150,21 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             BatchResponse response = firebaseMessaging.get().sendEachForMulticast(message);
 
             log.info("[PushNotificationService] Đã gửi thông báo đẩy: {} thành công, {} thất bại trong tổng số {} thiết bị",
-                    response.getSuccessCount(), response.getFailureCount(), tokens.size());
+                    response.getSuccessCount(), response.getFailureCount(), fids.size());
 
-            // Tự động dọn dẹp các token đã hết hạn / không hợp lệ
+            // Tự động dọn dẹp các FID đã hết hạn / không hợp lệ
             if (response.getFailureCount() > 0) {
-                handleFailedTokens(response.getResponses(), tokens, devices);
+                handleFailedFids(response.getResponses(), fids, devices);
             }
         } catch (Exception e) {
             log.error("[PushNotificationService] Lỗi khi gửi multicast push notification: {}", e.getMessage());
         }
     }
 
-    private void handleFailedTokens(List<SendResponse> responses, List<String> tokens, List<UserDevice> devices) {
+    private void handleFailedFids(List<SendResponse> responses, List<String> fids, List<UserDevice> devices) {
         Map<String, UserDevice> deviceMap = devices.stream()
-                .filter(d -> d.getFcmToken() != null)
-                .collect(Collectors.toMap(UserDevice::getFcmToken, d -> d, (d1, _) -> d1));
+                .filter(d -> d.getFid() != null)
+                .collect(Collectors.toMap(UserDevice::getFid, d -> d, (d1, _) -> d1));
 
         List<UserDevice> invalidDevices = new ArrayList<>();
         for (int i = 0; i < responses.size(); i++) {
@@ -172,8 +172,8 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             if (!res.isSuccessful()) {
                 MessagingErrorCode errorCode = res.getException() != null ? res.getException().getMessagingErrorCode() : null;
                 if (errorCode == MessagingErrorCode.UNREGISTERED || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
-                    String failedToken = tokens.get(i);
-                    UserDevice failedDevice = deviceMap.get(failedToken);
+                    String failedFid = fids.get(i);
+                    UserDevice failedDevice = deviceMap.get(failedFid);
                     if (failedDevice != null) {
                         failedDevice.setActive(false);
                         invalidDevices.add(failedDevice);
@@ -184,7 +184,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
         if (!invalidDevices.isEmpty()) {
             userDeviceRepository.saveAll(invalidDevices);
-            log.info("[PushNotificationService] Đã vô hiệu hóa {} thiết bị có FCM Token không hợp lệ", invalidDevices.size());
+            log.info("[PushNotificationService] Đã vô hiệu hóa {} thiết bị có FID không hợp lệ", invalidDevices.size());
         }
     }
 

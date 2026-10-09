@@ -51,7 +51,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
   const friendStatus = relationships?.friendRequestStatus ?? 'NONE';
   const isFriend = relationships?.isFriend ?? false;
 
-  // Follow / Unfollow mutation
+  // Follow / Unfollow mutation with Optimistic UI
   const followMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
@@ -60,13 +60,44 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
         return await userService.followUser(profile.userId);
       }
     },
-    onSuccess: () => {
-      toast.success(isFollowing ? 'Đã hủy theo dõi' : 'Đã theo dõi người dùng');
+    onMutate: async () => {
+      // 1. Dừng query profile đang chạy để tránh ghi đè dữ liệu cũ
+      await queryClient.cancelQueries({ queryKey: ['userProfile', profile.userId] });
+
+      // 2. Chụp snapshot cache hiện tại làm điểm phục hồi nếu có lỗi
+      const previousProfile = queryClient.getQueryData<ProfileResponse>(['userProfile', profile.userId]);
+      const wasFollowing = isFollowing;
+      const nextFollowing = !wasFollowing;
+
+      // 3. Optimistic Update: Đổi ngay trạng thái isFollowing và tăng/giảm followersCount (0ms delay)
+      queryClient.setQueryData<ProfileResponse>(['userProfile', profile.userId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          followersCount: Math.max(0, (old.followersCount || 0) + (nextFollowing ? 1 : -1)),
+          relationships: {
+            ...(old.relationships || { isFriend: false, isFollowed: false, friendRequestStatus: 'NONE' }),
+            isFollowing: nextFollowing,
+          },
+        };
+      });
+
+      return { previousProfile, wasFollowing };
+    },
+    onError: (err: any, _vars, context) => {
+      // 4. Phục hồi lại dữ liệu cũ nếu lỗi
+      if (context?.previousProfile) {
+        queryClient.setQueryData(['userProfile', profile.userId], context.previousProfile);
+      }
+      toast.error(err?.message || 'Thao tác không thành công. Vui lòng thử lại!');
+    },
+    onSuccess: (_res, _vars, context) => {
+      toast.success(context?.wasFollowing ? 'Đã hủy theo dõi' : 'Đã theo dõi người dùng');
+    },
+    onSettled: () => {
+      // 5. Invalidate ngầm để đối soát với server
       queryClient.invalidateQueries({ queryKey: ['userProfile', profile.userId] });
       queryClient.invalidateQueries({ queryKey: ['relationshipStats', profile.userId] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Thao tác không thành công');
     },
   });
 

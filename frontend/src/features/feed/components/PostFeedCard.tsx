@@ -33,8 +33,8 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
 
   const { actor, content, createdAt, targetId } = item;
 
-  const [isLiked, setIsLiked] = useState<boolean>(content.reactedByMe || false);
-  const [likeCount, setLikeCount] = useState<number>(content.reactCount || 0);
+  const isLiked = content.reactedByMe || false;
+  const likeCount = content.reactCount || 0;
   const [showComments, setShowComments] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [isLecturerModalOpen, setIsLecturerModalOpen] = useState<boolean>(false);
@@ -44,22 +44,12 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
   const isAuthor = user?.id === actor.userId;
   const isLecturerOrAdmin = user?.role === 'LECTURER' || user?.role === 'ADMIN';
 
-  const handleLike = async () => {
-    const nextState = !isLiked;
-    setIsLiked(nextState);
-    setLikeCount((prev) => (nextState ? prev + 1 : Math.max(0, prev - 1)));
-
-    try {
-      await toggleReact({
-        targetType: 'POST',
-        targetId,
-        reactionType: 'LIKE',
-      });
-    } catch {
-      // Revert on error
-      setIsLiked(!nextState);
-      setLikeCount((prev) => (!nextState ? prev + 1 : Math.max(0, prev - 1)));
-    }
+  const handleLike = () => {
+    toggleReact({
+      targetType: (item.targetType as any) || 'POST',
+      targetId,
+      reactionType: 'LIKE',
+    });
   };
 
   const handleShare = () => {

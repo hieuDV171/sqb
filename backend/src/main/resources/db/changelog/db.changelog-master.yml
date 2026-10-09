@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/changes/09-01-changelog.yaml
   - include:
       file: db/changelog/changes/13-01-changelog.yaml
+  - include:
+      file: db/changelog/changes/14-01-changelog.yaml

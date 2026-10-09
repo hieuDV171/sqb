@@ -23,8 +23,8 @@ public record LoginRequest(
     @NotBlank(message = "MISSING_REQUIRED_PARAMETER")
     String deviceId,
     
-    @Schema(description = "Firebase Cloud Messaging Token dùng để đẩy thông báo push", example = "fcm_token_example_xyz")
-    String fcmToken,
+    @Schema(description = "Firebase Installation ID (FID) dùng để đẩy thông báo push", example = "fid_example_xyz")
+    String fid,
                     
     @Schema(description = "Nền tảng thiết bị đang đăng nhập", example = "WEB", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "MISSING_REQUIRED_PARAMETER")

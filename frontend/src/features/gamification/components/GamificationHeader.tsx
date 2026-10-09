@@ -92,23 +92,23 @@ export function GamificationHeader({
             <button
               type="button"
               onClick={() => setCheckInModalOpen(true)}
-              className={`px-5 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2 shadow-lg transition-all duration-200 ${
+              className={`px-5 py-3.5 rounded-2xl font-black text-sm flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
                 hasCheckedInToday
-                  ? 'bg-emerald-600/80 hover:bg-emerald-600 text-white cursor-pointer'
-                  : 'bg-linear-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-indigo-950 hover:scale-105 shadow-amber-500/25 cursor-pointer active:scale-95'
+                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300'
+                  : 'bg-linear-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/30 hover:scale-105 active:scale-95'
               }`}
             >
               {hasCheckedInToday ? (
                 <>
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4 text-emerald-400" />
                   <span>Xem Lịch Điểm Danh</span>
                 </>
               ) : (
                 <>
-                  <Flame className="w-4 h-4 fill-indigo-950" />
-                  <span className="flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 fill-amber-300 text-amber-300 animate-pulse" />
+                  <span className="flex items-center gap-1.5 font-black">
                     <span>Điểm Danh Ngay (+{(streakCount + 1) % 7 === 0 ? '5' : '1'} xu SQB</span>
-                    <SqbCoin className="w-4 h-4" />
+                    <SqbCoin className="w-4 h-4 drop-shadow-md" />
                     <span>)</span>
                   </span>
                 </>

@@ -156,7 +156,7 @@ public class AuthServiceImpl implements AuthService {
         for (UserDevice otherDevice : otherActiveDevices) {
             if (otherDevice.getUser() != null && !otherDevice.getUser().getId().equals(user.getId())) {
                 otherDevice.setActive(false);
-                otherDevice.setFcmToken(null);
+                otherDevice.setFid(null);
                 devicesToDeactivate.add(otherDevice);
 
                 // Xóa Refresh Token của người dùng cũ trong Redis
@@ -180,7 +180,7 @@ public class AuthServiceImpl implements AuthService {
                         .createdAt(Instant.now())
                         .build());
 
-        device.setFcmToken(request.fcmToken());
+        device.setFid(request.fid());
         device.setPlatform(request.platform());
         device.setDeviceName(request.deviceName());
         device.setOsVersion(request.osVersion());
@@ -601,7 +601,7 @@ public class AuthServiceImpl implements AuthService {
         userDeviceRepository.findByUserIdAndDeviceId(currentUserId, deviceId)
                 .ifPresent(device -> {
                     device.setActive(false);
-                    device.setFcmToken(null); // Xóa token push notification
+                    device.setFid(null); // Xóa FID push notification
                     userDeviceRepository.save(device);
                 });
 

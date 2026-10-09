@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1789256068205-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - renameColumn:
+            tableName: user_devices
+            oldColumnName: fcm_token
+            newColumnName: fid
+            columnDataType: VARCHAR(500)

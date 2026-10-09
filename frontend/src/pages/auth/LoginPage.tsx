@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DevicePlatform } from "@/types/auth.types";
 import { getBrowserDeviceName } from "@/lib/utils";
+import { requestFid } from "@/lib/firebase";
 import { GraduationCap, ArrowRight, AlertCircle, Eye, EyeOff, Info, HelpCircle, X } from "lucide-react";
 
 function getOrCreateDeviceId() {
@@ -25,7 +26,7 @@ export function LoginPage() {
     const [validationError, setValidationError] = useState<string | null>(null);
     const { login, isLoading, error } = useAuth();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setValidationError(null);
 
@@ -39,12 +40,16 @@ export function LoginPage() {
             return;
         }
 
+        // Lấy Firebase Installation ID (FID) để đăng ký Push Notification với Backend
+        const fid = await requestFid().catch(() => null);
+
         login({
             email: trimmedEmail,
             password,
             deviceId: getOrCreateDeviceId(),
             platform: DevicePlatform.WEB,
             deviceName: getBrowserDeviceName(),
+            fid: fid || undefined,
         });
     };
 
