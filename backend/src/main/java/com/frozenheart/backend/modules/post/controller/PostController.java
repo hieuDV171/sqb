@@ -51,7 +51,7 @@ public class PostController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Lấy danh sách bài viết của người dùng khác", description = "Lấy danh sách bài viết của người dùng theo userId có kiểm tra quyền riêng tư (PUBLIC, FRIENDS) và kiểm tra mối quan hệ chặn.")
+    @Operation(summary = "Lấy danh sách bài viết của người dùng khác", description = "Lấy danh sách bài viết của người dùng theo user_id có kiểm tra quyền riêng tư (PUBLIC, FRIENDS) và kiểm tra mối quan hệ chặn.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách bài viết thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),

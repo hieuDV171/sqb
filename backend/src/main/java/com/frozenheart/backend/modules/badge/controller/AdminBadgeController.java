@@ -73,7 +73,7 @@ public class AdminBadgeController {
         return ResponseEntity.ok(GlobalResponse.success(null));
     }
 
-    @Operation(summary = "Cấp phát huy hiệu thủ công cho người dùng", description = "Quản trị viên trao tặng huy hiệu trực tiếp cho danh sách userIds mà không cần qua điều kiện trigger tự động.")
+    @Operation(summary = "Cấp phát huy hiệu thủ công cho người dùng", description = "Quản trị viên trao tặng huy hiệu trực tiếp cho danh sách user_ids mà không cần qua điều kiện trigger tự động.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cấp phát huy hiệu thành công"),
             @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),

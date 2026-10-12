@@ -220,5 +220,12 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
     - Tác vụ ngầm `StorageReconciliationCronJob` định kỳ hàng ngày (03:30 AM) quét các key có Score quá 24 giờ để gọi Cloudflare R2 batch `DeleteObjects` dọn sạch file mồ côi.
   - Chuẩn hóa hàm `buildPublicUrl()` hỗ trợ trực tiếp R2 Public Domain (`https://pub-xxx.r2.dev/{objectKey}` hoặc Custom Domain) không chứa bucket name ở giữa đường dẫn.
 - **Hệ quả:** Hệ thống vận hành trơn tru trên Cloudflare R2 với chi phí tối ưu, không phát sinh file rác mồ côi, giữ nguyên 100% mã nguồn Frontend mà không phải thay đổi luồng upload.
-
-
+### [ADR-007] Đồng bộ Schema Swagger UI (Springdoc ModelResolver) với Chiến lược snake_case của Jackson
+- **Ngày quyết định:** 12/10/2026
+- **Bối cảnh:** Server đã cấu hình `spring.jackson.property-naming-strategy: SNAKE_CASE` trong `application.yaml` để tiếp nhận và trả về JSON chuẩn `snake_case`. Tuy nhiên, mặc định `springdoc-openapi` không tự động thừa kế Jackson naming strategy cho các model schema khi phân giải POJO. Điều này khiến Swagger UI (`/docs`) hiển thị Schema và Request/Response Example dưới dạng `camelCase`, gây hiểu lầm cho người gọi API (Client web/mobile/Postman) rằng phải truyền dữ liệu dạng camelCase.
+- **Quyết định:**
+  - Đăng ký Bean `ModelResolver` trong `OpenApiConfig` tự khởi tạo một instance Jackson 2 `ObjectMapper` (package `com.fasterxml.jackson`) và cấu hình `PropertyNamingStrategies.SNAKE_CASE`. Cách tiếp cận này giúp Swagger-Core (vốn dựa trên Jackson 2) sinh schema `snake_case` chính xác tuyệt đối mà hoàn toàn độc lập, không xung đột hay phụ thuộc vào `JsonMapper` (package `tools.jackson` của Jackson 3) mà Spring Boot 4 đang sử dụng trong toàn bộ hệ thống.
+  - Thêm cảnh báo nổi bật trên giao diện Swagger UI: Các API dành cho admin không cần gọi và không được gọi.
+  - Rà soát và chuẩn hóa toàn bộ mô tả trong các annotation `@Operation`, `@Parameter`, `@Schema`, bảng đặc tả STOMP, và tài liệu `BACKEND_API_SPECIFICATION.md` về thống nhất chuẩn `snake_case`.
+  - Bổ sung kiểm thử đơn vị `OpenApiSnakeCaseTest` đảm bảo tính toàn vẹn của Swagger Schema.
+- **Hệ quả:** Toàn bộ Swagger UI hiển thị chính xác 100% định dạng `snake_case`, triệt tiêu hoàn toàn sự sai lệch giữa tài liệu đặc tả và hành vi runtime của hệ thống, bảo đảm cách ly an toàn giữa Jackson 2 và Jackson 3.

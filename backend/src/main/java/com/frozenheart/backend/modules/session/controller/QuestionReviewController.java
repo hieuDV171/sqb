@@ -51,7 +51,7 @@ public class QuestionReviewController {
             @Parameter(description = "Lọc theo ID môn học", example = "1")
             @RequestParam(required = false, name = "subject_id") Long subjectId,
 
-            @Parameter(description = "Tiêu chí sắp xếp", example = "createdAt")
+            @Parameter(description = "Tiêu chí sắp xếp", example = "created_at")
             @RequestParam(required = false, name = "sort_by") String sortBy) {
 
         PendingSessionsResponse response = questionReviewService.getPendingSessions(after, limit, subjectId, sortBy);

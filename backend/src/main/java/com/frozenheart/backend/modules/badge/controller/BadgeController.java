@@ -40,7 +40,7 @@ public class BadgeController {
         return ResponseEntity.ok(GlobalResponse.success(badgeService.getMyBadges()));
     }
 
-    @Operation(summary = "Lấy danh sách huy hiệu của người dùng khác", description = "Xem bộ sưu tập huy hiệu trên hồ sơ cá nhân của người dùng được chỉ định theo userId.")
+    @Operation(summary = "Lấy danh sách huy hiệu của người dùng khác", description = "Xem bộ sưu tập huy hiệu trên hồ sơ cá nhân của người dùng được chỉ định theo user_id.")
     @ApiResponse(responseCode = "200", description = "Lấy danh sách huy hiệu người dùng thành công")
     @GetMapping("/users/{userId}")
     public ResponseEntity<GlobalResponse<List<UserBadgeResponseDto>>> getUserBadges(

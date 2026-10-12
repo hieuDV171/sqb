@@ -18,7 +18,7 @@ public class MyInventoryResponseDto {
     @Schema(description = "Thống kê tổng quan bộ sưu tập")
     private CosmeticSummaryDto summary;
 
-    @Schema(description = "Danh sách các vật phẩm hiện đang được trang bị theo vị trí (slot)", example = "{\"AVATAR_FRAME\": {\"cosmeticId\": 5, \"name\": \"Khung Neon\", \"assetUrl\": \"...\"}}")
+    @Schema(description = "Danh sách các vật phẩm hiện đang được trang bị theo vị trí (slot)", example = "{\"AVATAR_FRAME\": {\"cosmetic_id\": 5, \"name\": \"Khung Neon\", \"asset_url\": \"...\"}}")
     private Map<String, EquippedItemDto> currentlyEquipped;
 
     @Schema(description = "Danh sách vật phẩm trong túi đồ")

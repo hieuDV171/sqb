@@ -24,7 +24,7 @@ public class AdminSemesterController {
 
     private final SemesterManagementService semesterManagementService;
 
-    @Operation(summary = "Tạo học kỳ mới", description = "Tạo một học kỳ mới ở trạng thái chưa kích hoạt (active = false, isFinalized = false).")
+    @Operation(summary = "Tạo học kỳ mới", description = "Tạo một học kỳ mới ở trạng thái chưa kích hoạt (is_active = false, is_finalized = false).")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Tạo học kỳ mới thành công"),
             @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ (tên học kỳ trống hoặc vượt quá 100 ký tự)"),
@@ -65,7 +65,7 @@ public class AdminSemesterController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Đóng toàn bộ học kỳ đang kích hoạt", description = "Hủy kích hoạt học kỳ đang mở. Rào chắn: Bắt buộc học kỳ đang active phải được Chốt Sổ (isFinalize = true) trước khi đóng.")
+    @Operation(summary = "Đóng toàn bộ học kỳ đang kích hoạt", description = "Hủy kích hoạt học kỳ đang mở. Rào chắn: Bắt buộc học kỳ đang active phải được Chốt Sổ (is_finalized = true) trước khi đóng.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Hủy kích hoạt toàn bộ học kỳ thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),

@@ -30,7 +30,7 @@ public class CreatePostRequest {
     @Schema(description = "Chế độ hiển thị bài viết (PUBLIC, FRIENDS, ONLY_ME)", example = "PUBLIC", requiredMode = Schema.RequiredMode.REQUIRED)
     private PostVisibility visibility;
 
-    @Schema(description = "ID môn học (Bắt buộc nếu postType là LEARNING_VIDEO dành cho Giảng viên)", example = "1")
+    @Schema(description = "ID môn học (Bắt buộc nếu post_type là LEARNING_VIDEO dành cho Giảng viên)", example = "1")
     private Long subjectId;
 
     @Schema(description = "Loại bài viết (SOCIAL_POST, LEARNING_VIDEO)", example = "SOCIAL_POST")

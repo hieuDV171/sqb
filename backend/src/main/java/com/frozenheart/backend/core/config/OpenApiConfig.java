@@ -1,5 +1,8 @@
 package com.frozenheart.backend.core.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
@@ -41,10 +44,24 @@ public class OpenApiConfig {
 
     public static final String SECURITY_SCHEME_NAME = "BearerAuth";
 
+    /**
+     * Cấu hình ModelResolver của OpenAPI sinh schema chuẩn snake_case.
+     * Tự khởi tạo ObjectMapper của Jackson 2 (com.fasterxml.jackson) cho Swagger-Core,
+     * bảo đảm tương thích 100%, độc lập và không xung đột với JsonMapper (tools.jackson) của Jackson 3 trong Spring Boot 4.
+     */
+    @Bean
+    public ModelResolver modelResolver() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        return new ModelResolver(objectMapper);
+    }
+
     @Bean
     public OpenAPI customOpenAPI() {
         String description = """
                 Tài liệu đặc tả và kiểm thử tương tác toàn bộ 143+ REST API & Giao thức WebSocket STOMP của nền tảng SQB (Social Network Student-Generated Question Bank).
+
+                > ⚠️ **LƯU Ý:** Các API dành cho admin không cần gọi và không được gọi.
 
                 ---
 
@@ -56,7 +73,7 @@ public class OpenApiConfig {
                 ---
 
                 ### 📦 Cấu trúc phản hồi chuẩn (GlobalResponse Envelope):
-                Tất cả các REST API trong hệ thống đều trả về theo định dạng vỏ bọc thống nhất:
+                Tất cả các REST API trong hệ thống đều trả về theo định dạng vỏ bọc thống nhất (snake_case):
                 ```json
                 {
                   "code": "0000",
@@ -76,18 +93,18 @@ public class OpenApiConfig {
 
                 #### 1. Kênh Client gửi lên Server (Publish Destinations):
 
-                | STOMP Destination | Mô tả nghiệp vụ | Payload DTO & Các trường chính |
+                | STOMP Destination | Mô tả nghiệp vụ | Payload DTO & Các trường chính (snake_case) |
                 | :--- | :--- | :--- |
-                | `/app/chat.send` | Gửi tin nhắn mới trong hội thoại | `SendWsMessageRequestDto`<br>• `conversationId` (Long)<br>• `content` (String)<br>• `messageType` (TEXT / IMAGE / FILE)<br>• `mediaUrls` (List&lt;String&gt;)<br>• `replyToMessageId` (Long) |
-                | `/app/chat.read` | Báo đã đọc tin nhắn trong cuộc hội thoại | `ReadWsMessageRequestDto`<br>• `conversationId` (Long)<br>• `lastReadMessageId` (Long) |
-                | `/app/chat.typing` | Phát sự kiện đang soạn / dừng soạn tin nhắn | `TypingWsRequestDto`<br>• `conversationId` (Long)<br>• `isTyping` (Boolean) |
+                | `/app/chat.send` | Gửi tin nhắn mới trong hội thoại | `SendWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `content` (String)<br>• `message_type` (TEXT / IMAGE / FILE)<br>• `media_urls` (List&lt;String&gt;)<br>• `reply_to_message_id` (Long) |
+                | `/app/chat.read` | Báo đã đọc tin nhắn trong cuộc hội thoại | `ReadWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `message_id` (Long) |
+                | `/app/chat.typing` | Phát sự kiện đang soạn / dừng soạn tin nhắn | `TypingWsRequestDto`<br>• `conversation_id` (Long)<br>• `is_typing` (Boolean) |
 
                 #### 2. Kênh Client đăng ký lắng nghe (Subscribe Topics / Queues):
 
-                | STOMP Topic / Queue | Mô tả sự kiện | Payload DTO nhận được |
+                | STOMP Topic / Queue | Mô tả sự kiện | Payload DTO nhận được (snake_case) |
                 | :--- | :--- | :--- |
                 | `/user/queue/messages` | Lắng nghe tin nhắn cá nhân 1-1, thông báo hệ thống và biên nhận đã đọc | `WsMessageBroadcastDto` / `WsReadReceiptBroadcastDto` |
-                | `/topic/conversations.{conversationId}` | Lắng nghe tin nhắn trao đổi trong nhóm và sự kiện thành viên đang soạn tin | `WsMessageBroadcastDto` / `WsTypingBroadcastDto` |
+                | `/topic/conv.{conversation_id}.typing` | Lắng nghe sự kiện thành viên trong cuộc hội thoại đang soạn tin | `WsTypingBroadcastDto` |
                 """;
 
         return new OpenAPI()

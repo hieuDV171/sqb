@@ -32,7 +32,7 @@ public class DeviceController {
 
     private final DeviceService deviceService;
 
-    @Operation(summary = "Đăng xuất thiết bị chỉ định", description = "Thu hồi quyền truy cập và xóa Refresh Token của thiết bị theo deviceId.")
+    @Operation(summary = "Đăng xuất thiết bị chỉ định", description = "Thu hồi quyền truy cập và xóa Refresh Token của thiết bị theo device_id.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Thu hồi phiên thiết bị thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),

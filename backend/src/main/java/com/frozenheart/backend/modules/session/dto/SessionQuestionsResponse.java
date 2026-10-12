@@ -57,7 +57,7 @@ public record SessionQuestionsResponse(
             @Schema(description = "Danh sách URL hình ảnh minh họa cho câu hỏi")
             List<String> imageUrls,
 
-            @Schema(description = "Danh sách các lựa chọn đáp án (đã ẩn trường isCorrect nếu chưa trả lời)")
+            @Schema(description = "Danh sách các lựa chọn đáp án (đã ẩn trường is_correct nếu chưa trả lời)")
             List<QuestionOption> options,
 
             @Schema(description = "Nguồn gốc tạo câu hỏi", example = "HOMO_SAPIENS")
