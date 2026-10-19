@@ -214,7 +214,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                               comment.createdAt,
                                           ).toLocaleDateString("vi-VN")}
                                       </span>
-                                      {!comment.isDeleted && (
+                                      {!comment.deleted && (
                                           <button
                                               type="button"
                                               onClick={() =>

@@ -26,8 +26,7 @@ public class CommentResponseDto {
     private AuthorDto author;
 
     private Instant createdAt;
-    private boolean isDeleted;
-    private boolean isValid;
+    private boolean deleted;
 
     private int replyCount;
     private List<CommentResponseDto> replies;

@@ -353,8 +353,7 @@ public class CommentServiceImpl implements CommentService {
                 .mediaUrl(mediaUrl)
                 .author(authorDto)
                 .createdAt(comment.getCreatedAt())
-                .isDeleted(isDeleted)
-                .isValid(true)
+                .deleted(isDeleted)
                 .replyCount(replyCount)
                 .replies(repliesList)
                 .build();
