@@ -71,7 +71,7 @@ export interface CommentResponseDto {
     author: AuthorDto;
 
     createdAt: string;
-    hidden?: boolean;
+    isDeleted?: boolean;
 
     replyCount?: number;
     replies?: CommentResponseDto[];

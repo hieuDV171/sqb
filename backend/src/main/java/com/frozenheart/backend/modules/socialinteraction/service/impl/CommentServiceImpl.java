@@ -293,10 +293,10 @@ public class CommentServiceImpl implements CommentService {
 
     private CommentResponseDto mapToCommentResponseDto(Comment comment, Map<Long, UserProfile> profileMap,
             boolean includeRepliesPreview) {
-        boolean hidden = comment.getDeletedAt() != null;
+        boolean isDeleted = comment.getDeletedAt() != null;
 
         AuthorDto authorDto = null;
-        if (!hidden && comment.getUser() != null) {
+        if (!isDeleted && comment.getUser() != null) {
             UserProfile profile = profileMap.get(comment.getUser().getId());
             if (profile == null) {
                 profile = userProfileRepository.findByUserId(comment.getUser().getId()).orElse(null);
@@ -310,12 +310,12 @@ public class CommentServiceImpl implements CommentService {
         }
 
         String mediaUrl = null;
-        if (!hidden && comment.getMediaUrls() != null && !comment.getMediaUrls().isEmpty()) {
+        if (!isDeleted && comment.getMediaUrls() != null && !comment.getMediaUrls().isEmpty()) {
             MediaItem first = comment.getMediaUrls().getFirst();
             mediaUrl = first.url() != null ? first.url() : first.key();
         }
 
-        String contentStr = hidden ? "Bình luận này đã bị xóa" : comment.getContent();
+        String contentStr = isDeleted ? "Bình luận này đã bị xóa" : comment.getContent();
 
         int replyCount = 0;
         List<CommentResponseDto> repliesList = null;
@@ -353,7 +353,7 @@ public class CommentServiceImpl implements CommentService {
                 .mediaUrl(mediaUrl)
                 .author(authorDto)
                 .createdAt(comment.getCreatedAt())
-                .hidden(hidden)
+                .isDeleted(isDeleted)
                 .replyCount(replyCount)
                 .replies(repliesList)
                 .build();

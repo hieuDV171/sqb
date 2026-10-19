@@ -26,6 +26,7 @@ public class CommentResponseDto {
     private AuthorDto author;
 
     private Instant createdAt;
+    private boolean isDeleted;
     private boolean hidden;
 
     private int replyCount;
