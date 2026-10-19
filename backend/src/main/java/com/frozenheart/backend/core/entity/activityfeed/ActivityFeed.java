@@ -28,7 +28,10 @@ public class ActivityFeed {
     @Column(length = 30)
     private ActionType actionType;
 
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private ActivityFeedTargetType targetType;
+
     private Long targetId;
 
     @JdbcTypeCode(SqlTypes.JSON)

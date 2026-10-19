@@ -34,5 +34,18 @@ public interface ReactRepository extends JpaRepository<React, Long> {
 
     List<React> findByTargetTypeAndTargetId(InteractionTargetType targetType, Long targetId);
 
+    @Query("""
+            SELECT r
+            FROM React r
+            WHERE r.user.id = :userId
+              AND r.targetType = :targetType
+              AND r.targetId IN :targetIds
+            """)
+    List<React> findUserReactsByTargetIds(
+            @Param("userId") Long userId,
+            @Param("targetType") InteractionTargetType targetType,
+            @Param("targetIds") Collection<Long> targetIds
+    );
+
     int countByTargetTypeAndTargetId(InteractionTargetType targetType, Long targetId);
 }

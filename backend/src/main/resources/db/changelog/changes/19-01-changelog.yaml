@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1792402436521-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - modifyDataType:
+            columnName: reason
+            newDataType: VARCHAR(50)
+            tableName: point_histories
+  - changeSet:
+      id: 1792402436521-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - modifyDataType:
+            columnName: target_type
+            newDataType: VARCHAR(30)
+            tableName: activity_feeds
+  - changeSet:
+      id: 1792402436521-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - modifyDataType:
+            columnName: target_type
+            newDataType: VARCHAR(30)
+            tableName: reacts
+

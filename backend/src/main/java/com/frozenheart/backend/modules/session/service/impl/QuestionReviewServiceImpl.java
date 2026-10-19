@@ -574,6 +574,6 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .subjectName(subjectName)
                 .build();
         activityFeedService.logActivity(proposer, ActionType.SESSION_RESOLVED_APPROVED,
-                ActivityFeedTargetType.SESSION.name(), s.getId(), feedMeta);
+                ActivityFeedTargetType.SESSION, s.getId(), feedMeta);
     }
 }

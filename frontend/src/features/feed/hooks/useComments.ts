@@ -47,7 +47,33 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
+
+      if (targetType === 'POST') {
+        queryClient.setQueriesData<InfiniteData<CursorResponse<ActivityFeedItemDto>>>(
+          { queryKey: ['activity-feeds'] },
+          (oldData) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page) => ({
+                ...page,
+                items: page.items.map((item) => {
+                  if (item.targetType === 'POST' && item.targetId === targetId) {
+                    return {
+                      ...item,
+                      content: {
+                        ...item.content,
+                        commentCount: (item.content.commentCount || 0) + 1,
+                      },
+                    };
+                  }
+                  return item;
+                }),
+              })),
+            };
+          }
+        );
+      }
     },
     onError: (err: any) => {
       addToast({

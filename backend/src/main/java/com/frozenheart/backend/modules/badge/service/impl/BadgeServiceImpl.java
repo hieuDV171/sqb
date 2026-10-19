@@ -294,7 +294,7 @@ public class BadgeServiceImpl implements BadgeService {
         activityFeedService.logActivity(
                 user,
                 ActionType.REACHED_MILESTONE,
-                ActivityFeedTargetType.USER.name(),
+                ActivityFeedTargetType.USER,
                 targetId != null ? targetId : user.getId(),
                 feedMeta);
         log.info("[BadgeService] Ghi nhận cột mốc cho user {}: {}", user.getId(), milestoneTitle);
@@ -333,7 +333,7 @@ public class BadgeServiceImpl implements BadgeService {
         activityFeedService.logActivity(
                 user,
                 ActionType.EARNED_BADGE,
-                ActivityFeedTargetType.BADGE.name(),
+                ActivityFeedTargetType.BADGE,
                 badge.getId(),
                 feedMeta);
 

@@ -131,7 +131,7 @@ public class PostServiceImpl implements PostService {
                 .subjectName(subject != null ? subject.getName() : null)
                 .build();
 
-        activityFeedService.logActivity(currentUser, feedAction, ActivityFeedTargetType.POST.name(), savedPost.getId(),
+        activityFeedService.logActivity(currentUser, feedAction, ActivityFeedTargetType.POST, savedPost.getId(),
                 feedMeta);
 
         return mapToPostResponseDto(savedPost);

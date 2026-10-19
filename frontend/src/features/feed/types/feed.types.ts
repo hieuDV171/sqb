@@ -21,6 +21,8 @@ export interface ActivityFeedContent {
   reactCount?: number;
   commentCount?: number;
   reactedByMe?: boolean;
+  myReaction?: 'LIKE' | 'LOVE' | 'WOW' | null;
+  reactionCounts?: Record<string, number>;
   lecturerNote?: string;
   notedLecturer?: AuthorDto;
   sessionId?: number;
@@ -31,9 +33,17 @@ export interface ActivityFeedContent {
   postType?: PostType;
 }
 
+export type ActivityFeedTargetType =
+  | 'POST'
+  | 'SESSION'
+  | 'BADGE'
+  | 'COSMETIC'
+  | 'USER'
+  | 'SUBJECT';
+
 export interface ActivityFeedItemDto {
   feedId: number;
-  targetType: string;
+  targetType: ActivityFeedTargetType;
   targetId: number;
   actionType: ActionType;
   actor: AuthorDto;

@@ -27,6 +27,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     Optional<Post> findByIdAndDeletedAtIsNull(Long id);
 
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer"})
+    List<Post> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
+
     @Query("SELECT p FROM Post p JOIN FETCH p.poster u WHERE p.deletedAt IS NULL AND p.visibility != com.frozenheart.backend.core.entity.post.PostVisibility.ONLY_ME")
     List<Post> findAllPublicPostsForSearch();
 

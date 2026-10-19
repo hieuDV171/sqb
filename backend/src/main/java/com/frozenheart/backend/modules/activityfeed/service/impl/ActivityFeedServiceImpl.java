@@ -6,13 +6,24 @@ import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.activityfeed.ActionType;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
+import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
+import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
+import com.frozenheart.backend.core.entity.post.Post;
+import com.frozenheart.backend.core.entity.session.Session;
+import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
+import com.frozenheart.backend.core.entity.socialinteraction.React;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.modules.activityfeed.dto.*;
 import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.dto.AuthorDto;
+import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.session.repository.QuestionRepository;
+import com.frozenheart.backend.modules.session.repository.SessionRepository;
+import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.FollowRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -35,6 +46,10 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
     private final FriendshipRepository friendshipRepository;
     private final FollowRepository followRepository;
     private final BlockRepository blockRepository;
+    private final PostRepository postRepository;
+    private final SessionRepository sessionRepository;
+    private final QuestionRepository questionRepository;
+    private final ReactRepository reactRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -91,8 +106,55 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 : userProfileRepository.findAllById(actorIds).stream()
                         .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
 
+        // Batch Enrichment: Gom các targetIds theo từng loại để query 1 lần (Tuyệt đối chống N+1)
+        List<Long> postIds = feeds.stream()
+                .filter(f -> f.getTargetType() == ActivityFeedTargetType.POST && f.getTargetId() != null)
+                .map(ActivityFeed::getTargetId)
+                .distinct()
+                .toList();
+
+        List<Long> questionIds = feeds.stream()
+                .filter(f -> f.getTargetType() == ActivityFeedTargetType.QUESTION && f.getTargetId() != null)
+                .map(ActivityFeed::getTargetId)
+                .distinct()
+                .toList();
+
+        List<Long> sessionIds = feeds.stream()
+                .filter(f -> f.getTargetType() == ActivityFeedTargetType.SESSION && f.getTargetId() != null)
+                .map(ActivityFeed::getTargetId)
+                .distinct()
+                .toList();
+
+        Map<Long, Post> postMap = postIds.isEmpty() ? Map.of()
+                : postRepository.findByIdInAndDeletedAtIsNull(postIds).stream()
+                        .collect(Collectors.toMap(Post::getId, p -> p));
+
+        Map<Long, Session> sessionMap = sessionIds.isEmpty() ? Map.of()
+                : sessionRepository.findAllById(sessionIds).stream()
+                        .collect(Collectors.toMap(Session::getId, s -> s));
+
+        Map<Long, Question> questionMap = questionIds.isEmpty() ? Map.of()
+                : questionRepository.findAllById(questionIds).stream()
+                        .collect(Collectors.toMap(Question::getId, q -> q));
+
+        Map<Long, ReactionType> userPostReactMap = (currentUserId != null && !postIds.isEmpty())
+                ? reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.POST, postIds).stream()
+                        .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (r1, _) -> r1))
+                : Map.of();
+
+        Map<Long, ReactionType> userSessionReactMap = (currentUserId != null && !sessionIds.isEmpty())
+                ? reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.SESSION, sessionIds).stream()
+                        .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (r1, _) -> r1))
+                : Map.of();
+
+        Map<Long, ReactionType> userQuestionReactMap = (currentUserId != null && !questionIds.isEmpty())
+                ? reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.QUESTION, questionIds).stream()
+                .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (r1, _) -> r1))
+                : Map.of();
+
         List<ActivityFeedItemDto> items = feeds.stream()
-                .map(feed -> mapToItemDto(feed, profileMap))
+                .map(feed -> mapToItemDto(feed, profileMap, postMap, sessionMap, questionMap,
+                        userPostReactMap, userSessionReactMap, userQuestionReactMap))
                 .toList();
 
         return CursorResponse.<ActivityFeedItemDto>builder()
@@ -152,7 +214,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
 
     @Override
     @Transactional
-    public void logActivity(User actor, ActionType actionType, String targetType, Long targetId,
+    public void logActivity(User actor, ActionType actionType, ActivityFeedTargetType targetType, Long targetId,
             ActivityFeedMetaData metaData) {
         ActivityFeed feed = ActivityFeed.builder()
                 .user(actor)
@@ -166,8 +228,17 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
         activityFeedRepository.save(feed);
     }
 
-    private ActivityFeedItemDto mapToItemDto(ActivityFeed feed, Map<Long, UserProfile> profileMap) {
-        AuthorDto actorDto = null;
+    private ActivityFeedItemDto mapToItemDto(
+            ActivityFeed feed,
+            Map<Long, UserProfile> profileMap,
+            Map<Long, Post> postMap,
+            Map<Long, Session> sessionMap,
+            Map<Long, Question> questionMap,
+            Map<Long, ReactionType> userPostReactMap,
+            Map<Long, ReactionType> userSessionReactMap,
+            Map<Long, ReactionType> userQuestionReactMap) {
+
+        AuthorDto actorDto;
         if (feed.getUser() != null) {
             UserProfile profile = profileMap.get(feed.getUser().getId());
             actorDto = AuthorDto.builder()
@@ -197,6 +268,56 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 contentMap.put("subject_code", m.getSubjectCode());
             if (m.getSubjectName() != null)
                 contentMap.put("subject_name", m.getSubjectName());
+        }
+
+        // Tự động enrich chỉ số tương tác theo targetType
+        ActivityFeedTargetType targetType = feed.getTargetType();
+        Long targetId = feed.getTargetId();
+
+        if (targetType == ActivityFeedTargetType.POST && targetId != null) {
+            Post post = postMap.get(targetId);
+            if (post != null) {
+                contentMap.put("comment_count", post.getCommentCount());
+                contentMap.put("react_count", post.getReactCount());
+                if (post.getVisibility() != null) {
+                    contentMap.put("visibility", post.getVisibility().name());
+                }
+                if (post.getMediaUrls() != null && !post.getMediaUrls().isEmpty()) {
+                    contentMap.put("media_urls", post.getMediaUrls());
+                }
+                if (post.getLecturerNote() != null) {
+                    contentMap.put("lecturer_note", post.getLecturerNote());
+                    if (post.getNotedLecturer() != null) {
+                        UserProfile lProfile = profileMap.get(post.getNotedLecturer().getId());
+                        contentMap.put("noted_lecturer", AuthorDto.builder()
+                                .userId(post.getNotedLecturer().getId())
+                                .fullName(lProfile != null ? lProfile.getFullName() : post.getNotedLecturer().getEmail())
+                                .avatarUrl(lProfile != null ? lProfile.getAvatarUrl() : null)
+                                .frameUrl(lProfile != null ? lProfile.getAvatarFrameUrl() : null)
+                                .build());
+                    }
+                }
+            } else {
+                contentMap.put("comment_count", 0);
+                contentMap.put("react_count", 0);
+            }
+            ReactionType userReact = userPostReactMap.get(targetId);
+            contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
+            contentMap.put("reacted_by_me", userReact != null);
+        } else if (targetType == ActivityFeedTargetType.SESSION && targetId != null) {
+            Session session = sessionMap.get(targetId);
+            contentMap.put("comment_count", session != null ? session.getCommentCount() : 0);
+            contentMap.put("react_count", session != null ? session.getReactCount() : 0);
+            ReactionType userReact = userSessionReactMap.get(targetId);
+            contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
+            contentMap.put("reacted_by_me", userReact != null);
+        } else if (targetType == ActivityFeedTargetType.QUESTION && targetId != null) {
+            Question question = questionMap.get(targetId);
+            contentMap.put("comment_count", question != null ? question.getCommentCount() : 0);
+            contentMap.put("react_count", question != null ? question.getReactCount() : 0);
+            ReactionType userReact = userQuestionReactMap.get(targetId);
+            contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
+            contentMap.put("reacted_by_me", userReact != null);
         }
 
         return ActivityFeedItemDto.builder()

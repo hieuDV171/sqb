@@ -18,7 +18,7 @@ export function usePostReact() {
         queryKey: ['activity-feeds'],
       });
 
-      // 3. Optimistic Update: Phản hồi tức thì 0ms (Zero Latency)
+      // 3. Optimistic Update: Phản hồi tức thì 0ms (Zero Latency) đa hình cho 3 loại cảm xúc LIKE, LOVE, WOW
       queryClient.setQueriesData<InfiniteData<CursorResponse<ActivityFeedItemDto>>>(
         { queryKey: ['activity-feeds'] },
         (oldData) => {
@@ -33,19 +33,36 @@ export function usePostReact() {
                 ...page,
                 items: page.items.map((item) => {
                   if (item.targetType === data.targetType && item.targetId === data.targetId) {
-                    const currentlyReacted = Boolean(item.content.reactedByMe);
+                    const currentReaction = item.content.myReaction || (item.content.reactedByMe ? 'LIKE' : null);
+                    const isSameType = currentReaction === data.reactionType;
 
-                    // Thuật toán cho hệ thống cảm xúc:
-                    // - Nếu đang react mà bấm lại -> Hủy (reactedByMe = false, count - 1)
-                    // - Nếu chưa react mà bấm -> Thả mới (reactedByMe = true, count + 1)
-                    const nextReacted = !currentlyReacted;
-                    const deltaCount = nextReacted ? 1 : -1;
+                    let nextMyReaction: 'LIKE' | 'LOVE' | 'WOW' | null = null;
+                    let nextReacted = false;
+                    let deltaCount = 0;
+
+                    if (isSameType) {
+                      // Hủy cảm xúc nếu bấm lại cùng loại
+                      nextMyReaction = null;
+                      nextReacted = false;
+                      deltaCount = -1;
+                    } else if (currentReaction) {
+                      // Đổi loại cảm xúc khác (ví dụ từ LIKE sang LOVE): Tổng số lượng giữ nguyên
+                      nextMyReaction = data.reactionType;
+                      nextReacted = true;
+                      deltaCount = 0;
+                    } else {
+                      // Thả cảm xúc mới
+                      nextMyReaction = data.reactionType;
+                      nextReacted = true;
+                      deltaCount = 1;
+                    }
 
                     return {
                       ...item,
                       content: {
                         ...item.content,
                         reactedByMe: nextReacted,
+                        myReaction: nextMyReaction,
                         reactCount: Math.max(0, (item.content.reactCount || 0) + deltaCount),
                       },
                     };
@@ -72,7 +89,7 @@ export function usePostReact() {
     onSuccess: (res, data) => {
       // 5. Cập nhật dữ liệu chuẩn xác từ Server (Reconciliation)
       if (res?.data) {
-        const { myReaction, totalCount } = res.data;
+        const { myReaction, totalCount, reactionCounts } = res.data;
         queryClient.setQueriesData<InfiniteData<CursorResponse<ActivityFeedItemDto>>>(
           { queryKey: ['activity-feeds'] },
           (oldData) => {
@@ -87,8 +104,10 @@ export function usePostReact() {
                       ...item,
                       content: {
                         ...item.content,
-                        reactedByMe: myReaction !== null,
-                        reactCount: totalCount,
+                        reactedByMe: myReaction !== null && myReaction !== undefined,
+                        myReaction: myReaction as any,
+                        reactCount: totalCount ?? item.content.reactCount,
+                        reactionCounts: reactionCounts || item.content.reactionCounts,
                       },
                     };
                   }
@@ -99,10 +118,6 @@ export function usePostReact() {
           }
         );
       }
-    },
-    onSettled: () => {
-      // 6. Luôn làm mới ngầm các truy vấn liên quan
-      queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
     },
   });
 

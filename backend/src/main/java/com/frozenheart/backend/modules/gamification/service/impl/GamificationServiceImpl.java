@@ -1566,7 +1566,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .title(feedTitle)
                 .description(postContent.length() > 200 ? postContent.substring(0, 200) + "..." : postContent)
                 .build();
-        activityFeedService.logActivity(null, ActionType.CREATED_POST, ActivityFeedTargetType.POST.name(), savedPost.getId(), feedMeta);
+        activityFeedService.logActivity(null, ActionType.CREATED_POST, ActivityFeedTargetType.POST, savedPost.getId(), feedMeta);
 
         // 5. Gửi thông báo In-app và Push Notification cho các sinh viên đạt giải
         List<Notification> notifs = new ArrayList<>();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
@@ -6,9 +6,12 @@ import { CommentSection } from './CommentSection';
 import { LecturerNoteModal } from './LecturerNoteModal';
 import { ReportModal } from '@/features/report';
 import type { ActivityFeedItemDto } from '../types/feed.types';
+import type { ReactionType } from '../services/reactService';
 import { useToastStore } from '@/stores/useToastStore';
 import {
+  ThumbsUp,
   Heart,
+  Sparkles,
   MessageCircle,
   Share2,
   MoreHorizontal,
@@ -20,6 +23,36 @@ import {
   Trash2,
   ShieldAlert,
 } from 'lucide-react';
+
+export const REACTIONS = [
+  {
+    type: 'LIKE' as ReactionType,
+    label: 'Thích',
+    icon: ThumbsUp,
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/40',
+    ringColor: 'ring-blue-300 dark:ring-blue-800',
+    emoji: '👍',
+  },
+  {
+    type: 'LOVE' as ReactionType,
+    label: 'Yêu thích',
+    icon: Heart,
+    color: 'text-rose-600 dark:text-rose-400',
+    bgColor: 'bg-rose-50 dark:bg-rose-950/40',
+    ringColor: 'ring-rose-300 dark:ring-rose-800',
+    emoji: '❤️',
+  },
+  {
+    type: 'WOW' as ReactionType,
+    label: 'Tuyệt vời',
+    icon: Sparkles,
+    color: 'text-amber-500 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/40',
+    ringColor: 'ring-amber-300 dark:ring-amber-800',
+    emoji: '😮',
+  },
+];
 
 interface PostFeedCardProps {
   item: ActivityFeedItemDto;
@@ -33,10 +66,16 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
 
   const { actor, content, createdAt, targetId } = item;
 
-  const isLiked = content.reactedByMe || false;
+  const myReaction: ReactionType | null =
+    (content.myReaction as ReactionType) || (content.reactedByMe ? 'LIKE' : null);
   const likeCount = content.reactCount || 0;
+  const currentReactionConfig = REACTIONS.find((r) => r.type === myReaction);
+
   const [showComments, setShowComments] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
+  const [showReactionPicker, setShowReactionPicker] = useState<boolean>(false);
+  const pickerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [isLecturerModalOpen, setIsLecturerModalOpen] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isContentExpanded, setIsContentExpanded] = useState<boolean>(false);
@@ -44,11 +83,36 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
   const isAuthor = user?.id === actor.userId;
   const isLecturerOrAdmin = user?.role === 'LECTURER' || user?.role === 'ADMIN';
 
-  const handleLike = () => {
+  const handleMouseEnterPicker = () => {
+    if (pickerTimeoutRef.current) {
+      clearTimeout(pickerTimeoutRef.current);
+      pickerTimeoutRef.current = null;
+    }
+    setShowReactionPicker(true);
+  };
+
+  const handleMouseLeavePicker = () => {
+    pickerTimeoutRef.current = setTimeout(() => {
+      setShowReactionPicker(false);
+    }, 250);
+  };
+
+  const handleSelectReaction = (type: ReactionType) => {
+    setShowReactionPicker(false);
     toggleReact({
       targetType: (item.targetType as any) || 'POST',
       targetId,
-      reactionType: 'LIKE',
+      reactionType: type,
+    });
+  };
+
+  const handleMainButtonClick = () => {
+    // Nếu đang có reaction thì bấm vào để hủy, nếu chưa có thì mặc định thả LIKE
+    const typeToToggle: ReactionType = myReaction || 'LIKE';
+    toggleReact({
+      targetType: (item.targetType as any) || 'POST',
+      targetId,
+      reactionType: typeToToggle,
     });
   };
 
@@ -307,19 +371,69 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
       {/* 5. Post Actions (Like, Comment, Share, Lecturer Note quick button) */}
       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs md:text-sm text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1 md:gap-2">
-          {/* Reaction Button */}
-          <button
-            type="button"
-            onClick={handleLike}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer ${
-              isLiked
-                ? 'text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/30'
-                : 'hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
+          {/* Reaction Button with Floating Popover Picker (LIKE, LOVE, WOW) */}
+          <div
+            className="relative"
+            onMouseEnter={handleMouseEnterPicker}
+            onMouseLeave={handleMouseLeavePicker}
           >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-rose-600' : ''}`} />
-            <span>{likeCount}</span>
-          </button>
+            {/* Floating Reaction Bar (Facebook / LinkedIn Style) */}
+            {showReactionPicker && (
+              <div
+                className="absolute bottom-full left-0 mb-2 z-30 flex items-center gap-1.5 p-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150"
+                onMouseEnter={handleMouseEnterPicker}
+                onMouseLeave={handleMouseLeavePicker}
+              >
+                {REACTIONS.map((r) => {
+                  const isSelected = myReaction === r.type;
+                  return (
+                    <button
+                      key={r.type}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectReaction(r.type);
+                      }}
+                      className={`group/btn relative flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 hover:scale-125 active:scale-95 cursor-pointer ${
+                        isSelected
+                          ? `${r.bgColor} ring-2 ${r.ringColor}`
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                      title={r.label}
+                    >
+                      <span className="text-xl leading-none select-none drop-shadow-xs">{r.emoji}</span>
+                      <span className="absolute -top-7 px-1.5 py-0.5 rounded-md bg-slate-900 text-white text-[10px] font-medium opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
+                        {r.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleMainButtonClick}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                currentReactionConfig
+                  ? `${currentReactionConfig.color} font-bold ${currentReactionConfig.bgColor}`
+                  : 'hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              {currentReactionConfig ? (
+                <>
+                  <span className="text-base leading-none select-none">{currentReactionConfig.emoji}</span>
+                  <span>{currentReactionConfig.label}</span>
+                </>
+              ) : (
+                <>
+                  <ThumbsUp className="w-4 h-4" />
+                  <span>Thích</span>
+                </>
+              )}
+              {likeCount > 0 && <span className="text-xs font-semibold">{likeCount}</span>}
+            </button>
+          </div>
 
           {/* Comment Toggle Button */}
           <button
