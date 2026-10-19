@@ -354,6 +354,7 @@ public class CommentServiceImpl implements CommentService {
                 .author(authorDto)
                 .createdAt(comment.getCreatedAt())
                 .isDeleted(isDeleted)
+                .isValid(true)
                 .replyCount(replyCount)
                 .replies(repliesList)
                 .build();
