@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import com.frozenheart.backend.core.entity.user.UserRole;
 
@@ -81,6 +82,18 @@ public class SessionServiceImpl implements SessionService {
     @Transactional
     @Override
     public ProposeSessionResponse proposeSession(ProposeSessionRequest request) {
+        if (request == null) {
+            throw new AppException(
+                    ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Dữ liệu đề xuất phiên không được để trống");
+        }
+
+        List<QuestionProposeDto> requestedQuestions = request.questions();
+        if (requestedQuestions == null || requestedQuestions.isEmpty()) {
+            throw new AppException(
+                    ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Danh sách câu hỏi không được để trống");
+        }
 
         // Hiện tại, nội dung câu hỏi có thể có nhiều ảnh, nhưng đáp án chỉ được 1 ảnh
 
@@ -110,16 +123,14 @@ public class SessionServiceImpl implements SessionService {
 
         // Fail-Fast: Thu thập toàn bộ URL ảnh từ request và kiểm tra tính toàn vẹn TRƯỚC KHI tạo Session / Question
         List<String> allRequestedMediaUrls = new ArrayList<>();
-        if (request.questions() != null) {
-            for (var qDto : request.questions()) {
-                if (qDto.mediaUrls() != null) {
-                    allRequestedMediaUrls.addAll(qDto.mediaUrls());
-                }
-                if (qDto.options() != null) {
-                    for (var opt : qDto.options()) {
-                        if (opt != null && opt.getMediaUrl() != null && !opt.getMediaUrl().isBlank()) {
-                            allRequestedMediaUrls.add(opt.getMediaUrl());
-                        }
+        for (var qDto : requestedQuestions) {
+            if (qDto.mediaUrls() != null) {
+                allRequestedMediaUrls.addAll(qDto.mediaUrls());
+            }
+            if (qDto.options() != null) {
+                for (var opt : qDto.options()) {
+                    if (opt != null && opt.getMediaUrl() != null && !opt.getMediaUrl().isBlank()) {
+                        allRequestedMediaUrls.add(opt.getMediaUrl());
                     }
                 }
             }
@@ -154,11 +165,11 @@ public class SessionServiceImpl implements SessionService {
         session.setSessionCode(sessionCode);
 
         // Chuyển đổi danh sách DTO sang danh sách Question Entity
-        List<QuestionProposeDto> requestedQuestions = request.questions();
         Session finalSession = session;
 
-        List<Question> questions = requestedQuestions.stream()
-                .map(q -> {
+        List<Question> questions = IntStream.range(0, requestedQuestions.size())
+                .mapToObj(index -> {
+                    QuestionProposeDto q = requestedQuestions.get(index);
                     String textContent = q.content();
 
                     Instant now = Instant.now();
@@ -175,6 +186,7 @@ public class SessionServiceImpl implements SessionService {
 
                             .llmGenerated(q.llmGenerated())
                             .confidenceScore(q.confidence() != null ? q.confidence() : 0.0)
+                            .displayOrder(index + 1)
                             .createdAt(now)
                             .updatedAt(now)
                             .build();
@@ -184,7 +196,7 @@ public class SessionServiceImpl implements SessionService {
         // Đang PENDING, không index
         List<Question> savedQuestions = questionRepository.saveAll(questions);
 
-        // Cập nhật displayOrder, questionCode và Lưu QuestionMedia đính kèm
+        // Cập nhật questionCode và Lưu QuestionMedia đính kèm
         List<QuestionMedia> mediaListToSave = new ArrayList<>();
 
         // Cập nhật questionCode cho từng câu hỏi
@@ -193,7 +205,6 @@ public class SessionServiceImpl implements SessionService {
             Question q = savedQuestions.get(i);
             QuestionProposeDto dto = requestedQuestions.get(i);
 
-            q.setDisplayOrder(i + 1);
             q.setQuestionCode(subject.getCode() + "_" + authorCode + "_" + q.getId());
 
             // Ảnh của Đề bài (CONTENT)
@@ -268,10 +279,10 @@ public class SessionServiceImpl implements SessionService {
         }
 
         // Cập nhật chỉ số totalProposedQuestion cho sinh viên đề xuất
-        counterMetricsService.incrementProposedQuestions(proposer.getId(), request.questions().size());
+        counterMetricsService.incrementProposedQuestions(proposer.getId(), requestedQuestions.size());
 
         metricService.incrementCounter("sqb.exam.sessions.created", "subject", subject.getCode());
-        metricService.incrementCounter("sqb.exam.questions.proposed", request.questions().size(), "subject", subject.getCode());
+        metricService.incrementCounter("sqb.exam.questions.proposed", requestedQuestions.size(), "subject", subject.getCode());
 
         // BẮN TASK CHẠY NGẦM CHECK TRÙNG 3 TẦNG
         duplicateDetectionService.asyncCheckDuplicates(session.getId());
@@ -280,7 +291,7 @@ public class SessionServiceImpl implements SessionService {
                 .sessionId(session.getId())
                 .sessionCode(session.getSessionCode())
                 .subjectId(subject.getId())
-                .questionCount(request.questions().size())
+                .questionCount(requestedQuestions.size())
                 .status(session.getStatus())
                 .createdAt(session.getCreatedAt())
                 .build();
@@ -323,21 +334,19 @@ public class SessionServiceImpl implements SessionService {
         }
 
         List<SubmissionsResponse.SubmissionSessionSummaryDto> contents = mySubmissions.stream()
-                .map(s -> {
-                    return SubmissionsResponse.SubmissionSessionSummaryDto.builder()
-                            .sessionId(s.getSessionId())
-                            .sessionCode(s.getSessionCode())
-                            .title(s.getTitle())
-                            .content(s.getContent())
-                            .subjectId(s.getSubjectId())
-                            .subjectName(s.getSubjectName())
-                            .subjectCode(s.getSubjectCode())
-                            .questionCounts(s.getQuestionCount())
-                            .createdAt(s.getCreatedAt())
-                            .reactCount(s.getReactCount())
-                            .commentCount(s.getCommentCount())
-                            .build();
-                })
+                .map(s -> SubmissionsResponse.SubmissionSessionSummaryDto.builder()
+                        .sessionId(s.getSessionId())
+                        .sessionCode(s.getSessionCode())
+                        .title(s.getTitle())
+                        .content(s.getContent())
+                        .subjectId(s.getSubjectId())
+                        .subjectName(s.getSubjectName())
+                        .subjectCode(s.getSubjectCode())
+                        .questionCounts(s.getQuestionCount())
+                        .createdAt(s.getCreatedAt())
+                        .reactCount(s.getReactCount())
+                        .commentCount(s.getCommentCount())
+                        .build())
                 .toList();
 
         return SubmissionsResponse.builder()

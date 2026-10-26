@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
         List<FieldErrorDetail> errors = getErrors(ex.getBindingResult());
         String defaultMsg = "Dữ liệu yêu cầu không hợp lệ";
         if (!errors.isEmpty()) {
-            FieldErrorDetail firstError = errors.get(0);
+            FieldErrorDetail firstError = errors.getFirst();
             if (firstError.message() != null && !firstError.message().isBlank()) {
                 defaultMsg = "Trường '" + firstError.field() + "' không hợp lệ (" + firstError.message() + ")";
             }
@@ -122,18 +122,21 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<GlobalResponse<Void>> handleDataIntegrityViolationException() {
-        String message = "Dữ liệu bị vi phạm ràng buộc cơ sở dữ liệu";
+    public ResponseEntity<GlobalResponse<Void>> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+        log.error("[DataIntegrityViolation] TraceId={}", MDC.get("traceId"), ex);
+
         return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_VALUE, message));
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(GlobalResponse.error(
+                        ResponseCode.UNHANDLED_EXCEPTION,
+                        "Không thể lưu dữ liệu do lỗi hệ thống. Vui lòng thử lại sau."));
     }
 
     @ExceptionHandler({
             ObjectOptimisticLockingFailureException.class,
             OptimisticLockException.class
     })
-    public ResponseEntity<GlobalResponse<Void>> handleOptimisticLockingFailureException(Exception ex) {
+    public ResponseEntity<GlobalResponse<Void>> handleOptimisticLockingFailureException(Exception ignored) {
         String message = "Dữ liệu đã được cập nhật bởi một thao tác khác trong cùng thời điểm. Vui lòng tải lại trang và thử lại.";
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
