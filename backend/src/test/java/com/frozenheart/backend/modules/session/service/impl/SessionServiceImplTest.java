@@ -7,9 +7,11 @@ import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
+import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
@@ -18,6 +20,7 @@ import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
+import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
 import org.junit.jupiter.api.AfterEach;
@@ -30,11 +33,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
@@ -62,6 +65,8 @@ class SessionServiceImplTest {
     private CounterMetricsService counterMetricsService;
     @Mock
     private UserCourseClassRepository userCourseClassRepository;
+    @Mock
+    private UserProfileRepository userProfileRepository;
 
     @InjectMocks
     private SessionServiceImpl sessionService;
@@ -165,6 +170,57 @@ class SessionServiceImplTest {
         verifyNoRepositoryInteractions();
     }
 
+    @Test
+    @DisplayName("Phải trả chi tiết phiên chưa có giảng viên duyệt mà không truy vấn hồ sơ reviewer")
+    void getMySubmissionDetailShouldHandleSessionWithoutReviewer() {
+        Long userId = 7L;
+        Long sessionId = 101L;
+        setCurrentUser(userId);
+
+        Session session = detailSession(userId, sessionId, null);
+        when(sessionRepository.findByIdFetchSubjectProposerAndReviewer(sessionId))
+                .thenReturn(Optional.of(session));
+        when(questionRepository.findQuestionsBySessionId(sessionId)).thenReturn(List.of());
+
+        MySubmissionDetailResponse response = sessionService.getMySubmissionDetail(sessionId);
+
+        assertEquals(sessionId, response.sessionId());
+        assertEquals("IT4788", response.subjectCode());
+        assertNull(response.reviewedByLecturer());
+        assertEquals(List.of(), response.questions());
+        verifyNoInteractions(userProfileRepository);
+    }
+
+    @Test
+    @DisplayName("Phải lấy fullName của giảng viên duyệt từ UserProfile")
+    void getMySubmissionDetailShouldUseReviewerProfileFullName() {
+        Long userId = 7L;
+        Long reviewerId = 8L;
+        Long sessionId = 101L;
+        setCurrentUser(userId);
+
+        User reviewer = User.builder()
+                .id(reviewerId)
+                .email("lecturer@sqb.edu.vn")
+                .role(UserRole.LECTURER)
+                .build();
+        Session session = detailSession(userId, sessionId, reviewer);
+        UserProfile reviewerProfile = UserProfile.builder()
+                .userId(reviewerId)
+                .fullName("TS. Nguyễn Văn B")
+                .build();
+
+        when(sessionRepository.findByIdFetchSubjectProposerAndReviewer(sessionId))
+                .thenReturn(Optional.of(session));
+        when(questionRepository.findQuestionsBySessionId(sessionId)).thenReturn(List.of());
+        when(userProfileRepository.findById(reviewerId)).thenReturn(Optional.of(reviewerProfile));
+
+        MySubmissionDetailResponse response = sessionService.getMySubmissionDetail(sessionId);
+
+        assertEquals("TS. Nguyễn Văn B", response.reviewedByLecturer());
+        verify(userProfileRepository).findById(reviewerId);
+    }
+
     private ProposeSessionRequest.QuestionProposeDto question(String content) {
         QuestionOption option = new QuestionOption();
         option.setKey("A");
@@ -188,6 +244,30 @@ class SessionServiceImplTest {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
+    private Session detailSession(Long proposerId, Long sessionId, User reviewer) {
+        User proposer = User.builder()
+                .id(proposerId)
+                .email("student@sqb.edu.vn")
+                .role(UserRole.STUDENT)
+                .build();
+        Subject subject = Subject.builder()
+                .id(11L)
+                .code("IT4788")
+                .name("Phát triển ứng dụng đa nền tảng")
+                .build();
+
+        return Session.builder()
+                .id(sessionId)
+                .sessionCode("IT4788_ABC123_1_101")
+                .title("Phiên câu hỏi kiểm thử")
+                .content("Nội dung kiểm thử")
+                .proposer(proposer)
+                .reviewer(reviewer)
+                .subject(subject)
+                .createdAt(Instant.parse("2026-10-26T09:00:00Z"))
+                .build();
+    }
+
     private void verifyNoRepositoryInteractions() {
         verifyNoInteractions(
                 userRepository,
@@ -195,6 +275,7 @@ class SessionServiceImplTest {
                 sessionRepository,
                 questionRepository,
                 questionMediaRepository,
-                userCourseClassRepository);
+                userCourseClassRepository,
+                userProfileRepository);
     }
 }

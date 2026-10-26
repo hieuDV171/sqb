@@ -148,7 +148,9 @@ public class GlobalExceptionHandler {
         log.error("[UnhandledException] TraceId={}: ", MDC.get("traceId"), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(GlobalResponse.error(ResponseCode.UNHANDLED_EXCEPTION, ex.getMessage() != null ? ex.getMessage() : ResponseCode.UNHANDLED_EXCEPTION.getMessage()));
+                .body(GlobalResponse.error(
+                        ResponseCode.UNHANDLED_EXCEPTION,
+                        "Hệ thống gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau."));
     }
 }
 

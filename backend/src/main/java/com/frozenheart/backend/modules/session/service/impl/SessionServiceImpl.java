@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 
 import org.springframework.data.domain.PageRequest;
@@ -50,6 +51,7 @@ import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 import com.frozenheart.backend.modules.session.service.SessionService;
+import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 import com.frozenheart.backend.core.entity.user.UserCourseClass;
@@ -78,6 +80,7 @@ public class SessionServiceImpl implements SessionService {
     private final ApplicationEventPublisher eventPublisher;
     private final MetricService metricService;
     private final UserCourseClassRepository userCourseClassRepository;
+    private final UserProfileRepository userProfileRepository;
 
     @Transactional
     @Override
@@ -363,18 +366,21 @@ public class SessionServiceImpl implements SessionService {
     public MySubmissionDetailResponse getMySubmissionDetail(Long sessionId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        Object[] rows = sessionRepository.findByIdFetchSubjectAndReviewer(sessionId)
+        Session session = sessionRepository.findByIdFetchSubjectProposerAndReviewer(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
-
-        Session session = (Session) rows[0];
-        String reviewerFullName = (String) rows[1];
 
         if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
             throw new AppException(ResponseCode.ACCESS_DENIED);
         }
 
         List<Question> questions = questionRepository.findQuestionsBySessionId(sessionId);
-        String reviewerName = session.getReviewer() != null ? session.getReviewer().getEmail() : null;
+        String reviewerName = null;
+        if (session.getReviewer() != null) {
+            reviewerName = userProfileRepository.findById(session.getReviewer().getId())
+                    .map(UserProfile::getFullName)
+                    .filter(fullName -> !fullName.isBlank())
+                    .orElse(session.getReviewer().getEmail());
+        }
 
         List<MySubmissionDetailResponse.MySubmissionQuestionDto> questionDtos = questions.stream()
                 .map(q -> {
@@ -408,7 +414,7 @@ public class SessionServiceImpl implements SessionService {
                 .subjectId(subject != null ? subject.getId() : null)
                 .subjectName(subject != null ? subject.getName() : null)
                 .subjectCode(subject != null ? subject.getCode() : null)
-                .reviewedByLecturer(reviewerFullName != null ? reviewerFullName : reviewerName)
+                .reviewedByLecturer(reviewerName)
                 .reviewedAt(session.getReviewedAt())
                 .commentCount(session.getCommentCount())
                 .reactCount(session.getReactCount())

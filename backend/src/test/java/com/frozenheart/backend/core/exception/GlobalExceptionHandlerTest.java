@@ -2,6 +2,8 @@ package com.frozenheart.backend.core.exception;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import org.hibernate.PropertyValueException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -34,6 +36,23 @@ class GlobalExceptionHandlerTest {
         assertNotNull(response.getBody());
         assertEquals("9999", response.getBody().getCode());
         assertEquals("Không thể lưu dữ liệu do lỗi hệ thống. Vui lòng thử lại sau.", response.getBody().getMessage());
+        assertFalse(response.getBody().getMessage().contains(sensitiveDetail));
+    }
+
+    @Test
+    @DisplayName("Generic handler không được trả raw exception message cho client")
+    void shouldNotExposeGenericExceptionMessage() {
+        String sensitiveDetail = "classloader-and-internal-class-name";
+
+        ResponseEntity<GlobalResponse<Void>> response =
+                handler.handleGenericException(new ClassCastException(sensitiveDetail));
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("9999", response.getBody().getCode());
+        assertEquals(
+                "Hệ thống gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.",
+                response.getBody().getMessage());
         assertFalse(response.getBody().getMessage().contains(sensitiveDetail));
     }
 

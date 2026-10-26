@@ -62,8 +62,8 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
         @Query("SELECT s FROM Session s JOIN FETCH s.subject WHERE s.id = :sessionId")
         Optional<Session> findByIdFetchSubject(@Param("sessionId") Long sessionId);
 
-        @Query("SELECT s, up.fullName FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.reviewer r LEFT JOIN UserProfile up ON r.id = up.userId WHERE s.id = :sessionId")
-        Optional<Object[]> findByIdFetchSubjectAndReviewer(@Param("sessionId") Long sessionId);
+        @Query("SELECT s FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.proposer LEFT JOIN FETCH s.reviewer WHERE s.id = :sessionId")
+        Optional<Session> findByIdFetchSubjectProposerAndReviewer(@Param("sessionId") Long sessionId);
 
         @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias WHERE s.id = :sessionId")
         Optional<Session> findByIdFetchSubjectAndQuestions(@Param("sessionId") Long sessionId);
