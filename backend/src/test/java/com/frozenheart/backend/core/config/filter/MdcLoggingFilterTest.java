@@ -2,13 +2,9 @@ package com.frozenheart.backend.core.config.filter;
 
 import com.frozenheart.backend.core.config.async.MdcTaskDecorator;
 
-import io.micrometer.tracing.Tracer;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -20,9 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class MdcLoggingFilterTest {
 
-    private final ObjectProvider<Tracer> tracerProvider = 
-            Mockito.mock(ObjectProvider.class);
-    private final MdcLoggingFilter filter = new MdcLoggingFilter(tracerProvider);
+    private final MdcLoggingFilter filter = new MdcLoggingFilter();
 
     @Test
     @DisplayName("Nên tái sử dụng Correlation ID được truyền vào từ header X-Correlation-ID")

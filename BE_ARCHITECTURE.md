@@ -229,3 +229,14 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Rà soát và chuẩn hóa toàn bộ mô tả trong các annotation `@Operation`, `@Parameter`, `@Schema`, bảng đặc tả STOMP, và tài liệu `BACKEND_API_SPECIFICATION.md` về thống nhất chuẩn `snake_case`.
   - Bổ sung kiểm thử đơn vị `OpenApiSnakeCaseTest` đảm bảo tính toàn vẹn của Swagger Schema.
 - **Hệ quả:** Toàn bộ Swagger UI hiển thị chính xác 100% định dạng `snake_case`, triệt tiêu hoàn toàn sự sai lệch giữa tài liệu đặc tả và hành vi runtime của hệ thống, bảo đảm cách ly an toàn giữa Jackson 2 và Jackson 3.
+
+### [ADR-008] Giới hạn Tài nguyên Production và Ngừng Distributed Monitoring trên Hosting Dùng chung
+- **Ngày quyết định:** 27/10/2026
+- **Bối cảnh:** Hosting 5.8 GiB RAM dùng chung nhiều dự án bị global OOM; kernel liên tục kill `sqb-backend`. JVM từng dùng ZGC với `MaxRAMPercentage=75.0` nhưng container không có memory limit. AI sidecar chạy hai Uvicorn workers và mỗi worker nạp riêng cả text/image model. Tempo, Prometheus và các container monitoring đã ngừng sử dụng nhưng backend vẫn khởi tạo exporter và thử gửi trace tới Tempo.
+- **Quyết định:**
+  - Backend dùng G1GC với heap cố định `-Xms256m -Xmx640m`, `ExitOnOutOfMemoryError`, container RAM limit 1152 MiB và tổng RAM + swap limit 1280 MiB.
+  - AI sidecar chỉ chạy một Uvicorn worker để mỗi model chỉ được nạp một lần trong production.
+  - Loại Prometheus registry, OpenTelemetry bridge/exporter và starter OpenTelemetry khỏi runtime; tắt thu thập Micrometer metrics và production chỉ expose Actuator `health/info`.
+  - Correlation ID tiếp tục được tạo/nhận qua HTTP header và MDC, không phụ thuộc distributed tracing.
+  - Workflow production không còn đồng bộ hoặc chứa bước khởi động monitoring stack.
+- **Hệ quả:** SQB có ngân sách RAM rõ ràng và giảm nguy cơ làm cạn tài nguyên toàn host; đổi lại G1 có pause dài hơn ZGC, heap nhỏ làm GC thường xuyên hơn và một AI worker giảm khả năng xử lý nhiều inference đồng thời. Hệ thống không còn Prometheus metrics/distributed traces, nhưng health endpoint, application log và correlation ID vẫn hoạt động để chẩn đoán cơ bản.

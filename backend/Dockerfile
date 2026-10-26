@@ -28,4 +28,4 @@ USER sqbuser
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-XX:+UseZGC", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:+UseG1GC", "-Xms256m", "-Xmx640m", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]

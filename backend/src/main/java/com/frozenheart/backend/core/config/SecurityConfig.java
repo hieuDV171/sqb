@@ -69,9 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/docs/**", "/docs", "/api-docs/**").permitAll()
 
-                        // Actuator Health & Metrics
-                        // TODO Production: Cần bảo mật endpoint /actuator/prometheus bằng Basic Auth
-                        // hoặc hạn chế chỉ cho phép IP nội bộ của Prometheus scraper truy cập.
+                        // Chỉ health/info được expose trong application.yaml; không còn exporter monitoring.
                         .requestMatchers("/actuator/**").permitAll()
 
                         .requestMatchers("/lecturer/**").hasAnyRole("LECTURER", "ADMIN")

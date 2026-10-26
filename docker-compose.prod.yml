@@ -78,6 +78,10 @@ services:
     image: ${BACKEND_IMAGE}
     container_name: sqb-backend
     restart: unless-stopped
+    # Giữ tổng bộ nhớ JVM + metaspace + thread stack + direct buffer trong phạm vi SQB.
+    # memswap_limit chỉ cho phép tối đa 128 MiB swap ngoài giới hạn RAM 1152 MiB.
+    mem_limit: 1152m
+    memswap_limit: 1280m
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,9 +132,6 @@ services:
       - ADMIN_USERNAME=${ADMIN_USERNAME}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SPRING_PROFILES_ACTIVE=prod
-
-      # Distributed Tracing (Tempo OTLP Exporter on sqb-network)
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318/v1/traces}
 
       # Mail Service
       - MAIL_USERNAME=${MAIL_USERNAME}

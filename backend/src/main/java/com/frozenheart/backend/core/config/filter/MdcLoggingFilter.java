@@ -1,16 +1,11 @@
 package com.frozenheart.backend.core.config.filter;
 
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -20,12 +15,11 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Filter thiết lập Correlation ID (Trace ID) và ngữ cảnh chẩn đoán MDC (Mapped Diagnostic Context)
- * cho mọi HTTP request đi vào hệ thống. Đồng bộ chuẩn W3C Trace ID với Micrometer Tracing.
+ * Filter thiết lập Correlation ID và ngữ cảnh chẩn đoán MDC (Mapped Diagnostic Context)
+ * cho mọi HTTP request đi vào hệ thống mà không phụ thuộc vào hệ thống distributed tracing.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
-@RequiredArgsConstructor
 public class MdcLoggingFilter extends OncePerRequestFilter {
 
     public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
@@ -34,8 +28,6 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
     public static final String MDC_KEY_CLIENT_IP = "clientIp";
     public static final String MDC_KEY_URI = "uri";
     public static final String MDC_KEY_METHOD = "method";
-
-    private final ObjectProvider<Tracer> tracerProvider;
 
     @Override
     protected void doFilterInternal(
@@ -63,17 +55,6 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
     }
 
     private String resolveTraceId(HttpServletRequest request) {
-        Tracer tracer = tracerProvider.getIfAvailable();
-        if (tracer != null) {
-            Span span = tracer.currentSpan();
-            if (span != null) {
-                TraceContext context = span.context();
-                String otelTraceId = context.traceId();
-                if (!otelTraceId.isBlank()) {
-                    return otelTraceId;
-                }
-            }
-        }
         return extractOrGenerateTraceId(request);
     }
 
