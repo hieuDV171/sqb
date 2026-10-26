@@ -59,7 +59,7 @@ export interface SubmissionSessionSummaryDto {
   createdAt: string;
   reactCount: number;
   commentCount: number;
-  status?: SessionStatus;
+  status: SessionStatus;
 }
 
 export interface SubmissionsResponse {
@@ -93,7 +93,7 @@ export interface MySubmissionDetailResponse {
   reviewedByLecturer?: string | null;
   reviewedAt?: string | null;
   createdAt: string;
-  status?: SessionStatus;
+  status: SessionStatus;
   questions: MySubmissionQuestionDto[];
 }
 

@@ -109,7 +109,6 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
           <SubmissionCard
             key={sub.sessionId}
             submission={sub}
-            currentStatusFilter={currentStatusFilter}
             onViewDetail={onViewDetail}
             onEdit={onEdit}
             onDelete={onDelete}

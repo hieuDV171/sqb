@@ -2,6 +2,8 @@ package com.frozenheart.backend.modules.session.dto;
 
 import java.time.Instant;
 
+import com.frozenheart.backend.core.entity.session.SessionStatus;
+
 public interface SubmissionProjection {
 
     Long getSessionId();
@@ -17,6 +19,8 @@ public interface SubmissionProjection {
     String getSubjectName();
 
     String getSubjectCode();
+
+    SessionStatus getStatus();
 
     Integer getQuestionCount();
 

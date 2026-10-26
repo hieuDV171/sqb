@@ -4,16 +4,24 @@ import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Session;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.CourseClass;
+import com.frozenheart.backend.core.entity.user.UserCourseClass;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
+import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
+import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
+import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
+import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -43,6 +51,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class SessionServiceImplTest {
@@ -64,9 +74,13 @@ class SessionServiceImplTest {
     @Mock
     private CounterMetricsService counterMetricsService;
     @Mock
+    private MetricService metricService;
+    @Mock
     private UserCourseClassRepository userCourseClassRepository;
     @Mock
     private UserProfileRepository userProfileRepository;
+    @Mock
+    private CurrentSemesterHolder currentSemesterHolder;
 
     @InjectMocks
     private SessionServiceImpl sessionService;
@@ -171,6 +185,99 @@ class SessionServiceImplTest {
     }
 
     @Test
+    @DisplayName("Phải từ chối đề xuất cho môn chỉ tham gia ở học kỳ cũ")
+    void proposeSessionShouldRejectSubjectFromInactiveSemester() {
+        Long userId = 7L;
+        Long subjectId = 11L;
+        setCurrentUser(userId);
+
+        User proposer = User.builder().id(userId).role(UserRole.STUDENT).build();
+        Subject subject = Subject.builder().id(subjectId).code("IT4788").name("Môn học kỳ cũ").build();
+        Semester oldSemester = Semester.builder().id(52L).name("20252").build();
+        Semester activeSemester = Semester.builder().id(61L).name("20261").active(true).build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(proposer));
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(subject));
+        when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
+        when(userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId))
+                .thenReturn(List.of(enrollment(21L, oldSemester, subject)));
+
+        ProposeSessionRequest request = new ProposeSessionRequest(
+                "Phiên sai học kỳ",
+                null,
+                null,
+                subjectId,
+                List.of(question("Câu hỏi kiểm thử")));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> sessionService.proposeSession(request));
+
+        assertEquals(ResponseCode.ACCESS_DENIED, exception.getResponseCode());
+        assertEquals(
+                "Bạn chỉ có thể đề xuất câu hỏi cho các môn học đang tham gia trong học kỳ hiện tại",
+                exception.getMessage());
+        verify(sessionRepository, never()).save(any(Session.class));
+    }
+
+    @Test
+    @DisplayName("Danh sách môn đề xuất chỉ gồm các lớp thuộc học kỳ hiện tại")
+    void getMyEnrolledSubjectsShouldOnlyReturnActiveSemesterSubjects() {
+        Long userId = 7L;
+        setCurrentUser(userId);
+
+        Semester oldSemester = Semester.builder().id(52L).name("20252").build();
+        Semester activeSemester = Semester.builder().id(61L).name("20261").active(true).build();
+        Subject oldSubject = Subject.builder().id(11L).code("IT4788").name("Môn học kỳ cũ").build();
+        Subject activeSubject = Subject.builder().id(12L).code("IT4999").name("Môn học kỳ hiện tại").build();
+
+        when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
+        when(userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId))
+                .thenReturn(List.of(
+                        enrollment(21L, oldSemester, oldSubject),
+                        enrollment(22L, activeSemester, activeSubject)));
+
+        var subjects = sessionService.getMyEnrolledSubjects();
+
+        assertEquals(1, subjects.size());
+        assertEquals(activeSubject.getId(), subjects.getFirst().subjectId());
+        assertEquals("IT4999", subjects.getFirst().code());
+    }
+
+    @Test
+    @DisplayName("Phải trả trạng thái thực tế trong danh sách phiên của người dùng")
+    void getMySubmissionsShouldReturnActualSessionStatus() {
+        Long userId = 7L;
+        setCurrentUser(userId);
+
+        SubmissionProjection projection = mock(SubmissionProjection.class);
+        when(projection.getSessionId()).thenReturn(101L);
+        when(projection.getSessionCode()).thenReturn("IT4788_ABC123_1_101");
+        when(projection.getTitle()).thenReturn("Phiên đang được xem xét");
+        when(projection.getContent()).thenReturn("Nội dung kiểm thử");
+        when(projection.getSubjectId()).thenReturn(11L);
+        when(projection.getSubjectName()).thenReturn("Phát triển ứng dụng đa nền tảng");
+        when(projection.getSubjectCode()).thenReturn("IT4788");
+        when(projection.getStatus()).thenReturn(SessionStatus.REVIEWING);
+        when(projection.getQuestionCount()).thenReturn(2);
+        when(projection.getCreatedAt()).thenReturn(Instant.parse("2026-10-26T09:00:00Z"));
+        when(projection.getReactCount()).thenReturn(0);
+        when(projection.getCommentCount()).thenReturn(0);
+        when(sessionRepository.findSubmissions(
+                org.mockito.ArgumentMatchers.eq(userId),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(List.of(projection));
+
+        SubmissionsResponse response = sessionService.getMySubmissions(null, 10, null, null);
+
+        assertEquals(1, response.contents().size());
+        assertEquals(SessionStatus.REVIEWING, response.contents().getFirst().status());
+    }
+
+    @Test
     @DisplayName("Phải trả chi tiết phiên chưa có giảng viên duyệt mà không truy vấn hồ sơ reviewer")
     void getMySubmissionDetailShouldHandleSessionWithoutReviewer() {
         Long userId = 7L;
@@ -186,6 +293,7 @@ class SessionServiceImplTest {
 
         assertEquals(sessionId, response.sessionId());
         assertEquals("IT4788", response.subjectCode());
+        assertEquals(SessionStatus.PENDING, response.status());
         assertNull(response.reviewedByLecturer());
         assertEquals(List.of(), response.questions());
         verifyNoInteractions(userProfileRepository);
@@ -264,7 +372,23 @@ class SessionServiceImplTest {
                 .proposer(proposer)
                 .reviewer(reviewer)
                 .subject(subject)
+                .status(SessionStatus.PENDING)
                 .createdAt(Instant.parse("2026-10-26T09:00:00Z"))
+                .build();
+    }
+
+    private UserCourseClass enrollment(
+            Long courseClassId,
+            Semester semester,
+            Subject subject) {
+        CourseClass courseClass = CourseClass.builder()
+                .id(courseClassId)
+                .classCode("CLASS-" + courseClassId)
+                .semester(semester)
+                .subject(subject)
+                .build();
+        return UserCourseClass.builder()
+                .courseClass(courseClass)
                 .build();
     }
 

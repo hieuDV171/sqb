@@ -522,23 +522,47 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .orElseThrow(() -> new AppException(ResponseCode.SUBJECT_NOT_FOUND,
                         "Không tìm thấy môn học có mã '" + cleanSubjectCode + "' trong hệ thống. Vui lòng liên hệ Quản trị viên để tạo môn học trước khi import!"));
 
-        // 3. Lớp học phần: Tìm theo mã lớp và học kỳ; nếu chưa có thì tự tạo
+        // 3. Lớp học phần: Tìm theo mã lớp và học kỳ; nếu chưa có thì tự tạo.
+        // Nếu lớp đã tồn tại, lecturer_id được Admin chọn rõ ràng vẫn phải được
+        // áp dụng; trước đây tham số này bị bỏ qua do chỉ resolve trong orElseGet.
         String cleanClassCode = parsedData.classCode().trim();
-        CourseClass courseClass = courseClassRepository.findByClassCodeAndSemesterId(cleanClassCode, semester.getId())
-                .orElseGet(() -> {
-                    User assignedLecturer = resolveLecturerForClass(currentUserId, currentRole, parsedData.lecturerName(), lecturerId);
-                    CourseClass newClass = CourseClass.builder()
-                            .classCode(cleanClassCode)
-                            .subject(subject)
-                            .semester(semester)
-                            .lecturer(assignedLecturer)
-                            .createdAt(now)
-                            .build();
-                    CourseClass savedClass = courseClassRepository.save(newClass);
-                    log.info("[CourseClassManagement] Tự động tạo lớp học phần từ Excel: id={}, code={}, semester={}, lecturerId={}",
-                            savedClass.getId(), cleanClassCode, semester.getName(), assignedLecturer.getId());
-                    return savedClass;
-                });
+        Optional<CourseClass> existingClass = courseClassRepository
+                .findByClassCodeAndSemesterId(cleanClassCode, semester.getId());
+
+        CourseClass courseClass;
+        if (existingClass.isPresent()) {
+            courseClass = existingClass.get();
+
+            if (lecturerId != null
+                    && (courseClass.getLecturer() == null
+                            || !Objects.equals(courseClass.getLecturer().getId(), lecturerId))) {
+                User assignedLecturer = resolveLecturerForClass(
+                        currentUserId,
+                        currentRole,
+                        parsedData.lecturerName(),
+                        lecturerId);
+                courseClass.setLecturer(assignedLecturer);
+                courseClass = courseClassRepository.save(courseClass);
+                log.info("[CourseClassManagement] Cập nhật giảng viên cho lớp đã tồn tại: id={}, code={}, semester={}, lecturerId={}",
+                        courseClass.getId(), cleanClassCode, semester.getName(), assignedLecturer.getId());
+            }
+        } else {
+            User assignedLecturer = resolveLecturerForClass(
+                    currentUserId,
+                    currentRole,
+                    parsedData.lecturerName(),
+                    lecturerId);
+            CourseClass newClass = CourseClass.builder()
+                    .classCode(cleanClassCode)
+                    .subject(subject)
+                    .semester(semester)
+                    .lecturer(assignedLecturer)
+                    .createdAt(now)
+                    .build();
+            courseClass = courseClassRepository.save(newClass);
+            log.info("[CourseClassManagement] Tự động tạo lớp học phần từ Excel: id={}, code={}, semester={}, lecturerId={}",
+                    courseClass.getId(), cleanClassCode, semester.getName(), assignedLecturer.getId());
+        }
 
         // 4. Chống N+1: Lấy danh sách ID của tất cả sinh viên
         Set<Long> allUserIds = allStudentUsers.stream()
@@ -677,12 +701,12 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         if (lecturerNameInFile != null && !lecturerNameInFile.isBlank()) {
             List<UserProfile> matchingProfiles = userProfileRepository.findActiveLecturersByFullName(lecturerNameInFile.trim());
             if (matchingProfiles.size() == 1) {
-                User matched = matchingProfiles.get(0).getUser();
+                User matched = matchingProfiles.getFirst().getUser();
                 log.info("[CourseClassManagement] Admin import: Tự động gán lớp cho giảng viên '{}' (ID: {}) tìm thấy từ file Excel",
                         lecturerNameInFile, matched.getId());
                 return matched;
             } else if (matchingProfiles.size() > 1) {
-                User firstMatched = matchingProfiles.get(0).getUser();
+                User firstMatched = matchingProfiles.getFirst().getUser();
                 log.warn("[CourseClassManagement] Admin import: Có {} giảng viên trùng tên '{}'. Ưu tiên chọn giảng viên đầu tiên (ID: {}). Khuyến nghị chỉ định lecturerId cụ thể.",
                         matchingProfiles.size(), lecturerNameInFile, firstMatched.getId());
                 return firstMatched;

@@ -105,7 +105,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-        List<Session> sessions = sessionRepository.findPendingSessionsFetchSubjectAndProposerWithCursor(subjectId,
+        List<Session> sessions = sessionRepository.findReviewableSessionsFetchSubjectAndProposerWithCursor(subjectId,
                 after, pageable);
 
         boolean hasNext = false;

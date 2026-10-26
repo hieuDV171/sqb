@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionSource;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -32,6 +33,9 @@ public record MySubmissionDetailResponse(
 
         @Schema(description = "Mã môn học", example = "IT3180")
         String subjectCode,
+
+        @Schema(description = "Trạng thái thực tế của phiên đề xuất", example = "PENDING")
+        SessionStatus status,
 
         @Schema(description = "Số lượng bình luận", example = "4")
         int commentCount,

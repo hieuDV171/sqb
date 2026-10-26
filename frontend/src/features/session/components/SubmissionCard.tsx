@@ -19,7 +19,6 @@ import type { SubmissionSessionSummaryDto, SessionStatus } from '../types/sessio
 
 interface SubmissionCardProps {
   submission: SubmissionSessionSummaryDto;
-  currentStatusFilter?: SessionStatus;
   onViewDetail: (sessionId: number) => void;
   onEdit?: (submission: SubmissionSessionSummaryDto) => void;
   onDelete?: (sessionId: number, sessionCode: string) => void;
@@ -27,7 +26,6 @@ interface SubmissionCardProps {
 
 export const SubmissionCard: React.FC<SubmissionCardProps> = ({
   submission,
-  currentStatusFilter,
   onViewDetail,
   onEdit,
   onDelete,
@@ -35,9 +33,9 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
-  // Status can be from submission object or the currently selected filter
-  const effectiveStatus: SessionStatus =
-    submission.status || currentStatusFilter || 'PENDING';
+  // Luôn dùng trạng thái thực tế do backend trả về. Bộ lọc chỉ quyết định
+  // bản ghi nào được tải, không được dùng để suy diễn trạng thái của bản ghi.
+  const effectiveStatus: SessionStatus = submission.status;
 
   const handleCopyCode = (e: React.MouseEvent) => {
     e.stopPropagation();

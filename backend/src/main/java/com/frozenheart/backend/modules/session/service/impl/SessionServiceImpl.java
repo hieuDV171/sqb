@@ -33,6 +33,7 @@ import com.frozenheart.backend.core.entity.session.QuestionSource;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
+import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
@@ -43,6 +44,7 @@ import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest.QuestionProposeDto;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
+import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -81,6 +83,7 @@ public class SessionServiceImpl implements SessionService {
     private final MetricService metricService;
     private final UserCourseClassRepository userCourseClassRepository;
     private final UserProfileRepository userProfileRepository;
+    private final CurrentSemesterHolder currentSemesterHolder;
 
     @Transactional
     @Override
@@ -110,14 +113,25 @@ public class SessionServiceImpl implements SessionService {
 
         // Kiểm tra SV có tham gia môn học này không (nếu là STUDENT)
         if (proposer.getRole() == UserRole.STUDENT) {
+            Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+            if (activeSemester == null) {
+                throw new AppException(
+                        ResponseCode.NO_ACTIVE_SEMESTER,
+                        "Không có học kỳ nào đang mở trong hệ thống");
+            }
+
             boolean isEnrolled = userCourseClassRepository
                     .findByUserIdFetchCourseClassAndSubject(userId)
                     .stream()
-                    .anyMatch(ucc -> ucc.getCourseClass() != null 
-                            && ucc.getCourseClass().getSubject() != null 
+                    .anyMatch(ucc -> ucc.getCourseClass() != null
+                            && ucc.getCourseClass().getSubject() != null
+                            && ucc.getCourseClass().getSemester() != null
+                            && Objects.equals(ucc.getCourseClass().getSemester().getId(), activeSemester.getId())
                             && Objects.equals(ucc.getCourseClass().getSubject().getId(), request.subjectId()));
             if (!isEnrolled) {
-                throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn chỉ có thể đề xuất câu hỏi cho các môn học mình đang tham gia");
+                throw new AppException(
+                        ResponseCode.ACCESS_DENIED,
+                        "Bạn chỉ có thể đề xuất câu hỏi cho các môn học đang tham gia trong học kỳ hiện tại");
             }
         }
 
@@ -345,6 +359,7 @@ public class SessionServiceImpl implements SessionService {
                         .subjectId(s.getSubjectId())
                         .subjectName(s.getSubjectName())
                         .subjectCode(s.getSubjectCode())
+                        .status(s.getStatus())
                         .questionCounts(s.getQuestionCount())
                         .createdAt(s.getCreatedAt())
                         .reactCount(s.getReactCount())
@@ -414,6 +429,7 @@ public class SessionServiceImpl implements SessionService {
                 .subjectId(subject != null ? subject.getId() : null)
                 .subjectName(subject != null ? subject.getName() : null)
                 .subjectCode(subject != null ? subject.getCode() : null)
+                .status(session.getStatus())
                 .reviewedByLecturer(reviewerName)
                 .reviewedAt(session.getReviewedAt())
                 .commentCount(session.getCommentCount())
@@ -601,11 +617,19 @@ public class SessionServiceImpl implements SessionService {
     @Transactional(readOnly = true)
     public List<SubjectResponse> getMyEnrolledSubjects() {
         Long userId = JwtPayload.getCurrentUserPayload().getUserId();
+        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+        if (activeSemester == null) {
+            return Collections.emptyList();
+        }
+
         List<UserCourseClass> enrollments = userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId);
 
         Map<Long, SubjectResponse> distinctSubjects = new LinkedHashMap<>();
         for (UserCourseClass ucc : enrollments) {
-            if (ucc.getCourseClass() != null && ucc.getCourseClass().getSubject() != null) {
+            if (ucc.getCourseClass() != null
+                    && ucc.getCourseClass().getSubject() != null
+                    && ucc.getCourseClass().getSemester() != null
+                    && Objects.equals(ucc.getCourseClass().getSemester().getId(), activeSemester.getId())) {
                 Subject s = ucc.getCourseClass().getSubject();
                 if (!distinctSubjects.containsKey(s.getId())) {
                     distinctSubjects.put(s.getId(), SubjectResponse.builder()

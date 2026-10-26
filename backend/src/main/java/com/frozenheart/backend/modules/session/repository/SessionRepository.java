@@ -28,6 +28,7 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                             subject.id AS subjectId,
                             subject.name AS subjectName,
                             subject.code AS subjectCode,
+                            s.status AS status,
                             COUNT(q) AS questionCount,
                             s.createdAt AS createdAt,
                             s.reactCount AS reactCount,
@@ -47,6 +48,7 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                             subject.id,
                             subject.name,
                             subject.code,
+                            s.status,
                             s.createdAt,
                             s.reactCount,
                             s.commentCount
@@ -81,11 +83,12 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
         List<Session> findByIdInFetchSubjectAndProposerAndReviewer(@Param("ids") Collection<Long> ids);
 
         @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject JOIN FETCH s.proposer " +
-                        "WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.PENDING " +
+                        "WHERE s.status IN (com.frozenheart.backend.core.entity.session.SessionStatus.PENDING, " +
+                        "com.frozenheart.backend.core.entity.session.SessionStatus.REVIEWING) " +
                         "AND (:subjectId IS NULL OR s.subject.id = :subjectId) " +
                         "AND (:after IS NULL OR s.id < :after) " +
                         "ORDER BY s.id DESC")
-        List<Session> findPendingSessionsFetchSubjectAndProposerWithCursor(
+        List<Session> findReviewableSessionsFetchSubjectAndProposerWithCursor(
                         @Param("subjectId") Long subjectId,
                         @Param("after") Long after,
                         Pageable pageable);
