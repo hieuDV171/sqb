@@ -38,10 +38,6 @@ public class Subject {
 
     @Singular
     @OneToMany(mappedBy = "subject")
-    private Set<Session> sessions;
-
-    @Singular
-    @OneToMany(mappedBy = "subject")
     private Set<Post> posts;
 
     @Singular

@@ -24,7 +24,7 @@ export const sessionService = {
     return (await axiosClient.post<GlobalResponse<ProposeSessionResponse>>(
       '/sessions/propose',
       data
-    )) as any;
+    )) as never;
   },
 
   /**
@@ -32,7 +32,7 @@ export const sessionService = {
    * GET /api/v1/subjects
    */
   getAllSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
-    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects')) as any;
+    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects')) as never;
   },
 
   /**
@@ -42,7 +42,7 @@ export const sessionService = {
   getMyEnrolledCourseClasses: async (): Promise<GlobalResponse<CourseClassOptionResponse[]>> => {
     return (await axiosClient.get<GlobalResponse<CourseClassOptionResponse[]>>(
       '/sessions/my-enrolled-course-classes'
-    )) as any;
+    )) as never;
   },
 
   /** Danh sách môn học duy nhất, suy ra từ các lớp học phần để dùng cho bộ lọc. */
@@ -81,7 +81,7 @@ export const sessionService = {
           status: params?.status,
         },
       }
-    )) as any;
+    )) as never;
   },
 
   /**
@@ -93,7 +93,7 @@ export const sessionService = {
   ): Promise<GlobalResponse<MySubmissionDetailResponse>> => {
     return (await axiosClient.get<GlobalResponse<MySubmissionDetailResponse>>(
       `/sessions/my-submissions/${sessionId}`
-    )) as any;
+    )) as never;
   },
 
   /**
@@ -107,7 +107,7 @@ export const sessionService = {
     return (await axiosClient.put<GlobalResponse<void>>(
       `/sessions/my-submissions/${sessionId}`,
       data
-    )) as any;
+    )) as never;
   },
 
   /**
@@ -119,7 +119,7 @@ export const sessionService = {
   ): Promise<GlobalResponse<void>> => {
     return (await axiosClient.delete<GlobalResponse<void>>(
       `/sessions/my-submissions/${sessionId}`
-    )) as any;
+    )) as never;
   },
 
   /**
@@ -132,6 +132,6 @@ export const sessionService = {
     return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/approved-questions',
       data
-    )) as any;
+    )) as never;
   },
 };

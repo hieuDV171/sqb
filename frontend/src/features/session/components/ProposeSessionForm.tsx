@@ -1,31 +1,26 @@
-import { useState, useEffect } from 'react';
+import {useEffect, useState} from 'react';
 import {
   BookOpen,
-  Plus,
-  Trash2,
   Bot,
-  User,
-  CheckCircle2,
-  Send,
-  X,
   Check,
+  CheckCircle2,
   Gamepad2,
+  HelpCircle,
   ImageIcon,
   Loader2,
+  Plus,
   RotateCcw,
-  HelpCircle,
+  Send,
+  Trash2,
+  User,
+  X,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { CustomSelect } from '@/components/ui/custom-select';
-import { mediaService } from '@/services/mediaService';
-import { toast } from '@/stores/useToastStore';
-import { useEnrolledCourseClasses } from '@/features/session';
-import { useSessionMutations } from '@/features/session';
-import type {
-  QuestionProposeDto,
-  ProposeSessionResponse,
-  ProposeSessionRequest,
-} from '@/features/session';
+import {cn} from '@/lib/utils';
+import {CustomSelect} from '@/components/ui/custom-select';
+import {mediaService} from '@/services/mediaService';
+import {toast} from '@/stores/useToastStore';
+import type {ProposeSessionRequest, ProposeSessionResponse, QuestionProposeDto,} from '@/features/session';
+import {useEnrolledCourseClasses, useSessionMutations} from '@/features/session';
 
 interface ProposeSessionFormProps {
   onSuccessNavigate?: () => void;
@@ -286,29 +281,26 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
 
   const handleRemoveOptionImage = (qIndex: number, optKey: string) => {
     const updated = [...questions];
-    const opts = updated[qIndex].options.map((opt) =>
-      opt.key === optKey ? { ...opt, mediaUrl: undefined } : opt
+    updated[qIndex].options = updated[qIndex].options.map((opt) =>
+        opt.key === optKey ? {...opt, mediaUrl: undefined} : opt
     );
-    updated[qIndex].options = opts;
     setQuestions(updated);
     toast.info(`Đã gỡ ảnh đính kèm của đáp án ${optKey}`);
   };
 
   const handleToggleCorrectOption = (qIndex: number, optKey: string) => {
     const updated = [...questions];
-    const opts = updated[qIndex].options.map((opt) =>
-      opt.key === optKey ? { ...opt, isCorrect: !opt.isCorrect } : opt
+    updated[qIndex].options = updated[qIndex].options.map((opt) =>
+        opt.key === optKey ? {...opt, isCorrect: !opt.isCorrect} : opt
     );
-    updated[qIndex].options = opts;
     setQuestions(updated);
   };
 
   const handleUpdateOptionText = (qIndex: number, optKey: string, text: string) => {
     const updated = [...questions];
-    const opts = updated[qIndex].options.map((opt) =>
-      opt.key === optKey ? { ...opt, text } : opt
+    updated[qIndex].options = updated[qIndex].options.map((opt) =>
+        opt.key === optKey ? {...opt, text} : opt
     );
-    updated[qIndex].options = opts;
     setQuestions(updated);
   };
 
