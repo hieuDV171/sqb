@@ -28,13 +28,19 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                             subject.id AS subjectId,
                             subject.name AS subjectName,
                             subject.code AS subjectCode,
+                            cc.id AS courseClassId,
+                            cc.classCode AS classCode,
+                            semester.id AS semesterId,
+                            semester.name AS semesterName,
                             s.status AS status,
                             COUNT(q) AS questionCount,
                             s.createdAt AS createdAt,
                             s.reactCount AS reactCount,
                             s.commentCount AS commentCount
                         FROM Session s
-                        JOIN s.subject subject
+                        JOIN s.courseClass cc
+                        JOIN cc.subject subject
+                        JOIN cc.semester semester
                         LEFT JOIN s.questions q
                         WHERE s.proposer.id = :proposerId
                           AND (:subjectId IS NULL OR subject.id = :subjectId)
@@ -48,6 +54,10 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                             subject.id,
                             subject.name,
                             subject.code,
+                            cc.id,
+                            cc.classCode,
+                            semester.id,
+                            semester.name,
                             s.status,
                             s.createdAt,
                             s.reactCount,
@@ -61,34 +71,36 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         @Param("after") Long after,
                         Pageable pageable);
 
-        @Query("SELECT s FROM Session s JOIN FETCH s.subject WHERE s.id = :sessionId")
-        Optional<Session> findByIdFetchSubject(@Param("sessionId") Long sessionId);
+        @Query("SELECT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer WHERE s.id = :sessionId")
+        Optional<Session> findByIdFetchCourseClass(@Param("sessionId") Long sessionId);
 
-        @Query("SELECT s FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.proposer LEFT JOIN FETCH s.reviewer WHERE s.id = :sessionId")
-        Optional<Session> findByIdFetchSubjectProposerAndReviewer(@Param("sessionId") Long sessionId);
+        @Query("SELECT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer LEFT JOIN FETCH s.reviewer WHERE s.id = :sessionId")
+        Optional<Session> findByIdFetchCourseClassProposerAndReviewer(@Param("sessionId") Long sessionId);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias WHERE s.id = :sessionId")
-        Optional<Session> findByIdFetchSubjectAndQuestions(@Param("sessionId") Long sessionId);
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias WHERE s.id = :sessionId")
+        Optional<Session> findByIdFetchCourseClassAndQuestions(@Param("sessionId") Long sessionId);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.RESOLVED")
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.RESOLVED")
         List<Session> findAllResolvedSessionsForSearch();
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE s.id = :id")
-        Optional<Session> findByIdFetchSubjectAndProposerForSearch(@Param("id") Long id);
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p WHERE s.id = :id")
+        Optional<Session> findByIdFetchCourseClassAndProposerForSearch(@Param("id") Long id);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p WHERE s.id IN :ids")
-        List<Session> findByIdInFetchSubjectAndProposerForSearch(@Param("ids") List<Long> ids);
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p WHERE s.id IN :ids")
+        List<Session> findByIdInFetchCourseClassAndProposerForSearch(@Param("ids") List<Long> ids);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject sub LEFT JOIN FETCH s.proposer p LEFT JOIN FETCH s.reviewer r WHERE s.id IN :ids")
-        List<Session> findByIdInFetchSubjectAndProposerAndReviewer(@Param("ids") Collection<Long> ids);
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p LEFT JOIN FETCH s.reviewer r WHERE s.id IN :ids")
+        List<Session> findByIdInFetchCourseClassAndProposerAndReviewer(@Param("ids") Collection<Long> ids);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.subject JOIN FETCH s.proposer " +
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester JOIN FETCH s.proposer " +
                         "WHERE s.status IN (com.frozenheart.backend.core.entity.session.SessionStatus.PENDING, " +
                         "com.frozenheart.backend.core.entity.session.SessionStatus.REVIEWING) " +
-                        "AND (:subjectId IS NULL OR s.subject.id = :subjectId) " +
+                        "AND (:lecturerId IS NULL OR cc.lecturer.id = :lecturerId) " +
+                        "AND (:subjectId IS NULL OR cc.subject.id = :subjectId) " +
                         "AND (:after IS NULL OR s.id < :after) " +
                         "ORDER BY s.id DESC")
-        List<Session> findReviewableSessionsFetchSubjectAndProposerWithCursor(
+        List<Session> findReviewableSessionsFetchCourseClassAndProposerWithCursor(
+                        @Param("lecturerId") Long lecturerId,
                         @Param("subjectId") Long subjectId,
                         @Param("after") Long after,
                         Pageable pageable);
@@ -106,14 +118,11 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         @Param("endDate") Instant endDate);
 
         @Query("""
-                SELECT ucc.courseClass.id, COUNT(DISTINCT s.proposer.id)
+                SELECT s.courseClass.id, COUNT(DISTINCT s.proposer.id)
                 FROM Session s
-                JOIN com.frozenheart.backend.core.entity.user.UserCourseClass ucc ON s.proposer.id = ucc.user.id
-                JOIN ucc.courseClass cc
-                WHERE cc.id IN :classIds
-                  AND s.subject.id = cc.subject.id
+                WHERE s.courseClass.id IN :classIds
                   AND s.createdAt >= :startDate AND s.createdAt < :endDate
-                GROUP BY ucc.courseClass.id
+                GROUP BY s.courseClass.id
                 """)
         List<Object[]> countDistinctProposersByCourseClassesBetween(
                 @Param("classIds") Collection<Long> classIds,
@@ -124,7 +133,9 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
         @Query("SELECT DISTINCT s FROM Session s " +
                         "LEFT JOIN FETCH s.proposer " +
-                        "LEFT JOIN FETCH s.subject " +
+                        "JOIN FETCH s.courseClass cc " +
+                        "JOIN FETCH cc.subject " +
+                        "JOIN FETCH cc.semester " +
                         "LEFT JOIN FETCH s.questions q " +
                         "LEFT JOIN FETCH q.duplicateWarnings " +
                         "WHERE s.status = :status AND s.createdAt < :cutoff " +

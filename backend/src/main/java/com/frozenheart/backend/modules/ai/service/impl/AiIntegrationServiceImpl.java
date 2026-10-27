@@ -110,7 +110,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
             currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
         }
 
-        Question question = questionRepository.findByIdFetchSessionAndSubject(questionId)
+        Question question = questionRepository.findByIdFetchSessionAndCourseClass(questionId)
                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
 
         User actor = currentUserId != null ? userRepository.getReferenceById(currentUserId) : null;

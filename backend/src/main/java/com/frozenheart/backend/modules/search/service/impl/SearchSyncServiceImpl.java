@@ -252,7 +252,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
     @Override
     @Transactional(readOnly = true)
     public void syncSession(Long sessionId) {
-        sessionRepository.findByIdFetchSubjectAndProposerForSearch(sessionId).ifPresentOrElse(s -> {
+        sessionRepository.findByIdFetchCourseClassAndProposerForSearch(sessionId).ifPresentOrElse(s -> {
             if (s.getStatus() == SessionStatus.RESOLVED) {
                 SessionSearchDoc doc = mapToSessionDoc(s);
                 indexDocument(SessionSearchDoc.INDEX_NAME, doc.getId().toString(), doc);
@@ -354,7 +354,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
     @Transactional(readOnly = true)
     public void syncSessionsBatch(List<Long> sessionIds) {
         if (sessionIds == null || sessionIds.isEmpty()) return;
-        List<Session> sessions = sessionRepository.findByIdInFetchSubjectAndProposerForSearch(sessionIds);
+        List<Session> sessions = sessionRepository.findByIdInFetchCourseClassAndProposerForSearch(sessionIds);
         if (sessions.isEmpty()) return;
 
         try {
@@ -528,8 +528,10 @@ public class SearchSyncServiceImpl implements SearchSyncService {
                 .id(s.getId())
                 .title(s.getTitle())
                 .content(s.getContent())
-                .subjectId(s.getSubject() != null ? s.getSubject().getId() : null)
-                .subjectName(s.getSubject() != null ? s.getSubject().getName() : null)
+                .subjectId(s.getCourseClass() != null && s.getCourseClass().getSubject() != null
+                        ? s.getCourseClass().getSubject().getId() : null)
+                .subjectName(s.getCourseClass() != null && s.getCourseClass().getSubject() != null
+                        ? s.getCourseClass().getSubject().getName() : null)
                 .status(s.getStatus())
                 .authorId(s.getProposer() != null ? s.getProposer().getId() : null)
                 .questionCount(s.getQuestions() != null ? s.getQuestions().size() : 0)
@@ -570,8 +572,12 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         return QuestionSearchDoc.builder()
                 .id(q.getId())
                 .questionCode(q.getQuestionCode())
-                .subjectId(q.getSession() != null && q.getSession().getSubject() != null ? q.getSession().getSubject().getId() : null)
-                .subjectName(q.getSession() != null && q.getSession().getSubject() != null ? q.getSession().getSubject().getName() : null)
+                .subjectId(q.getSession() != null && q.getSession().getCourseClass() != null
+                        && q.getSession().getCourseClass().getSubject() != null
+                                ? q.getSession().getCourseClass().getSubject().getId() : null)
+                .subjectName(q.getSession() != null && q.getSession().getCourseClass() != null
+                        && q.getSession().getCourseClass().getSubject() != null
+                                ? q.getSession().getCourseClass().getSubject().getName() : null)
                 .topicId(q.getTopic() != null ? q.getTopic().getId() : null)
                 .topicName(q.getTopic() != null ? q.getTopic().getName() : null)
                 .status(q.getStatus())

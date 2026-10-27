@@ -3,8 +3,8 @@ package com.frozenheart.backend.modules.session.service.impl;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,10 +36,12 @@ import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
+import com.frozenheart.backend.modules.session.dto.CourseClassOptionResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest.QuestionProposeDto;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
@@ -48,7 +50,7 @@ import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
-import com.frozenheart.backend.modules.session.repository.SubjectRepository;
+import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
@@ -57,7 +59,6 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 import com.frozenheart.backend.core.entity.user.UserCourseClass;
-import com.frozenheart.backend.modules.session.dto.SubjectResponse;
 import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
 import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 
@@ -72,7 +73,7 @@ public class SessionServiceImpl implements SessionService {
 
     private final AnonymizerUtil anonymizerUtil;
     private final UserRepository userRepository;
-    private final SubjectRepository subjectRepository;
+    private final CourseClassRepository courseClassRepository;
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
     private final QuestionMediaRepository questionMediaRepository;
@@ -103,37 +104,14 @@ public class SessionServiceImpl implements SessionService {
 
         // Hiện tại, nội dung câu hỏi có thể có nhiều ảnh, nhưng đáp án chỉ được 1 ảnh
 
-        // Lấy thông tin User nộp bài & Mã môn học
+        // Lấy người nộp và xác thực chính xác lớp học phần thuộc học kỳ hiện tại.
         Long userId = JwtPayload.getCurrentUserPayload().getUserId();
         User proposer = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
-        Subject subject = subjectRepository.findById(request.subjectId())
-                .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy môn học"));
-
-        // Kiểm tra SV có tham gia môn học này không (nếu là STUDENT)
-        if (proposer.getRole() == UserRole.STUDENT) {
-            Semester activeSemester = currentSemesterHolder.getCurrentSemester();
-            if (activeSemester == null) {
-                throw new AppException(
-                        ResponseCode.NO_ACTIVE_SEMESTER,
-                        "Không có học kỳ nào đang mở trong hệ thống");
-            }
-
-            boolean isEnrolled = userCourseClassRepository
-                    .findByUserIdFetchCourseClassAndSubject(userId)
-                    .stream()
-                    .anyMatch(ucc -> ucc.getCourseClass() != null
-                            && ucc.getCourseClass().getSubject() != null
-                            && ucc.getCourseClass().getSemester() != null
-                            && Objects.equals(ucc.getCourseClass().getSemester().getId(), activeSemester.getId())
-                            && Objects.equals(ucc.getCourseClass().getSubject().getId(), request.subjectId()));
-            if (!isEnrolled) {
-                throw new AppException(
-                        ResponseCode.ACCESS_DENIED,
-                        "Bạn chỉ có thể đề xuất câu hỏi cho các môn học đang tham gia trong học kỳ hiện tại");
-            }
-        }
+        CourseClass courseClass = resolveAuthorizedActiveCourseClass(
+                userId, proposer.getRole(), request.courseClassId());
+        Subject subject = courseClass.getSubject();
 
         // Mã ẩn danh 6 ký tự của tác giả
         String authorCode = anonymizerUtil.encodeUserId(userId);
@@ -167,7 +145,7 @@ public class SessionServiceImpl implements SessionService {
                 .content(request.content())
                 .sourceUrl(request.sourceUrl())
                 .proposer(proposer)
-                .subject(subject)
+                .courseClass(courseClass)
                 .status(SessionStatus.PENDING)
                 .createdAt(Instant.now())
                 .build();
@@ -308,6 +286,8 @@ public class SessionServiceImpl implements SessionService {
                 .sessionId(session.getId())
                 .sessionCode(session.getSessionCode())
                 .subjectId(subject.getId())
+                .courseClassId(courseClass.getId())
+                .semesterName(courseClass.getSemester().getName())
                 .questionCount(requestedQuestions.size())
                 .status(session.getStatus())
                 .createdAt(session.getCreatedAt())
@@ -359,6 +339,10 @@ public class SessionServiceImpl implements SessionService {
                         .subjectId(s.getSubjectId())
                         .subjectName(s.getSubjectName())
                         .subjectCode(s.getSubjectCode())
+                        .courseClassId(s.getCourseClassId())
+                        .classCode(s.getClassCode())
+                        .semesterId(s.getSemesterId())
+                        .semesterName(s.getSemesterName())
                         .status(s.getStatus())
                         .questionCounts(s.getQuestionCount())
                         .createdAt(s.getCreatedAt())
@@ -381,7 +365,7 @@ public class SessionServiceImpl implements SessionService {
     public MySubmissionDetailResponse getMySubmissionDetail(Long sessionId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        Session session = sessionRepository.findByIdFetchSubjectProposerAndReviewer(sessionId)
+        Session session = sessionRepository.findByIdFetchCourseClassProposerAndReviewer(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
         if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
@@ -419,7 +403,9 @@ public class SessionServiceImpl implements SessionService {
                             .build();
                 }).toList();
 
-        Subject subject = session.getSubject();
+        CourseClass courseClass = session.getCourseClass();
+        Subject subject = courseClass.getSubject();
+        Semester semester = courseClass.getSemester();
 
         return MySubmissionDetailResponse.builder()
                 .sessionId(session.getId())
@@ -429,6 +415,10 @@ public class SessionServiceImpl implements SessionService {
                 .subjectId(subject != null ? subject.getId() : null)
                 .subjectName(subject != null ? subject.getName() : null)
                 .subjectCode(subject != null ? subject.getCode() : null)
+                .courseClassId(courseClass.getId())
+                .classCode(courseClass.getClassCode())
+                .semesterId(semester.getId())
+                .semesterName(semester.getName())
                 .status(session.getStatus())
                 .reviewedByLecturer(reviewerName)
                 .reviewedAt(session.getReviewedAt())
@@ -441,7 +431,7 @@ public class SessionServiceImpl implements SessionService {
 
     private Session getSession(Long userId, Long sessionId) {
 
-        Session session = sessionRepository.findById(sessionId)
+        Session session = sessionRepository.findByIdFetchCourseClass(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
         if (session.getProposer() == null || !session.getProposer().getId().equals(userId)) {
@@ -476,11 +466,10 @@ public class SessionServiceImpl implements SessionService {
             session.setSourceUrl(request.sourceUrl());
         }
 
-        if (request.subjectId() != null) {
-            Subject subject = subjectRepository.findById(request.subjectId())
-                    .orElseThrow(
-                            () -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy môn học"));
-            session.setSubject(subject);
+        if (request.courseClassId() != null) {
+            CourseClass courseClass = resolveAuthorizedActiveCourseClass(
+                    currentUserId, session.getProposer().getRole(), request.courseClassId());
+            session.setCourseClass(courseClass);
         }
 
         // Không đánh index, đang PENDING
@@ -496,7 +485,7 @@ public class SessionServiceImpl implements SessionService {
             List<Question> questionsToSave = new ArrayList<>();
 
             String authorCode = anonymizerUtil.encodeUserId(currentUserId);
-            Subject finalSubject = savedSession.getSubject();
+            Subject finalSubject = savedSession.getCourseClass().getSubject();
 
             List<UpdateSubmissionSessionRequest.QuestionUpdateDto> dtoList = request.questions();
             int size = dtoList.size();
@@ -615,33 +604,70 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubjectResponse> getMyEnrolledSubjects() {
+    public List<CourseClassOptionResponse> getMyEnrolledCourseClasses() {
         Long userId = JwtPayload.getCurrentUserPayload().getUserId();
         Semester activeSemester = currentSemesterHolder.getCurrentSemester();
-        if (activeSemester == null) {
-            return Collections.emptyList();
-        }
-
         List<UserCourseClass> enrollments = userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId);
 
-        Map<Long, SubjectResponse> distinctSubjects = new LinkedHashMap<>();
-        for (UserCourseClass ucc : enrollments) {
-            if (ucc.getCourseClass() != null
-                    && ucc.getCourseClass().getSubject() != null
-                    && ucc.getCourseClass().getSemester() != null
-                    && Objects.equals(ucc.getCourseClass().getSemester().getId(), activeSemester.getId())) {
-                Subject s = ucc.getCourseClass().getSubject();
-                if (!distinctSubjects.containsKey(s.getId())) {
-                    distinctSubjects.put(s.getId(), SubjectResponse.builder()
-                            .subjectId(s.getId())
-                            .code(s.getCode())
-                            .name(s.getName())
-                            .build());
-                }
-            }
+        return enrollments.stream()
+                .map(UserCourseClass::getCourseClass)
+                .filter(Objects::nonNull)
+                .sorted(Comparator
+                        .comparing((CourseClass cc) -> !isActiveSemester(cc, activeSemester))
+                        .thenComparing(cc -> cc.getSemester().getName(), Comparator.reverseOrder())
+                        .thenComparing(cc -> cc.getSubject().getName())
+                        .thenComparing(CourseClass::getClassCode))
+                .map(cc -> {
+                    boolean active = isActiveSemester(cc, activeSemester);
+                    return CourseClassOptionResponse.builder()
+                            .courseClassId(cc.getId())
+                            .classCode(cc.getClassCode())
+                            .subjectId(cc.getSubject().getId())
+                            .subjectCode(cc.getSubject().getCode())
+                            .subjectName(cc.getSubject().getName())
+                            .semesterId(cc.getSemester().getId())
+                            .semesterName(cc.getSemester().getName())
+                            .activeSemester(active)
+                            .canPropose(active)
+                            .build();
+                })
+                .toList();
+    }
+
+    private CourseClass resolveAuthorizedActiveCourseClass(Long userId, UserRole role, Long courseClassId) {
+        if (courseClassId == null) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Lớp học phần không được để trống");
+        }
+        CourseClass courseClass = courseClassRepository.findByIdFetchAll(courseClassId)
+                .orElseThrow(() -> new AppException(ResponseCode.COURSE_CLASS_NOT_FOUND));
+
+        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+        if (activeSemester == null) {
+            throw new AppException(ResponseCode.NO_ACTIVE_SEMESTER, "Không có học kỳ nào đang mở trong hệ thống");
+        }
+        if (!Objects.equals(courseClass.getSemester().getId(), activeSemester.getId())) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Chỉ có thể đề xuất câu hỏi cho lớp học phần thuộc học kỳ hiện tại");
         }
 
-        return new ArrayList<>(distinctSubjects.values());
+        boolean authorized = switch (role) {
+            case ADMIN -> true;
+            case LECTURER -> courseClass.getLecturer() != null
+                    && Objects.equals(courseClass.getLecturer().getId(), userId);
+            case STUDENT -> userCourseClassRepository.existsByIdUserIdAndIdCourseClassId(userId, courseClassId);
+        };
+        if (!authorized) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Bạn không được phân công hoặc chưa tham gia lớp học phần đã chọn");
+        }
+        return courseClass;
+    }
+
+    private boolean isActiveSemester(CourseClass courseClass, Semester activeSemester) {
+        return activeSemester != null
+                && courseClass.getSemester() != null
+                && Objects.equals(courseClass.getSemester().getId(), activeSemester.getId());
     }
 
 }

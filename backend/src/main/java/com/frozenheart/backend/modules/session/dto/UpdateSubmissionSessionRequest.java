@@ -23,8 +23,8 @@ public record UpdateSubmissionSessionRequest(
         @Schema(description = "Đường dẫn tài liệu nguồn tham khảo", example = "https://tailieu.hust.edu.vn/it3080/chapter3.pdf")
         String sourceUrl,
 
-        @Schema(description = "ID môn học", example = "10")
-        Long subjectId,
+        @Schema(description = "ID lớp học phần", example = "100")
+        Long courseClassId,
 
         @Schema(description = "Danh sách câu hỏi cần cập nhật hoặc thêm mới")
         @Valid List<QuestionUpdateDto> questions

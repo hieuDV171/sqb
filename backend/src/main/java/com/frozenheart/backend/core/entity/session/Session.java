@@ -2,6 +2,7 @@ package com.frozenheart.backend.core.entity.session;
 
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLog;
+import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -56,9 +57,9 @@ public class Session {
     @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id")
-    private Subject subject;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "course_class_id", nullable = false)
+    private CourseClass courseClass;
     // ---------------------------
 
     @Singular

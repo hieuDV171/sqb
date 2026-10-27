@@ -16,15 +16,16 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { mediaService } from '@/services/mediaService';
 import { toast } from '@/stores/useToastStore';
-import { useEnrolledSubjects } from '../hooks/useEnrolledSubjects';
-import { useSessionMutations } from '../hooks/useSessionMutations';
+import { useEnrolledCourseClasses } from '@/features/session';
+import { useSessionMutations } from '@/features/session';
 import type {
   QuestionProposeDto,
   ProposeSessionResponse,
   ProposeSessionRequest,
-} from '../types/session.types';
+} from '@/features/session';
 
 interface ProposeSessionFormProps {
   onSuccessNavigate?: () => void;
@@ -35,10 +36,10 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   onSuccessNavigate,
   onViewMySubmissions,
 }) => {
-  const { data: subjects = [], isLoading: isLoadingSubjects } = useEnrolledSubjects();
+  const { data: courseClasses = [], isLoading: isLoadingCourseClasses } = useEnrolledCourseClasses();
   const { proposeMutation, predictGame2Mutation } = useSessionMutations();
 
-  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+  const [selectedCourseClassId, setSelectedCourseClassId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -64,7 +65,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   } | null>(null);
 
   // Draft auto-save state
-  const DRAFT_KEY = 'sqb_propose_session_draft_v2';
+  const DRAFT_KEY = 'sqb_propose_session_draft_v3';
   const [draftInfo, setDraftInfo] = useState<{ updatedAt: string } | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
@@ -86,12 +87,18 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     };
   }
 
-  // Auto-select first subject if not set
+  // Chỉ tự chọn một lớp của học kỳ hiện tại. Lớp lịch sử vẫn hiển thị nhưng không thể chọn.
   useEffect(() => {
-    if (subjects.length > 0 && selectedSubjectId === null) {
-      setSelectedSubjectId(subjects[0].subjectId);
+    if (courseClasses.length === 0) return;
+    const selectedClass = courseClasses.find(
+      (courseClass) => courseClass.courseClassId === selectedCourseClassId
+    );
+    if (!selectedClass?.canPropose) {
+      setSelectedCourseClassId(
+        courseClasses.find((courseClass) => courseClass.canPropose)?.courseClassId ?? null
+      );
     }
-  }, [subjects, selectedSubjectId]);
+  }, [courseClasses, selectedCourseClassId]);
 
   // Check existing draft
   useEffect(() => {
@@ -125,7 +132,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     const timer = setTimeout(() => {
       try {
         const draft = {
-          selectedSubjectId,
+          selectedCourseClassId,
           title,
           content,
           sourceUrl,
@@ -139,14 +146,14 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [selectedSubjectId, title, content, sourceUrl, questions]);
+  }, [selectedCourseClassId, title, content, sourceUrl, questions]);
 
   const handleRestoreDraft = () => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed.selectedSubjectId) setSelectedSubjectId(parsed.selectedSubjectId);
+      if (parsed.selectedCourseClassId) setSelectedCourseClassId(parsed.selectedCourseClassId);
       if (parsed.title) setTitle(parsed.title);
       if (parsed.content) setContent(parsed.content);
       if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
@@ -306,8 +313,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   };
 
   const validateForm = (): boolean => {
-    if (!selectedSubjectId) {
-      toast.error('Vui lòng chọn môn học bạn đang theo học');
+    if (!selectedCourseClassId) {
+      toast.error('Vui lòng chọn lớp học phần thuộc học kỳ hiện tại');
       return false;
     }
     if (!title.trim()) {
@@ -351,7 +358,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       title: title.trim(),
       content: content.trim() || undefined,
       sourceUrl: sourceUrl.trim() || undefined,
-      subjectId: selectedSubjectId!,
+      courseClassId: selectedCourseClassId!,
       questions: questions.map((q) => ({
         content: q.content.trim(),
         mediaUrls: q.mediaUrls && q.mediaUrls.length > 0 ? q.mediaUrls : undefined,
@@ -399,7 +406,9 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     }
   };
 
-  const selectedSubject = subjects.find((s) => s.subjectId === selectedSubjectId);
+  const selectedCourseClass = courseClasses.find(
+    (courseClass) => courseClass.courseClassId === selectedCourseClassId
+  );
 
   return (
     <div className="space-y-6">
@@ -461,29 +470,32 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
 
         {/* Inputs */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          {/* Subject Dropdown */}
+          {/* Course class dropdown */}
           <div className="md:col-span-5 space-y-1.5">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Môn học tham gia *
+              Lớp học phần tham gia *
             </label>
-            <select
-              value={selectedSubjectId || ''}
-              onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
-              disabled={isLoadingSubjects}
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
-            >
-              {isLoadingSubjects ? (
-                <option value="">Đang tải danh sách môn học...</option>
-              ) : subjects.length === 0 ? (
-                <option value="">Chưa có môn học được phân bổ</option>
-              ) : (
-                subjects.map((sub) => (
-                  <option key={sub.subjectId} value={sub.subjectId}>
-                    [{sub.code}] {sub.name}
-                  </option>
-                ))
-              )}
-            </select>
+            <CustomSelect
+              value={selectedCourseClassId?.toString() ?? ''}
+              onChange={(value) => setSelectedCourseClassId(value ? Number(value) : null)}
+              disabled={isLoadingCourseClasses}
+              searchable={courseClasses.length > 5}
+              placeholder={isLoadingCourseClasses
+                ? 'Đang tải danh sách lớp học phần...'
+                : 'Chưa có lớp học phần được phân bổ'}
+              emptyLabel="Chưa chọn lớp học phần"
+              options={courseClasses.map((courseClass) => ({
+                value: courseClass.courseClassId.toString(),
+                label: `[${courseClass.subjectCode}] ${courseClass.subjectName} - ${courseClass.semesterName}`,
+                badge: courseClass.classCode,
+                subLabel: courseClass.canPropose ? 'Học kỳ hiện tại' : `Học kỳ ${courseClass.semesterName}`,
+                icon: 'book',
+                disabled: !courseClass.canPropose,
+                disabledReason: !courseClass.canPropose
+                  ? 'Lớp thuộc học kỳ cũ, chỉ hiển thị để đối chiếu'
+                  : undefined,
+              }))}
+            />
           </div>
 
           {/* Session Title */}
@@ -988,7 +1000,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
               <div className="flex justify-between">
                 <span className="text-slate-500">Môn học:</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {selectedSubject?.name} ({selectedSubject?.code})
+                  {selectedCourseClass?.subjectName} ({selectedCourseClass?.subjectCode})
+                  {selectedCourseClass ? ` - ${selectedCourseClass.semesterName}` : ''}
                 </span>
               </div>
               <div className="flex justify-between">

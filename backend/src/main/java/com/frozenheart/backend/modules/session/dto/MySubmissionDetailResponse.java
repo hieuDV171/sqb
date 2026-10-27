@@ -34,6 +34,18 @@ public record MySubmissionDetailResponse(
         @Schema(description = "Mã môn học", example = "IT3180")
         String subjectCode,
 
+        @Schema(description = "ID lớp học phần", example = "100")
+        Long courseClassId,
+
+        @Schema(description = "Mã lớp học phần", example = "171146")
+        String classCode,
+
+        @Schema(description = "ID học kỳ", example = "2")
+        Long semesterId,
+
+        @Schema(description = "Tên học kỳ", example = "20261")
+        String semesterName,
+
         @Schema(description = "Trạng thái thực tế của phiên đề xuất", example = "PENDING")
         SessionStatus status,
 

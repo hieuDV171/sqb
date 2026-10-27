@@ -26,9 +26,9 @@ public record ProposeSessionRequest(
         @Schema(description = "Nguồn tài liệu tham khảo (URL giáo trình, tài liệu tham khảo online)", example = "https://microservices.io/patterns")
         String sourceUrl,
 
-        @Schema(description = "ID môn học trong hệ thống mà sinh viên đang theo học", example = "10", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "ID môn học không được để trống")
-        Long subjectId,
+        @Schema(description = "ID lớp học phần mà sinh viên đang theo học trong học kỳ hiện tại", example = "100", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotNull(message = "ID lớp học phần không được để trống")
+        Long courseClassId,
 
         @Schema(description = "Danh sách các câu hỏi đề xuất trong phiên", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotEmpty(message = "Danh sách câu hỏi không được để trống")

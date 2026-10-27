@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1793095569510-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sessions
+            constraintName: fk_sessions_on_subject
+  - changeSet:
+      id: 1793095569510-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: course_class_id
+                  type: BIGINT
+            tableName: sessions
+  - changeSet:
+      id: 1793095569510-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnName: course_class_id
+            tableName: sessions
+  - changeSet:
+      id: 1793095569510-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: course_class_id
+            baseTableName: sessions
+            constraintName: FK_SESSIONS_ON_COURSE_CLASS
+            referencedColumnNames: id
+            referencedTableName: course_classes
+  - changeSet:
+      id: 1793095569510-11
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: subject_id
+            tableName: sessions
+

@@ -104,9 +104,13 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     public PendingSessionsResponse getPendingSessions(Long after, Integer limit, Long subjectId, String sortBy) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        Long lecturerId = UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole())
+                ? null
+                : payload.getUserId();
 
-        List<Session> sessions = sessionRepository.findReviewableSessionsFetchSubjectAndProposerWithCursor(subjectId,
-                after, pageable);
+        List<Session> sessions = sessionRepository.findReviewableSessionsFetchCourseClassAndProposerWithCursor(
+                lecturerId, subjectId, after, pageable);
 
         boolean hasNext = false;
         Long nextCursor = null;
@@ -142,7 +146,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
             return PendingSessionsResponse.PendingSessionItemDto.builder()
                     .sessionId(s.getId())
-                    .topic(s.getSubject() != null ? s.getSubject().getName() : null)
+                    .topic(s.getCourseClass() != null && s.getCourseClass().getSubject() != null
+                            ? s.getCourseClass().getSubject().getName() : null)
                     .title(s.getTitle())
                     .content(s.getContent())
                     .author(authorDto)
@@ -175,8 +180,15 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         User lecturer = userRepository.getReferenceById(currentUserId);
 
-        Session session = sessionRepository.findByIdFetchSubjectAndQuestions(sessionId)
+        Session session = sessionRepository.findByIdFetchCourseClassAndQuestions(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+
+        if (UserRole.LECTURER.name().equalsIgnoreCase(role)
+                && (session.getCourseClass().getLecturer() == null
+                        || !Objects.equals(session.getCourseClass().getLecturer().getId(), currentUserId))) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Bạn chỉ có thể duyệt phiên thuộc lớp học phần được phân công");
+        }
 
         if (session.getStatus() == SessionStatus.PENDING) {
             session.setStatus(SessionStatus.REVIEWING);
@@ -279,7 +291,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         User lecturer = userRepository.getReferenceById(payload.getUserId());
         Instant now = Instant.now();
 
-        List<Question> questions = questionRepository.findByIdInFetchSessionSubjectAndProposer(request.questionIds());
+        List<Question> questions = questionRepository.findByIdInFetchSessionCourseClassAndProposer(request.questionIds());
         Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
@@ -313,7 +325,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         User lecturer = userRepository.getReferenceById(payload.getUserId());
         Instant now = Instant.now();
 
-        List<Question> questions = questionRepository.findByIdInFetchSessionSubjectAndProposer(request.questionIds());
+        List<Question> questions = questionRepository.findByIdInFetchSessionCourseClassAndProposer(request.questionIds());
         Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
@@ -346,7 +358,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         User lecturer = userRepository.getReferenceById(currentUserId);
         Instant now = Instant.now();
 
-        Question question = questionRepository.findByIdFetchSessionAndSubject(questionId)
+        Question question = questionRepository.findByIdFetchSessionAndCourseClass(questionId)
                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
 
         if (request.content() != null) {
@@ -397,7 +409,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         User lecturer = userRepository.getReferenceById(currentUserId);
         Instant now = Instant.now();
 
-        Session s = sessionRepository.findByIdInFetchSubjectAndProposerAndReviewer(List.of(sessionId))
+        Session s = sessionRepository.findByIdInFetchCourseClassAndProposerAndReviewer(List.of(sessionId))
                 .stream().findFirst()
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
@@ -434,7 +446,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
             return;
         }
 
-        List<Session> sessions = sessionRepository.findByIdInFetchSubjectAndProposerAndReviewer(sessionIds);
+        List<Session> sessions = sessionRepository.findByIdInFetchCourseClassAndProposerAndReviewer(sessionIds);
         if (sessions.isEmpty()) {
             return;
         }
@@ -479,10 +491,10 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                             .reason(PointHistoryReason.SESSION_RESOLVED_BONUS)
                             .targetType(PointHistoryTargetType.SESSION)
                             .targetId(s.getId())
-                            .subject(s.getSubject())
+                            .subject(s.getCourseClass().getSubject())
                             .build());
 
-                    Subject subject = s.getSubject();
+                    Subject subject = s.getCourseClass().getSubject();
                     String subjectName = subject != null ? subject.getName() : "Môn học";
                     String subjectCode = subject != null ? subject.getCode() : "Mã môn";
                     String proposerName = anonymizerUtil.encodeUserId(proposer.getId());

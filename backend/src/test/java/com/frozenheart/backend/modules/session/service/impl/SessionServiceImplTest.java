@@ -25,7 +25,7 @@ import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
-import com.frozenheart.backend.modules.session.repository.SubjectRepository;
+import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -62,7 +62,7 @@ class SessionServiceImplTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private SubjectRepository subjectRepository;
+    private CourseClassRepository courseClassRepository;
     @Mock
     private SessionRepository sessionRepository;
     @Mock
@@ -95,13 +95,17 @@ class SessionServiceImplTest {
     void proposeSessionShouldAssignDisplayOrderBeforeSavingQuestions() {
         Long userId = 7L;
         Long subjectId = 11L;
+        Long courseClassId = 21L;
         setCurrentUser(userId);
 
         User proposer = User.builder().id(userId).role(UserRole.ADMIN).build();
         Subject subject = Subject.builder().id(subjectId).code("IT4788").name("Phát triển ứng dụng đa nền tảng").build();
+        Semester activeSemester = Semester.builder().id(61L).name("20261").active(true).build();
+        CourseClass courseClass = courseClass(courseClassId, activeSemester, subject);
 
         when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(proposer));
-        when(subjectRepository.findById(subjectId)).thenReturn(java.util.Optional.of(subject));
+        when(courseClassRepository.findByIdFetchAll(courseClassId)).thenReturn(Optional.of(courseClass));
+        when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
         when(anonymizerUtil.encodeUserId(userId)).thenReturn("ABC123");
         when(sessionRepository.save(any(Session.class))).thenAnswer(invocation -> {
             Session session = invocation.getArgument(0);
@@ -121,13 +125,14 @@ class SessionServiceImplTest {
                 "Phiên câu hỏi kiểm thử",
                 "Kiểm tra thứ tự câu hỏi",
                 null,
-                subjectId,
+                courseClassId,
                 List.of(question("Câu hỏi thứ nhất"), question("Câu hỏi thứ hai")));
 
         ProposeSessionResponse response = sessionService.proposeSession(request);
 
         assertNotNull(response);
         assertEquals(101L, response.sessionId());
+        assertEquals(courseClassId, response.courseClassId());
         assertEquals(2, response.questionCount());
         verify(questionRepository).saveAll(anyList());
         verify(counterMetricsService).incrementProposedQuestions(userId, 2);
@@ -189,6 +194,7 @@ class SessionServiceImplTest {
     void proposeSessionShouldRejectSubjectFromInactiveSemester() {
         Long userId = 7L;
         Long subjectId = 11L;
+        Long courseClassId = 21L;
         setCurrentUser(userId);
 
         User proposer = User.builder().id(userId).role(UserRole.STUDENT).build();
@@ -197,32 +203,31 @@ class SessionServiceImplTest {
         Semester activeSemester = Semester.builder().id(61L).name("20261").active(true).build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(proposer));
-        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(subject));
+        CourseClass oldCourseClass = courseClass(courseClassId, oldSemester, subject);
+        when(courseClassRepository.findByIdFetchAll(courseClassId)).thenReturn(Optional.of(oldCourseClass));
         when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
-        when(userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId))
-                .thenReturn(List.of(enrollment(21L, oldSemester, subject)));
 
         ProposeSessionRequest request = new ProposeSessionRequest(
                 "Phiên sai học kỳ",
                 null,
                 null,
-                subjectId,
+                courseClassId,
                 List.of(question("Câu hỏi kiểm thử")));
 
         AppException exception = assertThrows(
                 AppException.class,
                 () -> sessionService.proposeSession(request));
 
-        assertEquals(ResponseCode.ACCESS_DENIED, exception.getResponseCode());
+        assertEquals(ResponseCode.INVALID_PARAMETER_VALUE, exception.getResponseCode());
         assertEquals(
-                "Bạn chỉ có thể đề xuất câu hỏi cho các môn học đang tham gia trong học kỳ hiện tại",
+                "Chỉ có thể đề xuất câu hỏi cho lớp học phần thuộc học kỳ hiện tại",
                 exception.getMessage());
         verify(sessionRepository, never()).save(any(Session.class));
     }
 
     @Test
-    @DisplayName("Danh sách môn đề xuất chỉ gồm các lớp thuộc học kỳ hiện tại")
-    void getMyEnrolledSubjectsShouldOnlyReturnActiveSemesterSubjects() {
+    @DisplayName("Danh sách lớp đề xuất gồm cả lịch sử nhưng chỉ lớp học kỳ hiện tại được chọn")
+    void getMyEnrolledCourseClassesShouldMarkOnlyActiveSemesterClassAsSelectable() {
         Long userId = 7L;
         setCurrentUser(userId);
 
@@ -237,11 +242,13 @@ class SessionServiceImplTest {
                         enrollment(21L, oldSemester, oldSubject),
                         enrollment(22L, activeSemester, activeSubject)));
 
-        var subjects = sessionService.getMyEnrolledSubjects();
+        var courseClasses = sessionService.getMyEnrolledCourseClasses();
 
-        assertEquals(1, subjects.size());
-        assertEquals(activeSubject.getId(), subjects.getFirst().subjectId());
-        assertEquals("IT4999", subjects.getFirst().code());
+        assertEquals(2, courseClasses.size());
+        assertEquals(activeSubject.getId(), courseClasses.getFirst().subjectId());
+        assertTrue(courseClasses.getFirst().canPropose());
+        assertEquals(oldSubject.getId(), courseClasses.getLast().subjectId());
+        assertFalse(courseClasses.getLast().canPropose());
     }
 
     @Test
@@ -285,7 +292,7 @@ class SessionServiceImplTest {
         setCurrentUser(userId);
 
         Session session = detailSession(userId, sessionId, null);
-        when(sessionRepository.findByIdFetchSubjectProposerAndReviewer(sessionId))
+        when(sessionRepository.findByIdFetchCourseClassProposerAndReviewer(sessionId))
                 .thenReturn(Optional.of(session));
         when(questionRepository.findQuestionsBySessionId(sessionId)).thenReturn(List.of());
 
@@ -318,7 +325,7 @@ class SessionServiceImplTest {
                 .fullName("TS. Nguyễn Văn B")
                 .build();
 
-        when(sessionRepository.findByIdFetchSubjectProposerAndReviewer(sessionId))
+        when(sessionRepository.findByIdFetchCourseClassProposerAndReviewer(sessionId))
                 .thenReturn(Optional.of(session));
         when(questionRepository.findQuestionsBySessionId(sessionId)).thenReturn(List.of());
         when(userProfileRepository.findById(reviewerId)).thenReturn(Optional.of(reviewerProfile));
@@ -363,6 +370,8 @@ class SessionServiceImplTest {
                 .code("IT4788")
                 .name("Phát triển ứng dụng đa nền tảng")
                 .build();
+        Semester semester = Semester.builder().id(61L).name("20261").active(true).build();
+        CourseClass courseClass = courseClass(21L, semester, subject);
 
         return Session.builder()
                 .id(sessionId)
@@ -371,7 +380,7 @@ class SessionServiceImplTest {
                 .content("Nội dung kiểm thử")
                 .proposer(proposer)
                 .reviewer(reviewer)
-                .subject(subject)
+                .courseClass(courseClass)
                 .status(SessionStatus.PENDING)
                 .createdAt(Instant.parse("2026-10-26T09:00:00Z"))
                 .build();
@@ -381,21 +390,25 @@ class SessionServiceImplTest {
             Long courseClassId,
             Semester semester,
             Subject subject) {
-        CourseClass courseClass = CourseClass.builder()
+        CourseClass courseClass = courseClass(courseClassId, semester, subject);
+        return UserCourseClass.builder()
+                .courseClass(courseClass)
+                .build();
+    }
+
+    private CourseClass courseClass(Long courseClassId, Semester semester, Subject subject) {
+        return CourseClass.builder()
                 .id(courseClassId)
                 .classCode("CLASS-" + courseClassId)
                 .semester(semester)
                 .subject(subject)
-                .build();
-        return UserCourseClass.builder()
-                .courseClass(courseClass)
                 .build();
     }
 
     private void verifyNoRepositoryInteractions() {
         verifyNoInteractions(
                 userRepository,
-                subjectRepository,
+                courseClassRepository,
                 sessionRepository,
                 questionRepository,
                 questionMediaRepository,

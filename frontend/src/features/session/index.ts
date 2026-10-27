@@ -1,6 +1,7 @@
 export * from './types/session.types';
 export * from './services/sessionService';
 export * from './hooks/useEnrolledSubjects';
+export * from './hooks/useEnrolledCourseClasses';
 export * from './hooks/useMySubmissions';
 export * from './hooks/useSubmissionDetail';
 export * from './hooks/useSessionMutations';

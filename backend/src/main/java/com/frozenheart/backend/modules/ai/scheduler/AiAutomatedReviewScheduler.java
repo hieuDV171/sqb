@@ -163,10 +163,10 @@ public class AiAutomatedReviewScheduler {
                         .reason(PointHistoryReason.AUTOMATED_SYSTEM_RESOLVE_BONUS)
                         .targetType(PointHistoryTargetType.SESSION)
                         .targetId(session.getId())
-                        .subject(session.getSubject())
+                        .subject(session.getCourseClass().getSubject())
                         .build());
 
-                Subject subject = session.getSubject();
+                Subject subject = session.getCourseClass().getSubject();
                 String subjectName = subject != null ? subject.getName() : "Môn học";
                 String subjectCode = subject != null ? subject.getCode() : "Mã môn";
                 String proposerName = anonymizerUtil.encodeUserId(proposer.getId());

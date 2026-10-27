@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, Check, Search, X, User } from "lucide-react";
+import { ChevronDown, Check, Search, X, User, LockKeyhole, BookOpen } from "lucide-react";
 
 export interface CustomSelectOption {
   value: string;
   label: string;
   subLabel?: string;
   badge?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+  icon?: "user" | "book";
 }
 
 interface CustomSelectProps {
@@ -76,6 +79,7 @@ export function CustomSelect({
   }, [options, searchQuery]);
 
   const handleSelect = (val: string) => {
+    if (options.find((option) => option.value === val)?.disabled) return;
     onChange(val);
     setIsOpen(false);
     setSearchQuery("");
@@ -204,15 +208,23 @@ export function CustomSelect({
                     key={opt.value}
                     type="button"
                     onClick={() => handleSelect(opt.value)}
-                    className={`w-full px-3 py-2.5 text-left rounded-xl text-xs flex items-start justify-between gap-2 transition-colors cursor-pointer ${
-                      isSelected
+                    aria-disabled={opt.disabled}
+                    title={opt.disabled ? opt.disabledReason : undefined}
+                    className={`w-full px-3 py-2.5 text-left rounded-xl text-xs flex items-start justify-between gap-2 transition-colors ${
+                      opt.disabled
+                        ? "opacity-45 cursor-not-allowed bg-slate-100/80 dark:bg-slate-950/70 text-slate-500 dark:text-slate-500"
+                        : isSelected
                         ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold"
-                        : "text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70"
+                        : "cursor-pointer text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70"
                     }`}
                   >
                     <div className="flex items-start gap-2.5 min-w-0">
                       <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-                        <User className="w-3.5 h-3.5" />
+                        {opt.disabled
+                          ? <LockKeyhole className="w-3.5 h-3.5" />
+                          : opt.icon === "book"
+                            ? <BookOpen className="w-3.5 h-3.5" />
+                            : <User className="w-3.5 h-3.5" />}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -226,6 +238,11 @@ export function CustomSelect({
                         {opt.subLabel && (
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                             {opt.subLabel}
+                          </p>
+                        )}
+                        {opt.disabled && opt.disabledReason && (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
+                            {opt.disabledReason}
                           </p>
                         )}
                       </div>

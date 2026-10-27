@@ -4,13 +4,14 @@ import type {
   ProposeSessionRequest,
   ProposeSessionResponse,
   SubjectResponse,
+  CourseClassOptionResponse,
   SubmissionsResponse,
   MySubmissionDetailResponse,
   UpdateSubmissionSessionRequest,
   GetMySubmissionsParams,
   Game2PredictionRequest,
   GamePredictionResponse,
-} from '../types/session.types';
+} from '@/features/session';
 
 export const sessionService = {
   /**
@@ -35,13 +36,31 @@ export const sessionService = {
   },
 
   /**
-   * 15.2 Lấy danh sách môn học sinh viên đang tham gia
-   * GET /api/v1/sessions/my-enrolled-subjects
+   * Lấy danh sách lớp học phần hiện tại và lịch sử của sinh viên.
+   * GET /api/v1/sessions/my-enrolled-course-classes
    */
-  getMyEnrolledSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
-    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>(
-      '/sessions/my-enrolled-subjects'
+  getMyEnrolledCourseClasses: async (): Promise<GlobalResponse<CourseClassOptionResponse[]>> => {
+    return (await axiosClient.get<GlobalResponse<CourseClassOptionResponse[]>>(
+      '/sessions/my-enrolled-course-classes'
     )) as any;
+  },
+
+  /** Danh sách môn học duy nhất, suy ra từ các lớp học phần để dùng cho bộ lọc. */
+  getMyEnrolledSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
+    const response = await sessionService.getMyEnrolledCourseClasses();
+    const subjects = Array.from(
+      new Map(
+        (response.data || []).map((courseClass) => [
+          courseClass.subjectId,
+          {
+            subjectId: courseClass.subjectId,
+            code: courseClass.subjectCode,
+            name: courseClass.subjectName,
+          },
+        ])
+      ).values()
+    );
+    return { ...response, data: subjects } as GlobalResponse<SubjectResponse[]>;
   },
 
   /**

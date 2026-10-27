@@ -762,7 +762,7 @@ public class GamificationServiceImpl implements GamificationService {
 
             pred.setCorrect(exact);
             if (exact) {
-                Subject subject = session.getSubject();
+                Subject subject = session.getCourseClass().getSubject();
                 counterMetricsService.awardPublicPoints(
                         pred.getGambler().getId(),
                         Point.GAME2_AWARD.getPoints(),
@@ -790,7 +790,7 @@ public class GamificationServiceImpl implements GamificationService {
             }
 
             if (accurateCount >= 5) { // >= 50% accurate
-                Subject subject = session.getSubject();
+                Subject subject = session.getCourseClass().getSubject();
                 counterMetricsService.awardPublicPoints(
                         session.getProposer().getId(),
                         Point.GAME3_AWARD.getPoints(),
@@ -896,7 +896,8 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         if (Boolean.TRUE.equals(request.isComfirmed()) && question.getStatus() == QuestionStatus.APPROVED) {
-            Subject subject = (question.getSession() != null) ? question.getSession().getSubject() : null;
+            Subject subject = (question.getSession() != null && question.getSession().getCourseClass() != null)
+                    ? question.getSession().getCourseClass().getSubject() : null;
 
             counterMetricsService.awardSecretPoints(
                     ratingUserId,
@@ -981,7 +982,7 @@ public class GamificationServiceImpl implements GamificationService {
             Long subjectId = entry.getKey();
             List<Prediction> preds = entry.getValue();
 
-            long actualBankSize = questionRepository.countBySessionSubjectIdAndStatus(subjectId,
+            long actualBankSize = questionRepository.countBySessionCourseClassSubjectIdAndStatus(subjectId,
                     QuestionStatus.APPROVED);
 
             preds.sort((p1, p2) -> {
@@ -1114,7 +1115,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .collect(Collectors.toSet());
 
         Map<Long, Question> questionMap = questionIds.isEmpty() ? Map.of()
-                : questionRepository.findAllById(questionIds).stream()
+                : questionRepository.findByIdInFetchDetailsForSearch(new ArrayList<>(questionIds)).stream()
                         .collect(Collectors.toMap(Question::getId, q -> q));
 
         Map<Long, List<PointHistory>> userHistoriesMap = errorHistories.stream()
@@ -1134,8 +1135,10 @@ public class GamificationServiceImpl implements GamificationService {
             for (PointHistory h : histories) {
                 totalBonus += h.getPoints();
                 Question q = questionMap.get(h.getTargetId());
-                String subjectName = (q != null && q.getSession() != null && q.getSession().getSubject() != null)
-                        ? q.getSession().getSubject().getName()
+                String subjectName = (q != null && q.getSession() != null
+                        && q.getSession().getCourseClass() != null
+                        && q.getSession().getCourseClass().getSubject() != null)
+                        ? q.getSession().getCourseClass().getSubject().getName()
                         : "Môn học";
                 String snippet = (q != null && q.getContent() != null)
                         ? (q.getContent().length() > 80 ? q.getContent().substring(0, 80) + "..." : q.getContent())

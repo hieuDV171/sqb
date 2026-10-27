@@ -23,7 +23,6 @@ public class CourseClass {
     @Column(nullable = false, length = 50)
     private String classCode;
 
-
     @Column(updatable = false)
     private Instant createdAt;
 

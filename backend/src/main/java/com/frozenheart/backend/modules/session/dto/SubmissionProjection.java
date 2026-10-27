@@ -20,6 +20,14 @@ public interface SubmissionProjection {
 
     String getSubjectCode();
 
+    Long getCourseClassId();
+
+    String getClassCode();
+
+    Long getSemesterId();
+
+    String getSemesterName();
+
     SessionStatus getStatus();
 
     Integer getQuestionCount();

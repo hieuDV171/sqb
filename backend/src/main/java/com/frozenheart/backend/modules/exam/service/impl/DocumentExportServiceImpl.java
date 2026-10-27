@@ -356,8 +356,9 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                     .compileReport(templateStream);
 
             String subjectName = (questions != null && !questions.isEmpty() && questions.getFirst().getSession() != null
-                    && questions.getFirst().getSession().getSubject() != null)
-                            ? questions.getFirst().getSession().getSubject().getName()
+                    && questions.getFirst().getSession().getCourseClass() != null
+                    && questions.getFirst().getSession().getCourseClass().getSubject() != null)
+                            ? questions.getFirst().getSession().getCourseClass().getSubject().getName()
                             : "";
 
             Map<String, Object> parameters = new HashMap<>();

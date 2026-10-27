@@ -19,6 +19,12 @@ public record ProposeSessionResponse(
         @Schema(description = "ID môn học", example = "10")
         Long subjectId,
 
+        @Schema(description = "ID lớp học phần", example = "100")
+        Long courseClassId,
+
+        @Schema(description = "Tên học kỳ", example = "20261")
+        String semesterName,
+
         @Schema(description = "Số lượng câu hỏi trong phiên", example = "5")
         int questionCount,
 

@@ -61,7 +61,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         public SessionQuestionsResponse getSessionQuestions(Long sessionId) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-                Session session = sessionRepository.findByIdFetchSubject(sessionId)
+                Session session = sessionRepository.findByIdFetchCourseClass(sessionId)
                                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
                 if (session.getStatus() != SessionStatus.RESOLVED) {
@@ -73,7 +73,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 List<Question> questions = questionRepository.findQuestionsBySessionId(sessionId);
                 List<SessionQuestionsResponse.PracticeQuestionDto> questionDtos = mapQuestionsToDtos(questions, currentUserId);
 
-                Subject subject = session.getSubject();
+                Subject subject = session.getCourseClass().getSubject();
 
                 return SessionQuestionsResponse.builder()
                                 .sessionId(session.getId())

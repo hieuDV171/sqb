@@ -240,3 +240,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Correlation ID tiếp tục được tạo/nhận qua HTTP header và MDC, không phụ thuộc distributed tracing.
   - Workflow production không còn đồng bộ hoặc chứa bước khởi động monitoring stack.
 - **Hệ quả:** SQB có ngân sách RAM rõ ràng và giảm nguy cơ làm cạn tài nguyên toàn host; đổi lại G1 có pause dài hơn ZGC, heap nhỏ làm GC thường xuyên hơn và một AI worker giảm khả năng xử lý nhiều inference đồng thời. Hệ thống không còn Prometheus metrics/distributed traces, nhưng health endpoint, application log và correlation ID vẫn hoạt động để chẩn đoán cơ bản.
+
+### [ADR-009] Gắn Phiên Đề xuất Trực tiếp với Lớp Học phần
+- **Ngày quyết định:** 27/10/2026
+- **Bối cảnh:** `Session` chỉ lưu `subject_id`, nên không xác định được phiên thuộc học kỳ/lớp/GV nào. Điều này cho phép tạo phiên bằng enrollment của kỳ cũ và làm hàng đợi duyệt không thể giới hạn chính xác theo phân công giảng viên.
+- **Quyết định:** Xóa quan hệ trực tiếp `Session.subject`; thêm duy nhất `Session.courseClass` (`course_class_id NOT NULL`, `FetchType.LAZY`). Môn học, học kỳ và giảng viên được suy ra qua `CourseClass`. API tạo/cập nhật nhận `course_class_id`; backend bắt buộc lớp thuộc học kỳ active và kiểm tra enrollment/phân công. Hàng đợi duyệt của lecturer lọc theo `courseClass.lecturer`, admin không bị lọc. Các truy vấn đọc dùng `JOIN FETCH courseClass → subject/semester/lecturer` để tránh N+1.
+- **Hệ quả:** Mỗi phiên có ngữ cảnh lớp/kỳ/GV không mơ hồ; lớp lịch sử vẫn có thể hiển thị nhưng không dùng để tạo phiên. Đây là breaking schema/API change, cần changeset Liquibase sinh từ entity và reset/reimport dữ liệu test. Không lưu thêm `semester_id` hay `subject_id` trên `sessions`, tránh dữ liệu dư thừa có thể lệch nhau.

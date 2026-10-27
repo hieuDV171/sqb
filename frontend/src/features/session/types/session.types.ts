@@ -28,7 +28,7 @@ export interface ProposeSessionRequest {
   title: string;
   content?: string;
   sourceUrl?: string;
-  subjectId: number;
+  courseClassId: number;
   questions: QuestionProposeDto[];
 }
 
@@ -36,6 +36,8 @@ export interface ProposeSessionResponse {
   sessionId: number;
   sessionCode: string;
   subjectId: number;
+  courseClassId: number;
+  semesterName: string;
   questionCount: number;
   status: SessionStatus;
   createdAt: string;
@@ -47,6 +49,18 @@ export interface SubjectResponse {
   name: string;
 }
 
+export interface CourseClassOptionResponse {
+  courseClassId: number;
+  classCode: string;
+  subjectId: number;
+  subjectCode: string;
+  subjectName: string;
+  semesterId: number;
+  semesterName: string;
+  activeSemester: boolean;
+  canPropose: boolean;
+}
+
 export interface SubmissionSessionSummaryDto {
   sessionId: number;
   sessionCode: string;
@@ -55,6 +69,10 @@ export interface SubmissionSessionSummaryDto {
   subjectId: number;
   subjectName: string;
   subjectCode: string;
+  courseClassId: number;
+  classCode: string;
+  semesterId: number;
+  semesterName: string;
   questionCounts: number;
   createdAt: string;
   reactCount: number;
@@ -88,6 +106,10 @@ export interface MySubmissionDetailResponse {
   subjectId: number;
   subjectName: string;
   subjectCode: string;
+  courseClassId: number;
+  classCode: string;
+  semesterId: number;
+  semesterName: string;
   commentCount: number;
   reactCount: number;
   reviewedByLecturer?: string | null;
@@ -111,7 +133,7 @@ export interface UpdateSubmissionSessionRequest {
   title?: string;
   content?: string;
   sourceUrl?: string;
-  subjectId?: number;
+  courseClassId?: number;
   questions?: QuestionUpdateDto[];
 }
 

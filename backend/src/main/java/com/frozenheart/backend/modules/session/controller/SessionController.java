@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
+import com.frozenheart.backend.modules.session.dto.CourseClassOptionResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
-import com.frozenheart.backend.modules.session.dto.SubjectResponse;
 import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 import com.frozenheart.backend.modules.session.service.SessionService;
 
@@ -42,11 +42,11 @@ public class SessionController {
 
     private final SessionService sessionService;
 
-    @Operation(summary = "Đề xuất phiên câu hỏi mới", description = "Sinh viên/người dùng đề xuất danh sách câu hỏi trắc nghiệm kèm đáp án và hình ảnh cho một môn học đang theo học.")
+    @Operation(summary = "Đề xuất phiên câu hỏi mới", description = "Sinh viên/người dùng đề xuất danh sách câu hỏi trắc nghiệm kèm đáp án và hình ảnh cho một lớp học phần trong học kỳ hiện tại.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Đề xuất phiên câu hỏi thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc môn học không tồn tại"),
-            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Sinh viên chưa đăng ký lớp học phần thuộc môn này"),
+            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc lớp học phần không thuộc học kỳ hiện tại"),
+            @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Người dùng không có quyền đề xuất cho lớp học phần này"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng hoặc tệp ảnh đính kèm đã hết hạn lưu tạm thời")
     })
     @PostMapping("/propose")
@@ -57,13 +57,13 @@ public class SessionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Lấy danh sách môn học người dùng đang tham gia", description = "Trả về danh sách các môn học mà sinh viên đang theo học dựa trên các lớp học phần đã tham gia.")
+    @Operation(summary = "Lấy danh sách lớp học phần người dùng đang tham gia", description = "Trả về cả lớp của học kỳ hiện tại và lịch sử; chỉ lớp thuộc học kỳ hiện tại có can_propose=true.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách môn học thành công")
     })
-    @GetMapping("/my-enrolled-subjects")
-    public ResponseEntity<GlobalResponse<List<SubjectResponse>>> getMyEnrolledSubjects() {
-        List<SubjectResponse> response = sessionService.getMyEnrolledSubjects();
+    @GetMapping("/my-enrolled-course-classes")
+    public ResponseEntity<GlobalResponse<List<CourseClassOptionResponse>>> getMyEnrolledCourseClasses() {
+        List<CourseClassOptionResponse> response = sessionService.getMyEnrolledCourseClasses();
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

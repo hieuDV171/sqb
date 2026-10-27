@@ -59,8 +59,10 @@ public class BtpropHallucinationCheckerService {
         String subject = "Khoa học máy tính";
         String topic = null;
         if (originalQuestion != null) {
-            if (originalQuestion.getSession() != null && originalQuestion.getSession().getSubject() != null) {
-                subject = originalQuestion.getSession().getSubject().getName();
+            if (originalQuestion.getSession() != null
+                    && originalQuestion.getSession().getCourseClass() != null
+                    && originalQuestion.getSession().getCourseClass().getSubject() != null) {
+                subject = originalQuestion.getSession().getCourseClass().getSubject().getName();
             }
             if (originalQuestion.getTopic() != null) {
                 topic = originalQuestion.getTopic().getName();
