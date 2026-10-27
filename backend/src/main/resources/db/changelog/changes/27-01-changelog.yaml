@@ -46,3 +46,11 @@ databaseChangeLog:
             columnName: subject_id
             tableName: sessions
 
+  - changeSet:
+      id: 1793095569510-12
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - sql:
+            sql: CREATE INDEX idx_sessions_status_course_class_id_id ON sessions(status, course_class_id, id);
+
