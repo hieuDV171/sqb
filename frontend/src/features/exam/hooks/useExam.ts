@@ -11,7 +11,8 @@ export const EXAM_KEYS = {
   all: ['exams'] as const,
   list: (subjectId?: number) => [...EXAM_KEYS.all, 'list', subjectId] as const,
   detail: (examId?: number) => [...EXAM_KEYS.all, 'detail', examId] as const,
-  classes: () => [...EXAM_KEYS.all, 'lecturer-classes'] as const,
+  classes: (params?: { semesterId?: number; includeHistory?: boolean }) =>
+    [...EXAM_KEYS.all, 'lecturer-classes', params] as const,
 };
 
 export function useMyExams(params?: {
@@ -40,11 +41,14 @@ export function useExamDetail(examId?: number) {
   });
 }
 
-export function useLecturerClasses() {
+export function useLecturerClasses(params?: {
+  semesterId?: number;
+  includeHistory?: boolean;
+}) {
   return useQuery({
-    queryKey: EXAM_KEYS.classes(),
+    queryKey: EXAM_KEYS.classes(params),
     queryFn: async () => {
-      const res = await examService.getLecturerClasses();
+      const res = await examService.getLecturerClasses(params);
       return res.data || [];
     },
   });

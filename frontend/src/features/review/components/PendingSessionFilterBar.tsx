@@ -1,13 +1,13 @@
 import React from 'react';
-import type { SubjectResponse } from '@/features/session/types/session.types';
+import type { ReviewCourseClassOption } from '../types/review.types';
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
 
 interface PendingSessionFilterBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  selectedSubjectId?: number;
-  onSubjectChange: (subjectId?: number) => void;
-  subjects: SubjectResponse[];
+  selectedCourseClassId?: number;
+  onCourseClassChange: (courseClassId?: number) => void;
+  courseClasses: ReviewCourseClassOption[];
   sortBy: string;
   onSortChange: (sort: string) => void;
 }
@@ -15,9 +15,9 @@ interface PendingSessionFilterBarProps {
 export const PendingSessionFilterBar: React.FC<PendingSessionFilterBarProps> = ({
   searchQuery,
   onSearchChange,
-  selectedSubjectId,
-  onSubjectChange,
-  subjects,
+  selectedCourseClassId,
+  onCourseClassChange,
+  courseClasses,
   sortBy,
   onSortChange,
 }) => {
@@ -37,20 +37,21 @@ export const PendingSessionFilterBar: React.FC<PendingSessionFilterBarProps> = (
 
       {/* Selectors */}
       <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
-        {/* Subject Filter */}
-        <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 flex-1 md:flex-initial">
+        {/* Assigned Course Class Filter */}
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 flex-1 md:min-w-72">
           <Filter className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
           <select
-            value={selectedSubjectId || ''}
+            aria-label="Lọc theo lớp học phần"
+            value={selectedCourseClassId || ''}
             onChange={(e) =>
-              onSubjectChange(e.target.value ? Number(e.target.value) : undefined)
+              onCourseClassChange(e.target.value ? Number(e.target.value) : undefined)
             }
             className="bg-transparent focus:outline-hidden cursor-pointer w-full"
           >
-            <option value="">Tất cả môn học</option>
-            {subjects.map((s) => (
-              <option key={s.subjectId} value={s.subjectId}>
-                [{s.code}] {s.name}
+            <option value="">Tất cả lớp học phần</option>
+            {courseClasses.map((courseClass) => (
+              <option key={courseClass.courseClassId} value={courseClass.courseClassId}>
+                [{courseClass.subjectCode}] {courseClass.classCode} · HK {courseClass.semesterName}
               </option>
             ))}
           </select>

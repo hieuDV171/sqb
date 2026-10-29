@@ -1,7 +1,7 @@
 import type { CursorPaginationDto, QuestionOption } from '@/features/session/types/session.types';
 
 // ==========================================
-// 16.1 GET /api/v1/sessions/pending
+// 16.1 GET /api/v1/lecturer/sessions/reviewable
 // ==========================================
 
 export interface PendingSessionAuthorDto {
@@ -11,9 +11,15 @@ export interface PendingSessionAuthorDto {
   frameUrl?: string;
 }
 
-export interface PendingSessionItemDto {
+export interface ReviewableSessionItemDto {
   sessionId: number;
   topic?: string;
+  subjectId?: number;
+  subjectCode?: string;
+  courseClassId?: number;
+  classCode?: string;
+  semesterId?: number;
+  semesterName?: string;
   title: string;
   content: string;
   author: PendingSessionAuthorDto;
@@ -21,20 +27,31 @@ export interface PendingSessionItemDto {
   createdAt: string;
 }
 
-export interface PendingSessionsResponse {
-  items: PendingSessionItemDto[];
+export interface ReviewableSessionsResponse {
+  items: ReviewableSessionItemDto[];
   pagination: CursorPaginationDto;
 }
 
-export interface GetPendingSessionsParams {
+export interface GetReviewableSessionsParams {
   after?: number;
   limit?: number;
-  subject_id?: number;
+  course_class_id?: number;
   sort_by?: string;
 }
 
+export interface ReviewCourseClassOption {
+  courseClassId: number;
+  classCode: string;
+  subjectId: number;
+  subjectCode: string;
+  subjectName: string;
+  semesterId: number;
+  semesterName: string;
+  activeSemester: boolean;
+}
+
 // ==========================================
-// 16.2 GET /api/v1/sessions/{sessionId}
+// 16.2 GET /api/v1/lecturer/sessions/{sessionId}
 // ==========================================
 
 export type DuplicateDetectionTier =
@@ -72,6 +89,8 @@ export interface SessionQuestionReviewDto {
   correctAnswer: string;
   explanation?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EDITING' | string;
+  rejectionCode?: RejectionReasonCode | null;
+  rejectionReason?: string | null;
   editLog?: QuestionEditLogDto | null;
 }
 
@@ -81,7 +100,7 @@ export interface SessionDetailReviewResponse {
 }
 
 // ==========================================
-// 16.3 POST /api/v1/sessions/approve
+// 16.3 POST /api/v1/lecturer/sessions/approve
 // ==========================================
 
 export interface ApproveQuestionsRequest {
@@ -93,13 +112,24 @@ export interface ApproveQuestionsResponse {
 }
 
 // ==========================================
-// 16.4 POST /api/v1/sessions/reject
+// 16.4 POST /api/v1/lecturer/sessions/reject
 // ==========================================
 
 export interface RejectQuestionsRequest {
   questionIds: number[];
+  rejectionCode?: RejectionReasonCode;
   reason?: string;
 }
+
+export type RejectionReasonCode =
+  | 'DUPLICATE'
+  | 'INCORRECT_ANSWER'
+  | 'AMBIGUOUS_OR_INCOMPLETE'
+  | 'OUT_OF_SCOPE'
+  | 'LOW_QUALITY'
+  | 'OTHER'
+  | 'UNSPECIFIED'
+  | 'AUTO_REJECTED_ON_COMPLETION';
 
 // ==========================================
 // 16.5 PUT /api/v1/questions/{questionId}

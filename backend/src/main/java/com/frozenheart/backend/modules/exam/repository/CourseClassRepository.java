@@ -34,4 +34,7 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
     @Query("SELECT cc FROM CourseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester sem LEFT JOIN FETCH cc.lecturer l WHERE cc.lecturer.id = :lecturerId AND cc.semester.id = :semesterId ORDER BY cc.classCode ASC")
     List<CourseClass> findByLecturerIdAndSemesterIdFetchAll(@Param("lecturerId") Long lecturerId, @Param("semesterId") Long semesterId);
 
+    @Query("SELECT cc FROM CourseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester sem LEFT JOIN FETCH cc.lecturer l WHERE cc.lecturer.id = :lecturerId ORDER BY sem.id DESC, cc.classCode ASC")
+    List<CourseClass> findByLecturerIdFetchAll(@Param("lecturerId") Long lecturerId);
+
 }

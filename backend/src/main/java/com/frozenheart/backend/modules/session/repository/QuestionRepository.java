@@ -43,7 +43,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT q FROM Question q JOIN FETCH q.session WHERE q.id = :questionId")
     Optional<Question> findByIdFetchSession(@Param("questionId") Long questionId);
 
-    @Query("SELECT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer LEFT JOIN FETCH q.topic WHERE q.id = :questionId")
+    @Query("SELECT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer LEFT JOIN FETCH q.topic WHERE q.id = :questionId")
     Optional<Question> findByIdFetchSessionAndCourseClass(@Param("questionId") Long questionId);
 
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE q.status IN (com.frozenheart.backend.core.entity.session.QuestionStatus.APPROVED, com.frozenheart.backend.core.entity.session.QuestionStatus.REJECTED)")
@@ -55,7 +55,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE q.id IN :ids")
     List<Question> findByIdInFetchDetailsForSearch(@Param("ids") List<Long> ids);
 
-    @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.subject LEFT JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer WHERE q.id IN :ids")
+    @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.subject LEFT JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer WHERE q.id IN :ids")
     List<Question> findByIdInFetchSessionCourseClassAndProposer(@Param("ids") List<Long> ids);
 
     long countBySessionCourseClassSubjectIdAndStatus(Long subjectId, QuestionStatus status);

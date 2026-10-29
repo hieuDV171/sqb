@@ -1,24 +1,24 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { reviewService } from '../services/reviewService';
 
-interface UsePendingSessionsParams {
-  subject_id?: number;
+interface UseReviewableSessionsParams {
+  course_class_id?: number;
   sort_by?: string;
   limit?: number;
 }
 
-export const usePendingSessions = ({
-  subject_id,
+export const useReviewableSessions = ({
+  course_class_id,
   sort_by,
   limit = 10,
-}: UsePendingSessionsParams = {}) => {
+}: UseReviewableSessionsParams = {}) => {
   return useInfiniteQuery({
-    queryKey: ['pendingSessions', { subject_id, sort_by, limit }],
+    queryKey: ['reviewableSessions', { course_class_id, sort_by, limit }],
     queryFn: async ({ pageParam }) => {
-      const res = await reviewService.getPendingSessions({
+      const res = await reviewService.getReviewableSessions({
         after: pageParam as number | undefined,
         limit,
-        subject_id,
+        course_class_id,
         sort_by,
       });
       return res.data;

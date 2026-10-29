@@ -4,6 +4,8 @@ import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
+import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
@@ -294,7 +296,15 @@ class SessionServiceImplTest {
         Session session = detailSession(userId, sessionId, null);
         when(sessionRepository.findByIdFetchCourseClassProposerAndReviewer(sessionId))
                 .thenReturn(Optional.of(session));
-        when(questionRepository.findQuestionsBySessionId(sessionId)).thenReturn(List.of());
+        Question rejectedQuestion = Question.builder()
+                .id(501L)
+                .content("Câu hỏi bị trùng")
+                .status(QuestionStatus.REJECTED)
+                .rejectionCode(QuestionRejectionCode.DUPLICATE)
+                .rejectionReason("Đã tồn tại trong ngân hàng")
+                .displayOrder(1)
+                .build();
+        when(questionRepository.findQuestionsBySessionId(sessionId)).thenReturn(List.of(rejectedQuestion));
 
         MySubmissionDetailResponse response = sessionService.getMySubmissionDetail(sessionId);
 
@@ -302,7 +312,10 @@ class SessionServiceImplTest {
         assertEquals("IT4788", response.subjectCode());
         assertEquals(SessionStatus.PENDING, response.status());
         assertNull(response.reviewedByLecturer());
-        assertEquals(List.of(), response.questions());
+        assertEquals(1, response.questions().size());
+        assertEquals(QuestionStatus.REJECTED, response.questions().getFirst().status());
+        assertEquals(QuestionRejectionCode.DUPLICATE, response.questions().getFirst().rejectionCode());
+        assertEquals("Đã tồn tại trong ngân hàng", response.questions().getFirst().rejectionReason());
         verifyNoInteractions(userProfileRepository);
     }
 

@@ -4,7 +4,9 @@ import java.time.Instant;
 import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionSource;
+import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -90,6 +92,15 @@ public record MySubmissionDetailResponse(
 
             @Schema(description = "Mức độ tự tin của tác giả [0.0; 4.0]", example = "3.5")
             Double confidenceScore,
+
+            @Schema(description = "Trạng thái kiểm duyệt của câu hỏi", example = "REJECTED")
+            QuestionStatus status,
+
+            @Schema(description = "Mã lý do từ chối chuẩn hóa", example = "DUPLICATE")
+            QuestionRejectionCode rejectionCode,
+
+            @Schema(description = "Ghi chú từ chối cụ thể của giảng viên")
+            String rejectionReason,
 
             @Schema(description = "Số bình luận", example = "2")
             int commentCount,

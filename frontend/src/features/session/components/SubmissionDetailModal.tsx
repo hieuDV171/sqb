@@ -22,6 +22,7 @@ import type {
   MySubmissionDetailResponse,
   SessionStatus,
 } from '../types/session.types';
+import { QuestionReviewResult } from './QuestionReviewResult';
 
 interface SubmissionDetailModalProps {
   detail?: MySubmissionDetailResponse | null;
@@ -134,6 +135,12 @@ export const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Môn học: <strong className="text-slate-700 dark:text-slate-300">{detail?.subjectName}</strong>
             </p>
+            {(detail?.classCode || detail?.semesterName) && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Lớp học phần: <strong>{detail?.classCode || '—'}</strong>
+                {detail?.semesterName && <> · Học kỳ <strong>{detail.semesterName}</strong></>}
+              </p>
+            )}
           </div>
 
           <button
@@ -237,6 +244,12 @@ export const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
                         {q.content}
                       </p>
+
+                      <QuestionReviewResult
+                        status={q.status}
+                        rejectionCode={q.rejectionCode}
+                        rejectionReason={q.rejectionReason}
+                      />
 
                       {/* Question Media Images */}
                       {q.imageUrls && q.imageUrls.length > 0 && (

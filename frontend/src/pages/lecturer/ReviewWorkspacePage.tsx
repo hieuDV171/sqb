@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useReviewDetail } from '@/features/review/hooks/useReviewDetail';
 import { useReviewMutations } from '@/features/review/hooks/useReviewMutations';
 import { ReviewQuestionCard } from '@/features/review/components/ReviewQuestionCard';
-import { RejectQuestionModal } from '@/features/review/components/RejectQuestionModal';
 import { EditQuestionModal } from '@/features/review/components/EditQuestionModal';
 import { CompleteReviewDialog } from '@/features/review/components/CompleteReviewDialog';
 import { ErrorState } from '@/components/ui/error-state';
@@ -11,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type {
   SessionQuestionReviewDto,
   EditQuestionRequest,
+  RejectionReasonCode,
 } from '@/features/review/types/review.types';
 import {
   ArrowLeft,
@@ -40,8 +40,6 @@ export const ReviewWorkspacePage: React.FC = () => {
   } = useReviewMutations(numericSessionId);
 
   // Modal States
-  const [rejectingQuestion, setRejectingQuestion] =
-    useState<SessionQuestionReviewDto | null>(null);
   const [editingQuestion, setEditingQuestion] =
     useState<SessionQuestionReviewDto | null>(null);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
@@ -72,13 +70,16 @@ export const ReviewWorkspacePage: React.FC = () => {
     await approveQuestions({ questionIds: pendingIds });
   };
 
-  const handleConfirmReject = async (reason: string) => {
-    if (!rejectingQuestion) return;
+  const handleReject = async (
+    questionId: number,
+    rejectionCode: RejectionReasonCode,
+    reason?: string
+  ) => {
     await rejectQuestions({
-      questionIds: [rejectingQuestion.questionId],
+      questionIds: [questionId],
+      rejectionCode,
       reason,
     });
-    setRejectingQuestion(null);
   };
 
   const handleSaveEdit = async (editData: EditQuestionRequest) => {
@@ -253,7 +254,7 @@ export const ReviewWorkspacePage: React.FC = () => {
               questionNumber={idx + 1}
               duplicateWarnings={questionWarnings}
               onApprove={handleApproveSingle}
-              onReject={(q) => setRejectingQuestion(q)}
+              onReject={handleReject}
               onEdit={(q) => setEditingQuestion(q)}
               disabled={isApproving || isRejecting || isEditing}
             />
@@ -278,19 +279,6 @@ export const ReviewWorkspacePage: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <RejectQuestionModal
-        isOpen={!!rejectingQuestion}
-        questionId={rejectingQuestion?.questionId || 0}
-        questionNumber={
-          rejectingQuestion
-            ? questions.findIndex((q) => q.questionId === rejectingQuestion.questionId) + 1
-            : 0
-        }
-        isRejecting={isRejecting}
-        onClose={() => setRejectingQuestion(null)}
-        onConfirm={handleConfirmReject}
-      />
-
       <EditQuestionModal
         isOpen={!!editingQuestion}
         question={editingQuestion}

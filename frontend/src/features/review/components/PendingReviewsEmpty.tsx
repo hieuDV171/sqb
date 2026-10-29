@@ -8,7 +8,7 @@ export const PendingReviewsEmpty: React.FC = () => {
         <CheckCircle2 className="w-8 h-8" />
       </div>
       <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-        Không có phiên nào đang chờ duyệt
+        Không có phiên nào cần kiểm duyệt
       </h3>
       <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
         Tuyệt vời! Bạn đã hoàn tất đánh giá toàn bộ các câu hỏi đề xuất từ sinh viên. Khi có phiên nộp mới từ các môn học bạn giảng dạy, danh sách sẽ hiển thị tại đây.

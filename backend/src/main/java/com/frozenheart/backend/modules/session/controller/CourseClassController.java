@@ -48,14 +48,17 @@ public class CourseClassController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Lấy danh sách lớp học phần do tôi phụ trách", description = "Trả về danh sách các lớp học phần trong học kỳ hiện tại mà Giảng viên đăng nhập đang phụ trách.")
+    @Operation(summary = "Lấy danh sách lớp học phần do tôi phụ trách", description = "Mặc định trả về lớp trong học kỳ hiện tại; hỗ trợ lọc theo học kỳ hoặc lấy toàn bộ lịch sử phân công.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách lớp của tôi thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
     })
     @GetMapping("/my-classes")
-    public ResponseEntity<GlobalResponse<List<CourseClassResponse>>> getMyCourseClasses() {
-        List<CourseClassResponse> response = courseClassManagementService.getMyCourseClasses();
+    public ResponseEntity<GlobalResponse<List<CourseClassResponse>>> getMyCourseClasses(
+            @RequestParam(required = false, name = "semester_id") Long semesterId,
+            @RequestParam(defaultValue = "false", name = "include_history") boolean includeHistory) {
+        List<CourseClassResponse> response = courseClassManagementService
+                .getMyCourseClasses(semesterId, includeHistory);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

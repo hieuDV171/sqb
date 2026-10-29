@@ -54,6 +54,13 @@ public class Question {
     @Column(length = 50)
     private QuestionStatus status;
 
+    @Enumerated(value = EnumType.STRING)
+    @Column(length = 50)
+    private QuestionRejectionCode rejectionCode;
+
+    @Column(columnDefinition = "TEXT")
+    private String rejectionReason;
+
     @Column(columnDefinition = "TEXT")
     private String explanation;
 

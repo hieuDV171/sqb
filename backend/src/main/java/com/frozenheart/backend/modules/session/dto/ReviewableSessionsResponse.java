@@ -8,23 +8,41 @@ import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
-@Schema(description = "Phản hồi danh sách các phiên đề xuất câu hỏi đang chờ duyệt")
+@Schema(description = "Phản hồi danh sách phiên đề xuất có thể kiểm duyệt")
 @Builder
-public record PendingSessionsResponse(
-        @Schema(description = "Danh sách các phiên chờ duyệt")
-        List<PendingSessionItemDto> items,
+public record ReviewableSessionsResponse(
+        @Schema(description = "Danh sách phiên ở trạng thái PENDING hoặc REVIEWING")
+        List<ReviewableSessionItemDto> items,
 
         @Schema(description = "Thông tin phân trang dạng con trỏ")
         CursorPaginationDto pagination) {
 
-    @Schema(description = "Thông tin tóm tắt phiên đề xuất chờ duyệt")
+    @Schema(description = "Thông tin tóm tắt phiên có thể kiểm duyệt")
     @Builder
-    public record PendingSessionItemDto(
+    public record ReviewableSessionItemDto(
             @Schema(description = "ID của phiên đề xuất", example = "12")
             Long sessionId,
 
             @Schema(description = "Tên môn học / học phần", example = "Hệ điều hành")
             String topic,
+
+            @Schema(description = "ID môn học", example = "10")
+            Long subjectId,
+
+            @Schema(description = "Mã môn học", example = "IT4788")
+            String subjectCode,
+
+            @Schema(description = "ID lớp học phần", example = "100")
+            Long courseClassId,
+
+            @Schema(description = "Mã lớp học phần", example = "171146")
+            String classCode,
+
+            @Schema(description = "ID học kỳ", example = "61")
+            Long semesterId,
+
+            @Schema(description = "Tên học kỳ", example = "20261")
+            String semesterName,
 
             @Schema(description = "Tiêu đề phiên đề xuất", example = "Đề xuất câu hỏi trắc nghiệm Chương 3")
             String title,
@@ -35,7 +53,7 @@ public record PendingSessionsResponse(
             @Schema(description = "Thông tin tác giả đề xuất (đã được ẩn danh hóa)")
             AuthorDto author,
 
-            @Schema(description = "Trạng thái phiên đề xuất", example = "PENDING")
+            @Schema(description = "Trạng thái phiên đề xuất", example = "REVIEWING")
             String status,
 
             @Schema(description = "Thời gian tạo phiên đề xuất", example = "2026-10-06T08:30:00Z")
@@ -58,4 +76,3 @@ public record PendingSessionsResponse(
             String frameUrl) {
     }
 }
-

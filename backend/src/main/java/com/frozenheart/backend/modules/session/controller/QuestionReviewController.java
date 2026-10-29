@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
@@ -14,7 +15,7 @@ import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsResponse;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.EditQuestionResponse;
-import com.frozenheart.backend.modules.session.dto.PendingSessionsResponse;
+import com.frozenheart.backend.modules.session.dto.ReviewableSessionsResponse;
 import com.frozenheart.backend.modules.session.dto.RejectQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.SessionDetailReviewResponse;
 import com.frozenheart.backend.modules.session.service.QuestionReviewService;
@@ -31,30 +32,32 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "18. Giảng viên Duyệt Câu hỏi (Question Review)", description = "Các API dành cho Giảng viên / Quản trị viên thẩm định, chỉnh sửa, phê duyệt hoặc từ chối câu hỏi đề xuất")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
+@RequestMapping("/lecturer")
 @RequiredArgsConstructor
 public class QuestionReviewController {
 
     private final QuestionReviewService questionReviewService;
 
-    @Operation(summary = "Lấy danh sách phiên đề xuất chờ duyệt", description = "Dành cho giảng viên: lấy danh sách các phiên đề xuất câu hỏi đang ở trạng thái PENDING/REVIEWING, hỗ trợ phân trang con trỏ và lọc theo môn học.")
+    @Operation(summary = "Lấy danh sách phiên có thể kiểm duyệt", description = "Lấy các phiên PENDING/REVIEWING thuộc đúng lớp học phần được phân công cho giảng viên hiện tại; Admin có thể xem toàn bộ. Hỗ trợ phân trang con trỏ và lọc theo lớp học phần.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên chờ duyệt thành công")
+            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên có thể kiểm duyệt thành công")
     })
-    @GetMapping("/sessions/pending")
-    public ResponseEntity<GlobalResponse<PendingSessionsResponse>> getPendingSessions(
+    @GetMapping("/sessions/reviewable")
+    public ResponseEntity<GlobalResponse<ReviewableSessionsResponse>> getReviewableSessions(
             @Parameter(description = "ID phiên cuối cùng của trang trước (cursor)", example = "50")
             @RequestParam(required = false) Long after,
 
             @Parameter(description = "Số lượng phiên tối đa mỗi trang (mặc định 10, tối đa 50)", example = "10")
             @RequestParam(required = false) Integer limit,
 
-            @Parameter(description = "Lọc theo ID môn học", example = "1")
-            @RequestParam(required = false, name = "subject_id") Long subjectId,
+            @Parameter(description = "Lọc theo ID lớp học phần được phân công", example = "100")
+            @RequestParam(required = false, name = "course_class_id") Long courseClassId,
 
             @Parameter(description = "Tiêu chí sắp xếp", example = "created_at")
             @RequestParam(required = false, name = "sort_by") String sortBy) {
 
-        PendingSessionsResponse response = questionReviewService.getPendingSessions(after, limit, subjectId, sortBy);
+        ReviewableSessionsResponse response = questionReviewService
+                .getReviewableSessions(after, limit, courseClassId, sortBy);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

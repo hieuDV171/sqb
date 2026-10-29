@@ -29,6 +29,7 @@ import {
   DeleteSubmissionDialog,
   type SessionStatus,
 } from '@/features/session';
+import { QuestionReviewResult } from '@/features/session/components/QuestionReviewResult';
 
 export function SubmissionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -217,6 +218,12 @@ export function SubmissionDetailPage() {
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Môn học: <strong className="text-slate-700 dark:text-slate-300">{detail.subjectName}</strong>
           </p>
+          {(detail.classCode || detail.semesterName) && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Lớp học phần: <strong>{detail.classCode || '—'}</strong>
+              {detail.semesterName && <> · Học kỳ <strong>{detail.semesterName}</strong></>}
+            </p>
+          )}
         </div>
 
         {detail.content && (
@@ -336,6 +343,12 @@ export function SubmissionDetailPage() {
               <p className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
                 {q.content}
               </p>
+
+              <QuestionReviewResult
+                status={q.status}
+                rejectionCode={q.rejectionCode}
+                rejectionReason={q.rejectionReason}
+              />
 
               {q.imageUrls && q.imageUrls.length > 0 && (
                 <div className="flex gap-2 flex-wrap pt-1">

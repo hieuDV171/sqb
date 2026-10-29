@@ -27,6 +27,7 @@ import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
@@ -40,7 +41,7 @@ import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsResponse;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.EditQuestionResponse;
-import com.frozenheart.backend.modules.session.dto.PendingSessionsResponse;
+import com.frozenheart.backend.modules.session.dto.ReviewableSessionsResponse;
 import com.frozenheart.backend.modules.session.dto.RejectQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.SessionDetailReviewResponse;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
@@ -101,16 +102,16 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public PendingSessionsResponse getPendingSessions(Long after, Integer limit, Long subjectId, String sortBy) {
+    public ReviewableSessionsResponse getReviewableSessions(Long after, Integer limit, Long courseClassId, String sortBy) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        JwtPayload payload = requireReviewerPayload();
         Long lecturerId = UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole())
                 ? null
                 : payload.getUserId();
 
         List<Session> sessions = sessionRepository.findReviewableSessionsFetchCourseClassAndProposerWithCursor(
-                lecturerId, subjectId, after, pageable);
+                lecturerId, courseClassId, after, pageable);
 
         boolean hasNext = false;
         Long nextCursor = null;
@@ -131,23 +132,31 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 : userProfileRepository.findAllById(proposerIds).stream()
                         .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
 
-        List<PendingSessionsResponse.PendingSessionItemDto> items = sessions.stream().map(s -> {
+        List<ReviewableSessionsResponse.ReviewableSessionItemDto> items = sessions.stream().map(s -> {
             User proposer = s.getProposer();
             UserProfile profile = proposer != null ? profileMap.get(proposer.getId()) : null;
+            var courseClass = s.getCourseClass();
+            var subject = courseClass != null ? courseClass.getSubject() : null;
+            var semester = courseClass != null ? courseClass.getSemester() : null;
             String anonymizedName = proposer != null ? "Học viên " + anonymizerUtil.encodeUserId(proposer.getId())
                     : "Học viên ẩn danh";
 
-            PendingSessionsResponse.AuthorDto authorDto = PendingSessionsResponse.AuthorDto.builder()
+            ReviewableSessionsResponse.AuthorDto authorDto = ReviewableSessionsResponse.AuthorDto.builder()
                     .userId(proposer != null ? proposer.getId() : null)
                     .fullName(anonymizedName)
                     .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
                     .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
                     .build();
 
-            return PendingSessionsResponse.PendingSessionItemDto.builder()
+            return ReviewableSessionsResponse.ReviewableSessionItemDto.builder()
                     .sessionId(s.getId())
-                    .topic(s.getCourseClass() != null && s.getCourseClass().getSubject() != null
-                            ? s.getCourseClass().getSubject().getName() : null)
+                    .topic(subject != null ? subject.getName() : null)
+                    .subjectId(subject != null ? subject.getId() : null)
+                    .subjectCode(subject != null ? subject.getCode() : null)
+                    .courseClassId(courseClass != null ? courseClass.getId() : null)
+                    .classCode(courseClass != null ? courseClass.getClassCode() : null)
+                    .semesterId(semester != null ? semester.getId() : null)
+                    .semesterName(semester != null ? semester.getName() : null)
                     .title(s.getTitle())
                     .content(s.getContent())
                     .author(authorDto)
@@ -156,7 +165,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                     .build();
         }).toList();
 
-        return PendingSessionsResponse.builder()
+        return ReviewableSessionsResponse.builder()
                 .items(items)
                 .pagination(CursorPaginationDto.builder()
                         .after(nextCursor)
@@ -169,26 +178,17 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     @Transactional
     public SessionDetailReviewResponse getSessionDetailForReview(Long sessionId) {
 
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        JwtPayload payload = requireReviewerPayload();
 
         Long currentUserId = payload.getUserId();
         String role = payload.getRole();
-
-        if (UserRole.STUDENT.name().equalsIgnoreCase(role)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED, "Sinh viên không thể duyệt câu hỏi");
-        }
 
         User lecturer = userRepository.getReferenceById(currentUserId);
 
         Session session = sessionRepository.findByIdFetchCourseClassAndQuestions(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
-        if (UserRole.LECTURER.name().equalsIgnoreCase(role)
-                && (session.getCourseClass().getLecturer() == null
-                        || !Objects.equals(session.getCourseClass().getLecturer().getId(), currentUserId))) {
-            throw new AppException(ResponseCode.ACCESS_DENIED,
-                    "Bạn chỉ có thể duyệt phiên thuộc lớp học phần được phân công");
-        }
+        assertCanReviewSession(payload, session);
 
         if (session.getStatus() == SessionStatus.PENDING) {
             session.setStatus(SessionStatus.REVIEWING);
@@ -263,6 +263,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                     .correctAnswer(correctAnswerStr)
                     .explanation(q.getExplanation())
                     .status(q.getStatus() != null ? q.getStatus().name() : "PENDING")
+                    .rejectionCode(q.getRejectionCode())
+                    .rejectionReason(q.getRejectionReason())
                     .editLog(editLogDto)
                     .build();
         }).toList();
@@ -281,21 +283,17 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     @Override
     @Transactional
     public ApproveQuestionsResponse approveQuestions(ApproveQuestionsRequest request) {
-        if (request.questionIds() == null || request.questionIds().isEmpty()) {
-            return ApproveQuestionsResponse.builder()
-                    .pointsEarned(0.0)
-                    .build();
-        }
-
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        List<Long> questionIds = normalizeQuestionIds(request != null ? request.questionIds() : null);
+        JwtPayload payload = requireReviewerPayload();
+        List<Question> questions = loadAuthorizedQuestions(questionIds, payload);
         User lecturer = userRepository.getReferenceById(payload.getUserId());
         Instant now = Instant.now();
-
-        List<Question> questions = questionRepository.findByIdInFetchSessionCourseClassAndProposer(request.questionIds());
         Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
             q.setStatus(QuestionStatus.APPROVED);
+            q.setRejectionCode(null);
+            q.setRejectionReason(null);
             q.setUpdatedAt(now);
             if (q.getSession() != null) {
                 sessionIds.add(q.getSession().getId());
@@ -304,7 +302,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         questionRepository.saveAll(questions);
         eventPublisher.publishEvent(
-                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
+                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, questionIds));
 
         checkAndAutoResolveSessions(sessionIds, lecturer);
         metricService.incrementCounter("sqb.exam.questions.reviewed", questions.size(), "decision", "approved");
@@ -317,19 +315,29 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     @Override
     @Transactional
     public void rejectQuestions(RejectQuestionsRequest request) {
-        if (request.questionIds() == null || request.questionIds().isEmpty()) {
-            return;
-        }
-
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        List<Long> questionIds = normalizeQuestionIds(request != null ? request.questionIds() : null);
+        JwtPayload payload = requireReviewerPayload();
+        List<Question> questions = loadAuthorizedQuestions(questionIds, payload);
         User lecturer = userRepository.getReferenceById(payload.getUserId());
         Instant now = Instant.now();
-
-        List<Question> questions = questionRepository.findByIdInFetchSessionCourseClassAndProposer(request.questionIds());
+        QuestionRejectionCode rejectionCode = request.rejectionCode() != null
+                ? request.rejectionCode()
+                : QuestionRejectionCode.UNSPECIFIED;
+        if (rejectionCode == QuestionRejectionCode.AUTO_REJECTED_ON_COMPLETION) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Mã từ chối tự động chỉ được hệ thống sử dụng khi hoàn tất phiên duyệt");
+        }
+        String rejectionReason = normalizeReason(request.reason());
+        if (rejectionCode == QuestionRejectionCode.OTHER && rejectionReason == null) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Vui lòng nhập lý do cụ thể khi chọn lý do khác");
+        }
         Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
             q.setStatus(QuestionStatus.REJECTED);
+            q.setRejectionCode(rejectionCode);
+            q.setRejectionReason(rejectionReason);
             q.setUpdatedAt(now);
             if (q.getSession() != null) {
                 sessionIds.add(q.getSession().getId());
@@ -338,7 +346,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         questionRepository.saveAll(questions);
         eventPublisher.publishEvent(
-                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, request.questionIds()));
+                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, questionIds));
 
         checkAndAutoResolveSessions(sessionIds, lecturer);
         metricService.incrementCounter("sqb.exam.questions.reviewed", questions.size(), "decision", "rejected");
@@ -347,19 +355,15 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     @Override
     @Transactional
     public EditQuestionResponse editQuestion(Long questionId, EditQuestionRequest request) {
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        JwtPayload payload = requireReviewerPayload();
         Long currentUserId = payload.getUserId();
-        String role = payload.getRole();
-
-        if (UserRole.STUDENT.name().equals(role)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ giảng viên mới được phép sửa bất kỳ câu hỏi nào");
-        }
 
         User lecturer = userRepository.getReferenceById(currentUserId);
         Instant now = Instant.now();
 
         Question question = questionRepository.findByIdFetchSessionAndCourseClass(questionId)
                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
+        assertCanReviewQuestion(payload, question);
 
         if (request.content() != null) {
             question.setContent(request.content());
@@ -376,6 +380,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         } else {
             question.setStatus(QuestionStatus.PENDING);
         }
+        question.setRejectionCode(null);
+        question.setRejectionReason(null);
 
         question.setUpdatedAt(now);
         Question savedQuestion = questionRepository.save(question);
@@ -397,14 +403,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     @Override
     @Transactional
     public void completeSessionReview(Long sessionId) {
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        JwtPayload payload = requireReviewerPayload();
         Long currentUserId = payload.getUserId();
-        String role = payload.getRole();
-
-        if (UserRole.STUDENT.name().equals(role)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED,
-                    "Chỉ giảng viên mới được phép hoàn tất xem xét phiên đề xuất");
-        }
 
         User lecturer = userRepository.getReferenceById(currentUserId);
         Instant now = Instant.now();
@@ -412,6 +412,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         Session s = sessionRepository.findByIdInFetchCourseClassAndProposerAndReviewer(List.of(sessionId))
                 .stream().findFirst()
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
+        assertCanReviewSession(payload, s);
 
         if (s.getStatus() == SessionStatus.RESOLVED) {
             return;
@@ -427,6 +428,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         for (Question q : questions) {
             if (q.getStatus() == QuestionStatus.PENDING) {
                 q.setStatus(QuestionStatus.REJECTED);
+                q.setRejectionCode(QuestionRejectionCode.AUTO_REJECTED_ON_COMPLETION);
+                q.setRejectionReason(null);
                 q.setUpdatedAt(now);
                 questionsToUpdate.add(q);
             }
@@ -439,6 +442,71 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         }
 
         checkAndAutoResolveSessions(Set.of(sessionId), lecturer);
+    }
+
+    private JwtPayload requireReviewerPayload() {
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        String role = payload.getRole();
+        if (!UserRole.LECTURER.name().equalsIgnoreCase(role)
+                && !UserRole.ADMIN.name().equalsIgnoreCase(role)) {
+            throw new AppException(ResponseCode.REVIEW_PERMISSION_DENIED,
+                    "Chỉ giảng viên hoặc quản trị viên mới được phép kiểm duyệt câu hỏi");
+        }
+        return payload;
+    }
+
+    private List<Long> normalizeQuestionIds(List<Long> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Danh sách câu hỏi không được để trống");
+        }
+        if (questionIds.stream().anyMatch(Objects::isNull)) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "ID câu hỏi không được để trống");
+        }
+        return questionIds.stream().distinct().toList();
+    }
+
+    private List<Question> loadAuthorizedQuestions(List<Long> questionIds, JwtPayload payload) {
+        List<Question> questions = questionRepository.findByIdInFetchSessionCourseClassAndProposer(questionIds);
+        if (questions.size() != questionIds.size()) {
+            throw new AppException(ResponseCode.QUESTION_NOT_FOUND,
+                    "Một hoặc nhiều câu hỏi không tồn tại");
+        }
+        questions.forEach(question -> assertCanReviewQuestion(payload, question));
+        return questions;
+    }
+
+    private void assertCanReviewQuestion(JwtPayload payload, Question question) {
+        if (question == null || question.getSession() == null) {
+            throw new AppException(ResponseCode.REVIEW_PERMISSION_DENIED,
+                    "Câu hỏi không thuộc phiên đề xuất có thể kiểm duyệt");
+        }
+        assertCanReviewSession(payload, question.getSession());
+    }
+
+    private void assertCanReviewSession(JwtPayload payload, Session session) {
+        if (UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole())) {
+            return;
+        }
+        if (session == null || session.getCourseClass() == null
+                || session.getCourseClass().getLecturer() == null
+                || !Objects.equals(session.getCourseClass().getLecturer().getId(), payload.getUserId())) {
+            throw new AppException(ResponseCode.REVIEW_PERMISSION_DENIED,
+                    "Bạn chỉ có thể duyệt phiên thuộc lớp học phần được phân công");
+        }
+    }
+
+    private String normalizeReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        String normalized = reason.trim();
+        if (normalized.length() > 1000) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Lý do từ chối không được vượt quá 1000 ký tự");
+        }
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private void checkAndAutoResolveSessions(Set<Long> sessionIds, User reviewer) {

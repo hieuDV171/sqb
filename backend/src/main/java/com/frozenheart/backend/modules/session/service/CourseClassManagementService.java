@@ -17,7 +17,7 @@ public interface CourseClassManagementService {
 
     List<CourseClassResponse> getCourseClassesByActiveSemester();
 
-    List<CourseClassResponse> getMyCourseClasses();
+    List<CourseClassResponse> getMyCourseClasses(Long semesterId, boolean includeHistory);
 
     CourseClassResponse getCourseClassDetail(Long courseClassId);
 

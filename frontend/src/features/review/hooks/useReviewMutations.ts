@@ -11,7 +11,7 @@ export const useReviewMutations = (sessionId?: number) => {
   const queryClient = useQueryClient();
 
   const invalidateReviewQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['pendingSessions'] });
+    queryClient.invalidateQueries({ queryKey: ['reviewableSessions'] });
     if (sessionId) {
       queryClient.invalidateQueries({ queryKey: ['reviewSessionDetail', sessionId] });
     }

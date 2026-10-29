@@ -28,4 +28,14 @@ public interface UserCourseClassRepository extends JpaRepository<UserCourseClass
     @Query("SELECT ucc FROM UserCourseClass ucc JOIN FETCH ucc.user u WHERE ucc.id.courseClassId = :courseClassId")
     List<UserCourseClass> findByCourseClassIdFetchUser(@Param("courseClassId") Long courseClassId);
 
+    long countByIdCourseClassId(Long courseClassId);
+
+    @Query("""
+            SELECT ucc.id.courseClassId, COUNT(ucc)
+            FROM UserCourseClass ucc
+            WHERE ucc.id.courseClassId IN :courseClassIds
+            GROUP BY ucc.id.courseClassId
+            """)
+    List<Object[]> countStudentsByCourseClassIds(@Param("courseClassIds") Collection<Long> courseClassIds);
+
 }

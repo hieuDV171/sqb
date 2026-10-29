@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -41,6 +42,12 @@ public record SessionDetailReviewResponse(
 
                 @Schema(description = "Trạng thái câu hỏi (PENDING, APPROVED, REJECTED)", example = "PENDING")
                 String status,
+
+                @Schema(description = "Mã lý do từ chối chuẩn hóa", example = "DUPLICATE")
+                QuestionRejectionCode rejectionCode,
+
+                @Schema(description = "Ghi chú từ chối cụ thể của giảng viên")
+                String rejectionReason,
 
                 @Schema(description = "Nhật ký chỉnh sửa gần nhất của câu hỏi (nếu có)")
                 QuestionEditLogDto editLog) {

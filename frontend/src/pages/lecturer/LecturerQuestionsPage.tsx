@@ -1,33 +1,10 @@
-import { useMemo } from 'react';
-import { CheckCircle, FileText, ArrowRight, Layers, Sparkles } from 'lucide-react';
+import { CheckCircle, FileText, ArrowRight, Layers, CalendarRange } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { LecturerQuestionsExportCard, useLecturerClasses } from '@/features/exam';
 
 export function LecturerQuestionsPage() {
-  const { data: rawClasses = [], isLoading } = useLecturerClasses();
-
-  // Unique subjects and classes count
-  const subjectsSummary = useMemo(() => {
-    const map = new Map<number, { id: number; code: string; name: string; classCount: number }>();
-    rawClasses.forEach((cls: any) => {
-      const sId = cls.subjectId;
-      if (sId) {
-        if (!map.has(sId)) {
-          map.set(sId, {
-            id: sId,
-            code: cls.subjectCode || `SUB_${sId}`,
-            name: cls.subjectName || `Môn học #${sId}`,
-            classCount: 1,
-          });
-        } else {
-          const item = map.get(sId)!;
-          item.classCount += 1;
-        }
-      }
-    });
-    return Array.from(map.values());
-  }, [rawClasses]);
+  const { data: rawClasses = [], isLoading } = useLecturerClasses({ includeHistory: true });
 
   return (
     <div className="space-y-6">
@@ -73,7 +50,7 @@ export function LecturerQuestionsPage() {
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-indigo-500" />
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Danh Sách Môn Học Phụ Trách ({subjectsSummary.length})
+              Danh Sách Lớp Học Phần Phụ Trách ({rawClasses.length})
             </h2>
           </div>
           <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -90,35 +67,41 @@ export function LecturerQuestionsPage() {
               />
             ))}
           </div>
-        ) : subjectsSummary.length === 0 ? (
+        ) : rawClasses.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            Bạn chưa được phân công môn học nào trong học kỳ này.
+            Bạn chưa được phân công lớp học phần nào.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjectsSummary.map((sub) => (
+            {rawClasses.map((courseClass: any) => (
               <div
-                key={sub.id}
+                key={courseClass.courseClassId}
                 className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-blue-200 dark:hover:border-blue-800 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                      {sub.code}
+                      {courseClass.subjectCode}
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {sub.classCount} lớp học phần
+                    <span className={courseClass.activeSemester
+                      ? 'text-xs font-semibold text-emerald-600 dark:text-emerald-400'
+                      : 'text-xs text-slate-500 dark:text-slate-400'}>
+                      {courseClass.activeSemester ? 'Học kỳ hiện tại' : 'Lịch sử'}
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm line-clamp-2">
-                    {sub.name}
+                    {courseClass.subjectName}
                   </h3>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Lớp <strong className="text-slate-700 dark:text-slate-200">{courseClass.classCode}</strong>
+                    {' · '}Học kỳ <strong className="text-slate-700 dark:text-slate-200">{courseClass.semesterName}</strong>
+                  </p>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Đã thẩm định
+                    <CalendarRange className="w-3.5 h-3.5" />
+                    {courseClass.totalStudents ?? 0} sinh viên
                   </span>
                   <Link
                     to={`/lecturer/exams`}

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import type { SessionQuestionReviewDto, DuplicateWarning } from '../types/review.types';
+import type { SessionQuestionReviewDto, DuplicateWarning, RejectionReasonCode } from '../types/review.types';
 import { DuplicateWarningBadge } from './DuplicateWarningBadge';
+import { RejectReasonPopover } from './RejectReasonPopover';
+import { getRejectionReasonLabel } from '@/lib/rejectionReasons';
 import {
   CheckCircle2,
   XCircle,
@@ -11,6 +13,7 @@ import {
   ZoomIn,
   X,
   HelpCircle,
+  Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +22,7 @@ interface ReviewQuestionCardProps {
   questionNumber: number;
   duplicateWarnings: DuplicateWarning[];
   onApprove: (questionId: number) => void;
-  onReject: (question: SessionQuestionReviewDto) => void;
+  onReject: (questionId: number, code: RejectionReasonCode, reason?: string) => Promise<void>;
   onEdit: (question: SessionQuestionReviewDto) => void;
   disabled?: boolean;
 }
@@ -169,12 +172,19 @@ export const ReviewQuestionCard: React.FC<ReviewQuestionCardProps> = ({
         {/* Explanation */}
         {question.explanation && (
           <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 text-xs space-y-1">
-            <span className="font-bold text-blue-900 dark:text-blue-300 block">
-              💡 Giải thích đáp án:
+            <span className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5" /> Giải thích đáp án:
             </span>
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
               {question.explanation}
             </p>
+          </div>
+        )}
+
+        {question.status === 'REJECTED' && (
+          <div className="p-3.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-900 dark:text-rose-200">
+            <span className="font-bold">Lý do từ chối: {getRejectionReasonLabel(question.rejectionCode)}</span>
+            {question.rejectionReason && <p className="mt-1 leading-relaxed">{question.rejectionReason}</p>}
           </div>
         )}
 
@@ -210,16 +220,12 @@ export const ReviewQuestionCard: React.FC<ReviewQuestionCardProps> = ({
               <span>Biên tập</span>
             </button>
 
-            {/* Reject Button */}
-            <button
-              type="button"
-              onClick={() => onReject(question)}
-              disabled={disabled || question.status === 'REJECTED'}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Từ chối</span>
-            </button>
+            <RejectReasonPopover
+              disabled={disabled}
+              isRejected={question.status === 'REJECTED'}
+              isSubmitting={disabled}
+              onConfirm={(code, reason) => onReject(question.questionId, code, reason)}
+            />
 
             {/* Approve Button */}
             <button

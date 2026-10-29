@@ -96,12 +96,12 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         "WHERE s.status IN (com.frozenheart.backend.core.entity.session.SessionStatus.PENDING, " +
                         "com.frozenheart.backend.core.entity.session.SessionStatus.REVIEWING) " +
                         "AND (:lecturerId IS NULL OR cc.lecturer.id = :lecturerId) " +
-                        "AND (:subjectId IS NULL OR cc.subject.id = :subjectId) " +
+                        "AND (:courseClassId IS NULL OR cc.id = :courseClassId) " +
                         "AND (:after IS NULL OR s.id < :after) " +
                         "ORDER BY s.id DESC")
         List<Session> findReviewableSessionsFetchCourseClassAndProposerWithCursor(
                         @Param("lecturerId") Long lecturerId,
-                        @Param("subjectId") Long subjectId,
+                        @Param("courseClassId") Long courseClassId,
                         @Param("after") Long after,
                         Pageable pageable);
 

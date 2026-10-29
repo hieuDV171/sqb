@@ -99,9 +99,18 @@ export const examService = {
    * Lấy danh sách lớp học phần của giảng viên để gán đề thi
    * GET /api/v1/lecturer/course-classes/my-classes
    */
-  getLecturerClasses: async (): Promise<GlobalResponse<any[]>> => {
+  getLecturerClasses: async (params?: {
+    semesterId?: number;
+    includeHistory?: boolean;
+  }): Promise<GlobalResponse<any[]>> => {
     return (await axiosClient.get<GlobalResponse<any[]>>(
-      '/lecturer/course-classes/my-classes'
+      '/lecturer/course-classes/my-classes',
+      {
+        params: {
+          semester_id: params?.semesterId,
+          include_history: params?.includeHistory,
+        },
+      }
     )) as any;
   },
 };

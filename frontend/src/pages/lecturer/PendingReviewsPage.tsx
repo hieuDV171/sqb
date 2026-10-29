@@ -1,70 +1,54 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { usePendingSessions } from '@/features/review/hooks/usePendingSessions';
+import { useReviewableSessions } from '@/features/review/hooks/useReviewableSessions';
 import { PendingSessionCard } from '@/features/review/components/PendingSessionCard';
 import { PendingSessionFilterBar } from '@/features/review/components/PendingSessionFilterBar';
 import { PendingSessionSkeleton } from '@/features/review/components/PendingSessionSkeleton';
 import { PendingReviewsEmpty } from '@/features/review/components/PendingReviewsEmpty';
 import { ErrorState } from '@/components/ui/error-state';
-import { sessionService } from '@/features/session/services/sessionService';
 import { axiosClient } from '@/api/axiosClient';
-import type { SubjectResponse } from '@/features/session/types/session.types';
+import type { ReviewCourseClassOption } from '@/features/review/types/review.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ClipboardCheck, Loader2 } from 'lucide-react';
 
 export const PendingReviewsPage: React.FC = () => {
   const { user } = useAuthStore();
-  const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
+  const [selectedCourseClassId, setSelectedCourseClassId] = useState<number | undefined>(undefined);
   const [sortBy, setSortBy] = useState('createdAt,desc');
   const [searchQuery, setSearchQuery] = useState('');
-  const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
+  const [courseClasses, setCourseClasses] = useState<ReviewCourseClassOption[]>([]);
 
-  // 1. Fetch subjects for filter
+  // 1. Fetch course classes available to the current reviewer
   useEffect(() => {
-    const loadSubjects = async () => {
+    const loadCourseClasses = async () => {
       try {
-        const res = await sessionService.getMyEnrolledSubjects();
-        if (res?.data && res.data.length > 0) {
-          setSubjects(res.data);
-          return;
-        }
-
+        setCourseClasses([]);
         if (user?.role === 'LECTURER') {
-          const classRes = await axiosClient.get<any>('/lecturer/course-classes/my-classes');
+          const classRes = await axiosClient.get<any>('/lecturer/course-classes/my-classes', {
+            params: { include_history: true },
+          });
           if (classRes?.data?.data && Array.isArray(classRes.data.data)) {
-            const uniqueMap = new Map<number, SubjectResponse>();
-            classRes.data.data.forEach((c: any) => {
-              if (c.subjectId && !uniqueMap.has(c.subjectId)) {
-                uniqueMap.set(c.subjectId, {
-                  subjectId: c.subjectId,
-                  code: c.subjectCode || '',
-                  name: c.subjectName || '',
-                });
-              }
-            });
-            if (uniqueMap.size > 0) {
-              setSubjects(Array.from(uniqueMap.values()));
-              return;
-            }
+            setCourseClasses(classRes.data.data);
+            return;
           }
         }
 
         if (user?.role === 'ADMIN') {
-          const adminRes = await axiosClient.get<any>('/subjects');
+          const adminRes = await axiosClient.get<any>('/lecturer/course-classes');
           if (adminRes?.data?.data && Array.isArray(adminRes.data.data)) {
-            setSubjects(adminRes.data.data);
+            setCourseClasses(adminRes.data.data);
           } else if (adminRes?.data && Array.isArray(adminRes.data)) {
-            setSubjects(adminRes.data);
+            setCourseClasses(adminRes.data);
           }
         }
       } catch (err) {
-        console.warn('Lỗi khi tải danh sách môn học:', err);
+        console.warn('Lỗi khi tải danh sách lớp học phần:', err);
       }
     };
 
-    loadSubjects();
+    loadCourseClasses();
   }, [user?.role]);
 
-  // 2. Fetch pending sessions
+  // 2. Fetch sessions that are reviewable by the current lecturer
   const {
     data,
     isLoading,
@@ -73,8 +57,8 @@ export const PendingReviewsPage: React.FC = () => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = usePendingSessions({
-    subject_id: selectedSubjectId,
+  } = useReviewableSessions({
+    course_class_id: selectedCourseClassId,
     sort_by: sortBy,
     limit: 10,
   });
@@ -92,6 +76,9 @@ export const PendingReviewsPage: React.FC = () => {
       (item) =>
         item.title?.toLowerCase().includes(q) ||
         item.topic?.toLowerCase().includes(q) ||
+        item.subjectCode?.toLowerCase().includes(q) ||
+        item.classCode?.toLowerCase().includes(q) ||
+        item.semesterName?.toLowerCase().includes(q) ||
         item.author?.fullName?.toLowerCase().includes(q) ||
         String(item.sessionId).includes(q)
     );
@@ -128,9 +115,9 @@ export const PendingReviewsPage: React.FC = () => {
       <PendingSessionFilterBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        selectedSubjectId={selectedSubjectId}
-        onSubjectChange={setSelectedSubjectId}
-        subjects={subjects}
+        selectedCourseClassId={selectedCourseClassId}
+        onCourseClassChange={setSelectedCourseClassId}
+        courseClasses={courseClasses}
         sortBy={sortBy}
         onSortChange={setSortBy}
       />
@@ -144,7 +131,7 @@ export const PendingReviewsPage: React.FC = () => {
         </div>
       ) : isError ? (
         <ErrorState
-          title="Không thể tải danh sách phiên chờ duyệt"
+          title="Không thể tải danh sách phiên cần kiểm duyệt"
           message="Đã có lỗi xảy ra khi kết nối máy chủ. Vui lòng thử lại sau."
           onRetry={() => refetch()}
         />
@@ -171,7 +158,7 @@ export const PendingReviewsPage: React.FC = () => {
                     <span>Đang tải thêm phiên nộp...</span>
                   </>
                 ) : (
-                  <span>Tải thêm phiên nộp chờ duyệt</span>
+                  <span>Tải thêm phiên cần kiểm duyệt</span>
                 )}
               </button>
             </div>

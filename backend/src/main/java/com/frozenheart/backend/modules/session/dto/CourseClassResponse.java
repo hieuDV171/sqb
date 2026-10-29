@@ -28,6 +28,9 @@ public record CourseClassResponse(
         @Schema(description = "Tên học kỳ", example = "20241")
         String semesterName,
 
+        @Schema(description = "Lớp thuộc học kỳ đang kích hoạt", example = "true")
+        boolean activeSemester,
+
         @Schema(description = "ID giảng viên phụ trách", example = "2")
         Long lecturerId,
 

@@ -147,6 +147,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .subjectName(subject.getName())
                 .semesterId(semester.getId())
                 .semesterName(semester.getName())
+                .activeSemester(semester.isActive())
                 .lecturerId(lecturer.getId())
                 .lecturerName(lecturerName)
                 .totalStudents(0)
@@ -168,14 +169,22 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
 
     @Override
     @Transactional(readOnly = true)
-    public List<CourseClassResponse> getMyCourseClasses() {
+    public List<CourseClassResponse> getMyCourseClasses(Long semesterId, boolean includeHistory) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
-        if (activeSemester == null) {
-            return Collections.emptyList();
-        }
+        List<CourseClass> classes;
 
-        List<CourseClass> classes = courseClassRepository.findByLecturerIdAndSemesterIdFetchAll(currentUserId, activeSemester.getId());
+        if (semesterId != null) {
+            classes = courseClassRepository.findByLecturerIdAndSemesterIdFetchAll(currentUserId, semesterId);
+        } else if (includeHistory) {
+            classes = courseClassRepository.findByLecturerIdFetchAll(currentUserId);
+        } else {
+            Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+            if (activeSemester == null) {
+                return Collections.emptyList();
+            }
+            classes = courseClassRepository.findByLecturerIdAndSemesterIdFetchAll(
+                    currentUserId, activeSemester.getId());
+        }
         return mapToCourseClassResponses(classes);
     }
 
@@ -633,6 +642,19 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 : userProfileRepository.findAllById(lecturerIds).stream()
                         .collect(Collectors.toMap(UserProfile::getUserId, UserProfile::getFullName, (p1, _) -> p1));
 
+        Set<Long> courseClassIds = classes.stream()
+                .map(CourseClass::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Integer> studentCountMap = courseClassIds.isEmpty()
+                ? Collections.emptyMap()
+                : userCourseClassRepository.countStudentsByCourseClassIds(courseClassIds).stream()
+                        .collect(Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> ((Number) row[1]).intValue()));
+        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+        Long activeSemesterId = activeSemester != null ? activeSemester.getId() : null;
+
         return classes.stream().map(cc -> {
             Subject s = cc.getSubject();
             Semester sem = cc.getSemester();
@@ -647,9 +669,10 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                     .subjectName(s != null ? s.getName() : null)
                     .semesterId(sem != null ? sem.getId() : null)
                     .semesterName(sem != null ? sem.getName() : null)
+                    .activeSemester(sem != null && Objects.equals(sem.getId(), activeSemesterId))
                     .lecturerId(lecturer != null ? lecturer.getId() : null)
                     .lecturerName(lecturerName)
-                    .totalStudents(cc.getStudentEnrollments() != null ? cc.getStudentEnrollments().size() : 0)
+                    .totalStudents(studentCountMap.getOrDefault(cc.getId(), 0))
                     .createdAt(cc.getCreatedAt())
                     .build();
         }).toList();
@@ -659,6 +682,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         Subject s = cc.getSubject();
         Semester sem = cc.getSemester();
         User lecturer = cc.getLecturer();
+        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
         String lecturerName = (lecturer != null)
                 ? userProfileRepository.findById(lecturer.getId()).map(UserProfile::getFullName).orElse("")
                 : "";
@@ -671,9 +695,13 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .subjectName(s != null ? s.getName() : null)
                 .semesterId(sem != null ? sem.getId() : null)
                 .semesterName(sem != null ? sem.getName() : null)
+                .activeSemester(sem != null && activeSemester != null
+                        && Objects.equals(sem.getId(), activeSemester.getId()))
                 .lecturerId(lecturer != null ? lecturer.getId() : null)
                 .lecturerName(lecturerName)
-                .totalStudents(cc.getStudentEnrollments() != null ? cc.getStudentEnrollments().size() : 0)
+                .totalStudents(cc.getId() != null
+                        ? Math.toIntExact(userCourseClassRepository.countByIdCourseClassId(cc.getId()))
+                        : 0)
                 .createdAt(cc.getCreatedAt())
                 .build();
     }

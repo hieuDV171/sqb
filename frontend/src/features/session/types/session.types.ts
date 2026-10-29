@@ -7,6 +7,18 @@ export type SessionStatus = 'PENDING' | 'REVIEWING' | 'RESOLVED';
 
 export type QuestionSource = 'HOMO_SAPIENS' | 'LLM';
 
+export type QuestionReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EDITING';
+
+export type RejectionReasonCode =
+  | 'DUPLICATE'
+  | 'INCORRECT_ANSWER'
+  | 'AMBIGUOUS_OR_INCOMPLETE'
+  | 'OUT_OF_SCOPE'
+  | 'LOW_QUALITY'
+  | 'OTHER'
+  | 'UNSPECIFIED'
+  | 'AUTO_REJECTED_ON_COMPLETION';
+
 export interface QuestionOption {
   key: string;
   text: string;
@@ -93,6 +105,9 @@ export interface MySubmissionQuestionDto {
   explanation?: string;
   source?: string;
   confidenceScore?: number;
+  status: QuestionReviewStatus;
+  rejectionCode?: RejectionReasonCode | null;
+  rejectionReason?: string | null;
   commentCount: number;
   reactCount: number;
   ratingCount: number;

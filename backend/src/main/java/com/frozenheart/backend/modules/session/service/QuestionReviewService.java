@@ -4,13 +4,13 @@ import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsResponse;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.EditQuestionResponse;
-import com.frozenheart.backend.modules.session.dto.PendingSessionsResponse;
+import com.frozenheart.backend.modules.session.dto.ReviewableSessionsResponse;
 import com.frozenheart.backend.modules.session.dto.RejectQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.SessionDetailReviewResponse;
 
 public interface QuestionReviewService {
 
-    PendingSessionsResponse getPendingSessions(Long after, Integer limit, Long subjectId, String sortBy);
+    ReviewableSessionsResponse getReviewableSessions(Long after, Integer limit, Long courseClassId, String sortBy);
 
     SessionDetailReviewResponse getSessionDetailForReview(Long sessionId);
 

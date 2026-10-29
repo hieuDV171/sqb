@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1793255736666-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: rejection_code
+                  type: VARCHAR(50)
+              - column:
+                  name: rejection_reason
+                  type: TEXT
+            tableName: questions
+

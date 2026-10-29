@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { PendingSessionItemDto } from '../types/review.types';
-import { BookOpen, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import type { ReviewableSessionItemDto } from '../types/review.types';
+import { BookOpen, Calendar, ArrowRight, UserCheck, Clock3, Inbox, GraduationCap } from 'lucide-react';
 
 interface PendingSessionCardProps {
-  session: PendingSessionItemDto;
+  session: ReviewableSessionItemDto;
 }
 
 export const PendingSessionCard: React.FC<PendingSessionCardProps> = ({ session }) => {
@@ -30,6 +30,12 @@ export const PendingSessionCard: React.FC<PendingSessionCardProps> = ({ session 
             </span>
           )}
 
+          {session.subjectCode && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">
+              <GraduationCap className="w-3.5 h-3.5" /> {session.subjectCode}
+            </span>
+          )}
+
           <span className="text-xs font-mono font-semibold text-slate-400">
             #{session.sessionId}
           </span>
@@ -43,9 +49,20 @@ export const PendingSessionCard: React.FC<PendingSessionCardProps> = ({ session 
               : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
           }`}
         >
-          {session.status === 'REVIEWING' ? '⏳ Đang xem xét' : '📥 Chờ duyệt'}
+          {session.status === 'REVIEWING' ? (
+            <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" /> Đang xem xét</span>
+          ) : (
+            <span className="inline-flex items-center gap-1"><Inbox className="w-3.5 h-3.5" /> Chờ duyệt</span>
+          )}
         </span>
       </div>
+
+      {(session.classCode || session.semesterName) && (
+        <div className="flex flex-wrap gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+          {session.classCode && <span>Lớp: <strong className="text-slate-700 dark:text-slate-200">{session.classCode}</strong></span>}
+          {session.semesterName && <span>Học kỳ: <strong className="text-slate-700 dark:text-slate-200">{session.semesterName}</strong></span>}
+        </div>
+      )}
 
       {/* Title & Content */}
       <div className="space-y-1.5">
