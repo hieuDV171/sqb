@@ -7,6 +7,7 @@ import { PendingReviewsEmpty } from '@/features/review/components/PendingReviews
 import { ErrorState } from '@/components/ui/error-state';
 import { axiosClient } from '@/api/axiosClient';
 import type { ReviewCourseClassOption } from '@/features/review/types/review.types';
+import type { GlobalResponse } from '@/types/response.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ClipboardCheck, Loader2 } from 'lucide-react';
 
@@ -23,20 +24,21 @@ export const PendingReviewsPage: React.FC = () => {
       try {
         setCourseClasses([]);
         if (user?.role === 'LECTURER') {
-          const classRes = await axiosClient.get<any>('/lecturer/course-classes/my-classes', {
-            params: { include_history: true },
-          });
-          if (classRes?.data?.data && Array.isArray(classRes.data.data)) {
-            setCourseClasses(classRes.data.data);
+          const classRes = (await axiosClient.get<GlobalResponse<ReviewCourseClassOption[]>>(
+            '/lecturer/course-classes/my-classes',
+            { params: { include_history: true } }
+          )) as unknown as GlobalResponse<ReviewCourseClassOption[]>;
+          if (Array.isArray(classRes.data)) {
+            setCourseClasses(classRes.data);
             return;
           }
         }
 
         if (user?.role === 'ADMIN') {
-          const adminRes = await axiosClient.get<any>('/lecturer/course-classes');
-          if (adminRes?.data?.data && Array.isArray(adminRes.data.data)) {
-            setCourseClasses(adminRes.data.data);
-          } else if (adminRes?.data && Array.isArray(adminRes.data)) {
+          const adminRes = (await axiosClient.get<GlobalResponse<ReviewCourseClassOption[]>>(
+            '/lecturer/course-classes'
+          )) as unknown as GlobalResponse<ReviewCourseClassOption[]>;
+          if (Array.isArray(adminRes.data)) {
             setCourseClasses(adminRes.data);
           }
         }

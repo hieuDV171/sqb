@@ -19,7 +19,7 @@ export const reviewService = {
   getReviewableSessions: async (
     params?: GetReviewableSessionsParams
   ): Promise<GlobalResponse<ReviewableSessionsResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<ReviewableSessionsResponse>>(
+    return (await axiosClient.get<GlobalResponse<ReviewableSessionsResponse>>(
       '/lecturer/sessions/reviewable',
       {
         params: {
@@ -29,8 +29,7 @@ export const reviewService = {
           sort_by: params?.sort_by,
         },
       }
-    );
-    return response.data;
+    )) as unknown as GlobalResponse<ReviewableSessionsResponse>;
   },
 
   /**
@@ -40,10 +39,9 @@ export const reviewService = {
   getSessionDetailForReview: async (
     sessionId: number
   ): Promise<GlobalResponse<SessionDetailReviewResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<SessionDetailReviewResponse>>(
+    return (await axiosClient.get<GlobalResponse<SessionDetailReviewResponse>>(
       `/lecturer/sessions/${sessionId}`
-    );
-    return response.data;
+    )) as unknown as GlobalResponse<SessionDetailReviewResponse>;
   },
 
   /**
@@ -53,11 +51,10 @@ export const reviewService = {
   approveQuestions: async (
     data: ApproveQuestionsRequest
   ): Promise<GlobalResponse<ApproveQuestionsResponse>> => {
-    const response = await axiosClient.post<GlobalResponse<ApproveQuestionsResponse>>(
+    return (await axiosClient.post<GlobalResponse<ApproveQuestionsResponse>>(
       '/lecturer/sessions/approve',
       data
-    );
-    return response.data;
+    )) as unknown as GlobalResponse<ApproveQuestionsResponse>;
   },
 
   /**
@@ -67,11 +64,10 @@ export const reviewService = {
   rejectQuestions: async (
     data: RejectQuestionsRequest
   ): Promise<GlobalResponse<void>> => {
-    const response = await axiosClient.post<GlobalResponse<void>>(
+    return (await axiosClient.post<GlobalResponse<void>>(
       '/lecturer/sessions/reject',
       data
-    );
-    return response.data;
+    )) as unknown as GlobalResponse<void>;
   },
 
   /**
@@ -82,11 +78,10 @@ export const reviewService = {
     questionId: number,
     data: EditQuestionRequest
   ): Promise<GlobalResponse<EditQuestionResponse>> => {
-    const response = await axiosClient.put<GlobalResponse<EditQuestionResponse>>(
+    return (await axiosClient.put<GlobalResponse<EditQuestionResponse>>(
       `/lecturer/questions/${questionId}`,
       data
-    );
-    return response.data;
+    )) as unknown as GlobalResponse<EditQuestionResponse>;
   },
 
   /**
@@ -96,9 +91,8 @@ export const reviewService = {
   completeSessionReview: async (
     sessionId: number
   ): Promise<GlobalResponse<void>> => {
-    const response = await axiosClient.post<GlobalResponse<void>>(
+    return (await axiosClient.post<GlobalResponse<void>>(
       `/lecturer/sessions/${sessionId}/complete-review`
-    );
-    return response.data;
+    )) as unknown as GlobalResponse<void>;
   },
 };

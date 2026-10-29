@@ -42,7 +42,7 @@ import java.util.List;
 @Configuration
 public class OpenApiConfig {
 
-    public static final String SECURITY_SCHEME_NAME = "BearerAuth";
+    public static final String SECURITY_SCHEME_NAME = "bearerAuth";
 
     /**
      * Cấu hình ModelResolver của OpenAPI sinh schema chuẩn snake_case.
@@ -159,7 +159,7 @@ public class OpenApiConfig {
                 }
 
                 String filename = resource.getFilename();
-                String uri = request != null && request.getRequestURI() != null ? request.getRequestURI() : "";
+                String uri = request.getRequestURI() != null ? request.getRequestURI() : "";
 
                 // 1. Tiêm CSS động vào swagger-initializer.js
                 if ((filename != null && filename.endsWith("swagger-initializer.js")) || uri.endsWith("swagger-initializer.js")) {
