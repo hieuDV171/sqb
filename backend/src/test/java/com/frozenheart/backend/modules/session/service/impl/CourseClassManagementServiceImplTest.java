@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.session.service.impl;
 
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.CourseClass;
@@ -14,6 +15,8 @@ import com.frozenheart.backend.modules.gamification.repository.UserGamificationR
 import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 import com.frozenheart.backend.modules.session.dto.ExcelParsedClassData;
 import com.frozenheart.backend.modules.session.dto.ExcelStudentRow;
+import com.frozenheart.backend.modules.session.dto.AssignStudentsRequest;
+import com.frozenheart.backend.modules.session.dto.CreateCourseClassRequest;
 import com.frozenheart.backend.modules.session.repository.SemesterRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.session.service.ExcelParserService;
@@ -41,9 +44,11 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -150,10 +155,79 @@ class CourseClassManagementServiceImplTest {
         assertEquals(newLecturerId, captor.getValue().getLecturer().getId());
     }
 
+    @Test
+    @DisplayName("Giảng viên không được tạo lớp cho giảng viên khác hoặc học kỳ tùy chọn")
+    void lecturerCannotOverrideLecturerOrSemesterWhenCreatingClass() {
+        setCurrentLecturer(20L);
+
+        CreateCourseClassRequest otherLecturerRequest = new CreateCourseClassRequest(
+                "IT4788-01", 11L, null, 99L);
+        CreateCourseClassRequest customSemesterRequest = new CreateCourseClassRequest(
+                "IT4788-01", 11L, 61L, null);
+
+        assertThrows(AppException.class, () -> service.createCourseClass(otherLecturerRequest));
+        assertThrows(AppException.class, () -> service.createCourseClass(customSemesterRequest));
+        verify(courseClassRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Giảng viên không được xem chi tiết lớp do người khác phụ trách")
+    void lecturerCannotOpenAnotherLecturersClass() {
+        setCurrentLecturer(20L);
+        CourseClass courseClass = CourseClass.builder()
+                .id(30L)
+                .lecturer(User.builder().id(21L).role(UserRole.LECTURER).active(true).build())
+                .build();
+        when(courseClassRepository.findByIdFetchAll(30L)).thenReturn(Optional.of(courseClass));
+
+        assertThrows(AppException.class, () -> service.getCourseClassDetail(30L));
+        verify(userCourseClassRepository, never()).countByIdCourseClassId(any());
+    }
+
+    @Test
+    @DisplayName("Gán sinh viên phải batch xác thực và bỏ qua tài khoản không phải STUDENT")
+    void assignStudentsShouldOnlyEnrollActiveStudents() {
+        Long lecturerId = 20L;
+        Long courseClassId = 30L;
+        Long studentId = 40L;
+        Long invalidLecturerId = 41L;
+        Long missingUserId = 42L;
+        setCurrentLecturer(lecturerId);
+
+        User owner = User.builder().id(lecturerId).role(UserRole.LECTURER).active(true).build();
+        User student = User.builder().id(studentId).role(UserRole.STUDENT).active(true).build();
+        User invalidLecturer = User.builder().id(invalidLecturerId).role(UserRole.LECTURER).active(true).build();
+        CourseClass courseClass = CourseClass.builder()
+                .id(courseClassId)
+                .lecturer(owner)
+                .build();
+
+        when(courseClassRepository.findByIdFetchAll(courseClassId)).thenReturn(Optional.of(courseClass));
+        when(userRepository.findAllById(any())).thenReturn(List.of(student, invalidLecturer));
+        when(userCourseClassRepository.findByIdCourseClassIdAndIdUserIdIn(eq(courseClassId), any()))
+                .thenReturn(List.of());
+        when(userRepository.getReferenceById(studentId)).thenReturn(student);
+
+        var response = service.assignStudentsToClass(courseClassId,
+                new AssignStudentsRequest(null, List.of(studentId, invalidLecturerId, missingUserId)));
+
+        assertEquals(1, response.totalEnrolled());
+        assertEquals(2, response.notFoundCount());
+        verify(userCourseClassRepository).saveAll(any());
+    }
+
     private void setCurrentAdmin(Long userId) {
         JwtPayload payload = JwtPayload.builder().userId(userId).role(UserRole.ADMIN.name()).build();
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken("admin", null, List.of());
+        authentication.setDetails(payload);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void setCurrentLecturer(Long userId) {
+        JwtPayload payload = JwtPayload.builder().userId(userId).role(UserRole.LECTURER.name()).build();
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken("lecturer", null, List.of());
         authentication.setDetails(payload);
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }

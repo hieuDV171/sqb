@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useGamificationStore } from '@/stores/useGamificationStore';
+import { useLeaderboard, useShop } from '@/features/gamification/hooks/useGamification';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuth } from '@/hooks/useAuth';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
@@ -35,7 +36,13 @@ interface HeaderProps {
 
 export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const { user } = useAuthStore();
-  const { coins, points, unreadNotifications } = useGamificationStore();
+  const { unreadNotifications } = useGamificationStore();
+  const { data: shopData, isLoading: isLoadingCoins, isError: isCoinsError } = useShop({ limit: 1 });
+  const {
+    data: leaderboardData,
+    isLoading: isLoadingPoints,
+    isError: isPointsError,
+  } = useLeaderboard({ limit: 1 });
   const { logout } = useAuth();
   const { theme, toggleTheme } = useThemeStore();
   const stompStatus = useStompStatus();
@@ -119,7 +126,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
               >
                 <SqbCoin className="w-4 h-4" />
                 <span className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300 tracking-tight">
-                  {coins.toLocaleString()}
+                  {isLoadingCoins ? '…' : isCoinsError ? '—' : (shopData?.userPoints ?? 0).toLocaleString()}
                 </span>
                 <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hidden sm:inline">xu</span>
               </div>
@@ -135,7 +142,11 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                   <Zap className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-xs sm:text-sm font-bold text-indigo-900 dark:text-indigo-300 tracking-tight">
-                  {points.toLocaleString()}
+                  {isLoadingPoints
+                    ? '…'
+                    : isPointsError
+                      ? '—'
+                      : (leaderboardData?.myRank?.totalPoints ?? 0).toLocaleString()}
                 </span>
                 <span className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-400">điểm</span>
               </div>

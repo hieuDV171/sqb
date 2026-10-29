@@ -57,6 +57,7 @@ public record ProposeSessionRequest(
             boolean llmGenerated,
             
             @Schema(description = "Mức độ tự tin của tác giả [0.0; 4.0]: 0-Quá tệ/sai hoàn toàn, 1-LLM bịa ra, 2-Chưa nắm vững, 3-Cơ bản, 4-Câu hỏi hay", example = "3.5")
+            @NotNull(message = "Mức độ tự tin không được để trống")
             @Min(value = 0) @Max(value = 4)
             Double confidence
     ) {}

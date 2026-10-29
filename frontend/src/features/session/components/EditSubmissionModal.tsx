@@ -1,24 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import {
-  X,
-  Plus,
-  Trash2,
-  Check,
-  Bot,
-  User,
-  Save,
-  HelpCircle,
-  ImageIcon,
-  Loader2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { mediaService } from '@/services/mediaService';
-import { toast } from '@/stores/useToastStore';
-import type {
-  MySubmissionDetailResponse,
-  UpdateSubmissionSessionRequest,
-  QuestionUpdateDto,
-} from '../types/session.types';
+import React, {useEffect, useState} from 'react';
+import {Bot, Check, HelpCircle, ImageIcon, Loader2, Plus, Save, Trash2, User, X,} from 'lucide-react';
+import {cn} from '@/lib/utils';
+import {mediaService} from '@/services/mediaService';
+import {toast} from '@/stores/useToastStore';
+import type {MySubmissionDetailResponse, QuestionUpdateDto, UpdateSubmissionSessionRequest,} from '@/features/session';
 
 interface EditSubmissionModalProps {
   isOpen: boolean;
@@ -59,7 +44,7 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
         })),
         explanation: q.explanation || '',
         source: (q.source as any) || 'HOMO_SAPIENS',
-        confidence: q.confidenceScore || 3.5,
+        confidence: q.confidenceScore ?? 3.5,
       }));
       setQuestions(mappedQuestions);
     }
@@ -160,10 +145,9 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
 
   const handleRemoveOptionImage = (qIdx: number, optKey: string) => {
     const updated = [...questions];
-    const opts = updated[qIdx].options.map((opt) =>
-      opt.key === optKey ? { ...opt, mediaUrl: undefined } : opt
+    updated[qIdx].options = updated[qIdx].options.map((opt) =>
+        opt.key === optKey ? {...opt, mediaUrl: undefined} : opt
     );
-    updated[qIdx].options = opts;
     setQuestions(updated);
     toast.info(`Đã gỡ ảnh khỏi đáp án ${optKey}`);
   };
@@ -223,6 +207,11 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
       const hasCorrect = q.options.some((o) => o.isCorrect);
       if (!hasCorrect) {
         toast.error(`Vui lòng chọn ít nhất 1 đáp án đúng cho câu hỏi #${i + 1}`);
+        return;
+      }
+      if (q.confidence == null || !Number.isFinite(q.confidence)
+        || q.confidence < 0 || q.confidence > 4) {
+        toast.error(`Độ tự tin của câu hỏi #${i + 1} phải nằm trong khoảng 0.00 đến 4.00`);
         return;
       }
     }
@@ -505,20 +494,59 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Explanation */}
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Giải thích đáp án chi tiết
-                    </label>
-                    <input
-                      type="text"
-                      value={q.explanation || ''}
-                      onChange={(e) =>
-                        handleUpdateQuestion(qIdx, 'explanation', e.target.value)
-                      }
-                      placeholder="Giải thích vì sao đáp án này đúng..."
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                    <div className="md:col-span-4">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <label htmlFor={`edit-confidence-${qIdx}`} className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Độ tự tin *
+                        </label>
+                        <span className="group relative inline-flex">
+                          <button
+                            type="button"
+                            aria-label="Giải thích về điểm độ tự tin"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:text-indigo-400 dark:hover:bg-indigo-950/60"
+                          >
+                            <HelpCircle className="h-4 w-4" />
+                          </button>
+                          <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-64 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-[11px] font-normal leading-relaxed text-slate-600 shadow-xl group-hover:block group-focus-within:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                            Điểm tự chấm 0.00–4.00 sẽ được so với điểm trung bình của người làm câu hỏi: 0 sai hoàn toàn, 1 LLM bịa, 2 chưa nắm chắc, 3 cơ bản, 4 câu hỏi hay.
+                          </span>
+                        </span>
+                      </div>
+                      <input
+                        id={`edit-confidence-${qIdx}`}
+                        type="number"
+                        min="0"
+                        max="4"
+                        step="0.01"
+                        required
+                        value={q.confidence ?? ''}
+                        onChange={(e) => handleUpdateQuestion(qIdx, 'confidence', e.target.value === '' ? undefined : Number(e.target.value))}
+                        onBlur={(e) => {
+                          if (e.target.value === '') return;
+                          const normalized = Math.min(4, Math.max(0, Number(e.target.value)));
+                          handleUpdateQuestion(qIdx, 'confidence', Math.round(normalized * 100) / 100);
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Explanation */}
+                    <div className="md:col-span-8">
+                      <label htmlFor={`edit-explanation-${qIdx}`} className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Giải thích đáp án chi tiết
+                      </label>
+                      <input
+                        id={`edit-explanation-${qIdx}`}
+                        type="text"
+                        value={q.explanation || ''}
+                        onChange={(e) =>
+                          handleUpdateQuestion(qIdx, 'explanation', e.target.value)
+                        }
+                        placeholder="Giải thích vì sao đáp án này đúng..."
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

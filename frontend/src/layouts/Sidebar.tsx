@@ -15,7 +15,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  School
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -99,6 +100,11 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       icon: FileText,
     },
     {
+      label: 'Lớp học phần',
+      path: '/lecturer/course-classes',
+      icon: School,
+    },
+    {
       label: 'Tin nhắn trao đổi',
       path: '/messages',
       icon: MessageSquare,
@@ -120,6 +126,11 @@ export const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       path: '/admin/reports',
       icon: ShieldAlert,
       badge: { text: 'Khẩn', variant: 'destructive' },
+    },
+    {
+      label: 'Lớp học phần',
+      path: '/lecturer/course-classes',
+      icon: School,
     },
     {
       label: 'Cấu hình hệ thống',

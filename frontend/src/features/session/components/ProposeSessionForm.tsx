@@ -339,6 +339,11 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
         toast.error(`Vui lòng chọn ít nhất 1 đáp án đúng cho câu hỏi #${i + 1}`);
         return false;
       }
+      if (q.confidence == null || !Number.isFinite(q.confidence)
+        || q.confidence < 0 || q.confidence > 4) {
+        toast.error(`Độ tự tin của câu hỏi #${i + 1} phải nằm trong khoảng 0.00 đến 4.00`);
+        return false;
+      }
     }
     return true;
   };
@@ -800,20 +805,88 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                 </div>
               </div>
 
-              {/* Explanation */}
-              <div className="space-y-1.5 pt-1">
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-                  Giải thích đáp án chi tiết (nếu có)
-                </label>
-                <input
-                  type="text"
-                  value={q.explanation || ''}
-                  onChange={(e) =>
-                    handleUpdateQuestion(qIndex, 'explanation', e.target.value)
-                  }
-                  placeholder="Giải thích vì sao đáp án được chọn là chính xác..."
-                  className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
+              <div className="grid grid-cols-1 gap-4 pt-1 md:grid-cols-12">
+                {/* Author confidence score */}
+                <div className="space-y-1.5 md:col-span-4">
+                  <div className="flex items-center gap-1.5">
+                    <label
+                      htmlFor={`confidence-${qIndex}`}
+                      className="text-xs font-bold text-slate-700 dark:text-slate-300"
+                    >
+                      Độ tự tin của bạn *
+                    </label>
+                    <span className="group relative inline-flex">
+                      <button
+                        type="button"
+                        aria-label="Giải thích về điểm độ tự tin"
+                        aria-describedby={`confidence-help-${qIndex}`}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-indigo-600 transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:text-indigo-400 dark:hover:bg-indigo-950/60"
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </button>
+                      <span
+                        id={`confidence-help-${qIndex}`}
+                        role="tooltip"
+                        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-72 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-left text-[11px] font-normal leading-relaxed text-slate-600 shadow-xl group-hover:block group-focus-within:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                      >
+                        Tự chấm mức độ hay và chắc chắn của câu hỏi từ 0.00 đến 4.00.
+                        Điểm này sẽ được so sánh với điểm trung bình do người làm câu hỏi đánh giá:
+                        0 sai hoàn toàn, 1 có dấu hiệu LLM bịa, 2 người hỏi chưa nắm chắc,
+                        3 kiến thức cơ bản, 4 câu hỏi hay.
+                      </span>
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id={`confidence-${qIndex}`}
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="4"
+                      step="0.01"
+                      required
+                      value={q.confidence ?? ''}
+                      onChange={(e) => handleUpdateQuestion(
+                        qIndex,
+                        'confidence',
+                        e.target.value === '' ? undefined : Number(e.target.value)
+                      )}
+                      onBlur={(e) => {
+                        if (e.target.value === '') return;
+                        const normalized = Math.min(4, Math.max(0, Number(e.target.value)));
+                        handleUpdateQuestion(qIndex, 'confidence', Math.round(normalized * 100) / 100);
+                      }}
+                      aria-describedby={`confidence-help-${qIndex}`}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 pr-12 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white sm:text-sm"
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                      / 4
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Nhập số thập phân trong khoảng 0.00–4.00.
+                  </p>
+                </div>
+
+                {/* Explanation */}
+                <div className="space-y-1.5 md:col-span-8">
+                  <label
+                    htmlFor={`explanation-${qIndex}`}
+                    className="block text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    Giải thích đáp án chi tiết (nếu có)
+                  </label>
+                  <input
+                    id={`explanation-${qIndex}`}
+                    type="text"
+                    value={q.explanation || ''}
+                    onChange={(e) =>
+                      handleUpdateQuestion(qIndex, 'explanation', e.target.value)
+                    }
+                    placeholder="Giải thích vì sao đáp án được chọn là chính xác..."
+                    className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
               </div>
             </div>
           ))}

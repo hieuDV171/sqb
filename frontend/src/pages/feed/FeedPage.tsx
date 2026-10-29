@@ -38,7 +38,6 @@ export function FeedPage() {
             id: s.subjectId,
             code: s.code,
             name: s.name,
-            postCount: 12,
           }))
         );
       }

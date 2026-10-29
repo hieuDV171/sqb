@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { gamificationService } from '../services/gamificationService';
+import { gamificationService } from '@/features/gamification';
 import type {
   LeaderboardPeriod,
   CosmeticType,
@@ -13,18 +13,33 @@ import type {
   UnequipCosmeticRequestDto,
   ReviewErrorRequest,
   MyInventoryResponseDto,
-} from '../types/gamification.types';
+} from '@/features/gamification';
 import { toast } from '@/stores/useToastStore';
 
 export const GAMIFICATION_KEYS = {
   all: ['gamification'] as const,
-  leaderboard: (period?: LeaderboardPeriod, subjectId?: number) =>
-    [...GAMIFICATION_KEYS.all, 'leaderboard', period, subjectId] as const,
+  leaderboard: (
+    period?: LeaderboardPeriod,
+    subjectId?: number,
+    after?: number,
+    before?: number,
+    limit?: number
+  ) => {
+    const root = [...GAMIFICATION_KEYS.all, 'leaderboard'] as const;
+    return period === undefined && subjectId === undefined && after === undefined
+      && before === undefined && limit === undefined
+      ? root
+      : [...root, { period, subjectId, after, before, limit }] as const;
+  },
   allBadges: () => [...GAMIFICATION_KEYS.all, 'badges'] as const,
   myBadges: () => [...GAMIFICATION_KEYS.all, 'badges', 'me'] as const,
   userBadges: (userId: number) => [...GAMIFICATION_KEYS.all, 'badges', 'user', userId] as const,
-  shop: (type?: CosmeticType, sortBy?: CosmeticSortBy) =>
-    [...GAMIFICATION_KEYS.all, 'shop', type, sortBy] as const,
+  shop: (type?: CosmeticType, sortBy?: CosmeticSortBy, after?: number, limit?: number) => {
+    const root = [...GAMIFICATION_KEYS.all, 'shop'] as const;
+    return type === undefined && sortBy === undefined && after === undefined && limit === undefined
+      ? root
+      : [...root, { type, sortBy, after, limit }] as const;
+  },
   inventory: (type?: CosmeticType, rarity?: CosmeticRarity) =>
     [...GAMIFICATION_KEYS.all, 'inventory', type, rarity] as const,
   game1Classes: () => [...GAMIFICATION_KEYS.all, 'game1', 'classes'] as const,
@@ -56,7 +71,13 @@ export function useLeaderboard(params?: {
   limit?: number;
 }) {
   return useQuery({
-    queryKey: GAMIFICATION_KEYS.leaderboard(params?.period, params?.subjectId),
+    queryKey: GAMIFICATION_KEYS.leaderboard(
+      params?.period,
+      params?.subjectId,
+      params?.after,
+      params?.before,
+      params?.limit
+    ),
     queryFn: async () => {
       const res = await gamificationService.getLeaderboard(params);
       return res.data;
@@ -137,7 +158,7 @@ export function useShop(params?: {
   limit?: number;
 }) {
   return useQuery({
-    queryKey: GAMIFICATION_KEYS.shop(params?.type, params?.sortBy),
+    queryKey: GAMIFICATION_KEYS.shop(params?.type, params?.sortBy, params?.after, params?.limit),
     queryFn: async () => {
       const res = await gamificationService.getShop(params);
       return res.data;

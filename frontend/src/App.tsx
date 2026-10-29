@@ -7,7 +7,7 @@ import { SessionsPage } from "./pages/session/SessionsPage";
 import { SubmissionDetailPage } from "./pages/session/SubmissionDetailPage";
 import { PracticeWorkspacePage } from "./pages/session/PracticeWorkspacePage";
 import { UserSessionsPage } from "./pages/session/UserSessionsPage";
-import { MessagesPage } from "./pages/chat/MessagesPage";
+import { MessagesPage } from "@/features/chat";
 import { ShopPage } from "./pages/shop/ShopPage";
 import { ProfilePage } from "./pages/profile/ProfilePage";
 import { FriendsPage } from "./pages/friends/FriendsPage";
@@ -16,6 +16,8 @@ import { PendingReviewsPage } from "./pages/lecturer/PendingReviewsPage";
 import { ReviewWorkspacePage } from "./pages/lecturer/ReviewWorkspacePage";
 import { LecturerQuestionsPage } from "./pages/lecturer/LecturerQuestionsPage";
 import { LecturerExamsPage } from "./pages/lecturer/LecturerExamsPage";
+import { CourseClassesPage } from "./pages/lecturer/CourseClassesPage";
+import { CourseClassDetailPage } from "./pages/lecturer/CourseClassDetailPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
@@ -83,6 +85,8 @@ export default function App() {
             <Route path="/lecturer/reviews/:sessionId" element={<ReviewWorkspacePage />} />
             <Route path="/lecturer/questions" element={<LecturerQuestionsPage />} />
             <Route path="/lecturer/exams" element={<LecturerExamsPage />} />
+            <Route path="/lecturer/course-classes" element={<CourseClassesPage />} />
+            <Route path="/lecturer/course-classes/:courseClassId" element={<CourseClassDetailPage />} />
           </Route>
 
           {/* Admin Restricted Routes */}

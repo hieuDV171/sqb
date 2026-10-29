@@ -98,10 +98,28 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
     public CourseClassResponse createCourseClass(CreateCourseClassRequest request) {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
         Long currentUserId = payload.getUserId();
+        boolean isAdmin = UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole());
 
-        Long targetLecturerId = (request.lecturerId() != null) ? request.lecturerId() : currentUserId;
+        if (!isAdmin && request.lecturerId() != null
+                && !Objects.equals(request.lecturerId(), currentUserId)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Giảng viên không được chỉ định người phụ trách khác; hãy bỏ lecturer_id hoặc dùng ID của chính bạn");
+        }
+        if (!isAdmin && request.semesterId() != null) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Giảng viên chỉ được tạo lớp trong học kỳ đang kích hoạt");
+        }
+
+        Long targetLecturerId = isAdmin && request.lecturerId() != null
+                ? request.lecturerId()
+                : currentUserId;
         User lecturer = userRepository.findById(targetLecturerId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND, "Không tìm thấy giảng viên"));
+        if ((lecturer.getRole() != UserRole.LECTURER && lecturer.getRole() != UserRole.ADMIN)
+                || !lecturer.isActive()) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Người phụ trách phải là giảng viên đang hoạt động");
+        }
 
         Subject subject = subjectRepository.findById(request.subjectId())
                 .orElseThrow(() -> new AppException(ResponseCode.SUBJECT_NOT_FOUND, "Không tìm thấy môn học"));
@@ -193,6 +211,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
     public CourseClassResponse getCourseClassDetail(Long courseClassId) {
         CourseClass cc = courseClassRepository.findByIdFetchAll(courseClassId)
                 .orElseThrow(() -> new AppException(ResponseCode.COURSE_CLASS_NOT_FOUND, "Không tìm thấy lớp học phần"));
+        assertCanManageCourseClass(cc);
         return mapToCourseClassResponse(cc);
     }
 
@@ -206,13 +225,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         CourseClass courseClass = courseClassRepository.findByIdFetchAll(courseClassId)
                 .orElseThrow(() -> new AppException(ResponseCode.COURSE_CLASS_NOT_FOUND, "Không tìm thấy lớp học phần"));
 
-        // Kiểm tra phân quyền: Nếu là Giảng viên thì chỉ được thao tác trên lớp mình phụ trách
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
-        Long currentUserId = payload.getUserId();
-        boolean isLecturer = "LECTURER".equalsIgnoreCase(payload.getRole());
-        if (isLecturer && courseClass.getLecturer() != null && !courseClass.getLecturer().getId().equals(currentUserId)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không phụ trách lớp học phần này");
-        }
+        assertCanManageCourseClass(courseClass);
 
         Set<Long> targetUserIds = new HashSet<>();
         List<String> notFoundCodes = new ArrayList<>();
@@ -254,7 +267,34 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                     .build();
         }
 
-        // 3. Chống N+1: Kiểm tra danh sách đã enroll trước đó (1 query duy nhất)
+        // 3. Batch xác thực toàn bộ ID, chỉ cho phép tài khoản STUDENT đang hoạt động.
+        // Không dùng getReferenceById cho dữ liệu chưa kiểm chứng vì có thể gán nhầm GV/Admin
+        // hoặc đẩy lỗi FK xuống tận lúc flush.
+        Map<Long, User> usersById = userRepository.findAllById(targetUserIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        Set<Long> validStudentIds = targetUserIds.stream()
+                .filter(userId -> {
+                    User user = usersById.get(userId);
+                    return user != null && user.getRole() == UserRole.STUDENT && user.isActive();
+                })
+                .collect(Collectors.toSet());
+        targetUserIds.stream()
+                .filter(userId -> !validStudentIds.contains(userId))
+                .map(String::valueOf)
+                .filter(value -> !notFoundCodes.contains(value))
+                .forEach(notFoundCodes::add);
+        targetUserIds = validStudentIds;
+
+        if (targetUserIds.isEmpty()) {
+            return AssignStudentsResponse.builder()
+                    .totalEnrolled(0)
+                    .alreadyEnrolledCount(0)
+                    .notFoundCount(notFoundCodes.size())
+                    .notFoundCodes(notFoundCodes)
+                    .build();
+        }
+
+        // 4. Chống N+1: Kiểm tra danh sách đã enroll trước đó (1 query duy nhất)
         Set<Long> alreadyEnrolledUserIds = userCourseClassRepository
                 .findByIdCourseClassIdAndIdUserIdIn(courseClassId, targetUserIds)
                 .stream()
@@ -277,7 +317,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
             }
         }
 
-        // 4. Batch save tất cả sinh viên mới vào lớp
+        // 5. Batch save tất cả sinh viên mới vào lớp
         if (!enrollmentsToSave.isEmpty()) {
             userCourseClassRepository.saveAll(enrollmentsToSave);
         }
@@ -296,6 +336,11 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
     @Override
     @Transactional(readOnly = true)
     public List<ClassStudentResponse> getClassStudents(Long courseClassId) {
+        CourseClass courseClass = courseClassRepository.findByIdFetchAll(courseClassId)
+                .orElseThrow(() -> new AppException(ResponseCode.COURSE_CLASS_NOT_FOUND,
+                        "Không tìm thấy lớp học phần"));
+        assertCanManageCourseClass(courseClass);
+
         // Chống N+1: JOIN FETCH ucc.user u (1 query)
         List<UserCourseClass> enrollments = userCourseClassRepository.findByCourseClassIdFetchUser(courseClassId);
         if (enrollments.isEmpty()) {
@@ -745,6 +790,19 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         String nameHint = (lecturerNameInFile != null && !lecturerNameInFile.isBlank()) ? " '" + lecturerNameInFile + "'" : "";
         throw new AppException(ResponseCode.USER_NOT_FOUND,
                 "Không tìm thấy tài khoản Giảng viên" + nameHint + " trong hệ thống. Vui lòng tạo tài khoản cho Giảng viên trước hoặc chọn Giảng viên phụ trách khi import!");
+    }
+
+    private void assertCanManageCourseClass(CourseClass courseClass) {
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        if (UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole())) {
+            return;
+        }
+        if (!UserRole.LECTURER.name().equalsIgnoreCase(payload.getRole())
+                || courseClass.getLecturer() == null
+                || !Objects.equals(courseClass.getLecturer().getId(), payload.getUserId())) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Bạn không phụ trách lớp học phần này");
+        }
     }
 
     @Override
