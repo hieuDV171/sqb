@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useGamificationStore } from '@/stores/useGamificationStore';
@@ -52,6 +52,9 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const desktopSearchTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null);
+  const activeSearchTriggerRef = useRef<HTMLElement | null>(null);
 
   // Phím tắt Ctrl + K / Cmd + K cho thanh tìm kiếm toàn cục
   useEffect(() => {
@@ -59,6 +62,10 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
         e.preventDefault();
         e.stopPropagation();
+        activeSearchTriggerRef.current =
+          window.innerWidth >= 768
+            ? desktopSearchTriggerRef.current
+            : mobileSearchTriggerRef.current;
         setIsSearchModalOpen((prev) => !prev);
       }
     };
@@ -99,25 +106,45 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
 
           {/* Center: Search Bar (Desktop) */}
           <div className="hidden md:flex flex-1 max-w-md mx-4">
-            <div
-              onClick={() => setIsSearchModalOpen(true)}
-              className="relative w-full cursor-pointer group"
+            <button
+              ref={desktopSearchTriggerRef}
+              type="button"
+              onClick={() => {
+                activeSearchTriggerRef.current = desktopSearchTriggerRef.current;
+                setIsSearchModalOpen(true);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={isSearchModalOpen}
+              aria-controls="global-search-panel"
+              className="relative w-full cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded-xl"
             >
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 transition-colors" />
-              <input
-                type="text"
-                readOnly
-                placeholder="Tìm môn học, sinh viên, câu hỏi, đề thi... (Ctrl + K)"
-                className="w-full pl-10 pr-16 py-2 text-sm bg-slate-100/70 dark:bg-slate-800/80 border border-transparent group-hover:border-slate-200 dark:group-hover:border-slate-700 focus:border-indigo-500 text-slate-900 dark:text-slate-100 rounded-xl outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 cursor-pointer"
-              />
+              <span className="block w-full pl-10 pr-16 py-2 text-sm bg-slate-100/70 dark:bg-slate-800/80 border border-transparent group-hover:border-slate-200 dark:group-hover:border-slate-700 text-slate-400 dark:text-slate-500 rounded-xl transition-all">
+                Tìm môn học, sinh viên, câu hỏi, đề thi...
+              </span>
               <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-2xs">
                 Ctrl K
               </kbd>
-            </div>
+            </button>
           </div>
 
           {/* Right: Gamification HUD, STOMP status, Theme Toggle & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              ref={mobileSearchTriggerRef}
+              type="button"
+              onClick={() => {
+                activeSearchTriggerRef.current = mobileSearchTriggerRef.current;
+                setIsSearchModalOpen(true);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={isSearchModalOpen}
+              aria-controls="global-search-panel"
+              aria-label="Mở tìm kiếm"
+              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              <Search className="w-5 h-5" />
+            </button>
             {/* Gamification Wallet: Coins HUD (dành cho Sinh viên) */}
             {user?.role !== 'ADMIN' && (
               <div
@@ -347,8 +374,12 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
       {/* Modal đổi mật khẩu */}
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
 
-      {/* Modal tìm kiếm toàn cục (Ctrl + K) */}
-      <GlobalSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
+      {/* Panel tìm kiếm toàn cục (Ctrl + K) */}
+      <GlobalSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        triggerRef={activeSearchTriggerRef}
+      />
     </>
   );
 }

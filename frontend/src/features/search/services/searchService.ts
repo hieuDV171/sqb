@@ -5,6 +5,7 @@ import type {
   GlobalSearchResponseDto,
   SavedAndTrendingSearchesResponseDto,
   DeleteSavedSearchResponseDto,
+  RecordSearchRequest,
 } from '../types/search.types';
 
 export const searchService = {
@@ -28,7 +29,7 @@ export const searchService = {
           limit: params.limit ?? 10,
         },
       }
-    )) as any;
+    )) as unknown as GlobalResponse<GlobalSearchResponseDto>;
   },
 
   /**
@@ -40,11 +41,25 @@ export const searchService = {
   > => {
     return (await axiosClient.get<
       GlobalResponse<SavedAndTrendingSearchesResponseDto>
-    >('/search/saved')) as any;
+    >('/search/saved')) as unknown as GlobalResponse<SavedAndTrendingSearchesResponseDto>;
   },
 
   /**
-   * 31.3 Xóa một từ khóa khỏi lịch sử tìm kiếm cá nhân
+   * 31.3 Ghi nhận từ khóa khi người dùng chủ động xác nhận tìm kiếm.
+   * Live search khi đang gõ không gọi endpoint này.
+   */
+  recordConfirmedSearch: async (
+    request: RecordSearchRequest
+  ): Promise<GlobalResponse<null>> => {
+    return (await axiosClient.post<GlobalResponse<null>>(
+      '/search/saved',
+      request,
+      { skipToast: true }
+    )) as unknown as GlobalResponse<null>;
+  },
+
+  /**
+   * 31.4 Xóa một từ khóa khỏi lịch sử tìm kiếm cá nhân
    * DELETE /api/v1/search/saved/{id}
    */
   deleteSavedSearch: async (
@@ -52,6 +67,6 @@ export const searchService = {
   ): Promise<GlobalResponse<DeleteSavedSearchResponseDto>> => {
     return (await axiosClient.delete<
       GlobalResponse<DeleteSavedSearchResponseDto>
-    >(`/search/saved/${id}`)) as any;
+    >(`/search/saved/${id}`)) as unknown as GlobalResponse<DeleteSavedSearchResponseDto>;
   },
 };

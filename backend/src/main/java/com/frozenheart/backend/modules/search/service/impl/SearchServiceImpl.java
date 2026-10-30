@@ -25,6 +25,9 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.time.Instant;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
@@ -39,7 +42,11 @@ public class SearchServiceImpl implements SearchService {
     private final RedisTemplate<String, String> redisTemplate;
     private final TransactionTemplate transactionTemplate;
 
-    private static final String TRENDING_SEARCHES_KEY = "trending_searches";
+    private static final String TRENDING_SEARCHES_KEY_PREFIX = "trending_searches:v2:";
+    private static final String TRENDING_SEARCHES_SEEN_KEY_PREFIX = "trending_searches:v2:seen:";
+    private static final int TRENDING_WINDOW_DAYS = 7;
+    private static final int TRENDING_CANDIDATES_PER_DAY = 50;
+    private static final ZoneId SEARCH_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final int MAX_SAVED_SEARCHES_PER_USER = 20;
 
     @Override
@@ -50,15 +57,6 @@ public class SearchServiceImpl implements SearchService {
             Integer limit) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         int fromOffset = (after != null && after >= 0) ? after.intValue() : 0;
-
-        // Trích xuất thông tin người dùng an toàn từ Security Context
-        Optional<JwtPayload> payloadOpt = getOptionalJwtPayload();
-        Long currentUserId = payloadOpt.map(JwtPayload::getUserId).orElse(null);
-
-        // Lưu vết lịch sử và tăng điểm thịnh hành
-        if (query != null && !query.trim().isBlank()) {
-            recordSearchQuery(currentUserId, query.trim());
-        }
 
         // Xác định danh sách Index cần truy vấn
         List<String> indices = resolveTargetIndices(type);
@@ -129,10 +127,30 @@ public class SearchServiceImpl implements SearchService {
         // 2. Lấy top 10 từ khóa tìm kiếm hot nhất từ Redis Sorted Set
         List<String> trendingSearches = Collections.emptyList();
         try {
-            Set<String> topTrending = redisTemplate.opsForZSet().reverseRange(TRENDING_SEARCHES_KEY, 0, 9);
-            if (topTrending != null && !topTrending.isEmpty()) {
-                trendingSearches = new ArrayList<>(topTrending);
+            Map<String, Double> scoresByQuery = new HashMap<>();
+            LocalDate today = LocalDate.now(SEARCH_ZONE);
+            for (int dayOffset = 0; dayOffset < TRENDING_WINDOW_DAYS; dayOffset++) {
+                String dailyKey = TRENDING_SEARCHES_KEY_PREFIX + today.minusDays(dayOffset);
+                Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> dailyScores =
+                        redisTemplate.opsForZSet().reverseRangeWithScores(
+                                dailyKey,
+                                0,
+                                TRENDING_CANDIDATES_PER_DAY - 1L);
+                if (dailyScores == null) {
+                    continue;
+                }
+                for (org.springframework.data.redis.core.ZSetOperations.TypedTuple<String> tuple : dailyScores) {
+                    if (tuple.getValue() != null && tuple.getScore() != null) {
+                        scoresByQuery.merge(tuple.getValue(), tuple.getScore(), Double::sum);
+                    }
+                }
             }
+            trendingSearches = scoresByQuery.entrySet().stream()
+                    .sorted(Map.Entry.<String, Double>comparingByValue().reversed()
+                            .thenComparing(Map.Entry.comparingByKey()))
+                    .limit(10)
+                    .map(Map.Entry::getKey)
+                    .toList();
         } catch (Exception e) {
             log.warn("[SearchService] Không thể lấy trending searches từ Redis: {}", e.getMessage());
         }
@@ -158,57 +176,67 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public void recordSearchQuery(Long currentUserId, String query) {
+    public void recordSearchQuery(String query) {
         if (query == null || query.isBlank())
             return;
-        String cleanQuery = query.trim();
+        String cleanQuery = query.trim().replaceAll("\\s+", " ");
+        if (cleanQuery.length() < 2 || cleanQuery.length() > 200) {
+            return;
+        }
 
-        // 1. Tăng điểm Trending trên Redis (ZINCRBY)
+        Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+        if (currentUserId == null) {
+            return;
+        }
+
+        // 1. Mỗi người chỉ đóng góp 1 lượt/ngày cho cùng một từ khóa Trending.
         try {
-            redisTemplate.opsForZSet().incrementScore(TRENDING_SEARCHES_KEY, cleanQuery.toLowerCase(), 1.0);
+            String normalizedQuery = cleanQuery.toLowerCase(Locale.ROOT);
+            LocalDate today = LocalDate.now(SEARCH_ZONE);
+            String seenKey = TRENDING_SEARCHES_SEEN_KEY_PREFIX
+                    + today
+                    + ":"
+                    + currentUserId;
+            Long added = redisTemplate.opsForSet().add(seenKey, normalizedQuery);
+            redisTemplate.expire(seenKey, Duration.ofDays(2));
+            if (added != null && added > 0) {
+                String dailyTrendingKey = TRENDING_SEARCHES_KEY_PREFIX + today;
+                redisTemplate.opsForZSet().incrementScore(dailyTrendingKey, normalizedQuery, 1.0);
+                redisTemplate.expire(dailyTrendingKey, Duration.ofDays(TRENDING_WINDOW_DAYS + 1L));
+            }
         } catch (Exception e) {
             log.warn("[SearchService] Không thể cập nhật trending search trên Redis: {}", e.getMessage());
         }
 
         // 2. Lưu vào lịch sử cá nhân trong PostgreSQL & Giới hạn tối đa 20 từ khóa gần
         // nhất (FIFO)
-        if (currentUserId != null) {
-            try {
-                transactionTemplate.executeWithoutResult(_ -> {
-                    Instant now = Instant.now();
-                    // 1 query UPDATE nếu từ khóa đã tồn tại
-                    int updated = searchRepository.updateLastSearchedAt(currentUserId, cleanQuery, now);
-                    if (updated == 0) {
-                        // Từ khóa mới: 1 query INSERT + 1 query Native SQL Pruning (xóa ngoài top 20)
-                        User userRef = userRepository.getReferenceById(currentUserId);
-                        Search newSearch = Search.builder()
-                                .user(userRef)
-                                .queryText(cleanQuery)
-                                .lastSearchedAt(now)
-                                .createdAt(now)
-                                .build();
-                        searchRepository.save(newSearch);
-                        searchRepository.pruneOldSearches(currentUserId, MAX_SAVED_SEARCHES_PER_USER);
-                    }
-                });
-            } catch (Exception e) {
-                log.warn("[SearchService] Không thể lưu lịch sử tìm kiếm cho User ID {}: {}", currentUserId,
-                        e.getMessage());
-            }
+        try {
+            transactionTemplate.executeWithoutResult(_ -> {
+                Instant now = Instant.now();
+                // 1 query UPDATE nếu từ khóa đã tồn tại
+                int updated = searchRepository.updateLastSearchedAt(currentUserId, cleanQuery, now);
+                if (updated == 0) {
+                    // Từ khóa mới: 1 query INSERT + 1 query Native SQL Pruning (xóa ngoài top 20)
+                    User userRef = userRepository.getReferenceById(currentUserId);
+                    Search newSearch = Search.builder()
+                            .user(userRef)
+                            .queryText(cleanQuery)
+                            .lastSearchedAt(now)
+                            .createdAt(now)
+                            .build();
+                    searchRepository.save(newSearch);
+                    searchRepository.pruneOldSearches(currentUserId, MAX_SAVED_SEARCHES_PER_USER);
+                }
+            });
+        } catch (Exception e) {
+            log.warn("[SearchService] Không thể lưu lịch sử tìm kiếm cho User ID {}: {}", currentUserId,
+                    e.getMessage());
         }
     }
 
     // ==========================================
     // HELPER METHODS
     // ==========================================
-
-    private Optional<JwtPayload> getOptionalJwtPayload() {
-        try {
-            return Optional.ofNullable(JwtPayload.getCurrentUserPayload());
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
 
     private List<String> resolveTargetIndices(SearchType type) {
         if (type == null || type == SearchType.ALL) {

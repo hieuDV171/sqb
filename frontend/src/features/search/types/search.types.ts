@@ -24,43 +24,67 @@ export interface PostSearchResultDto {
 
 export interface UserSearchResultDto {
   userId: number;
-  username: string;
   fullName?: string;
-  avatarUrl?: string;
-  frameUrl?: string;
-  role?: string;
-  schoolFaculty?: string;
   studentLecturerCode?: string;
-  relationshipStatus?: string;
+  email?: string;
+  bio?: string;
+  avatarUrl?: string;
+  avatarFrameUrl?: string;
+  schoolFaculty?: string;
+  major?: string;
+  role?: string;
+  totalProposedQuestions?: number;
+  badgesCount?: number;
+  followersCount?: number;
+}
+
+export interface QuestionOptionDto {
+  key: string;
+  text: string;
+  mediaUrl?: string;
 }
 
 export interface QuestionSearchResultDto {
   questionId: number;
+  questionCode?: string;
   content: string;
   subjectId?: number;
   subjectName?: string;
+  topicId?: number;
+  topicName?: string;
+  status?: string;
   difficulty?: string;
-  topic?: string;
-  totalAnswers?: number;
-  correctAnswersRate?: number;
+  options?: QuestionOptionDto[];
+  explanation?: string;
+  imageUrls?: string[];
+  avgRating?: number;
+  ratingCount?: number;
+  reactCount?: number;
+  commentCount?: number;
+  createdAt?: string;
 }
 
 export interface SessionSearchResultDto {
   sessionId: number;
   title: string;
+  content?: string;
+  subjectId?: number;
   subjectName?: string;
-  creatorName?: string;
   status?: string;
   questionCount?: number;
+  reactCount?: number;
+  commentCount?: number;
   createdAt?: string;
 }
 
 export interface SubjectSearchResultDto {
   subjectId: number;
-  code: string;
-  name: string;
-  department?: string;
-  creditCount?: number;
+  subjectCode: string;
+  subjectName: string;
+}
+
+export interface RecordSearchRequest {
+  query: string;
 }
 
 export interface SearchResultItemDto {
@@ -92,5 +116,4 @@ export interface SavedAndTrendingSearchesResponseDto {
 
 export interface DeleteSavedSearchResponseDto {
   savedSearchId: number;
-  deleted: boolean;
 }

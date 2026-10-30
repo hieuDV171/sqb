@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { Component, useState, useEffect, type ReactNode } from 'react';
+import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import {
   Search,
   User,
@@ -14,9 +14,29 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useGlobalSearch, type SearchType, type SearchResultItemDto } from '@/features/search';
+import { ErrorState } from '@/components/ui/error-state';
+import {
+  useGlobalSearch,
+  useRecordSearch,
+  type SearchType,
+  type SearchResultItemDto,
+  type UserSearchResultDto,
+} from '@/features/search';
 
-export function SearchPage() {
+function getUserDisplayName(user: UserSearchResultDto) {
+  return (
+    user.fullName?.trim() ||
+    user.studentLecturerCode?.trim() ||
+    user.email?.trim() ||
+    'Thành viên SQB'
+  );
+}
+
+function getUserIdentifier(user: UserSearchResultDto) {
+  return user.studentLecturerCode?.trim() || user.email?.trim();
+}
+
+function SearchPageContent() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryParam = searchParams.get('q') || '';
@@ -28,6 +48,8 @@ export function SearchPage() {
 
   // Sync state when URL params change
   useEffect(() => {
+    // URL là nguồn dữ liệu chuẩn cho back/forward và deep link của trang tìm kiếm.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInputQuery(queryParam);
     setSelectedType(typeParam);
     setCursor(undefined);
@@ -37,6 +59,7 @@ export function SearchPage() {
     data: searchData,
     isLoading,
     isFetching,
+    isError,
     refetch,
   } = useGlobalSearch({
     query: queryParam,
@@ -45,11 +68,16 @@ export function SearchPage() {
     limit: 15,
     enabled: !!queryParam.trim(),
   });
+  const recordSearchMutation = useRecordSearch();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputQuery.trim()) {
-      setSearchParams({ q: inputQuery.trim(), type: selectedType });
+      const confirmedQuery = inputQuery.trim();
+      if (confirmedQuery.length >= 2) {
+        recordSearchMutation.mutate(confirmedQuery);
+      }
+      setSearchParams({ q: confirmedQuery, type: selectedType });
     }
   };
 
@@ -57,6 +85,13 @@ export function SearchPage() {
     setSelectedType(type);
     setCursor(undefined);
     setSearchParams({ q: queryParam, type });
+  };
+
+  const recordCurrentQuery = () => {
+    const confirmedQuery = queryParam.trim();
+    if (confirmedQuery.length >= 2) {
+      recordSearchMutation.mutate(confirmedQuery);
+    }
   };
 
   const items: SearchResultItemDto[] = searchData?.items || [];
@@ -172,6 +207,12 @@ export function SearchPage() {
             </div>
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState
+          title="Không thể tải kết quả tìm kiếm"
+          message="Máy chủ tìm kiếm hiện chưa phản hồi. Vui lòng thử lại."
+          onRetry={() => refetch()}
+        />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Search}
@@ -193,12 +234,12 @@ export function SearchPage() {
                       {item.user.avatarUrl ? (
                         <img
                           src={item.user.avatarUrl}
-                          alt={item.user.username}
+                          alt={getUserDisplayName(item.user)}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-slate-500">
-                          {item.user.username.charAt(0).toUpperCase()}
+                          {getUserDisplayName(item.user).charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
@@ -206,20 +247,21 @@ export function SearchPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
-                          {item.user.fullName || item.user.username}
+                          {getUserDisplayName(item.user)}
                         </h3>
                         <Badge variant="role">
                           {item.user.role === 'LECTURER' ? 'Giảng viên' : 'Sinh viên'}
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        @{item.user.username} • {item.user.schoolFaculty || 'Đại học Bách Khoa Hà Nội'}
+                        {getUserIdentifier(item.user) || 'Thành viên SQB'} • {item.user.schoolFaculty || item.user.major || 'Đại học Bách Khoa Hà Nội'}
                       </p>
                     </div>
                   </div>
 
                   <Link
                     to={`/users/${item.user.userId}`}
+                    onClick={recordCurrentQuery}
                     className="px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-colors inline-flex items-center gap-1"
                   >
                     Trang cá nhân <ArrowRight className="w-3.5 h-3.5" />
@@ -256,6 +298,7 @@ export function SearchPage() {
                     </div>
                     <Link
                       to={`/feed?postId=${item.post.postId}`}
+                      onClick={recordCurrentQuery}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
                     >
                       Xem chi tiết bài viết <ArrowRight className="w-3.5 h-3.5" />
@@ -288,10 +331,11 @@ export function SearchPage() {
 
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <span className="text-xs text-slate-500">
-                      {item.question.totalAnswers ? `${item.question.totalAnswers} lượt làm` : 'Câu hỏi đã kiểm duyệt'}
+                      {item.question.ratingCount ? `${item.question.ratingCount} lượt đánh giá` : 'Câu hỏi đã kiểm duyệt'}
                     </span>
                     <Link
                       to={`/sessions?questionId=${item.question.questionId}`}
+                      onClick={recordCurrentQuery}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
                     >
                       Luyện tập câu này <ArrowRight className="w-3.5 h-3.5" />
@@ -321,6 +365,7 @@ export function SearchPage() {
                     </span>
                     <Link
                       to={`/sessions/${item.session.sessionId}`}
+                      onClick={recordCurrentQuery}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
                     >
                       Mở phiên đề xuất <ArrowRight className="w-3.5 h-3.5" />
@@ -338,14 +383,14 @@ export function SearchPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                          {item.subject.code}
+                          {item.subject.subjectCode}
                         </span>
                         <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100">
-                          {item.subject.name}
+                          {item.subject.subjectName}
                         </h3>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {item.subject.department || 'Bộ môn phụ trách'} • {item.subject.creditCount || 3} tín chỉ
+                        Môn học trong ngân hàng câu hỏi SQB
                       </p>
                     </div>
                   </div>
@@ -353,9 +398,11 @@ export function SearchPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setInputQuery(item.subject?.name || '');
+                      setInputQuery(item.subject?.subjectName || '');
                       setSelectedType('QUESTION');
-                      setSearchParams({ q: item.subject?.name || '', type: 'QUESTION' });
+                      const subjectName = item.subject?.subjectName || '';
+                      recordCurrentQuery();
+                      setSearchParams({ q: subjectName, type: 'QUESTION' });
                     }}
                     className="px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-colors inline-flex items-center gap-1 cursor-pointer"
                   >
@@ -374,7 +421,8 @@ export function SearchPage() {
           <button
             type="button"
             onClick={() => {
-              if (items.length > 0) setCursor(items.length);
+              const nextCursor = searchData.pagination?.after;
+              if (typeof nextCursor === 'number') setCursor(nextCursor);
             }}
             disabled={isFetching}
             className="px-6 py-2.5 rounded-xl font-semibold text-xs border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 cursor-pointer"
@@ -384,5 +432,40 @@ export function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+class SearchRenderBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <ErrorState
+          title="Trang tìm kiếm gặp sự cố"
+          message="Dữ liệu kết quả chưa đúng định dạng hoặc giao diện không thể hiển thị. Hãy thử tải lại trang tìm kiếm."
+          onRetry={() => this.setState({ hasError: false })}
+        />
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export function SearchPage() {
+  const location = useLocation();
+
+  return (
+    <SearchRenderBoundary key={`${location.pathname}${location.search}`}>
+      <SearchPageContent />
+    </SearchRenderBoundary>
   );
 }

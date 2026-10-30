@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +42,19 @@ public class SearchController {
     public ResponseEntity<GlobalResponse<SavedAndTrendingSearchesResponseDto>> getSavedAndTrendingSearches() {
         SavedAndTrendingSearchesResponseDto response = searchService.getSavedAndTrendingSearches();
         return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
+    @Operation(summary = "Ghi nhận một lượt tìm kiếm đã xác nhận", description = "Chỉ gọi khi người dùng nhấn Enter, xem toàn bộ kết quả hoặc chọn một kết quả. Live search khi đang gõ không gọi API này.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ghi nhận lượt tìm kiếm thành công"),
+            @ApiResponse(responseCode = "400", description = "Từ khóa không hợp lệ"),
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực người dùng")
+    })
+    @PostMapping("/search/saved")
+    public ResponseEntity<GlobalResponse<Void>> recordConfirmedSearch(
+            @Valid @RequestBody RecordSearchRequest request) {
+        searchService.recordSearchQuery(request.query());
+        return ResponseEntity.ok(GlobalResponse.success());
     }
 
     @Operation(summary = "Xóa một từ khóa khỏi lịch sử tìm kiếm cá nhân", description = "Xóa bản ghi từ khóa tìm kiếm đã lưu của người dùng theo ID.")

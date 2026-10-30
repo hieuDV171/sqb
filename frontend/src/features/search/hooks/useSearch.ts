@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { searchService } from '../services/searchService';
-import type { SearchType } from '../types/search.types';
+import type {
+  SavedAndTrendingSearchesResponseDto,
+  SearchType,
+} from '../types/search.types';
 import { toast } from '@/stores/useToastStore';
-import type { SavedAndTrendingSearchesResponseDto } from '@/types/search.types';
 
 export const SEARCH_KEYS = {
   all: ['search'] as const,
@@ -83,6 +85,20 @@ export function useDeleteSavedSearch() {
     },
     onSettled: () => {
       // 5. Luôn làm mới lại dữ liệu từ server sau khi hoàn tất
+      queryClient.invalidateQueries({
+        queryKey: SEARCH_KEYS.savedAndTrending(),
+      });
+    },
+  });
+}
+
+export function useRecordSearch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (query: string) =>
+      searchService.recordConfirmedSearch({ query: query.trim() }),
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: SEARCH_KEYS.savedAndTrending(),
       });

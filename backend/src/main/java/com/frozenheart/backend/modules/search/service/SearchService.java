@@ -30,5 +30,5 @@ public interface SearchService {
     /**
      * Lưu lịch sử tìm kiếm vào DB & tăng điểm Trending trên Redis
      */
-    void recordSearchQuery(Long currentUserId, String query);
+    void recordSearchQuery(String query);
 }
