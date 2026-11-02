@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1793638526663-1
+      author: ADMIN (generated)
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropUniqueConstraint:
+            constraintName: uc_user_participants_last_read_message
+            tableName: user_participants
+

@@ -66,4 +66,8 @@ public class Message {
     @OneToMany(mappedBy = "deletedMessageOnlyMe")
     private Set<UserDeletedMessageOnlyMe> deletedMessageUsers;
 
+    @Singular
+    @OneToMany(mappedBy = "lastReadMessage")
+    private Set<UserParticipant> lastReadMessageUsers;
+
 }
