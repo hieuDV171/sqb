@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.post.dto;
 import com.frozenheart.backend.core.entity.media.MediaItem;
 import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.post.PostVisibility;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class PostResponseDto {
     private int reactCount;
     private int commentCount;
     private boolean reactedByMe;
+    private ReactionType myReaction;
 
     private Instant createdAt;
     private Instant updatedAt;

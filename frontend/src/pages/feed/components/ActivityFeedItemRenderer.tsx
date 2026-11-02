@@ -42,6 +42,7 @@ export function ActivityFeedItemRenderer({
         reactCount: item.content.reactCount || 18,
         commentCount: item.content.commentCount || 4,
         reactedByMe: item.content.reactedByMe || false,
+        myReaction: item.content.myReaction ?? null,
         createdAt: item.createdAt,
         lecturerNote: item.content.lecturerNote,
         notedLecturer: item.content.notedLecturer,

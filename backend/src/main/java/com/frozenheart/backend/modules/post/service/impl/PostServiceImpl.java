@@ -21,6 +21,8 @@ import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
 import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
+import com.frozenheart.backend.core.entity.socialinteraction.React;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
@@ -175,8 +177,11 @@ public class PostServiceImpl implements PostService {
             }
         }
 
-        boolean reactedByMe = reactRepository.existsByUserIdAndTargetTypeAndTargetId(currentUserId, InteractionTargetType.POST, id);
-        return mapToPostResponseDto(post, reactedByMe);
+        ReactionType myReaction = reactRepository
+                .findByUserIdAndTargetTypeAndTargetId(currentUserId, InteractionTargetType.POST, id)
+                .map(React::getReactionType)
+                .orElse(null);
+        return mapToPostResponseDto(post, myReaction);
     }
 
     @Override
@@ -391,13 +396,23 @@ public class PostServiceImpl implements PostService {
             nextCursor = postsList.getLast().getId();
         }
 
-        // Lấy danh sách ID các bài viết để tra cứu reactedByMe theo lô (chống N+1)
+        // Batch toàn bộ reaction và hồ sơ trước khi map DTO, tuyệt đối không query trong vòng lặp.
         List<Long> postIds = postsList.stream().map(Post::getId).toList();
-        Set<Long> reactedPostIds = postIds.isEmpty() ? Collections.emptySet()
-                : reactRepository.findLikedTargetIds(currentUserId, InteractionTargetType.POST, postIds);
+        Map<Long, ReactionType> reactionByPostId = postIds.isEmpty() ? Collections.emptyMap()
+                : reactRepository.findUserReactsByTargetIds(
+                                currentUserId, InteractionTargetType.POST, postIds).stream()
+                        .filter(react -> react.getReactionType() != null)
+                        .collect(Collectors.toMap(
+                                React::getTargetId,
+                                React::getReactionType,
+                                (existing, ignored) -> existing));
+        Map<Long, UserProfile> profileByUserId = loadProfilesForPosts(postsList);
 
         List<PostResponseDto> items = postsList.stream()
-                .map(post -> mapToPostResponseDto(post, reactedPostIds.contains(post.getId())))
+                .map(post -> mapToPostResponseDto(
+                        post,
+                        reactionByPostId.get(post.getId()),
+                        profileByUserId))
                 .collect(Collectors.toList());
 
         return CursorResponse.<PostResponseDto>builder()
@@ -440,12 +455,19 @@ public class PostServiceImpl implements PostService {
     }
 
     private PostResponseDto mapToPostResponseDto(Post post) {
-        return mapToPostResponseDto(post, false);
+        return mapToPostResponseDto(post, null);
     }
 
-    private PostResponseDto mapToPostResponseDto(Post post, boolean reactedByMe) {
-        AuthorDto authorDto = mapUserToAuthorDto(post.getPoster());
-        AuthorDto notedLecturerDto = mapUserToAuthorDto(post.getNotedLecturer());
+    private PostResponseDto mapToPostResponseDto(Post post, ReactionType myReaction) {
+        return mapToPostResponseDto(post, myReaction, loadProfilesForPosts(List.of(post)));
+    }
+
+    private PostResponseDto mapToPostResponseDto(
+            Post post,
+            ReactionType myReaction,
+            Map<Long, UserProfile> profileByUserId) {
+        AuthorDto authorDto = mapUserToAuthorDto(post.getPoster(), profileByUserId);
+        AuthorDto notedLecturerDto = mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId);
 
         return PostResponseDto.builder()
                 .postId(post.getId())
@@ -456,7 +478,8 @@ public class PostServiceImpl implements PostService {
                 .author(authorDto)
                 .reactCount(post.getReactCount())
                 .commentCount(post.getCommentCount())
-                .reactedByMe(reactedByMe)
+                .reactedByMe(myReaction != null)
+                .myReaction(myReaction)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .lecturerNote(post.getLecturerNote())
@@ -467,6 +490,23 @@ public class PostServiceImpl implements PostService {
                 .subjectCode(post.getSubject() != null ? post.getSubject().getCode() : null)
                 .sessionId(post.getSession() != null ? post.getSession().getId() : null)
                 .build();
+    }
+
+    private Map<Long, UserProfile> loadProfilesForPosts(List<Post> posts) {
+        Set<Long> userIds = new HashSet<>();
+        for (Post post : posts) {
+            if (post.getPoster() != null) {
+                userIds.add(post.getPoster().getId());
+            }
+            if (post.getNotedLecturer() != null) {
+                userIds.add(post.getNotedLecturer().getId());
+            }
+        }
+        if (userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userProfileRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(UserProfile::getUserId, profile -> profile));
     }
 
     private VideoPostItemDto mapToVideoPostItemDto(Post post, Map<Long, UserProfile> profileMap) {
@@ -499,11 +539,11 @@ public class PostServiceImpl implements PostService {
                 .build();
     }
 
-    private AuthorDto mapUserToAuthorDto(User user) {
+    private AuthorDto mapUserToAuthorDto(User user, Map<Long, UserProfile> profileByUserId) {
         if (user == null) {
             return AuthorDto.getSystemAuthor();
         }
-        UserProfile profile = userProfileRepository.findByUserId(user.getId()).orElse(null);
+        UserProfile profile = profileByUserId.get(user.getId());
         return AuthorDto.builder()
                 .userId(user.getId())
                 .fullName(profile != null ? profile.getFullName() : user.getEmail())

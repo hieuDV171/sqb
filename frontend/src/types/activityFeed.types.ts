@@ -21,6 +21,7 @@ export interface ActivityFeedContent {
   reactCount?: number;
   commentCount?: number;
   reactedByMe?: boolean;
+  myReaction?: 'LIKE' | 'LOVE' | 'WOW' | null;
   lecturerNote?: string;
   notedLecturer?: AuthorDto;
 }
