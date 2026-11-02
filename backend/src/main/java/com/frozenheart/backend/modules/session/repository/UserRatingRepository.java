@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
+import com.frozenheart.backend.modules.session.dto.RatingAverageProjection;
+import com.frozenheart.backend.modules.session.dto.RatingStatisticsProjection;
 
 @Repository
 public interface UserRatingRepository extends JpaRepository<UserRating, UserRatingId> {
@@ -28,18 +30,19 @@ public interface UserRatingRepository extends JpaRepository<UserRating, UserRati
     long countByIdRatedQuestionId(Long ratedQuestionId);
 
     @Query("SELECT " +
-           "COALESCE(AVG(ur.rating), 0.0), " +
-           "COUNT(ur), " +
-           "SUM(CASE WHEN ur.rating = 0.0 THEN 1L ELSE 0L END), " +
-           "SUM(CASE WHEN ur.rating = 1.0 THEN 1L ELSE 0L END), " +
-           "SUM(CASE WHEN ur.rating = 2.0 THEN 1L ELSE 0L END), " +
-           "SUM(CASE WHEN ur.rating = 3.0 THEN 1L ELSE 0L END), " +
-           "SUM(CASE WHEN ur.rating = 4.0 THEN 1L ELSE 0L END) " +
+           "COALESCE(AVG(ur.rating), 0.0) AS avgRating, " +
+           "COUNT(ur) AS totalRatings, " +
+           "COALESCE(SUM(CASE WHEN ur.rating = 0.0 THEN 1L ELSE 0L END), 0L) AS rating0Count, " +
+           "COALESCE(SUM(CASE WHEN ur.rating = 1.0 THEN 1L ELSE 0L END), 0L) AS rating1Count, " +
+           "COALESCE(SUM(CASE WHEN ur.rating = 2.0 THEN 1L ELSE 0L END), 0L) AS rating2Count, " +
+           "COALESCE(SUM(CASE WHEN ur.rating = 3.0 THEN 1L ELSE 0L END), 0L) AS rating3Count, " +
+           "COALESCE(SUM(CASE WHEN ur.rating = 4.0 THEN 1L ELSE 0L END), 0L) AS rating4Count " +
            "FROM UserRating ur WHERE ur.id.ratedQuestionId = :ratedQuestionId")
-    Object[] getRatingStatsSummary(@Param("ratedQuestionId") Long ratedQuestionId);
+    RatingStatisticsProjection getRatingStatsSummary(@Param("ratedQuestionId") Long ratedQuestionId);
 
-    @Query("SELECT COALESCE(AVG(ur.rating), 0.0), COUNT(ur) FROM UserRating ur WHERE ur.id.ratedQuestionId = :ratedQuestionId")
-    Object[] getAvgAndCountByQuestionId(@Param("ratedQuestionId") Long ratedQuestionId);
+    @Query("SELECT COALESCE(AVG(ur.rating), 0.0) AS avgRating, COUNT(ur) AS totalRatings " +
+           "FROM UserRating ur WHERE ur.id.ratedQuestionId = :ratedQuestionId")
+    RatingAverageProjection getAvgAndCountByQuestionId(@Param("ratedQuestionId") Long ratedQuestionId);
 
     @Query("SELECT ur FROM UserRating ur LEFT JOIN FETCH ur.user WHERE ur.id.ratedQuestionId = :ratedQuestionId " +
            "AND (:after IS NULL OR ur.id.userId < :after) ORDER BY ur.id.userId DESC")

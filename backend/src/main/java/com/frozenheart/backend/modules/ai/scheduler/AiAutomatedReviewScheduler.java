@@ -81,8 +81,7 @@ public class AiAutomatedReviewScheduler {
         // ==========================================
         // GIAI ĐOẠN 1: TỰ ĐỘNG AI REFINEMENT SAU 3 NGÀY
         // ==========================================
-        List<Session> pendingSessionsThreeDays = sessionRepository
-                .findByStatusAndCreatedAtBeforeFetchDetails(SessionStatus.PENDING, threeDaysAgo, batchLimit);
+        List<Session> pendingSessionsThreeDays = loadReviewBatch(threeDaysAgo, batchLimit);
 
         for (Session session : pendingSessionsThreeDays) {
             if (session.getQuestions() == null)
@@ -107,8 +106,7 @@ public class AiAutomatedReviewScheduler {
         // ==========================================
         // GIAI ĐOẠN 2: TỰ ĐỘNG CHẤP NHẬN / TỪ CHỐI SAU 6 NGÀY
         // ==========================================
-        List<Session> targetSessions = sessionRepository
-                .findByStatusAndCreatedAtBeforeFetchDetails(SessionStatus.PENDING, sixDaysAgo, batchLimit);
+        List<Session> targetSessions = loadReviewBatch(sixDaysAgo, batchLimit);
 
         List<Question> allQuestionsToUpdate = new ArrayList<>();
         List<Session> allSessionsToUpdate = new ArrayList<>();
@@ -229,5 +227,16 @@ public class AiAutomatedReviewScheduler {
         }
 
         log.info("Automated AI review fallback workflow completed successfully.");
+    }
+
+    private List<Session> loadReviewBatch(Instant cutoff, Pageable batchLimit) {
+        List<Long> sessionIds = sessionRepository.findIdsByStatusAndCreatedAtBefore(
+                SessionStatus.PENDING,
+                cutoff,
+                batchLimit);
+        if (sessionIds.isEmpty()) {
+            return List.of();
+        }
+        return sessionRepository.findByIdInFetchAutomatedReviewDetails(sessionIds);
     }
 }

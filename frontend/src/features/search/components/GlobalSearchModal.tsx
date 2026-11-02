@@ -26,11 +26,11 @@ import {
   useGlobalSearch,
   useRecordSearch,
   useSavedAndTrendingSearches,
-} from '../hooks/useSearch';
+} from '@/features/search';
 import type {
   SearchResultItemDto,
   UserSearchResultDto,
-} from '../types/search.types';
+} from '@/features/search';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;

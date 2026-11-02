@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswer;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswerId;
+import com.frozenheart.backend.modules.session.dto.AnswerStatisticsProjection;
 
 @Repository
 public interface UserAnswerRepository extends JpaRepository<UserAnswer, UserAnswerId> {
@@ -26,11 +27,11 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer, UserAnsw
 
     @Query("""
             SELECT
-            COUNT(ua),
-            SUM(CASE WHEN ua.isCorrect = true THEN 1L ELSE 0L END)
+            COUNT(ua) AS totalAnswers,
+            COALESCE(SUM(CASE WHEN ua.isCorrect = true THEN 1L ELSE 0L END), 0L) AS correctAnswers
             FROM UserAnswer ua WHERE ua.id.questionId = :questionId
             """)
-    Object[] getAnswerStatsSummary(@Param("questionId") Long questionId);
+    AnswerStatisticsProjection getAnswerStatsSummary(@Param("questionId") Long questionId);
 
     @Query("SELECT ua.selectedOptions FROM UserAnswer ua WHERE ua.id.questionId = :questionId")
     List<List<QuestionOption>> findSelectedOptionsByQuestionId(@Param("questionId") Long questionId);

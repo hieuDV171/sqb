@@ -34,6 +34,9 @@ import com.frozenheart.backend.modules.session.dto.AnswerQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionRatingsResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
+import com.frozenheart.backend.modules.session.dto.AnswerStatisticsProjection;
+import com.frozenheart.backend.modules.session.dto.RatingAverageProjection;
+import com.frozenheart.backend.modules.session.dto.RatingStatisticsProjection;
 import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RateQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.SessionQuestionsResponse;
@@ -223,12 +226,12 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 questionRepository.findById(questionId)
                                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
 
-                Object[] answerStatsRow = userAnswerRepository.getAnswerStatsSummary(questionId);
-                long totalAnswer = answerStatsRow != null && answerStatsRow.length > 0 && answerStatsRow[0] != null
-                                ? ((Number) answerStatsRow[0]).longValue()
+                AnswerStatisticsProjection answerStats = userAnswerRepository.getAnswerStatsSummary(questionId);
+                long totalAnswer = answerStats != null && answerStats.getTotalAnswers() != null
+                                ? answerStats.getTotalAnswers()
                                 : 0L;
-                long correctCount = answerStatsRow != null && answerStatsRow.length > 1 && answerStatsRow[1] != null
-                                ? ((Number) answerStatsRow[1]).longValue()
+                long correctCount = answerStats != null && answerStats.getCorrectAnswers() != null
+                                ? answerStats.getCorrectAnswers()
                                 : 0L;
                 double correctRate = totalAnswer > 0 ? (double) correctCount / totalAnswer : 0.0;
 
@@ -247,21 +250,20 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                         }
                 }
 
-                Object[] ratingStatsRow = userRatingRepository.getRatingStatsSummary(questionId);
-                double avgRating = ratingStatsRow != null && ratingStatsRow.length > 0 && ratingStatsRow[0] != null
-                                ? ((Number) ratingStatsRow[0]).doubleValue()
+                RatingStatisticsProjection ratingStats = userRatingRepository.getRatingStatsSummary(questionId);
+                double avgRating = ratingStats != null && ratingStats.getAvgRating() != null
+                                ? ratingStats.getAvgRating()
                                 : 0.0;
-                long totalRatings = ratingStatsRow != null && ratingStatsRow.length > 1 && ratingStatsRow[1] != null
-                                ? ((Number) ratingStatsRow[1]).longValue()
+                long totalRatings = ratingStats != null && ratingStats.getTotalRatings() != null
+                                ? ratingStats.getTotalRatings()
                                 : 0L;
 
                 Map<String, Long> ratingDist = new HashMap<>();
-                for (int i = 0; i <= 4; i++) {
-                        long count = (ratingStatsRow != null && ratingStatsRow.length > (i + 2)
-                                        && ratingStatsRow[i + 2] != null) ? ((Number) ratingStatsRow[i + 2]).longValue()
-                                                        : 0L;
-                        ratingDist.put(String.valueOf(i), count);
-                }
+                ratingDist.put("0", getRatingCount(ratingStats, 0));
+                ratingDist.put("1", getRatingCount(ratingStats, 1));
+                ratingDist.put("2", getRatingCount(ratingStats, 2));
+                ratingDist.put("3", getRatingCount(ratingStats, 3));
+                ratingDist.put("4", getRatingCount(ratingStats, 4));
 
                 return QuestionStatisticsResponse.builder()
                                 .totalAnswer(totalAnswer)
@@ -301,12 +303,13 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
 
                 userRatingRepository.save(userRating);
 
-                Object[] ratingRow = userRatingRepository.getAvgAndCountByQuestionId(questionId);
-                double newAvgRating = (ratingRow != null && ratingRow.length > 0 && ratingRow[0] != null)
-                                ? ((Number) ratingRow[0]).doubleValue()
+                RatingAverageProjection ratingAverage = userRatingRepository
+                                .getAvgAndCountByQuestionId(questionId);
+                double newAvgRating = ratingAverage != null && ratingAverage.getAvgRating() != null
+                                ? ratingAverage.getAvgRating()
                                 : 0.0;
-                long newCount = (ratingRow != null && ratingRow.length > 1 && ratingRow[1] != null)
-                                ? ((Number) ratingRow[1]).longValue()
+                long newCount = ratingAverage != null && ratingAverage.getTotalRatings() != null
+                                ? ratingAverage.getTotalRatings()
                                 : 0L;
 
                 question.setRatingCount((int) newCount);
@@ -318,6 +321,22 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 .newAvgRating(newAvgRating)
                                 .newRatingCount((int) newCount)
                                 .build();
+        }
+
+        private long getRatingCount(RatingStatisticsProjection stats, int rating) {
+                if (stats == null) {
+                        return 0L;
+                }
+
+                Long count = switch (rating) {
+                        case 0 -> stats.getRating0Count();
+                        case 1 -> stats.getRating1Count();
+                        case 2 -> stats.getRating2Count();
+                        case 3 -> stats.getRating3Count();
+                        case 4 -> stats.getRating4Count();
+                        default -> 0L;
+                };
+                return count != null ? count : 0L;
         }
 
         @Override

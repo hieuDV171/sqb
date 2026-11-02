@@ -65,7 +65,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             } catch (MessageDeliveryException mde) {
                 throw mde;
             } catch (Exception e) {
-                log.error("[WebSocketAuthInterceptor] WebSocket JWT authentication failed: {}", e.getMessage());
+                log.warn("[WebSocketAuthInterceptor] WebSocket JWT authentication failed: {}", e.getMessage());
                 throw new MessageDeliveryException("Unauthorized: " + e.getMessage());
             }
         }

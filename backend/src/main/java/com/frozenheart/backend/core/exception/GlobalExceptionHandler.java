@@ -5,6 +5,7 @@ import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.dto.error.FieldErrorDetail;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
+import io.jsonwebtoken.JwtException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -105,6 +107,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(GlobalResponse.error(ResponseCode.INVALID_PARAMETER_TYPE, "Dữ liệu JSON gửi lên không đúng định dạng"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<GlobalResponse<Void>> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(GlobalResponse.error(
+                        ResponseCode.INVALID_PARAMETER_TYPE,
+                        "Tham số '" + ex.getName() + "' không đúng kiểu dữ liệu"));
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<GlobalResponse<Void>> handleJwtException(JwtException ignored) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(GlobalResponse.error(
+                        ResponseCode.TOKEN_INVALID_OR_EXPIRED,
+                        "Token không hợp lệ hoặc đã hết hạn"));
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

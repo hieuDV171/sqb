@@ -45,7 +45,7 @@ public class UserParticipant {
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "last_read_message_id")
     private Message lastReadMessage;
 

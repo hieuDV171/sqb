@@ -9,8 +9,8 @@ import {
   Award,
   Bell,
 } from 'lucide-react';
-import type { NotificationDto, NotificationType } from '../types/notification.types';
-import { useMarkAsRead } from '../hooks/useNotification';
+import type { NotificationDto, NotificationType } from '@/features/notification';
+import { useMarkAsRead } from '@/features/notification';
 
 interface NotificationItemProps {
   notification: NotificationDto;

@@ -10,6 +10,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import io.jsonwebtoken.MalformedJwtException;
 
 import java.sql.SQLException;
 import java.util.stream.Stream;
@@ -17,6 +19,8 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -54,6 +58,32 @@ class GlobalExceptionHandlerTest {
                 "Hệ thống gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.",
                 response.getBody().getMessage());
         assertFalse(response.getBody().getMessage().contains(sensitiveDetail));
+    }
+
+    @Test
+    @DisplayName("Sai kiểu query parameter phải trả 400 thay vì generic 500")
+    void shouldMapArgumentTypeMismatchToBadRequest() {
+        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        when(exception.getName()).thenReturn("limit");
+
+        ResponseEntity<GlobalResponse<Void>> response =
+                handler.handleMethodArgumentTypeMismatchException(exception);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("1003", response.getBody().getCode());
+    }
+
+    @Test
+    @DisplayName("JWT sai định dạng phải trả 401 thay vì generic 500")
+    void shouldMapMalformedJwtToUnauthorized() {
+        ResponseEntity<GlobalResponse<Void>> response =
+                handler.handleJwtException(new MalformedJwtException("sensitive-token-detail"));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("9998", response.getBody().getCode());
+        assertFalse(response.getBody().getMessage().contains("sensitive-token-detail"));
     }
 
     private static Stream<Arguments> integrityViolations() {

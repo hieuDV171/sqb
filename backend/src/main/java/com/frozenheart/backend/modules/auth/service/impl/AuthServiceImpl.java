@@ -97,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
                 });
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            log.error("[AuthServiceImpl]: {}", ResponseCode.INCORRECT_IDENTIFIER);
+            log.warn("[AuthServiceImpl]: {}", ResponseCode.INCORRECT_IDENTIFIER);
             metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "bad_credentials");
             throw new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không chính xác");
         }
@@ -640,8 +640,17 @@ public class AuthServiceImpl implements AuthService {
 
         String incomingRt = isWebClient ? cookieRt : (request != null ? request.refreshToken() : null);
 
+        if (incomingRt == null || incomingRt.isBlank()) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
+
         // Decode
-        JwtPayload payload = jwtService.decodeToken(incomingRt);
+        JwtPayload payload;
+        try {
+            payload = jwtService.decodeToken(incomingRt);
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException invalidToken) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
         String email = payload.getUsername();
         String deviceId = payload.getDeviceId();
 

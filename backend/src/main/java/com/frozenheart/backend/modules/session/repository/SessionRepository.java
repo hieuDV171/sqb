@@ -131,19 +131,22 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
         List<Session> findByStatusAndCreatedAtBefore(SessionStatus status, Instant cutoff);
 
+        @Query("SELECT s.id FROM Session s " +
+                        "WHERE s.status = :status AND s.createdAt < :cutoff " +
+                        "ORDER BY s.id ASC")
+        List<Long> findIdsByStatusAndCreatedAtBefore(
+                        @Param("status") SessionStatus status,
+                        @Param("cutoff") Instant cutoff,
+                        Pageable pageable);
+
         @Query("SELECT DISTINCT s FROM Session s " +
                         "LEFT JOIN FETCH s.proposer " +
                         "JOIN FETCH s.courseClass cc " +
                         "JOIN FETCH cc.subject " +
                         "JOIN FETCH cc.semester " +
-                        "LEFT JOIN FETCH s.questions q " +
-                        "LEFT JOIN FETCH q.duplicateWarnings " +
-                        "WHERE s.status = :status AND s.createdAt < :cutoff " +
-                        "ORDER BY s.id ASC")
-        List<Session> findByStatusAndCreatedAtBeforeFetchDetails(
-                        @Param("status") SessionStatus status,
-                        @Param("cutoff") Instant cutoff,
-                        Pageable pageable);
+                        "LEFT JOIN FETCH s.questions " +
+                        "WHERE s.id IN :ids")
+        List<Session> findByIdInFetchAutomatedReviewDetails(@Param("ids") Collection<Long> ids);
 
         int countByReviewerId(Long reviewerId);
 
