@@ -1,0 +1,193 @@
+name: Build and Deploy SQB Frontend
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sqb-frontend-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    name: Build & Deploy Frontend to Production
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT || '22' }}
+
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_WS_URL: ${{ vars.VITE_WS_URL }}
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.VITE_FIREBASE_MEASUREMENT_ID }}
+      VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
+
+      FRONTEND_BASE_URL: ${{ vars.FRONTEND_BASE_URL || 'https://hieudv.id.vn' }}
+      DEPLOY_SHA: ${{ github.sha }}
+      RELEASE_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Validate production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_secrets=(SERVER_HOST SERVER_USER SERVER_SSH_KEY)
+          for name in "${required_secrets[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error ::Missing required GitHub secret: ${name}"
+              exit 1
+            fi
+          done
+
+          required_variables=(
+            VITE_API_BASE_URL
+            VITE_FIREBASE_API_KEY
+            VITE_FIREBASE_AUTH_DOMAIN
+            VITE_FIREBASE_PROJECT_ID
+            VITE_FIREBASE_STORAGE_BUCKET
+            VITE_FIREBASE_MESSAGING_SENDER_ID
+            VITE_FIREBASE_APP_ID
+            VITE_FIREBASE_VAPID_KEY
+          )
+          for name in "${required_variables[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error ::Missing required GitHub production variable: ${name}"
+              exit 1
+            fi
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build production frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Add deployment metadata
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          printf '{"sha":"%s","deployedAt":"%s"}\n' \
+            "$DEPLOY_SHA" "$deployed_at" > dist/deploy.json
+
+      - name: Archive frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqb-frontend-${{ github.sha }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload release to production server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
+          source: 'frontend/dist/*'
+          target: '/var/www/sqb-frontend/releases/${{ env.RELEASE_ID }}'
+          strip_components: 2
+          overwrite: true
+
+      - name: Activate release and verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          RELEASE_ID: ${{ env.RELEASE_ID }}
+          DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+          FRONTEND_BASE_URL: ${{ env.FRONTEND_BASE_URL }}
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
+          command_timeout: 10m
+          envs: RELEASE_ID,DEPLOY_SHA,FRONTEND_BASE_URL
+          script: |
+            set -eu
+
+            frontend_root='/var/www/sqb-frontend'
+            release_dir="$frontend_root/releases/$RELEASE_ID"
+            live_path="$frontend_root/dist"
+            next_link="$frontend_root/.dist-next-$RELEASE_ID"
+            previous_target=''
+
+            if [ ! -f "$release_dir/index.html" ] || [ ! -f "$release_dir/deploy.json" ]; then
+              echo 'ERROR: Uploaded frontend release is incomplete.'
+              exit 1
+            fi
+
+            find "$release_dir" -type d -exec chmod 755 {} +
+            find "$release_dir" -type f -exec chmod 644 {} +
+
+            if [ -L "$live_path" ]; then
+              previous_target="$(readlink -f "$live_path" || true)"
+            elif [ -d "$live_path" ]; then
+              previous_target="$frontend_root/releases/legacy-$RELEASE_ID"
+              mv "$live_path" "$previous_target"
+            elif [ -e "$live_path" ]; then
+              echo 'ERROR: Live frontend path exists but is neither a directory nor a symlink.'
+              exit 1
+            fi
+
+            rm -f "$next_link"
+            ln -s "$release_dir" "$next_link"
+            mv -Tf "$next_link" "$live_path"
+
+            health_url="${FRONTEND_BASE_URL%/}/deploy.json?sha=$DEPLOY_SHA"
+            deployment_metadata="$(curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --retry 5 \
+              --retry-delay 2 \
+              --max-time 15 \
+              "$health_url" || true)"
+
+            case "$deployment_metadata" in
+              *\"sha\":\"$DEPLOY_SHA\"*)
+                echo "Frontend release $RELEASE_ID is active and healthy."
+                ;;
+              *)
+                echo 'ERROR: Frontend health-check did not return the deployed commit.'
+                if [ -n "$previous_target" ] && [ -d "$previous_target" ]; then
+                  rollback_link="$frontend_root/.dist-rollback-$RELEASE_ID"
+                  rm -f "$rollback_link"
+                  ln -s "$previous_target" "$rollback_link"
+                  mv -Tf "$rollback_link" "$live_path"
+                  echo "Rolled back frontend to $previous_target."
+                fi
+                exit 1
+                ;;
+            esac
