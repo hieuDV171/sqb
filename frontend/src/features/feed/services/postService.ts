@@ -17,7 +17,10 @@ export const postService = {
    * POST /api/v1/posts
    */
   createPost: async (data: CreatePostRequest): Promise<GlobalResponse<PostResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<PostResponseDto>>('/posts', data)) as any;
+    return (await axiosClient.post<GlobalResponse<PostResponseDto>>(
+      '/posts',
+      data
+    )) as unknown as GlobalResponse<PostResponseDto>;
   },
 
   /**
@@ -30,7 +33,7 @@ export const postService = {
   ): Promise<GlobalResponse<CursorResponse<PostResponseDto>>> => {
     return (await axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>>('/posts/me', {
       params: { after, limit },
-    })) as any;
+    })) as unknown as GlobalResponse<CursorResponse<PostResponseDto>>;
   },
 
   /**
@@ -47,7 +50,7 @@ export const postService = {
       {
         params: { after, limit },
       }
-    )) as any;
+    )) as unknown as GlobalResponse<CursorResponse<PostResponseDto>>;
   },
 
   /**
@@ -55,7 +58,9 @@ export const postService = {
    * GET /api/v1/posts/{id}
    */
   getPostById: async (id: number): Promise<GlobalResponse<PostResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<PostResponseDto>>(`/posts/${id}`)) as any;
+    return (await axiosClient.get<GlobalResponse<PostResponseDto>>(`/posts/${id}`, {
+      skipToast: true,
+    })) as unknown as GlobalResponse<PostResponseDto>;
   },
 
   /**
@@ -66,7 +71,10 @@ export const postService = {
     id: number,
     data: UpdatePostRequest
   ): Promise<GlobalResponse<UpdatePostResponseDto>> => {
-    return (await axiosClient.put<GlobalResponse<UpdatePostResponseDto>>(`/posts/${id}`, data)) as any;
+    return (await axiosClient.put<GlobalResponse<UpdatePostResponseDto>>(
+      `/posts/${id}`,
+      data
+    )) as unknown as GlobalResponse<UpdatePostResponseDto>;
   },
 
   /**
@@ -77,7 +85,10 @@ export const postService = {
     id: number,
     data: UpdateLecturerNoteRequest
   ): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.put<GlobalResponse<void>>(`/posts/${id}/lecturer-notes`, data)) as any;
+    return (await axiosClient.put<GlobalResponse<void>>(
+      `/posts/${id}/lecturer-notes`,
+      data
+    )) as unknown as GlobalResponse<void>;
   },
 
   /**
@@ -85,7 +96,9 @@ export const postService = {
    * DELETE /api/v1/posts/{id}
    */
   deletePost: async (id: number): Promise<GlobalResponse<DeletePostResponseDto>> => {
-    return (await axiosClient.delete<GlobalResponse<DeletePostResponseDto>>(`/posts/${id}`)) as any;
+    return (await axiosClient.delete<GlobalResponse<DeletePostResponseDto>>(
+      `/posts/${id}`
+    )) as unknown as GlobalResponse<DeletePostResponseDto>;
   },
 
   /**
@@ -99,6 +112,6 @@ export const postService = {
   ): Promise<GlobalResponse<CursorResponse<VideoPostItemDto>>> => {
     return (await axiosClient.get<GlobalResponse<CursorResponse<VideoPostItemDto>>>('/video-posts', {
       params: { subject_id: subjectId, after, limit },
-    })) as any;
+    })) as unknown as GlobalResponse<CursorResponse<VideoPostItemDto>>;
   },
 };

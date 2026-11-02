@@ -12,6 +12,18 @@ import { FeedSidebarRight } from './components/FeedSidebarRight';
 import { sessionService } from '@/features/session/services/sessionService';
 import type { SubjectItem } from '@/types/post.types';
 import { MessageSquarePlus, Loader2 } from 'lucide-react';
+import { Navigate, useSearchParams } from 'react-router-dom';
+
+export function FeedRoute() {
+  const [searchParams] = useSearchParams();
+  const legacyPostId = Number(searchParams.get('postId'));
+
+  if (Number.isSafeInteger(legacyPostId) && legacyPostId > 0) {
+    return <Navigate to={`/posts/${legacyPostId}`} replace />;
+  }
+
+  return <FeedPage />;
+}
 
 export function FeedPage() {
   const [currentFilter, setCurrentFilter] = useState<FeedFilter>('ALL');

@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { DeviceManagementPage } from "./pages/devices/DeviceManagementPage";
 import { LeaderboardPage } from "./pages/leaderboard/LeaderboardPage";
-import { FeedPage } from "./pages/feed/FeedPage";
+import { FeedRoute } from "./pages/feed/FeedPage";
+import { PostDetailPage } from "./pages/feed/PostDetailPage";
 import { SessionsPage } from "./pages/session/SessionsPage";
 import { SubmissionDetailPage } from "./pages/session/SubmissionDetailPage";
 import { PracticeWorkspacePage } from "./pages/session/PracticeWorkspacePage";
@@ -55,7 +56,8 @@ export default function App() {
         {/* Protected Common Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
-          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/feed" element={<FeedRoute />} />
+          <Route path="/posts/:postId" element={<PostDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/users/:userId" element={<ProfilePage />} />
           <Route path="/friends" element={<FriendsPage />} />

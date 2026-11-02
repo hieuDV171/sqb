@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { commentService, type CreateCommentRequest } from '../services/commentService';
-import type { CommentResponseDto } from '@/types/post.types';
+import type { CommentResponseDto, PostResponseDto } from '@/types/post.types';
 import type { CursorResponse } from '@/types/user.types';
 import type { ActivityFeedItemDto } from '../types/feed.types';
 import { useToastStore } from '@/stores/useToastStore';
@@ -73,6 +73,9 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
             };
           }
         );
+        queryClient.setQueryData<PostResponseDto>(['post-detail', targetId], (current) =>
+          current ? { ...current, commentCount: current.commentCount + 1 } : current
+        );
       }
     },
     onError: (err: any) => {
@@ -92,6 +95,10 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
 
       // 2. Chụp snapshot cache hiện tại làm điểm phục hồi nếu có lỗi
       const previousComments = queryClient.getQueryData<InfiniteData<CursorResponse<CommentResponseDto>>>(queryKey);
+      const previousPostDetail = queryClient.getQueryData<PostResponseDto>([
+        'post-detail',
+        targetId,
+      ]);
 
       // 3. Optimistic Update: Xóa ngay lập tức bình luận khỏi UI (0ms delay)
       if (previousComments) {
@@ -130,14 +137,22 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
             };
           }
         );
+        queryClient.setQueryData<PostResponseDto>(['post-detail', targetId], (current) =>
+          current
+            ? { ...current, commentCount: Math.max(0, current.commentCount - 1) }
+            : current
+        );
       }
 
-      return { previousComments };
+      return { previousComments, previousPostDetail };
     },
     onError: (_err, _commentId, context) => {
       // 4. Rollback lại danh sách bình luận cũ nếu xóa thất bại
       if (context?.previousComments) {
         queryClient.setQueryData(queryKey, context.previousComments);
+      }
+      if (context?.previousPostDetail) {
+        queryClient.setQueryData(['post-detail', targetId], context.previousPostDetail);
       }
       addToast({
         type: 'error',
@@ -156,6 +171,7 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
       // 5. Luôn làm mới ngầm sau cùng để đối soát với server
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
+      queryClient.invalidateQueries({ queryKey: ['post-detail', targetId] });
     },
   });
 

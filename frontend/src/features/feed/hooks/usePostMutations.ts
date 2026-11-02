@@ -71,8 +71,9 @@ export function usePostMutations() {
   const updateLecturerNoteMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateLecturerNoteRequest }) =>
       postService.updateLecturerNote(id, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
+      queryClient.invalidateQueries({ queryKey: ['post-detail', variables.id] });
       addToast({
         type: 'success',
         title: 'Thành công',

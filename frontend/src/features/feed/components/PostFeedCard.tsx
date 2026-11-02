@@ -24,7 +24,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 
-export const REACTIONS = [
+const REACTIONS = [
   {
     type: 'LIKE' as ReactionType,
     label: 'Thích',
@@ -56,9 +56,15 @@ export const REACTIONS = [
 
 interface PostFeedCardProps {
   item: ActivityFeedItemDto;
+  initiallyShowComments?: boolean;
+  onDeleted?: () => void;
 }
 
-export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
+export const PostFeedCard: React.FC<PostFeedCardProps> = ({
+  item,
+  initiallyShowComments = false,
+  onDeleted,
+}) => {
   const { user } = useAuthStore();
   const { toggleReact } = usePostReact();
   const { deletePost } = usePostMutations();
@@ -71,7 +77,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
   const likeCount = content.reactCount || 0;
   const currentReactionConfig = REACTIONS.find((r) => r.type === myReaction);
 
-  const [showComments, setShowComments] = useState<boolean>(false);
+  const [showComments, setShowComments] = useState<boolean>(initiallyShowComments);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showReactionPicker, setShowReactionPicker] = useState<boolean>(false);
   const pickerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,7 +106,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
   const handleSelectReaction = (type: ReactionType) => {
     setShowReactionPicker(false);
     toggleReact({
-      targetType: (item.targetType as any) || 'POST',
+      targetType: 'POST',
       targetId,
       reactionType: type,
     });
@@ -110,14 +116,14 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
     // Nếu đang có reaction thì bấm vào để hủy, nếu chưa có thì mặc định thả LIKE
     const typeToToggle: ReactionType = myReaction || 'LIKE';
     toggleReact({
-      targetType: (item.targetType as any) || 'POST',
+      targetType: 'POST',
       targetId,
       reactionType: typeToToggle,
     });
   };
 
   const handleShare = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/feed?postId=${targetId}`);
+    navigator.clipboard.writeText(`${window.location.origin}/posts/${targetId}`);
     addToast({
       type: 'info',
       title: 'Đã sao chép liên kết',
@@ -127,7 +133,12 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({ item }) => {
 
   const handleDelete = async () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
-      await deletePost(targetId);
+      try {
+        await deletePost(targetId);
+        onDeleted?.();
+      } catch {
+        // Mutation đã hiển thị thông báo lỗi; giữ nguyên trang để người dùng có thể thử lại.
+      }
     }
   };
 

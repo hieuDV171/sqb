@@ -221,7 +221,7 @@ export function GlobalSearchModal({
         if (item.user) navigate(`/users/${item.user.userId}`);
         break;
       case 'POST':
-        if (item.post) navigate(`/feed?postId=${item.post.postId}`);
+        if (item.post) navigate(`/posts/${item.post.postId}`);
         break;
       case 'QUESTION':
         if (item.question) navigate(`/sessions?questionId=${item.question.questionId}`);

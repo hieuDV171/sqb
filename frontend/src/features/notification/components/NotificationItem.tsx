@@ -87,7 +87,7 @@ export function NotificationItem({ notification, onItemClick }: NotificationItem
       }
       switch (type) {
         case 'POST':
-          navigate(`/feed?postId=${targetId}`);
+          navigate(`/posts/${targetId}`);
           break;
         case 'SESSION':
           navigate(`/sessions/${targetId}`);

@@ -297,7 +297,7 @@ function SearchPageContent() {
                       <span>{item.post.commentCount || 0} bình luận</span>
                     </div>
                     <Link
-                      to={`/feed?postId=${item.post.postId}`}
+                      to={`/posts/${item.post.postId}`}
                       onClick={recordCurrentQuery}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
                     >

@@ -43,6 +43,7 @@ export interface PostResponseDto {
     reactCount: number;
     commentCount: number;
     reactedByMe: boolean;
+    myReaction?: "LIKE" | "LOVE" | "WOW" | null;
 
     createdAt: string;
     updatedAt?: string;
