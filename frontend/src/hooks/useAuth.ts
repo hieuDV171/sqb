@@ -28,8 +28,8 @@ export function useAuth() {
             // Dọn dẹp cache của tài khoản trước đó để chống rò rỉ dữ liệu giữa các phiên
             queryClient.clear();
 
-            // Lưu Token và Thông tin User vào Zustand Store (LocalStorage)
-            setAuth(authData.accessToken, authData.refreshToken || '', {
+            // Chỉ lưu Access Token và thông tin User; Refresh Token web ở HttpOnly cookie.
+            setAuth(authData.accessToken, {
                 id: authData.userId ?? 0,
                 username: authData.username,
                 role: authData.role,
@@ -48,9 +48,16 @@ export function useAuth() {
             } else {
                 navigate('/feed');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message =
+                typeof err === 'object' &&
+                err !== null &&
+                'message' in err &&
+                typeof err.message === 'string'
+                    ? err.message
+                    : null;
             setError(
-                err?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại!",
+                message || "Đăng nhập thất bại. Vui lòng kiểm tra lại!",
             );
         } finally {
             setIsLoading(false);

@@ -4,20 +4,25 @@ import type { GlobalResponse } from '../types/response.types';
 
 export const authService = {
   login: async (data: LoginRequest): Promise<GlobalResponse<AuthResponse>> => {
-    return await axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data, { skipToast: true } as any) as any;
+    return await axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data, {
+      skipToast: true,
+      skipAuthRefresh: true,
+    }) as unknown as GlobalResponse<AuthResponse>;
   },
 
   logout: async (): Promise<GlobalResponse<void>> => {
-    return await axiosClient.post<GlobalResponse<void>>('/auth/logout') as any;
+    return await axiosClient.post<GlobalResponse<void>>('/auth/logout') as unknown as GlobalResponse<void>;
   },
 
   changePassword: async (data: ChangePasswordRequest): Promise<GlobalResponse<void>> => {
-    return await axiosClient.post<GlobalResponse<void>>('/auth/change-password', data) as any;
+    return await axiosClient.post<GlobalResponse<void>>('/auth/change-password', data) as unknown as GlobalResponse<void>;
   },
 
-  refreshToken: async (refreshToken?: string): Promise<GlobalResponse<RefreshTokenResponse>> => {
-    return await axiosClient.post<GlobalResponse<RefreshTokenResponse>>('/auth/refresh', {
-      refreshToken,
-    }) as any;
+  refreshToken: async (): Promise<GlobalResponse<RefreshTokenResponse>> => {
+    return await axiosClient.post<GlobalResponse<RefreshTokenResponse>>(
+      '/auth/refresh',
+      undefined,
+      { skipAuthRefresh: true },
+    ) as unknown as GlobalResponse<RefreshTokenResponse>;
   },
 };

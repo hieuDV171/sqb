@@ -7,6 +7,7 @@ import { toast } from "../stores/useToastStore";
 declare module "axios" {
     export interface AxiosRequestConfig {
         skipToast?: boolean;
+        skipAuthRefresh?: boolean;
     }
 }
 
@@ -55,13 +56,19 @@ axiosClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 // Response Interceptor: Tự động Refresh Token khi 401 và chuyển snake_case -> camelCase bằng humps
 axiosClient.interceptors.response.use(
-    (response) => humps.camelizeKeys(response.data) as any, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
+    (response) => humps.camelizeKeys(response.data) as unknown as typeof response, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
     async (error) => {
         const originalRequest = error.config;
         const formattedError = error.response?.data ? humps.camelizeKeys(error.response.data) : error;
 
         // 1. Xử lý 401 (Unauthorized) - Silent Refresh Token
-        if (error.response?.status === 401 && !originalRequest?._retry) {
+        // Web lưu Refresh Token trong HttpOnly cookie, không đọc token này từ JavaScript.
+        if (
+            error.response?.status === 401 &&
+            !originalRequest?._retry &&
+            !originalRequest?.skipAuthRefresh &&
+            useAuthStore.getState().isAuthenticated
+        ) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
@@ -76,38 +83,34 @@ axiosClient.interceptors.response.use(
             originalRequest._retry = true;
             isRefreshing = true;
 
-            const currentRefreshToken = useAuthStore.getState().refreshToken;
-
-            if (!currentRefreshToken) {
-                isRefreshing = false;
-                useAuthStore.getState().logout();
-                toast.warning("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.", "Hết phiên đăng nhập");
-                return Promise.reject(formattedError);
-            }
-
             try {
-                // Gọi API /auth/refresh độc lập qua axios thuần
+                // Gọi API /auth/refresh độc lập qua axios thuần để không
+                // chạy lại interceptor này. Web chỉ gửi HttpOnly cookie,
+                // không đọc hoặc lưu Refresh Token trong JavaScript.
                 const refreshResponse = await axios.post<
                     GlobalResponse<{
                         access_token: string;
-                        refresh_token: string;
                     }>
-                >(`${BASE_URL}/auth/refresh`, humps.decamelizeKeys({
-                    refreshToken: currentRefreshToken,
-                }));
+                >(
+                    `${BASE_URL}/auth/refresh`,
+                    undefined,
+                    { withCredentials: true },
+                );
 
                 const formattedRefreshData = humps.camelizeKeys(refreshResponse.data) as GlobalResponse<{
                     accessToken: string;
-                    refreshToken: string;
                 }>;
                 const newTokens = formattedRefreshData.data;
                 const newAccessToken = newTokens.accessToken;
-                const newRefreshToken = newTokens.refreshToken;
 
-                // Cập nhật cặp Token mới vào Zustand Store
+                if (!newAccessToken) {
+                    throw new Error("Refresh response does not contain an access token");
+                }
+
+                // Chỉ cập nhật Access Token; Refresh Token web ở trong HttpOnly cookie.
                 useAuthStore
                     .getState()
-                    .setTokens(newAccessToken, newRefreshToken);
+                    .setTokens(newAccessToken);
 
                 // Cập nhật Header cho request cũ bị thất bại và chạy lại các request trong hàng chờ
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
