@@ -1,72 +1,72 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { useGamificationStore } from '@/stores/useGamificationStore';
-import { useLeaderboard, useShop } from '@/features/gamification/hooks/useGamification';
-import { useThemeStore } from '@/stores/useThemeStore';
-import { useAuth } from '@/hooks/useAuth';
-import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
-import { useStompStatus } from '@/lib/stompClient';
-import { Badge } from '@/components/ui/badge';
-import { NotificationDropdown } from '@/features/notification';
-import { GlobalSearchModal } from '@/features/search';
-import { SqbCoin } from '@/components/common/SqbCoin';
 import {
-  GraduationCap,
-  Zap,
   Bell,
-  Search,
-  Menu,
-  X,
   ChevronDown,
-  LogOut,
   KeyRound,
+  LogOut,
+  Menu,
   Monitor,
-  Sun,
   Moon,
+  Search,
+  Settings,
+  ShieldAlert,
+  Sun,
   User,
   Users,
-  ShieldAlert
+  X,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { BrandMark } from '@/components/common/BrandMark';
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { NotificationDropdown } from '@/features/notification';
+import { GlobalSearchModal } from '@/features/search';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useGamificationStore } from '@/stores/useGamificationStore';
+import { useThemeStore } from '@/stores/useThemeStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useStompStatus } from '@/lib/stompClient';
+import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   isMobileMenuOpen: boolean;
   onToggleMobileMenu: () => void;
 }
 
+const ROLE_LABELS = {
+  STUDENT: 'Sinh viên',
+  LECTURER: 'Giảng viên',
+  ADMIN: 'Quản trị viên',
+} as const;
+
 export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const { user } = useAuthStore();
   const { unreadNotifications } = useGamificationStore();
-  const { data: shopData, isLoading: isLoadingCoins, isError: isCoinsError } = useShop({ limit: 1 });
-  const {
-    data: leaderboardData,
-    isLoading: isLoadingPoints,
-    isError: isPointsError,
-  } = useLeaderboard({ limit: 1 });
-  const { logout } = useAuth();
   const { theme, toggleTheme } = useThemeStore();
+  const { logout } = useAuth();
   const stompStatus = useStompStatus();
   const navigate = useNavigate();
 
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const desktopSearchTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null);
   const activeSearchTriggerRef = useRef<HTMLElement | null>(null);
 
-  // Phím tắt Ctrl + K / Cmd + K cho thanh tìm kiếm toàn cục
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
-        e.preventDefault();
-        e.stopPropagation();
-        activeSearchTriggerRef.current =
-          window.innerWidth >= 768
-            ? desktopSearchTriggerRef.current
-            : mobileSearchTriggerRef.current;
-        setIsSearchModalOpen((prev) => !prev);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        activeSearchTriggerRef.current = window.innerWidth >= 768
+          ? desktopSearchTriggerRef.current
+          : mobileSearchTriggerRef.current;
+        setIsSearchOpen((current) => !current);
+      }
+      if (event.key === 'Escape') {
+        setIsProfileOpen(false);
+        setIsNotificationOpen(false);
       }
     };
 
@@ -74,293 +74,187 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, []);
 
+  const openSearch = (trigger: HTMLElement | null) => {
+    activeSearchTriggerRef.current = trigger;
+    setIsSearchOpen(true);
+  };
+
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Left: Mobile Toggle & Brand */}
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 h-[var(--app-header-height)] border-b border-border bg-[var(--shell-header)] backdrop-blur-xl">
+        <div className="mx-auto flex h-full w-full max-w-[var(--app-content-max-width)] items-center gap-3 px-3 sm:px-5 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2 md:w-[calc(var(--app-sidebar-width)-1.5rem)] md:shrink-0">
             <button
               type="button"
               onClick={onToggleMobileMenu}
-              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              aria-label="Toggle Mobile Menu"
+              className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+              aria-label={isMobileMenuOpen ? 'Đóng menu' : 'Mở menu'}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-navigation-panel"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
-
-            <Link to="/feed" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-                <GraduationCap className="w-6 h-6" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="text-lg font-bold bg-linear-to-r from-indigo-600 to-violet-700 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
-                  SQB Network
-                </span>
-                <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-medium leading-none">
-                  HUST Academic & Social
-                </span>
-              </div>
+            <Link to="/feed" aria-label="SQB Campus Intelligence — về bảng tin" className="min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <BrandMark compact={false} className="hidden sm:inline-flex" />
+              <BrandMark compact className="sm:hidden" />
             </Link>
           </div>
 
-          {/* Center: Search Bar (Desktop) */}
-          <div className="hidden md:flex flex-1 max-w-md mx-4">
+          <div className="hidden min-w-0 flex-1 justify-center md:flex">
             <button
               ref={desktopSearchTriggerRef}
               type="button"
-              onClick={() => {
-                activeSearchTriggerRef.current = desktopSearchTriggerRef.current;
-                setIsSearchModalOpen(true);
-              }}
+              onClick={() => openSearch(desktopSearchTriggerRef.current)}
               aria-haspopup="dialog"
-              aria-expanded={isSearchModalOpen}
+              aria-expanded={isSearchOpen}
               aria-controls="global-search-panel"
-              className="relative w-full cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded-xl"
+              className="group flex h-11 w-full max-w-xl items-center gap-3 rounded-2xl border border-border bg-surface-subtle px-4 text-left text-sm text-muted-foreground transition-[border-color,background-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 transition-colors" />
-              <span className="block w-full pl-10 pr-16 py-2 text-sm bg-slate-100/70 dark:bg-slate-800/80 border border-transparent group-hover:border-slate-200 dark:group-hover:border-slate-700 text-slate-400 dark:text-slate-500 rounded-xl transition-all">
-                Tìm môn học, sinh viên, câu hỏi, đề thi...
-              </span>
-              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-2xs">
+              <Search className="size-4 shrink-0 transition-colors group-hover:text-primary" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">Tìm người, môn học, bài viết hoặc câu hỏi</span>
+              <kbd className="hidden rounded-lg border border-border bg-card px-2 py-1 font-mono text-[0.68rem] font-semibold text-muted-foreground lg:inline-flex">
                 Ctrl K
               </kbd>
             </button>
           </div>
 
-          {/* Right: Gamification HUD, STOMP status, Theme Toggle & Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <button
               ref={mobileSearchTriggerRef}
               type="button"
-              onClick={() => {
-                activeSearchTriggerRef.current = mobileSearchTriggerRef.current;
-                setIsSearchModalOpen(true);
-              }}
-              aria-haspopup="dialog"
-              aria-expanded={isSearchModalOpen}
-              aria-controls="global-search-panel"
+              onClick={() => openSearch(mobileSearchTriggerRef.current)}
+              className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
               aria-label="Mở tìm kiếm"
-              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-haspopup="dialog"
+              aria-expanded={isSearchOpen}
             >
-              <Search className="w-5 h-5" />
+              <Search className="size-5" />
             </button>
-            {/* Gamification Wallet: Coins HUD (dành cho Sinh viên) */}
-            {user?.role !== 'ADMIN' && (
-              <div
-                title="Ví xu SQB (Dùng để đổi vật phẩm)"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100/80 dark:hover:bg-amber-900/50 border border-amber-200/80 dark:border-amber-800/60 rounded-full transition-all cursor-pointer shadow-2xs"
-              >
-                <SqbCoin className="w-4 h-4" />
-                <span className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300 tracking-tight">
-                  {isLoadingCoins ? '…' : isCoinsError ? '—' : (shopData?.userPoints ?? 0).toLocaleString()}
-                </span>
-                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hidden sm:inline">xu</span>
-              </div>
-            )}
 
-            {/* Gamification Wallet: Points HUD */}
-            {user?.role !== 'ADMIN' && (
-              <div
-                title="Điểm cống hiến học thuật (Tính vào Bảng xếp hạng)"
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/50 border border-indigo-200/80 dark:border-indigo-800/60 rounded-full transition-all cursor-pointer shadow-2xs"
-              >
-                <div className="w-5 h-5 rounded-full bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-xs">
-                  <Zap className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-xs sm:text-sm font-bold text-indigo-900 dark:text-indigo-300 tracking-tight">
-                  {isLoadingPoints
-                    ? '…'
-                    : isPointsError
-                      ? '—'
-                      : (leaderboardData?.myRank?.totalPoints ?? 0).toLocaleString()}
-                </span>
-                <span className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-400">điểm</span>
-              </div>
-            )}
-
-            {/* STOMP WebSocket Connection Status Dot */}
-            <div
-              title={`Trạng thái Realtime WebSocket: ${stompStatus}`}
-              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center"
-            >
-              <div
-                className={`w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 transition-colors ${
-                  stompStatus === 'CONNECTED'
-                    ? 'bg-emerald-500 shadow-xs shadow-emerald-500/50'
-                    : stompStatus === 'CONNECTING'
-                    ? 'bg-amber-500 animate-ping'
-                    : 'bg-slate-400'
-                }`}
-              />
-            </div>
-
-            {/* Dark Mode Toggle Button */}
             <button
               type="button"
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
-              aria-label="Chuyển giao diện sáng tối"
+              className="hidden size-11 place-items-center rounded-xl text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid"
+              aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
             >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-180 duration-200" />
-              ) : (
-                <Moon className="w-5 h-5 text-slate-600 hover:text-indigo-600 animate-in spin-in-180 duration-200" />
-              )}
+              {theme === 'dark' ? <Sun className="size-5 text-reward" /> : <Moon className="size-5" />}
             </button>
 
-            {/* Notification Bell */}
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
-                aria-label="Thông báo"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setIsNotificationOpen((current) => !current);
+                }}
+                className="relative grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={unreadNotifications > 0 ? `${unreadNotifications} thông báo chưa đọc` : 'Thông báo'}
+                aria-haspopup="dialog"
+                aria-expanded={isNotificationOpen}
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="size-5" />
                 {unreadNotifications > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 animate-pulse">
-                    {unreadNotifications}
+                  <span className="absolute right-1.5 top-1.5 grid min-h-4 min-w-4 place-items-center rounded-full border-2 border-card bg-destructive px-0.5 text-[0.58rem] font-bold leading-none text-white">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
                 )}
               </button>
-
-              <NotificationDropdown
-                isOpen={isNotificationOpen}
-                onClose={() => setIsNotificationOpen(false)}
-              />
+              <NotificationDropdown isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
             </div>
 
-            {/* User Profile Menu */}
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 p-1 pl-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                onClick={() => {
+                  setIsNotificationOpen(false);
+                  setIsProfileOpen((current) => !current);
+                }}
+                className="flex h-11 items-center gap-2 rounded-2xl border border-transparent px-1.5 transition-colors duration-200 hover:border-border hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Mở menu tài khoản"
+                aria-haspopup="menu"
+                aria-expanded={isProfileOpen}
               >
-                {/* Avatar with optional frame */}
-                <div className="relative">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-xs overflow-hidden">
-                    {user?.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
-                    ) : (
-                      user?.username?.charAt(0).toUpperCase() || 'S'
-                    )}
-                  </div>
-                  {user?.frameUrl && (
-                    <img
-                      src={user.frameUrl}
-                      alt="Avatar Frame"
-                      className="absolute -inset-1 w-[calc(100%+8px)] h-[calc(100%+8px)] object-contain pointer-events-none"
-                    />
+                <span className="relative grid size-9 shrink-0 place-items-center overflow-visible rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="" className="size-full rounded-full object-cover" />
+                  ) : (
+                    user?.username?.charAt(0).toUpperCase() || 'S'
                   )}
-                </div>
-
-                <div className="hidden lg:block text-left pr-1">
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100 max-w-[100px] truncate leading-tight">
-                    {user?.username || 'Sinh viên'}
-                  </p>
-                  <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 capitalize">
-                    {user?.role === 'LECTURER' ? 'Giảng viên' : user?.role === 'ADMIN' ? 'Admin' : 'Sinh viên'}
-                  </p>
-                </div>
-
-                <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
+                  {user?.frameUrl && <img src={user.frameUrl} alt="" className="pointer-events-none absolute -inset-1 size-[calc(100%+0.5rem)] object-contain" />}
+                </span>
+                <span className="hidden min-w-0 text-left lg:block">
+                  <span className="block max-w-28 truncate text-sm font-semibold text-foreground">{user?.username || 'Tài khoản SQB'}</span>
+                  <span className="mt-0.5 block text-[0.68rem] font-medium text-muted-foreground">{ROLE_LABELS[user?.role ?? 'STUDENT']}</span>
+                </span>
+                <ChevronDown className={cn('mr-1 hidden size-4 text-muted-foreground transition-transform lg:block', isProfileOpen && 'rotate-180')} />
               </button>
 
-              {/* Profile Dropdown Menu */}
-              {isDropdownOpen && (
+              {isProfileOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 py-2 z-50 animate-in fade-in-50 zoom-in-95 duration-100">
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80">
-                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {user?.username || 'sinhvien.hust@edu.vn'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="role" size="sm">
-                          {user?.role || 'STUDENT'}
-                        </Badge>
-                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">● Đang hoạt động</span>
+                  <button type="button" className="fixed inset-0 z-40 cursor-default" onClick={() => setIsProfileOpen(false)} aria-label="Đóng menu tài khoản" />
+                  <div role="menu" className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-[var(--shadow-primitive-md)]">
+                    <div className="border-b border-border bg-surface-subtle px-4 py-4">
+                      <p className="truncate text-sm font-semibold text-foreground">{user?.username || 'Tài khoản SQB'}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Badge variant="role" size="sm">{ROLE_LABELS[user?.role ?? 'STUDENT']}</Badge>
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className={cn('size-2 rounded-full', stompStatus === 'CONNECTED' ? 'bg-success' : stompStatus === 'CONNECTING' ? 'bg-warning' : 'bg-muted-foreground')} />
+                          {stompStatus === 'CONNECTED' ? 'Realtime sẵn sàng' : stompStatus === 'CONNECTING' ? 'Đang kết nối' : 'Realtime gián đoạn'}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="py-1">
+                    <div className="p-2">
+                      {[
+                        { label: 'Trang cá nhân', icon: User, path: '/profile' },
+                        { label: 'Bạn bè & lời mời', icon: Users, path: '/friends' },
+                        { label: 'Danh sách chặn', icon: ShieldAlert, path: '/blocked-users' },
+                        { label: 'Thiết bị đăng nhập', icon: Monitor, path: '/devices' },
+                        { label: 'Cài đặt tài khoản', icon: Settings, path: '/settings' },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.path}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setIsProfileOpen(false);
+                              navigate(item.path);
+                            }}
+                            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Icon className="size-4 text-muted-foreground" />
+                            {item.label}
+                          </button>
+                        );
+                      })}
                       <button
                         type="button"
+                        role="menuitem"
                         onClick={() => {
-                          setIsDropdownOpen(false);
-                          navigate('/profile');
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <User className="w-4 h-4 text-indigo-500" />
-                        <span>Trang cá nhân</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          navigate('/friends');
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <Users className="w-4 h-4 text-slate-400" />
-                        <span>Bạn bè & Lời mời</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          navigate('/blocked-users');
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <ShieldAlert className="w-4 h-4 text-slate-400" />
-                        <span>Danh sách chặn</span>
-                      </button>
-
-                      <div className="my-1 border-t border-slate-100 dark:border-slate-800/80" />
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDropdownOpen(false);
+                          setIsProfileOpen(false);
                           setIsChangePasswordOpen(true);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors cursor-pointer"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
                       >
-                        <KeyRound className="w-4 h-4 text-slate-400" />
-                        <span>Đổi mật khẩu</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          navigate('/devices');
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <Monitor className="w-4 h-4 text-slate-400" />
-                        <span>Quản lý thiết bị đăng nhập</span>
+                        <KeyRound className="size-4 text-muted-foreground" />
+                        Đổi mật khẩu
                       </button>
                     </div>
 
-                    <div className="border-t border-slate-100 dark:border-slate-800/80 pt-1">
+                    <div className="border-t border-border p-2">
                       <button
                         type="button"
+                        role="menuitem"
                         onClick={() => {
-                          setIsDropdownOpen(false);
+                          setIsProfileOpen(false);
                           logout();
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
                       >
-                        <LogOut className="w-4 h-4" />
-                        <span>Đăng xuất tài khoản</span>
+                        <LogOut className="size-4" />
+                        Đăng xuất
                       </button>
                     </div>
                   </div>
@@ -371,15 +265,12 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
         </div>
       </header>
 
-      {/* Modal đổi mật khẩu */}
-      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
-
-      {/* Panel tìm kiếm toàn cục (Ctrl + K) */}
-      <GlobalSearchModal
-        isOpen={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
-        triggerRef={activeSearchTriggerRef}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onSuccess={() => useAuthStore.getState().updateUser({ profileCompleted: true })}
       />
+      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} triggerRef={activeSearchTriggerRef} />
     </>
   );
 }

@@ -146,7 +146,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const isLongText = textContent.length > 280;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-4 md:p-5 mb-4 transition-all duration-200 hover:shadow-md">
+    <article className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-[var(--card-shadow)] md:p-5">
       {/* 1. Card Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -157,7 +157,8 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
                 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120'
               }
               alt={actor.fullName}
-              className="w-10 h-10 md:w-11 md:h-11 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800"
+              className="size-11 rounded-full object-cover ring-2 ring-muted"
+              loading="lazy"
             />
             {actor.role && (
               <span
@@ -231,7 +232,9 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
             <button
               type="button"
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Mở tùy chọn bài viết"
+              aria-expanded={showMenu}
             >
               <MoreHorizontal className="w-5 h-5" />
             </button>
@@ -310,7 +313,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
       {/* 2. Post Content */}
       <div className="mb-3.5">
-        <p className="text-slate-800 dark:text-slate-100 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+        <p className="whitespace-pre-wrap text-sm leading-6 text-foreground md:text-base md:leading-7">
           {isLongText && !isContentExpanded
             ? `${textContent.slice(0, 280)}...`
             : textContent}
@@ -334,7 +337,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           }`}
         >
           {content.mediaUrls.map((media, idx) => (
-            <div key={idx} className="relative overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <div key={idx} className="relative min-h-48 overflow-hidden rounded-xl bg-muted">
               {media.mediaType === 'VIDEO' ? (
                 <video src={media.url} controls className="w-full h-full object-cover" />
               ) : (
@@ -342,6 +345,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
                   src={media.url}
                   alt="post attachment"
                   className="w-full h-full object-cover hover:scale-102 transition-transform duration-300"
+                  loading="lazy"
                 />
               )}
             </div>
@@ -380,7 +384,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       )}
 
       {/* 5. Post Actions (Like, Comment, Share, Lecturer Note quick button) */}
-      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs md:text-sm text-slate-500 dark:text-slate-400">
+      <div className="flex items-center justify-between border-t border-border pt-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-1 md:gap-2">
           {/* Reaction Button with Floating Popover Picker (LIKE, LOVE, WOW) */}
           <div
@@ -425,7 +429,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
             <button
               type="button"
               onClick={handleMainButtonClick}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer ${
+              className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors ${
                 currentReactionConfig
                   ? `${currentReactionConfig.color} font-bold ${currentReactionConfig.bgColor}`
                   : 'hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
@@ -450,7 +454,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           <button
             type="button"
             onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors hover:bg-muted hover:text-primary"
           >
             <MessageCircle className="w-4 h-4" />
             <span>{content.commentCount || 0}</span>
@@ -461,7 +465,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           <button
             type="button"
             onClick={handleShare}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors hover:bg-muted hover:text-foreground"
           >
             <Share2 className="w-4 h-4" />
           </button>
@@ -499,6 +503,6 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
         targetId={targetId}
         targetTitle={`bài viết của ${actor.fullName || 'người dùng'}`}
       />
-    </div>
+    </article>
   );
 };

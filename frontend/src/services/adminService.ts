@@ -23,7 +23,7 @@ export const adminService = {
 
   /**
    * Import danh sách lớp và sinh viên đầu kỳ từ file Excel
-   * Tự động tạo tài khoản SV mới (verified = true, pass mặc định) và ghi danh vào lớp
+   * Tự động tạo tài khoản SV mới (chưa xác thực, bắt buộc đổi mật khẩu tạm) và ghi danh vào lớp
    */
   importExcelCourseClass: async (
     file: File,

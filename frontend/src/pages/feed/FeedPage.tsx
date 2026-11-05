@@ -11,7 +11,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { FeedSidebarRight } from './components/FeedSidebarRight';
 import { sessionService } from '@/features/session/services/sessionService';
 import type { SubjectItem } from '@/types/post.types';
-import { MessageSquarePlus, Loader2 } from 'lucide-react';
+import { MessageSquarePlus, Loader2, Sparkles } from 'lucide-react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 
 export function FeedRoute() {
@@ -70,10 +70,22 @@ export function FeedPage() {
     : items;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div className="mx-auto max-w-6xl">
+      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <Sparkles className="size-4" aria-hidden="true" />
+            Social Mode
+          </div>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Bảng tin học thuật</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Theo dõi câu hỏi, tài liệu, bài giảng và thành tích mới nhất trong cộng đồng SQB.
+          </p>
+        </div>
+      </header>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         {/* Main Feed Column (8 cols) */}
-        <div className="lg:col-span-8">
+        <section aria-label="Dòng hoạt động" className="min-w-0 lg:col-span-8">
           {/* Create Post Card */}
           <CreatePostBox />
 
@@ -125,7 +137,7 @@ export function FeedPage() {
                       type="button"
                       onClick={() => fetchNextPage()}
                       disabled={isFetchingNextPage}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+                      className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-[var(--card-shadow)] transition-colors hover:border-primary/30 hover:text-primary disabled:opacity-50"
                     >
                       {isFetchingNextPage ? (
                         <>
@@ -141,10 +153,10 @@ export function FeedPage() {
               </div>
             )}
           </PullToRefreshFeed>
-        </div>
+        </section>
 
         {/* Right Sidebar Column (4 cols) */}
-        <div className="hidden lg:block lg:col-span-4 sticky top-20">
+        <div className="sticky top-[calc(var(--app-header-height)+var(--space-4))] hidden lg:col-span-4 lg:block">
           <FeedSidebarRight
             subjects={subjects}
             selectedSubjectId={selectedSubjectId}

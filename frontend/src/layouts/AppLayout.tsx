@@ -5,6 +5,7 @@ import { stompClient } from '@/lib/stompClient';
 import { onForegroundMessage, syncCurrentFidIfAuthenticated } from '@/lib/firebase';
 import { toast } from '@/stores/useToastStore';
 import { Header } from './Header';
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { useChatRealtimeListener, FloatingChatWidget } from '@/features/chat';
@@ -13,8 +14,17 @@ interface AppLayoutProps {
   children?: React.ReactNode;
 }
 
+interface PushMessageShape {
+  notification?: { title?: string; body?: string };
+  data?: { title?: string; body?: string };
+}
+
+function readPushMessage(payload: unknown): PushMessageShape {
+  return payload && typeof payload === 'object' ? (payload as PushMessageShape) : {};
+}
+
 export function AppLayout({ children }: AppLayoutProps) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user, updateUser } = useAuthStore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -45,9 +55,10 @@ export function AppLayout({ children }: AppLayoutProps) {
 
     // 2. Lắng nghe thông báo khi người dùng đang mở tab (Foreground Toast)
     let unsubscribe: (() => void) | undefined;
-    onForegroundMessage((payload: any) => {
-      const title = payload?.notification?.title || payload?.data?.title || 'Thông báo mới từ SQB';
-      const body = payload?.notification?.body || payload?.data?.body || '';
+    onForegroundMessage((payload: unknown) => {
+      const message = readPushMessage(payload);
+      const title = message.notification?.title || message.data?.title || 'Thông báo mới từ SQB';
+      const body = message.notification?.body || message.data?.body || '';
       toast.info(body || title, title);
     }).then((unsub) => {
       unsubscribe = unsub;
@@ -59,37 +70,38 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [isAuthenticated]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      {/* Top Header HUD */}
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground transition-colors duration-200">
       <Header
         isMobileMenuOpen={isMobileMenuOpen}
         onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
       />
 
-      {/* Body: Sidebar + Main Content */}
-      <div className="flex-1 flex w-full relative">
-        {/* Desktop Collapsible Sidebar */}
+      <div className="relative flex w-full flex-1">
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
 
-        {/* Mobile Slide-over Drawer */}
         <MobileNav
           isOpen={isMobileMenuOpen}
+          onOpen={() => setIsMobileMenuOpen(true)}
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 w-full overflow-x-hidden min-w-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className="min-w-0 flex-1 overflow-x-hidden pb-[calc(var(--app-mobile-nav-height)+env(safe-area-inset-bottom)+var(--space-4))] md:pb-0">
+          <div className="mx-auto w-full max-w-[var(--app-content-max-width)] px-4 py-5 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
             {children ? children : <Outlet />}
           </div>
         </main>
       </div>
 
-      {/* Floating Chat Widget (Bong bóng chat mini góc phải màn hình) */}
       <FloatingChatWidget />
+      <ChangePasswordModal
+        isOpen={Boolean(isAuthenticated && user && !user.profileCompleted)}
+        required
+        onClose={() => {}}
+        onSuccess={() => updateUser({ profileCompleted: true })}
+      />
     </div>
   );
 }

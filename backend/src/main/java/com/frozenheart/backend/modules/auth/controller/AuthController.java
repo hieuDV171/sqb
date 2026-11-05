@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.auth.controller;
 
 import com.frozenheart.backend.modules.auth.dto.admin.AuthResponse;
 import com.frozenheart.backend.modules.auth.dto.user.ChangePasswordRequest;
+import com.frozenheart.backend.modules.auth.dto.user.ConfirmEmailVerificationRequest;
 import com.frozenheart.backend.modules.auth.dto.user.LoginRequest;
 import com.frozenheart.backend.modules.auth.dto.user.RefreshTokenRequest;
 import com.frozenheart.backend.modules.auth.dto.user.RefreshTokenResponse;
@@ -36,7 +37,7 @@ public class AuthController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đăng nhập thành công, trả về thông tin user và cặp token"),
             @ApiResponse(responseCode = "400", description = "Sai tài khoản hoặc mật khẩu (INCORRECT_IDENTIFIER)"),
-            @ApiResponse(responseCode = "403", description = "Tài khoản bị khóa (ACCOUNT_NOT_ACTIVE) hoặc chưa kích hoạt (USER_NOT_VERIFIED)")
+            @ApiResponse(responseCode = "403", description = "Tài khoản bị khóa (ACCOUNT_NOT_ACTIVE)")
     })
     @PostMapping("/login")
     public ResponseEntity<GlobalResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
@@ -67,6 +68,30 @@ public class AuthController {
     @PostMapping("/change-password")
     public ResponseEntity<GlobalResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
+        return ResponseEntity.ok(GlobalResponse.success());
+    }
+
+    @Operation(summary = "Gửi mã xác thực email", description = "Gửi OTP tới email của tài khoản đang đăng nhập. Email được lấy từ JWT, không nhận từ client.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Đã gửi mã OTP"),
+            @ApiResponse(responseCode = "409", description = "Email đã xác thực hoặc đang trong thời gian chờ gửi lại")
+    })
+    @PostMapping("/email-verification/request")
+    public ResponseEntity<GlobalResponse<Void>> requestEmailVerification() {
+        authService.requestEmailVerification();
+        return ResponseEntity.ok(GlobalResponse.success());
+    }
+
+    @Operation(summary = "Xác nhận email", description = "Xác thực OTP cho chính tài khoản đang đăng nhập và cập nhật verified = true.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Xác thực email thành công"),
+            @ApiResponse(responseCode = "400", description = "OTP không đúng hoặc đã hết hạn")
+    })
+    @PostMapping("/email-verification/confirm")
+    public ResponseEntity<GlobalResponse<Void>> confirmEmailVerification(
+            @Valid @RequestBody ConfirmEmailVerificationRequest request
+    ) {
+        authService.confirmEmailVerification(request);
         return ResponseEntity.ok(GlobalResponse.success());
     }
 

@@ -69,14 +69,14 @@ export function PostDetailPage() {
           type="button"
           onClick={handleBack}
           aria-label="Quay lại trang trước"
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-white hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-indigo-400"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-card hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft aria-hidden="true" className="h-5 w-5" />
           <span>Quay lại</span>
         </button>
 
-        <div className="flex min-w-0 items-center gap-2 text-slate-900 dark:text-slate-100">
-          <Newspaper aria-hidden="true" className="h-5 w-5 shrink-0 text-indigo-500" />
+        <div className="flex min-w-0 items-center gap-2 text-foreground">
+          <Newspaper aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
           <h1
             id="post-detail-heading"
             className="truncate text-base font-bold sm:text-lg"
@@ -87,7 +87,7 @@ export function PostDetailPage() {
 
         <Link
           to="/feed"
-          className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+          className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Bảng tin
         </Link>

@@ -145,7 +145,6 @@ public class UserServiceImpl implements UserService {
 
         if (request.fullName() != null && !request.fullName().isBlank()) {
             userProfile.setFullName(request.fullName().trim());
-            userProfile.setProfileCompleted(true);
         }
         if (request.avatarUrl() != null) {
             String oldAvatar = userProfile.getAvatarUrl();

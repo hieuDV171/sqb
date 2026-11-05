@@ -63,7 +63,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/auth/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/auth/login", "/auth/refresh").permitAll()
+                        .requestMatchers("/auth/**").authenticated()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/devices/fid/unregister").permitAll()
                         .requestMatchers("/ws/**").permitAll()

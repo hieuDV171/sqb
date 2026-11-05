@@ -189,7 +189,7 @@ export const CreatePostBox: React.FC = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs mb-6 relative z-30 transition-all duration-300">
+    <section aria-labelledby="create-post-heading" className="relative z-30 mb-6 rounded-2xl border border-border bg-card shadow-[var(--card-shadow)]">
       {/* Role & Post Type Switcher (Dành riêng cho Giảng viên / Admin) */}
       {isLecturerOrAdmin && (
         <div className="bg-slate-50/90 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs rounded-t-3xl">
@@ -256,6 +256,7 @@ export const CreatePostBox: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="p-4 md:p-5">
+        <h2 id="create-post-heading" className="mb-4 text-base font-semibold text-foreground">Chia sẻ với cộng đồng</h2>
         <div className="flex gap-3.5 items-start">
           <div className="relative shrink-0">
             <img
@@ -283,6 +284,8 @@ export const CreatePostBox: React.FC = () => {
 
           <div className="flex-1">
             <textarea
+              id="post-content"
+              aria-label="Nội dung bài viết"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={
@@ -291,7 +294,7 @@ export const CreatePostBox: React.FC = () => {
                   : 'Bạn có câu hỏi chuyên môn, hoặc chia sẻ tài liệu học tập gì hôm nay?...'
               }
               rows={3}
-              className="w-full bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-sm md:text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 transition-all border border-transparent focus:border-blue-500/40 resize-none"
+              className="w-full resize-none rounded-2xl border border-border bg-surface-subtle p-3 text-sm text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30 md:text-base"
             />
 
             {/* Media Upload Previews */}
@@ -449,6 +452,6 @@ export const CreatePostBox: React.FC = () => {
           </button>
         </div>
       </form>
-    </div>
+    </section>
   );
 };

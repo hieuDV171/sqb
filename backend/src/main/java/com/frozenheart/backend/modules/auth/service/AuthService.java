@@ -8,6 +8,7 @@ import com.frozenheart.backend.modules.auth.dto.admin.VerifyOtpRequest;
 import com.frozenheart.backend.modules.auth.dto.admin.AdminBulkCreateUserDto.BulkImportRequest;
 import com.frozenheart.backend.modules.auth.dto.admin.AdminBulkCreateUserDto.BulkImportResult;
 import com.frozenheart.backend.modules.auth.dto.user.ChangePasswordRequest;
+import com.frozenheart.backend.modules.auth.dto.user.ConfirmEmailVerificationRequest;
 import com.frozenheart.backend.modules.auth.dto.user.LoginRequest;
 import com.frozenheart.backend.modules.auth.dto.user.RefreshTokenRequest;
 import com.frozenheart.backend.modules.auth.dto.user.RefreshTokenResponse;
@@ -26,6 +27,10 @@ public interface AuthService {
     void logout();
 
     void changePassword(ChangePasswordRequest request);
+
+    void requestEmailVerification();
+
+    void confirmEmailVerification(ConfirmEmailVerificationRequest request);
 
     RefreshTokenResponse refreshToken(RefreshTokenRequest request);
 

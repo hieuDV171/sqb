@@ -640,7 +640,7 @@ export function AdminUsersPage() {
               <CardTitle className="text-lg">Nhập Danh Sách Sinh Viên Lớp Học Phần (Excel)</CardTitle>
             </div>
             <CardDescription>
-              Vào đầu kỳ học, Giảng viên gửi danh sách sinh viên theo lớp. Tải file Excel lên để hệ thống tự động tạo tài khoản Sinh viên mới (với mật khẩu mặc định, verified = true) và ghi danh vào lớp học phần.
+              Vào đầu kỳ học, Giảng viên gửi danh sách sinh viên theo lớp. Tải file Excel lên để hệ thống tạo tài khoản Sinh viên chưa xác thực, dùng mật khẩu tạm và yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

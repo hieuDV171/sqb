@@ -23,6 +23,7 @@ import com.frozenheart.backend.modules.auth.dto.admin.AdminBulkCreateUserDto.Bul
 import com.frozenheart.backend.modules.auth.dto.admin.AdminBulkCreateUserDto.BulkImportResult;
 import com.frozenheart.backend.modules.auth.dto.admin.AdminBulkCreateUserDto.SingleUserImportDto;
 import com.frozenheart.backend.modules.auth.dto.user.ChangePasswordRequest;
+import com.frozenheart.backend.modules.auth.dto.user.ConfirmEmailVerificationRequest;
 import com.frozenheart.backend.modules.auth.dto.user.LoginRequest;
 import com.frozenheart.backend.modules.auth.dto.user.RefreshTokenRequest;
 import com.frozenheart.backend.modules.auth.dto.user.RefreshTokenResponse;
@@ -106,11 +107,6 @@ public class AuthServiceImpl implements AuthService {
 
         UserProfile userProfile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
-
-        if (!user.isVerified()) {
-            metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "not_verified");
-            throw new AppException(ResponseCode.USER_NOT_VERIFIED);
-        }
 
         if (!user.isActive()) {
             metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "not_active");
@@ -483,7 +479,7 @@ public class AuthServiceImpl implements AuthService {
                         .email(dto.email().trim())
                         .passwordHash(passwordEncoder.encode(rawPassword))
                         .role(ur)
-                        .verified(true)
+                        .verified(false)
                         .active(true)
                         .createdAt(now)
                         .updatedAt(now)
@@ -552,7 +548,7 @@ public class AuthServiceImpl implements AuthService {
                     .friendsCount(0)
                     .followersCount(0)
                     .followingCount(0)
-                    .profileCompleted(true)
+                    .profileCompleted(false)
                     .build();
             profilesToSave.add(profile);
 
@@ -628,6 +624,63 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
+        UserProfile userProfile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        userProfile.setProfileCompleted(true);
+        userProfileRepository.save(userProfile);
+
+    }
+
+    @Override
+    public void requestEmailVerification() {
+        Long userId = JwtPayload.getCurrentUserPayload().getUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        if (user.isVerified()) {
+            throw new AppException(ResponseCode.ACTION_ALREADY_PERFORMED, "Email đã được xác thực");
+        }
+
+        sendVerificationOtp(user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void confirmEmailVerification(ConfirmEmailVerificationRequest request) {
+        Long userId = JwtPayload.getCurrentUserPayload().getUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        if (user.isVerified()) {
+            throw new AppException(ResponseCode.ACTION_ALREADY_PERFORMED, "Email đã được xác thực");
+        }
+
+        String email = user.getEmail();
+        String savedOtp = redisTemplate.opsForValue().get(OTP_PREFIX + email);
+        if (savedOtp == null || !savedOtp.equals(request.verifyCode())) {
+            metricService.incrementCounter("sqb.auth.otp", "action", "self_verify", "status", "failed");
+            throw new AppException(ResponseCode.VERIFICATION_CODE_INVALID);
+        }
+
+        user.setVerified(true);
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
+        redisTemplate.delete(OTP_PREFIX + email);
+        redisTemplate.delete(RESEND_LOCK_PREFIX + email);
+        metricService.incrementCounter("sqb.auth.otp", "action", "self_verify", "status", "success");
+    }
+
+    private void sendVerificationOtp(String email) {
+        String lockKey = RESEND_LOCK_PREFIX + email;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new AppException(ResponseCode.ACTION_ALREADY_PERFORMED);
+        }
+
+        String newOtp = generateOtpCode();
+        redisTemplate.opsForValue().set(OTP_PREFIX + email, newOtp, Duration.ofMinutes(2));
+        redisTemplate.opsForValue().set(lockKey, "1", Duration.ofSeconds(60));
+        emailService.sendOtpEmail(email, newOtp);
+        metricService.incrementCounter("sqb.auth.otp", "action", "self_request", "status", "success");
     }
 
     @Override

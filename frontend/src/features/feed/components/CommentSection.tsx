@@ -73,7 +73,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
   };
 
   return (
-      <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+      <section aria-label="Bình luận" className="mt-3 border-t border-border pt-4">
           {/* 1. Comment Input Box */}
           <form
               onSubmit={handleSubmitComment}
@@ -88,13 +88,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                   className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
               />
 
-              <div className="flex-1 bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-2 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/40 transition-all">
+              <div className="flex-1 rounded-2xl border border-border bg-surface-subtle p-2 transition-[border-color,box-shadow] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
                   <textarea
+                      aria-label="Nội dung bình luận"
                       value={inputContent}
                       onChange={(e) => setInputContent(e.target.value)}
                       placeholder="Viết bình luận hoặc lời giải của bạn..."
                       rows={1}
-                      className="w-full bg-transparent text-xs md:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-hidden resize-none px-1"
+                      className="w-full resize-none bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
 
                   {commentMediaUrl && (
@@ -115,7 +116,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                   )}
 
                   <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                      <label className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer transition-colors">
+                      <label className="grid size-11 cursor-pointer place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-primary" aria-label="Đính kèm ảnh">
                           <ImageIcon className="w-4 h-4" />
                           <input
                               type="file"
@@ -133,7 +134,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                               isUploadingMedia ||
                               (!inputContent.trim() && !commentMediaUrl)
                           }
-                          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-medium cursor-pointer shadow-xs active:scale-95 transition-all"
+                          className="flex min-h-11 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-primitive-xs)] transition-colors hover:bg-primary/85 disabled:opacity-40"
                       >
                           {isCreating || isUploadingMedia ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -150,11 +151,12 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
 
           {/* 2. Comments List */}
           {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <div className="flex items-center justify-center py-6" role="status">
+                  <Loader2 className="size-5 animate-spin text-primary" />
+                  <span className="sr-only">Đang tải bình luận</span>
               </div>
           ) : comments.length === 0 ? (
-              <div className="text-center py-4 text-xs text-slate-400">
+              <div className="py-5 text-center text-sm text-muted-foreground">
                   Chưa có bình luận nào. Hãy là người đầu tiên trao đổi!
               </div>
           ) : (
@@ -342,6 +344,6 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                   )}
               </div>
           )}
-      </div>
+      </section>
   );
 };

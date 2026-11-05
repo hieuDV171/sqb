@@ -1,103 +1,106 @@
 import { Link, useLocation } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, PanelLeftClose, UserRoundCheck } from 'lucide-react';
 import { useAuthStore, type UserRole } from '@/stores/useAuthStore';
-import { ChevronLeft, ChevronRight, UserCheck } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { ROLE_NAV_ITEMS } from './navigation';
+import { ROLE_NAV_SECTIONS, isNavItemActive } from './navigation';
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  STUDENT: 'Không gian sinh viên',
+  LECTURER: 'Không gian giảng viên',
+  ADMIN: 'Trung tâm vận hành',
+};
+
 export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   const { user } = useAuthStore();
   const location = useLocation();
   const currentRole: UserRole = user?.role || 'STUDENT';
-  const navItems = ROLE_NAV_ITEMS[currentRole] || ROLE_NAV_ITEMS.STUDENT;
+  const sections = ROLE_NAV_SECTIONS[currentRole] ?? ROLE_NAV_SECTIONS.STUDENT;
 
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col sticky top-16 h-[calc(100dvh-4rem)] shrink-0 border-r border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md transition-all duration-300 z-30',
-        isCollapsed ? 'w-20' : 'w-64'
+        'sticky top-[var(--app-header-height)] z-30 hidden h-[calc(100dvh-var(--app-header-height))] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex',
+        isCollapsed ? 'w-[var(--app-sidebar-collapsed-width)]' : 'w-[var(--app-sidebar-width)]'
       )}
+      aria-label="Điều hướng chính"
     >
-      {/* Role Indicator Banner */}
-      <div className={cn('p-3.5 border-b border-slate-200/60 dark:border-slate-800/60 shrink-0', isCollapsed && 'px-2 text-center')}>
-        {!isCollapsed ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Không gian
-              </span>
-              <Badge variant="role">
-                {currentRole === 'STUDENT' ? 'Sinh viên' : currentRole === 'LECTURER' ? 'Giảng viên' : 'Quản trị viên'}
-              </Badge>
-            </div>
-          </div>
+      <div className={cn('flex min-h-20 items-center border-b border-sidebar-border px-4', isCollapsed && 'justify-center px-2')}>
+        {isCollapsed ? (
+          <span className="grid size-10 place-items-center rounded-xl bg-sidebar-accent text-sidebar-accent-foreground" title={ROLE_LABELS[currentRole]}>
+            <UserRoundCheck className="size-5" aria-hidden="true" />
+          </span>
         ) : (
-          <div className="flex justify-center" title={`Vai trò: ${currentRole}`}>
-            <UserCheck className="w-5 h-5 text-indigo-500" />
+          <div className="min-w-0">
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">Workspace</p>
+            <p className="mt-1 truncate text-sm font-semibold text-foreground">{ROLE_LABELS[currentRole]}</p>
           </div>
         )}
       </div>
 
-      {/* Main Navigation Links */}
-      <div className="flex-1 py-3 px-3 space-y-1 overflow-y-auto min-h-0">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              title={isCollapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all duration-150 group relative',
-                isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100',
-                isCollapsed && 'justify-center px-0'
-              )}
-            >
-              <Icon
-                className={cn(
-                  'w-5 h-5 shrink-0 transition-transform group-hover:scale-110 duration-200',
-                  isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-                )}
-              />
-
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label={ROLE_LABELS[currentRole]}>
+        <div className="space-y-6">
+          {sections.map((section) => (
+            <section key={section.label} aria-labelledby={isCollapsed ? undefined : `nav-${section.label}`}>
               {!isCollapsed && (
-                <div className="flex-1 flex items-center justify-between truncate">
-                  <span className="truncate">{item.label}</span>
-                  {item.badge && (
-                    <Badge variant={item.badge.variant} size="sm">
-                      {item.badge.text}
-                    </Badge>
-                  )}
-                </div>
+                <h2 id={`nav-${section.label}`} className="mb-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+                  {section.label}
+                </h2>
               )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = isNavItemActive(location.pathname, item);
 
-              {/* Collapsed Active Indicator Pill */}
-              {isCollapsed && isActive && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-600 dark:bg-indigo-400 rounded-l-full" />
-              )}
-            </Link>
-          );
-        })}
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      title={isCollapsed ? item.label : undefined}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                        active
+                          ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground'
+                          : 'text-sidebar-foreground hover:bg-secondary hover:text-foreground',
+                        isCollapsed && 'justify-center px-0'
+                      )}
+                    >
+                      <Icon className={cn('size-5 shrink-0', active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')} aria-hidden="true" />
+                      {!isCollapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                      {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-primary" aria-hidden="true" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      </nav>
+
+      <div className="border-t border-sidebar-border p-3">
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className={cn(
+            'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+            isCollapsed && 'justify-center px-0'
+          )}
+          aria-label={isCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+        >
+          {isCollapsed ? <ChevronRight className="size-5" /> : <PanelLeftClose className="size-5" />}
+          {!isCollapsed && (
+            <>
+              <span className="flex-1 text-left">Thu gọn</span>
+              <ChevronLeft className="size-4" aria-hidden="true" />
+            </>
+          )}
+        </button>
       </div>
-
-      {/* Collapse Toggle Button */}
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        className="absolute -right-3.5 top-20 w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm cursor-pointer z-40 transition-transform hover:scale-110"
-        aria-label={isCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
-      >
-        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-      </button>
     </aside>
   );
 }

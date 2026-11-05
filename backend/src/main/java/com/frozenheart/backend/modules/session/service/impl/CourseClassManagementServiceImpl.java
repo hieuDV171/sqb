@@ -465,7 +465,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                     .email(row.email().trim())
                     .passwordHash(passwordEncoder.encode(rawPassword))
                     .role(UserRole.STUDENT)
-                    .verified(true)
+                    .verified(false)
                     .active(true)
                     .createdAt(now)
                     .updatedAt(now)
@@ -513,7 +513,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                         .friendsCount(0)
                         .followersCount(0)
                         .followingCount(0)
-                        .profileCompleted(true)
+                        .profileCompleted(false)
                         .build();
                 profilesToSave.add(profile);
 

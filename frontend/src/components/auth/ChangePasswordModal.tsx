@@ -1,40 +1,48 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@base-ui/react/button';
-import { Input } from '@base-ui/react/input';
+import { useState, type FormEvent } from 'react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useModalFocusTrap } from '@/hooks/useModalFocusTrap';
 import { authService } from '@/services/authService';
-import { KeyRound, Eye, EyeOff, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
+  required?: boolean;
+  onSuccess?: () => void;
 }
 
-export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProps) {
+function getErrorMessage(error: unknown) {
+  return typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+    ? error.message
+    : 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.';
+}
+
+export function ChangePasswordModal({ isOpen, onClose, required = false, onSuccess }: ChangePasswordModalProps) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const dialogRef = useModalFocusTrap(isOpen, onClose, isLoading || required);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.SubmitEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError(null);
     setSuccess(false);
 
     if (newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự');
+      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      setError('Xác nhận mật khẩu mới không trùng khớp');
+      setError('Xác nhận mật khẩu mới không trùng khớp.');
       return;
     }
 
@@ -42,136 +50,147 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
     try {
       await authService.changePassword({ oldPassword, newPassword });
       setSuccess(true);
+      onSuccess?.();
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => {
-        setSuccess(false);
-        onClose();
-      }, 1800);
-    } catch (err: any) {
-      setError(err?.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ!');
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleClose = () => {
+    if (isLoading || required) return;
+    setError(null);
+    setSuccess(false);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <Card className="w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 rounded-2xl relative animate-in fade-in zoom-in-95 duration-200">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 transition-colors p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-          type="button"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-[2px]" role="presentation">
+      {!required && <button type="button" className="absolute inset-0" onClick={handleClose} aria-label="Đóng hộp thoại đổi mật khẩu" />}
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-password-title"
+        className="relative z-10 w-full max-w-md rounded-3xl border border-border bg-popover p-5 text-popover-foreground shadow-[var(--shadow-primitive-md)] sm:p-6"
+      >
+        {!required && (
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isLoading}
+            className="absolute right-4 top-4 grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            aria-label="Đóng"
+          >
+            <X className="size-5" />
+          </button>
+        )}
 
-        <CardHeader className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <KeyRound className="w-5 h-5" />
-            </div>
-            <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Đổi mật khẩu</CardTitle>
+        <div className="pr-12">
+          <span className="grid size-11 place-items-center rounded-2xl bg-accent text-primary">
+            <KeyRound className="size-5" aria-hidden="true" />
+          </span>
+          <h2 id="change-password-title" className="mt-4 text-xl font-bold tracking-tight">
+            {required ? 'Thiết lập mật khẩu riêng' : 'Đổi mật khẩu'}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {required
+              ? 'Tài khoản của bạn được tạo bởi nhà trường. Hãy đổi mật khẩu tạm thời trước khi tiếp tục.'
+              : 'Sử dụng ít nhất 8 ký tự và tránh dùng lại mật khẩu ở dịch vụ khác.'}
+          </p>
+        </div>
+
+        {error && (
+          <div role="alert" className="mt-5 flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/10 p-3.5 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
           </div>
-          <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
-            Cập nhật mật khẩu định kỳ để bảo vệ tài khoản của bạn
-          </CardDescription>
-        </CardHeader>
+        )}
+        {success && (
+          <div role="status" className="mt-5 flex items-start gap-3 rounded-2xl border border-success/20 bg-success-soft p-3.5 text-sm text-success">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <span>Mật khẩu đã được cập nhật. Bạn có thể đóng hộp thoại này.</span>
+          </div>
+        )}
 
-        <CardContent>
-          {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 flex items-center gap-2 rounded-xl bg-green-50 dark:bg-green-950/40 p-3 text-sm text-green-700 dark:text-green-300 border border-green-100 dark:border-green-900/50">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Đổi mật khẩu thành công!</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="oldPassword" className="text-slate-700 dark:text-slate-200 text-sm font-medium">Mật khẩu hiện tại</Label>
-              <div className="relative">
-                <Input
-                  id="oldPassword"
-                  type={showOld ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  required
-                  className="w-full pr-10 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowOld(!showOld)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                >
-                  {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="newPassword" className="text-slate-700 dark:text-slate-200 text-sm font-medium">Mật khẩu mới</Label>
-              <div className="relative">
-                <Input
-                  id="newPassword"
-                  type={showNew ? 'text' : 'password'}
-                  placeholder="Tối thiểu 8 ký tự"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  className="w-full pr-10 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                >
-                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-200 text-sm font-medium">Xác nhận mật khẩu mới</Label>
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="oldPassword">Mật khẩu hiện tại</Label>
+            <div className="relative">
               <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Nhập lại mật khẩu mới"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                id="oldPassword"
+                name="current-password"
+                type={showOldPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={oldPassword}
+                onChange={(event) => setOldPassword(event.target.value)}
+                className="pr-12"
                 required
-                className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                data-autofocus
               />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
+              <button
                 type="button"
-                onClick={onClose}
-                disabled={isLoading}
-                className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                onClick={() => setShowOldPassword((current) => !current)}
+                className="absolute right-0 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground hover:text-foreground"
+                aria-label={showOldPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'}
+                aria-pressed={showOldPassword}
               >
-                Hủy
-              </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-indigo-200 dark:shadow-none"
-              >
-                {isLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
-              </Button>
+                {showOldPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">Mật khẩu mới</Label>
+            <div className="relative">
+              <Input
+                id="newPassword"
+                name="new-password"
+                type={showNewPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="pr-12"
+                minLength={8}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((current) => !current)}
+                className="absolute right-0 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground hover:text-foreground"
+                aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
+                aria-pressed={showNewPassword}
+              >
+                {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+            <Input
+              id="confirmPassword"
+              name="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            {!required && <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>Hủy</Button>}
+            <Button type="submit" disabled={isLoading || success} aria-busy={isLoading}>
+              {isLoading ? 'Đang cập nhật…' : success ? 'Đã cập nhật' : 'Cập nhật mật khẩu'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

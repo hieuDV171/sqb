@@ -23,6 +23,7 @@ import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
 import { AdminLeaderboardsPage } from "./pages/admin/AdminLeaderboardsPage";
+import { AccountSettingsPage } from "./pages/settings/AccountSettingsPage";
 import { NotificationsPage } from "./pages/notification/NotificationsPage";
 import { SearchPage } from "./pages/search/SearchPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/gamification" element={<LeaderboardPage />} />
           <Route path="/devices" element={<DeviceManagementPage />} />
+          <Route path="/settings" element={<AccountSettingsPage />} />
           <Route path="/questions" element={<SessionsPage />} />
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/propose" element={<SessionsPage />} />

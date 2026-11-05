@@ -18,6 +18,14 @@ export const authService = {
     return await axiosClient.post<GlobalResponse<void>>('/auth/change-password', data) as unknown as GlobalResponse<void>;
   },
 
+  requestEmailVerification: async (): Promise<GlobalResponse<void>> => {
+    return await axiosClient.post<GlobalResponse<void>>('/auth/email-verification/request') as unknown as GlobalResponse<void>;
+  },
+
+  confirmEmailVerification: async (verifyCode: string): Promise<GlobalResponse<void>> => {
+    return await axiosClient.post<GlobalResponse<void>>('/auth/email-verification/confirm', { verifyCode }) as unknown as GlobalResponse<void>;
+  },
+
   refreshToken: async (): Promise<GlobalResponse<RefreshTokenResponse>> => {
     return await axiosClient.post<GlobalResponse<RefreshTokenResponse>>(
       '/auth/refresh',

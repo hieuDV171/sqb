@@ -1,0 +1,22 @@
+:root {
+  --radius: var(--radius-primitive-md);
+  --app-header-height: 4.5rem;
+  --app-mobile-nav-height: 4.75rem;
+  --app-sidebar-width: 17rem;
+  --app-sidebar-collapsed-width: 5.25rem;
+  --app-content-max-width: 100rem;
+  --card-border: var(--border);
+  --card-shadow: var(--shadow-primitive-xs);
+  --card-shadow-hover: var(--shadow-primitive-sm);
+  --card-radius: var(--radius-primitive-lg);
+  --control-height: 2.75rem;
+  --control-radius: var(--radius-primitive-md);
+  --control-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ring) 24%, transparent);
+  --motion-interactive: var(--duration-normal) ease-out;
+  --motion-layout: var(--duration-slow) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dark {
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  --card-shadow-hover: 0 14px 36px -18px rgb(0 0 0 / 0.62);
+}
