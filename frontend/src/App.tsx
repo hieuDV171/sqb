@@ -22,6 +22,7 @@ import { CourseClassDetailPage } from "./pages/lecturer/CourseClassDetailPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
+import { AdminLeaderboardsPage } from "./pages/admin/AdminLeaderboardsPage";
 import { NotificationsPage } from "./pages/notification/NotificationsPage";
 import { SearchPage } from "./pages/search/SearchPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/leaderboards" element={<AdminLeaderboardsPage />} />
           </Route>
         </Route>
 

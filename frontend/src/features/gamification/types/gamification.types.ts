@@ -49,7 +49,7 @@ export interface CheckInStatusResponse {
 }
 
 export interface RebuildLeaderboardRequest {
-  type: string;
+  type: LeaderboardPeriod;
   subjectId?: number;
 }
 

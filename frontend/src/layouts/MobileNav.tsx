@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, type UserRole } from '@/stores/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLE_NAV_ITEMS } from './Sidebar';
+import { ROLE_NAV_ITEMS } from './navigation';
 import { Badge } from '@/components/ui/badge';
 import {
   X,

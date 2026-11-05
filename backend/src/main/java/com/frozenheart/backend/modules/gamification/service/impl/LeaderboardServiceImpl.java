@@ -26,8 +26,8 @@ import java.util.Set;
 @Service
 public class LeaderboardServiceImpl implements LeaderboardService {
 
-    private final RedisTemplate<String, String> redisTemplate;
-    private final DefaultRedisScript<Double> updateScoreScript;
+    private final StringRedisTemplate redisTemplate;
+    private final DefaultRedisScript<Long> updateScoreScript;
     private final PointHistoryRepository pointHistoryRepository;
 
     private final Semester currentSemester;
@@ -48,7 +48,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     // thuần túy của Spring Data Redis
     // bằng SessionCallback
 
-    public LeaderboardServiceImpl(RedisTemplate<String, String> redisTemplate,
+    public LeaderboardServiceImpl(StringRedisTemplate redisTemplate,
             CurrentSemesterHolder currentSemesterHolder, PointHistoryRepository pointHistoryRepository) {
         this.redisTemplate = redisTemplate;
         this.pointHistoryRepository = pointHistoryRepository;
@@ -78,7 +78,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
                 return 1""";
 
-        this.updateScoreScript = new DefaultRedisScript<>(script, Double.class);
+        this.updateScoreScript = new DefaultRedisScript<>(script, Long.class);
         this.currentSemester = currentSemesterHolder.getCurrentSemester();
     }
 
@@ -113,13 +113,13 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
     @Override
     public void rebuildLeaderboard(Long subjectId, Long semesterId, String leaderboardKey) {
-
-        // Xóa trắng BXH cũ trên Redis để tránh rác
-        redisTemplate.delete(leaderboardKey);
-
         // Lấy dữ liệu đã được gom nhóm tổng sẵn từ PostgreSQL
         List<LeaderboardAggregation> dbData = pointHistoryRepository.getAggregatedPointsForRebuild(subjectId,
                 semesterId);
+
+        // Chỉ thay dữ liệu Redis sau khi truy vấn nguồn sự thật thành công. Nếu DB
+        // lỗi, leaderboard hiện tại vẫn được giữ nguyên thay vì bị xóa trắng.
+        redisTemplate.delete(leaderboardKey);
 
         if (dbData.isEmpty())
             return;

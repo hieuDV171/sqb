@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.frozenheart.backend.core.config.serializer.MsgPackRedisSerializer;
@@ -35,6 +36,16 @@ public class RedisConfig implements CachingConfigurer {
         template.afterPropertiesSet();
 
         return template;
+    }
+
+    /**
+     * Template chỉ dành cho dữ liệu Redis có contract dạng chuỗi thuần như
+     * leaderboard ZSET và Lua arguments. Không dùng MsgPack ở đây vì Redis Lua
+     * cần đọc trực tiếp member/score bằng {@code tonumber(ARGV[n])}.
+     */
+    @Bean
+    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        return new StringRedisTemplate(connectionFactory);
     }
 
     @Override

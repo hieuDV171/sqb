@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +31,7 @@ public class AdminLeaderboardController {
     })
     @PostMapping("/rebuild")
     public ResponseEntity<GlobalResponse<Void>> rebuildLeaderboard(
-            @RequestBody RebuildLeaderboardRequest request
+            @Valid @RequestBody RebuildLeaderboardRequest request
             ) {
         leaderboardService.rebuildLeaderboard(request.type(), request.subjectId());
 

@@ -39,6 +39,18 @@ const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue = [];
 };
 
+const requireAccessToken = (
+    response: GlobalResponse<{ accessToken: string }>,
+): string => {
+    const accessToken = response.data?.accessToken;
+
+    if (!accessToken) {
+        throw new Error("Refresh response does not contain an access token");
+    }
+
+    return accessToken;
+};
+
 // Request Interceptor: Tự động đính kèm Access Token và chuyển camelCase -> snake_case bằng humps
 axiosClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
@@ -100,12 +112,7 @@ axiosClient.interceptors.response.use(
                 const formattedRefreshData = humps.camelizeKeys(refreshResponse.data) as GlobalResponse<{
                     accessToken: string;
                 }>;
-                const newTokens = formattedRefreshData.data;
-                const newAccessToken = newTokens.accessToken;
-
-                if (!newAccessToken) {
-                    throw new Error("Refresh response does not contain an access token");
-                }
+                const newAccessToken = requireAccessToken(formattedRefreshData);
 
                 // Chỉ cập nhật Access Token; Refresh Token web ở trong HttpOnly cookie.
                 useAuthStore

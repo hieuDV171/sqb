@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,7 +104,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final CounterMetricsService counterMetricsService;
     private final AnonymizerUtil anonymizerUtil;
     private final CurrentSemesterHolder currentSemesterHolder;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final LeaderboardService leaderboardService;
     private final SemesterRepository semesterRepository;
     private final LocalAiClient localAiClient;
