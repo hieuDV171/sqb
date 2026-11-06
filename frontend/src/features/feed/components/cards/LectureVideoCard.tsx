@@ -62,12 +62,12 @@ export const LectureVideoCard: React.FC<LectureVideoCardProps> = ({ item }) => {
 
       {/* Video Content & Player */}
       <div className="mb-3">
-        {content.subject_name && (
+        {content.subjectName && (
           <div className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-semibold mb-1.5">
             <BookOpen className="w-3.5 h-3.5" />
             <span>
-              {content.subject_code ? `[${content.subject_code}] ` : ''}
-              {content.subject_name}
+              {content.subjectCode ? `[${content.subjectCode}] ` : ''}
+              {content.subjectName}
             </span>
           </div>
         )}
@@ -84,9 +84,9 @@ export const LectureVideoCard: React.FC<LectureVideoCardProps> = ({ item }) => {
 
         {/* Video Player */}
         <div className="relative aspect-video rounded-2xl overflow-hidden bg-black flex items-center justify-center group">
-          {content.media_url ? (
+          {content.mediaUrl ? (
             <video
-              src={content.media_url}
+              src={content.mediaUrl}
               controls={isPlaying}
               autoPlay={isPlaying}
               className="w-full h-full object-contain"
@@ -95,7 +95,7 @@ export const LectureVideoCard: React.FC<LectureVideoCardProps> = ({ item }) => {
             <div className="text-white text-xs">Không có nguồn video</div>
           )}
 
-          {!isPlaying && content.media_url && (
+          {!isPlaying && content.mediaUrl && (
             <button
               type="button"
               onClick={() => setIsPlaying(true)}

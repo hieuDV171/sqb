@@ -59,7 +59,7 @@ export function EarnedBadgeCard({ item }: EarnedBadgeCardProps) {
             Danh hiệu cao quý
           </span>
           <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-slate-100">
-            {item.content.badge_name || item.content.title || 'Chiến Thần Đề Thi HUST'}
+            {item.content.badgeName || item.content.title || 'Chiến Thần Đề Thi HUST'}
           </h3>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
             {item.content.description ||

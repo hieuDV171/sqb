@@ -1,23 +1,15 @@
-import React, { useState, useRef } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { userService } from '@/services/userService';
-import { mediaService } from '@/services/mediaService';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { toast } from '@/stores/useToastStore';
-import type { Gender, ProfileResponse, UpdateProfileRequest } from '@/types/user.types';
-import {
-  X,
-  Camera,
-  Loader2,
-  Check,
-  User,
-  Calendar,
-  Globe,
-  Sparkles,
-} from 'lucide-react';
+import { Camera, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { mediaService } from '@/services/mediaService';
+import { userService } from '@/services/userService';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { toast } from '@/stores/useToastStore';
+import type { Gender, ProfileResponse, UpdateProfileRequest } from '@/types/user.types';
 import { AvatarWithFrame } from './AvatarWithFrame';
 
 interface EditProfileModalProps {
@@ -26,352 +18,172 @@ interface EditProfileModalProps {
   profile: ProfileResponse;
 }
 
+const fieldClass = 'w-full rounded-xl border border-input bg-background px-3 py-2 text-sm';
+
 export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalProps) {
   const queryClient = useQueryClient();
-  const { updateUser } = useAuthStore();
-
-  const [fullName, setFullName] = useState(profile.fullName || '');
-  const [bio, setBio] = useState(profile.bio || '');
-  const [gender, setGender] = useState<Gender>(profile.gender || 'OTHER');
-  const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth || '');
-  const [timezone, setTimezone] = useState(profile.timezone || 'Asia/Ho_Chi_Minh');
-
-  // Preview & Upload states
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatarUrl || null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(profile.coverUrl || null);
-  const [avatarUrlToSubmit, setAvatarUrlToSubmit] = useState<string | undefined>(undefined);
-  const [coverUrlToSubmit, setCoverUrlToSubmit] = useState<string | undefined>(undefined);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
-
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
-
-  // Handle avatar upload via Presigned URL
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Vui lòng chọn tệp định dạng hình ảnh (PNG, JPG, WEBP)');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Kích thước ảnh đại diện không được vượt quá 10MB');
-      return;
-    }
-
-    try {
-      setIsUploadingAvatar(true);
-      // Local preview immediately
-      const localUrl = URL.createObjectURL(file);
-      setAvatarPreview(localUrl);
-
-      // Upload via Presigned URL (MinIO S3) with fallback
-      const uploadRes = await mediaService.uploadViaPresign(file, 'AVATAR');
-      setAvatarUrlToSubmit(uploadRes.publicUrl);
-      toast.success('Tải ảnh đại diện lên thành công');
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể tải ảnh đại diện lên máy chủ');
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
-  // Handle cover upload via Presigned URL
-  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Vui lòng chọn tệp định dạng hình ảnh (PNG, JPG, WEBP)');
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('Kích thước ảnh bìa không được vượt quá 20MB');
-      return;
-    }
-
-    try {
-      setIsUploadingCover(true);
-      const localUrl = URL.createObjectURL(file);
-      setCoverPreview(localUrl);
-
-      // Upload via Presigned URL (MinIO S3) with fallback
-      const uploadRes = await mediaService.uploadViaPresign(file, 'COVER');
-      setCoverUrlToSubmit(uploadRes.publicUrl);
-      toast.success('Tải ảnh bìa lên thành công');
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể tải ảnh bìa lên máy chủ');
-    } finally {
-      setIsUploadingCover(false);
-    }
-  };
+  const updateUser = useAuthStore((state) => state.updateUser);
+  const [fullName, setFullName] = useState(profile.fullName ?? '');
+  const [bio, setBio] = useState(profile.bio ?? '');
+  const [gender, setGender] = useState<Gender>(profile.gender ?? 'OTHER');
+  const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth ?? '');
+  const [timezone, setTimezone] = useState(profile.timezone ?? 'Asia/Ho_Chi_Minh');
+  const [avatarUrl, setAvatarUrl] = useState<string>();
+  const [coverUrl, setCoverUrl] = useState<string>();
+  const [uploading, setUploading] = useState<'AVATAR' | 'COVER'>();
+  const [error, setError] = useState<string>();
+  const [nameInvalid, setNameInvalid] = useState(false);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const coverInput = useRef<HTMLInputElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: UpdateProfileRequest) => {
-      const res = await userService.updateMyProfile(payload);
-      return res.data;
-    },
+    mutationFn: async (payload: UpdateProfileRequest) => (await userService.updateMyProfile(payload)).data,
     onSuccess: (updated) => {
-      toast.success('Cập nhật hồ sơ thành công!');
-      // Update global auth store
       updateUser({
         username: updated.fullName || updated.email,
-        avatarUrl: updated.avatarUrl || undefined,
-        coverUrl: updated.coverUrl || undefined,
-        frameUrl: updated.frameUrl || undefined,
+        avatarUrl: updated.avatarUrl ?? undefined,
+        coverUrl: updated.coverUrl ?? undefined,
+        frameUrl: updated.frameUrl ?? undefined,
         profileCompleted: updated.profileCompleted,
       });
-
-      // Invalidate queries so Profile & Header re-render fresh
-      queryClient.invalidateQueries({ queryKey: ['userProfile', 'me'] });
-      queryClient.invalidateQueries({ queryKey: ['userProfile', profile.userId] });
+      queryClient.setQueryData(['userProfile', 'me'], updated);
+      void queryClient.invalidateQueries({ queryKey: ['userProfile', profile.userId] });
+      toast.success('Đã cập nhật hồ sơ');
       onClose();
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Lỗi khi lưu thông tin hồ sơ. Vui lòng thử lại!');
-    },
+    onError: (failure) => setError(readError(failure, 'Không thể lưu hồ sơ. Hãy thử lại.')),
   });
+  const busy = Boolean(uploading) || updateMutation.isPending;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName.trim()) {
-      toast.error('Họ và tên không được để trống');
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>, purpose: 'AVATAR' | 'COVER') {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setError(undefined);
+    const limit = purpose === 'AVATAR' ? 10 : 20;
+    if (!file.type.startsWith('image/') || file.size > limit * 1024 * 1024) {
+      setError(`Hãy chọn tệp hình ảnh tối đa ${limit} MB.`);
       return;
     }
 
-    const payload: UpdateProfileRequest = {
-      fullName: fullName.trim(),
+    setUploading(purpose);
+    try {
+      const uploaded = await mediaService.uploadViaPresign(file, purpose);
+      if (purpose === 'AVATAR') setAvatarUrl(uploaded.publicUrl);
+      else setCoverUrl(uploaded.publicUrl);
+    } catch (failure) {
+      setError(readError(failure, 'Không thể tải ảnh lên. Hãy thử lại.'));
+    } finally {
+      setUploading(undefined);
+    }
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setError(undefined);
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
+      setNameInvalid(true);
+      nameInput.current?.focus();
+      return;
+    }
+    updateMutation.mutate({
+      fullName: trimmedName,
       bio: bio.trim(),
       gender,
       dateOfBirth: dateOfBirth || undefined,
-      timezone,
-      avatarUrl: avatarUrlToSubmit !== undefined ? avatarUrlToSubmit : profile.avatarUrl || undefined,
-      coverUrl: coverUrlToSubmit !== undefined ? coverUrlToSubmit : profile.coverUrl || undefined,
-    };
+      timezone: timezone.trim(),
+      avatarUrl,
+      coverUrl,
+    });
+  }
 
-    updateMutation.mutate(payload);
-  };
-
-  if (!isOpen) return null;
+  const cover = coverUrl ?? profile.coverUrl;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in-50 duration-200">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
-            </div>
+    <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/45 dark:bg-black/65" />
+        <Dialog.Popup initialFocus={nameInput}
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-xl">
+          <div className="flex items-start justify-between gap-3 border-b border-border p-4 sm:px-6">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Chỉnh sửa hồ sơ cá nhân</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Cập nhật thông tin hiển thị trên SQB Network</p>
+              <Dialog.Title className="text-xl font-semibold">Chỉnh sửa hồ sơ</Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-muted-foreground">Cập nhật ảnh và thông tin hiển thị trên SQB.</Dialog.Description>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-6 flex-1">
-          {/* Cover & Avatar Upload Preview */}
-          <div className="relative">
-            {/* Cover Photo */}
-            <div className="relative h-36 sm:h-44 w-full rounded-2xl overflow-hidden bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-inner group">
-              {coverPreview ? (
-                <img src={coverPreview} alt="Cover Preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/70 text-sm font-medium">
-                  Chưa có ảnh bìa
-                </div>
-              )}
-
-              {/* Cover overlay button */}
-              <button
-                type="button"
-                onClick={() => coverInputRef.current?.click()}
-                disabled={isUploadingCover}
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs sm:text-sm cursor-pointer backdrop-blur-2xs"
-              >
-                {isUploadingCover ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <Camera className="w-5 h-5" />
-                    <span>Thay đổi ảnh bìa</span>
-                  </>
-                )}
-              </button>
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleCoverChange}
-              />
-            </div>
-
-            {/* Avatar Photo with Frame */}
-            <div className="absolute -bottom-8 left-6 flex items-end gap-3">
-              <div className="relative group">
-                <AvatarWithFrame
-                  avatarUrl={avatarPreview}
-                  frameUrl={profile.frameUrl}
-                  name={fullName || profile.fullName}
-                  size="xl"
-                  className="shadow-xl"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                  className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer z-20"
-                >
-                  {isUploadingAvatar ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Camera className="w-5 h-5" />
-                  )}
-                </button>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
-              </div>
-
-              <div className="mb-2 hidden sm:block">
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Ảnh đại diện & Khung</p>
-                <p className="text-[10px] text-slate-400">Click vào ảnh để đổi avatar</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="fullName" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Họ và tên hiển thị <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Nhập họ và tên của bạn"
-                  className="pl-10"
-                  maxLength={100}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Bio */}
-            <div className="sm:col-span-2 space-y-1.5">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="bio" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Tiểu sử (Bio)
-                </Label>
-                <span className="text-[10px] text-slate-400">{bio.length}/500</span>
-              </div>
-              <textarea
-                id="bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={3}
-                maxLength={500}
-                placeholder="Chia sẻ đôi điều về bạn, sở thích hoặc định hướng học tập..."
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 outline-none text-slate-900 dark:text-slate-100 transition-all resize-none placeholder:text-slate-400"
-              />
-            </div>
-
-            {/* Gender */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Giới tính</Label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value as Gender)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 outline-none text-slate-900 dark:text-slate-100 transition-all"
-              >
-                <option value="MALE">Nam</option>
-                <option value="FEMALE">Nữ</option>
-                <option value="OTHER">Khác / Không công khai</option>
-              </select>
-            </div>
-
-            {/* Date of Birth */}
-            <div className="space-y-1.5">
-              <Label htmlFor="dateOfBirth" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Ngày sinh
-              </Label>
-              <div className="relative">
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  id="dateOfBirth"
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Timezone */}
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="timezone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Múi giờ hoạt động
-              </Label>
-              <div className="relative">
-                <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  id="timezone"
-                  type="text"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  placeholder="Asia/Ho_Chi_Minh"
-                  className="pl-10"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
-            <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
-              Hủy bỏ
-            </Button>
-            <Button
-              type="submit"
-              disabled={updateMutation.isPending || isUploadingAvatar || isUploadingCover}
-              className="gap-2 min-w-[120px]"
-            >
-              {updateMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Đang lưu...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Lưu thay đổi</span>
-                </>
-              )}
+            <Button size="icon" variant="ghost" aria-label="Đóng chỉnh sửa hồ sơ" disabled={busy} onClick={onClose}>
+              <X aria-hidden="true" />
             </Button>
           </div>
-        </form>
-      </div>
-    </div>
+
+          <form onSubmit={submit} aria-busy={busy} className="space-y-5 overflow-y-auto p-4 sm:p-6">
+            <div className="relative h-28 overflow-hidden rounded-xl bg-accent sm:h-36">
+              {cover && <img src={cover} alt="Xem trước ảnh bìa" className="size-full object-cover" />}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <AvatarWithFrame avatarUrl={avatarUrl ?? profile.avatarUrl} frameUrl={profile.frameUrl} name={fullName} size="lg" />
+              <Button variant="outline" type="button" disabled={busy} onClick={() => avatarInput.current?.click()}>
+                <Camera aria-hidden="true" /> {uploading === 'AVATAR' ? 'Đang tải ảnh…' : 'Đổi ảnh đại diện'}
+              </Button>
+              <Button variant="outline" type="button" disabled={busy} onClick={() => coverInput.current?.click()}>
+                <Camera aria-hidden="true" /> {uploading === 'COVER' ? 'Đang tải ảnh…' : 'Đổi ảnh bìa'}
+              </Button>
+              <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(event) => void uploadImage(event, 'AVATAR')} />
+              <input ref={coverInput} type="file" accept="image/*" hidden onChange={(event) => void uploadImage(event, 'COVER')} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="profile-full-name">Họ và tên hiển thị</Label>
+              <Input id="profile-full-name" ref={nameInput} value={fullName} maxLength={100} required
+                aria-invalid={nameInvalid} aria-describedby={nameInvalid ? 'profile-name-error' : undefined}
+                onChange={(event) => { setFullName(event.target.value); setNameInvalid(false); }} />
+              {nameInvalid && <p id="profile-name-error" role="alert" className="text-sm text-destructive">Hãy nhập họ và tên.</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-bio">Giới thiệu</Label>
+              <textarea id="profile-bio" rows={3} maxLength={500} value={bio} aria-describedby="profile-bio-limit"
+                onChange={(event) => setBio(event.target.value)} className={fieldClass} />
+              <p id="profile-bio-limit" className="text-sm text-muted-foreground">{bio.length}/500 ký tự</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="profile-gender">Giới tính</Label>
+                <select id="profile-gender" value={gender} onChange={(event) => setGender(event.target.value as Gender)}
+                  className={`${fieldClass} min-h-11`}>
+                  <option value="MALE">Nam</option>
+                  <option value="FEMALE">Nữ</option>
+                  <option value="OTHER">Khác / Không công khai</option>
+                </select>
+              </div>
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="profile-birth-date">Ngày sinh</Label>
+                <Input id="profile-birth-date" type="date" value={dateOfBirth}
+                  onChange={(event) => setDateOfBirth(event.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-timezone">Múi giờ hoạt động</Label>
+              <Input id="profile-timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+            </div>
+            {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Hủy</Button>
+              <Button type="submit" disabled={busy}>
+                {updateMutation.isPending && <Loader2 className="motion-safe:animate-spin" aria-hidden="true" />}
+                {updateMutation.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
+}
+
+function readError(error: unknown, fallback: string) {
+  return typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+    ? error.message : fallback;
 }

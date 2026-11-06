@@ -63,10 +63,10 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
       {/* Badge Showcase Box */}
       <div className="flex items-center gap-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xs rounded-2xl p-4 border border-amber-500/20 dark:border-amber-900/50 mb-3.5">
         <div className="w-16 h-16 shrink-0 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/20 text-3xl">
-          {content.badge_icon_url ? (
+          {content.badgeIconUrl ? (
             <img
-              src={content.badge_icon_url}
-              alt={content.badge_name || 'Huy hiệu'}
+              src={content.badgeIconUrl}
+              alt={content.badgeName || 'Huy hiệu'}
               className="w-12 h-12 object-contain"
             />
           ) : (
@@ -79,7 +79,7 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
             Huy hiệu vinh danh
           </span>
           <h4 className="font-bold text-slate-900 dark:text-white text-base">
-            {content.badge_name || 'Chiến binh SoICT'}
+            {content.badgeName || 'Chiến binh SoICT'}
           </h4>
           <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
             {content.description || 'Đã xuất sắc hoàn thành chuỗi đóng góp câu hỏi chất lượng cao.'}

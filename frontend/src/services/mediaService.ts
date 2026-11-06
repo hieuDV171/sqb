@@ -121,12 +121,12 @@ export const mediaService = {
       };
 
       // Bước 1: Lấy Presigned URL từ Backend Spring Boot
-      const presignRes = await axiosClient.post<GlobalResponse<PresignMediaResponse>>(
+      const presignRes = await axiosClient.post<GlobalResponse<PresignMediaResponse>, GlobalResponse<PresignMediaResponse>>(
         '/medias/presign',
         presignPayload
       );
 
-      const presignedItem = presignRes?.data?.data?.presignedUrls?.[0];
+      const presignedItem = presignRes.data?.presignedUrls?.[0];
       if (!presignedItem || !presignedItem.uploadUrl) {
         throw new Error('Không nhận được Presigned Upload URL từ máy chủ');
       }
@@ -143,8 +143,10 @@ export const mediaService = {
         publicUrl: presignedItem.publicUrl,
         expiresInSeconds: presignedItem.expiresInSeconds,
       };
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Tải tệp media lên S3/R2 thất bại');
+    } catch (error) {
+      const message = typeof error === 'object' && error !== null &&
+        'message' in error && typeof error.message === 'string' ? error.message : undefined;
+      throw new Error(message || 'Tải tệp media lên S3/R2 thất bại', { cause: error });
     }
   },
 

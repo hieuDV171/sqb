@@ -218,12 +218,12 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
         {/* Top-Right Menu & Subject Tag */}
         <div className="flex items-center gap-2 relative">
-          {content.subject_name && (
+          {content.subjectName && (
             <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-blue-200 dark:border-blue-900">
               <Tag className="w-3 h-3 text-blue-500" />
               <span>
-                {content.subject_code ? `[${content.subject_code}] ` : ''}
-                {content.subject_name}
+                {content.subjectCode ? `[${content.subjectCode}] ` : ''}
+                {content.subjectName}
               </span>
             </div>
           )}
@@ -301,12 +301,12 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       </div>
 
       {/* Mobile Subject Tag */}
-      {content.subject_name && (
+      {content.subjectName && (
         <div className="sm:hidden flex items-center gap-1 mb-2.5 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-blue-200 dark:border-blue-900 w-fit">
           <Tag className="w-3 h-3 text-blue-500" />
           <span>
-            {content.subject_code ? `[${content.subject_code}] ` : ''}
-            {content.subject_name}
+            {content.subjectCode ? `[${content.subjectCode}] ` : ''}
+            {content.subjectName}
           </span>
         </div>
       )}

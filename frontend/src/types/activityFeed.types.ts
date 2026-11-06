@@ -10,11 +10,11 @@ export type ActionType =
 export interface ActivityFeedContent {
   title?: string;
   description?: string;
-  media_url?: string;
-  badge_name?: string;
+  mediaUrl?: string;
+  badgeName?: string;
   cosmetic_name?: string;
-  subject_code?: string;
-  subject_name?: string;
+  subjectCode?: string;
+  subjectName?: string;
   // Bổ sung cho tương tác nếu là post
   visibility?: 'PUBLIC' | 'FRIENDS' | 'ONLY_ME';
   duration?: string;

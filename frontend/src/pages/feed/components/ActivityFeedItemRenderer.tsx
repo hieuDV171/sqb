@@ -46,13 +46,13 @@ export function ActivityFeedItemRenderer({
         createdAt: item.createdAt,
         lecturerNote: item.content.lecturerNote,
         notedLecturer: item.content.notedLecturer,
-        subjectCode: item.content.subject_code,
-        subjectName: item.content.subject_name,
-        mediaUrls: item.content.media_url
+        subjectCode: item.content.subjectCode,
+        subjectName: item.content.subjectName,
+        mediaUrls: item.content.mediaUrl
           ? [
               {
                 objectKey: 'media/post.jpg',
-                url: item.content.media_url,
+                url: item.content.mediaUrl,
                 mediaType: 'image/jpeg',
               },
             ]

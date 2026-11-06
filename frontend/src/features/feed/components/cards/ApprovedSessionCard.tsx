@@ -55,8 +55,8 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
         <div className="flex items-center gap-2 mb-1.5">
           <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span className="font-semibold text-xs text-emerald-700 dark:text-emerald-300">
-            {content.subject_code ? `[${content.subject_code}] ` : ''}
-            {content.subject_name || 'Học phần Bách Khoa'}
+            {content.subjectCode ? `[${content.subjectCode}] ` : ''}
+            {content.subjectName || 'Học phần Bách Khoa'}
           </span>
         </div>
 

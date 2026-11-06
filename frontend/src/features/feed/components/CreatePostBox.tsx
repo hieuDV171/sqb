@@ -17,7 +17,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { axiosClient } from '@/api/axiosClient';
+import { courseClassService } from '@/features/course-class/services/courseClassService';
 import { PostVisibilityDropdown } from './PostVisibilityDropdown';
 import { SubjectSelectDropdown } from './SubjectSelectDropdown';
 
@@ -29,7 +29,8 @@ export const CreatePostBox: React.FC = () => {
 
   const [content, setContent] = useState('');
   const [visibility, setVisibility] = useState<PostVisibility>('PUBLIC');
-  const [postType, setPostType] = useState<PostType>('SOCIAL_POST');
+  const [draftPostType, setPostType] = useState<PostType>('SOCIAL_POST');
+  const postType = isLecturerOrAdmin ? draftPostType : 'SOCIAL_POST';
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
   const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
@@ -52,10 +53,10 @@ export const CreatePostBox: React.FC = () => {
 
           // 2. Nếu là Giảng viên, lấy từ danh sách lớp học phần giảng dạy
           if (user?.role === 'LECTURER') {
-            const classRes = await axiosClient.get<any>('/lecturer/course-classes/my-classes');
-            if (classRes?.data?.data && Array.isArray(classRes.data.data)) {
+            const classRes = await courseClassService.getMyClasses(false);
+            if (Array.isArray(classRes.data)) {
               const uniqueMap = new Map<number, SubjectResponse>();
-              classRes.data.data.forEach((c: any) => {
+              classRes.data.forEach((c) => {
                 if (c.subjectId && !uniqueMap.has(c.subjectId)) {
                   uniqueMap.set(c.subjectId, {
                     subjectId: c.subjectId,
@@ -73,12 +74,8 @@ export const CreatePostBox: React.FC = () => {
 
           // 3. Nếu là Admin, lấy tất cả môn học trong hệ thống
           if (user?.role === 'ADMIN') {
-            const adminRes = await axiosClient.get<any>('/subjects');
-            if (adminRes?.data?.data && Array.isArray(adminRes.data.data)) {
-              setSubjects(adminRes.data.data);
-            } else if (adminRes?.data && Array.isArray(adminRes.data)) {
-              setSubjects(adminRes.data);
-            }
+            const adminRes = await sessionService.getAllSubjects();
+            setSubjects(adminRes.data ?? []);
           }
         } catch (err) {
           console.warn('Không thể tải danh sách môn học:', err);
@@ -88,20 +85,6 @@ export const CreatePostBox: React.FC = () => {
       loadSubjects();
     }
   }, [isLecturerOrAdmin, user?.role]);
-
-  // Sinh viên không bao giờ được chọn LEARNING_VIDEO
-  useEffect(() => {
-    if (!isLecturerOrAdmin && postType !== 'SOCIAL_POST') {
-      setPostType('SOCIAL_POST');
-    }
-  }, [isLecturerOrAdmin, postType]);
-
-  // Video bài giảng luôn luôn có visibility là PUBLIC
-  useEffect(() => {
-    if (postType === 'LEARNING_VIDEO') {
-      setVisibility('PUBLIC');
-    }
-  }, [postType]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, forceVideo = false) => {
     const files = e.target.files;
@@ -124,8 +107,8 @@ export const CreatePostBox: React.FC = () => {
 
       const uploaded = await Promise.all(uploadPromises);
       setMediaList((prev) => [...prev, ...uploaded]);
-    } catch (err: any) {
-      toast.error(err?.message || 'Lỗi khi tải tệp lên');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Lỗi khi tải tệp lên');
     } finally {
       setIsUploadingMedia(false);
       if (e.target) {

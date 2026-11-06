@@ -10,12 +10,12 @@ export type ActionType =
 export interface ActivityFeedContent {
   title?: string;
   description?: string;
-  media_url?: string;
-  badge_name?: string;
-  badge_icon_url?: string;
-  cosmetic_name?: string;
-  subject_code?: string;
-  subject_name?: string;
+  mediaUrl?: string;
+  badgeName?: string;
+  badgeIconUrl?: string;
+  cosmeticName?: string;
+  subjectCode?: string;
+  subjectName?: string;
   visibility?: PostVisibility;
   duration?: string;
   reactCount?: number;

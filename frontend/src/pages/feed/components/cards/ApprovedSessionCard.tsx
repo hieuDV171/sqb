@@ -51,7 +51,7 @@ export function ApprovedSessionCard({ item }: ApprovedSessionCardProps) {
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              {item.content.subject_code} • {item.content.subject_name || 'Môn học chuyên ngành'}
+              {item.content.subjectCode} • {item.content.subjectName || 'Môn học chuyên ngành'}
             </span>
           </div>
 

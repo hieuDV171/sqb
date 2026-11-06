@@ -46,12 +46,12 @@ export function LectureVideoCard({ item }: LectureVideoCardProps) {
 
             <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 mt-0.5">
               <span>{item.createdAt}</span>
-              {item.content.subject_code && (
+              {item.content.subjectCode && (
                 <>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md">
                     <BookOpen className="w-3 h-3" />
-                    {item.content.subject_code} • {item.content.subject_name}
+                    {item.content.subjectCode} • {item.content.subjectName}
                   </span>
                 </>
               )}
@@ -72,9 +72,9 @@ export function LectureVideoCard({ item }: LectureVideoCardProps) {
 
       {/* Video Player Mockup: Play button is centered */}
       <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-950 flex items-center justify-center group shadow-md">
-        {item.content.media_url ? (
+        {item.content.mediaUrl ? (
           <img
-            src={item.content.media_url}
+            src={item.content.mediaUrl}
             alt="Video Thumbnail"
             className="absolute inset-0 w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-300"
           />

@@ -34,6 +34,7 @@ export function FeedPage() {
     items,
     isLoading,
     isError,
+    isFetchNextPageError,
     refetch,
     hasNextPage,
     fetchNextPage,
@@ -53,7 +54,7 @@ export function FeedPage() {
           }))
         );
       }
-    });
+    }).catch(() => setSubjects([]));
   }, []);
 
   const handleRefreshAll = async () => {
@@ -65,7 +66,7 @@ export function FeedPage() {
   const displayedItems = selectedSubjectId
     ? items.filter((item) => {
         const selectedCode = subjects.find((s) => s.id === selectedSubjectId)?.code;
-        return item.content.subject_code === selectedCode;
+        return item.content.subjectCode === selectedCode;
       })
     : items;
 
@@ -106,7 +107,7 @@ export function FeedPage() {
                 <FeedCardSkeleton />
                 <FeedCardSkeleton />
               </div>
-            ) : isError ? (
+            ) : isError && !isFetchNextPageError ? (
               <ErrorState
                 title="Không thể tải dòng hoạt động"
                 message="Đã có lỗi xảy ra khi đồng bộ bảng tin từ máy chủ. Vui lòng thử lại."
@@ -117,7 +118,9 @@ export function FeedPage() {
                 icon={MessageSquarePlus}
                 title="Chưa có hoạt động nào"
                 description={
-                  selectedSubjectId
+                  hasNextPage
+                    ? 'Chưa có hoạt động phù hợp trong các mục đã tải. Bạn có thể xem thêm hoạt động cũ hơn.'
+                    : selectedSubjectId
                     ? 'Chưa có hoạt động hoặc bài viết nào cho môn học này.'
                     : 'Bảng tin hiện chưa có bài viết mới. Hãy là người đầu tiên chia sẻ câu hỏi hoặc tài liệu!'
                 }
@@ -130,26 +133,16 @@ export function FeedPage() {
                   <ActivityFeedRenderer key={item.feedId} item={item} />
                 ))}
 
-                {/* Infinite Scroll / Load More Action */}
-                {hasNextPage && (
-                  <div className="flex justify-center pt-2 pb-6">
-                    <button
-                      type="button"
-                      onClick={() => fetchNextPage()}
-                      disabled={isFetchingNextPage}
-                      className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-[var(--card-shadow)] transition-colors hover:border-primary/30 hover:text-primary disabled:opacity-50"
-                    >
-                      {isFetchingNextPage ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                          <span>Đang tải các hoạt động cũ hơn...</span>
-                        </>
-                      ) : (
-                        <span>Xem thêm hoạt động cũ hơn</span>
-                      )}
-                    </button>
-                  </div>
-                )}
+              </div>
+            )}
+            {hasNextPage && (!isError || isFetchNextPageError) && (
+              <div className="grid justify-items-center gap-2 py-4">
+                {isFetchNextPageError && <p role="alert" className="text-sm text-destructive">Không thể tải thêm hoạt động.</p>}
+                <button type="button" onClick={() => void fetchNextPage()} disabled={isFetchingNextPage}
+                  className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:text-primary disabled:opacity-50">
+                  {isFetchingNextPage && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
+                  {isFetchingNextPage ? 'Đang tải…' : isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm hoạt động cũ hơn'}
+                </button>
               </div>
             )}
           </PullToRefreshFeed>

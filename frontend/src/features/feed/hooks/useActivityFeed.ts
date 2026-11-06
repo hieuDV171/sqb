@@ -6,7 +6,7 @@ export type FeedFilter = 'ALL' | 'POSTS' | 'SESSIONS' | 'ACHIEVEMENTS' | 'VIDEOS
 
 export function useActivityFeed(filter: FeedFilter = 'ALL') {
   const query = useInfiniteQuery({
-    queryKey: ['activity-feeds', filter],
+    queryKey: ['activity-feeds'],
     queryFn: async ({ pageParam }) => {
       const response = await feedService.getActivityFeeds(pageParam as number | undefined, 20);
       return response.data;
