@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
@@ -61,10 +62,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/auth/admin/**").hasRole("ADMIN")
                         .requestMatchers("/auth/login", "/auth/refresh").permitAll()
-                        .requestMatchers("/auth/**").authenticated()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/devices/fid/unregister").permitAll()
                         .requestMatchers("/ws/**").permitAll()
@@ -73,9 +71,24 @@ public class SecurityConfig {
                         // Chỉ health/info được expose trong application.yaml; không còn exporter monitoring.
                         .requestMatchers("/actuator/**").permitAll()
 
+                        .requestMatchers(
+                                "/auth/email-verification/request",
+                                "/auth/email-verification/confirm",
+                                "/auth/change-password",
+                                "/auth/logout"
+                        ).authenticated()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/auth/admin/**").hasRole("ADMIN")
                         .requestMatchers("/lecturer/**").hasAnyRole("LECTURER", "ADMIN")
 
-                        .anyRequest().authenticated()
+                        .anyRequest().access((authentication, _) -> {
+                            var current = authentication.get();
+                            boolean onboarding = current.getAuthorities().stream()
+                                    .anyMatch(authority -> "ROLE_ONBOARDING".equals(authority.getAuthority()));
+                            boolean anonymous = current.getAuthorities().stream()
+                                    .anyMatch(authority -> "ROLE_ANONYMOUS".equals(authority.getAuthority()));
+                            return new AuthorizationDecision(current.isAuthenticated() && !anonymous && !onboarding);
+                        })
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

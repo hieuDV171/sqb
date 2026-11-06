@@ -56,6 +56,8 @@ import com.frozenheart.backend.core.entity.user.UserPushSetting;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.security.JwtService;
+import com.frozenheart.backend.core.security.AccountState;
+import com.frozenheart.backend.core.security.TokenType;
 import com.frozenheart.backend.core.util.CookieUtils;
 import com.frozenheart.backend.core.util.MetricService;
 
@@ -86,6 +88,9 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String OTP_PREFIX = "otp:";
     private static final String RESEND_LOCK_PREFIX = "resend_lock:";
+    private static final String OTP_ATTEMPT_PREFIX = "otp_attempt:";
+    private static final Duration OTP_TTL = Duration.ofMinutes(2);
+    private static final int OTP_MAX_ATTEMPTS = 5;
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
@@ -118,8 +123,12 @@ public class AuthServiceImpl implements AuthService {
         saveOrUpdateUserDevice(user, request);
 
         AuthResponse authResponse = buildAuthResponse(request.deviceId(), user, userProfile);
+        if (authResponse.tokenType() == TokenType.ONBOARDING) {
+            log.info("[AuthService] Issued restricted onboarding session for userId={} state={}",
+                    userId, authResponse.accountState());
+        }
 
-        if (request.platform() == DevicePlatform.WEB) {
+        if (request.platform() == DevicePlatform.WEB && authResponse.tokenType() == TokenType.ACCESS) {
             cookieUtils.addHttpOnlyCookie(
                     "refreshToken",
                     authResponse.refreshToken(),
@@ -136,7 +145,13 @@ public class AuthServiceImpl implements AuthService {
                     .frameUrl(authResponse.frameUrl())
                     .verified(authResponse.verified())
                     .profileCompleted(authResponse.profileCompleted())
+                    .tokenType(authResponse.tokenType())
+                    .accountState(authResponse.accountState())
                     .build();
+        }
+
+        if (request.platform() == DevicePlatform.WEB) {
+            cookieUtils.clearCookie("refreshToken");
         }
 
         return authResponse;
@@ -266,7 +281,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Sinh mã OTP 6 số và lưu vào Redis với TTL 2 phút
         String otpCode = generateOtpCode();
-        redisTemplate.opsForValue().set(OTP_PREFIX + email, otpCode, Duration.ofMinutes(2));
+        redisTemplate.opsForValue().set(OTP_PREFIX + email, otpCode, OTP_TTL);
+        redisTemplate.delete(OTP_ATTEMPT_PREFIX + email);
 
         emailService.sendOtpEmail(email, otpCode);
     }
@@ -280,7 +296,7 @@ public class AuthServiceImpl implements AuthService {
         // Kiểm tra mã OTP
         if (savedOtp == null || !savedOtp.equals(request.verifyCode())) {
             metricService.incrementCounter("sqb.auth.otp", "action", "verify", "status", "failed");
-            throw new AppException(ResponseCode.VERIFICATION_CODE_INVALID);
+            recordInvalidOtpAttempt(email);
         }
 
         // Cập nhật thông tin User thành verified
@@ -294,6 +310,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Xóa OTP trong Redis sau khi đã verify thành công
         redisTemplate.delete(OTP_PREFIX + email);
+        redisTemplate.delete(OTP_ATTEMPT_PREFIX + email);
 
         String deviceId = request.deviceId();
 
@@ -306,15 +323,31 @@ public class AuthServiceImpl implements AuthService {
 
     }
 
-    private Map<String, String> generateAtAndRt(Long userId, UserRole role, String email, String deviceId) {
+    private Map<String, String> generateAtAndRt(
+            Long userId,
+            UserRole role,
+            String email,
+            String deviceId,
+            AccountState accountState
+    ) {
 
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("userId", userId);
-        extraClaims.put("role", role);
         extraClaims.put("deviceId", deviceId);
 
-        String accessToken = jwtService.generateAccessToken(extraClaims, email);
-        String refreshToken = jwtService.generateRefreshToken(email, deviceId);
+        String accessToken;
+        String refreshToken = null;
+        if (accountState == AccountState.ACTIVE) {
+            extraClaims.put("role", role.name());
+            extraClaims.put("tokenType", TokenType.ACCESS.name());
+            extraClaims.put("accountState", AccountState.ACTIVE.name());
+            accessToken = jwtService.generateAccessToken(extraClaims, email);
+            refreshToken = jwtService.generateRefreshToken(email, deviceId);
+        } else {
+            extraClaims.put("tokenType", TokenType.ONBOARDING.name());
+            extraClaims.put("accountState", accountState.name());
+            accessToken = jwtService.generateOnboardingToken(extraClaims, email);
+        }
 
         Map<String, String> result = new HashMap<>();
         result.put("accessToken", accessToken);
@@ -329,16 +362,19 @@ public class AuthServiceImpl implements AuthService {
         UserRole role = user.getRole();
         String email = user.getEmail();
 
-        Map<String, String> rtAtResult = generateAtAndRt(userId, role, email, deviceId);
+        AccountState accountState = AccountState.from(user.isVerified(), userProfile.isProfileCompleted());
+        Map<String, String> rtAtResult = generateAtAndRt(userId, role, email, deviceId, accountState);
 
         String accessToken = rtAtResult.get("accessToken");
         String refreshToken = rtAtResult.get("refreshToken");
 
-        String redisKey = "rt:" + email + ":" + deviceId;
-        redisTemplate.opsForValue().set(
-                redisKey,
-                refreshToken,
-                Duration.ofMillis(jwtService.getRefreshTokenExpiration()));
+        if (refreshToken != null) {
+            String redisKey = "rt:" + email + ":" + deviceId;
+            redisTemplate.opsForValue().set(
+                    redisKey,
+                    refreshToken,
+                    Duration.ofMillis(jwtService.getRefreshTokenExpiration()));
+        }
 
         return AuthResponse.builder()
                 .userId(userId)
@@ -351,6 +387,8 @@ public class AuthServiceImpl implements AuthService {
                 .frameUrl(userProfile.getAvatarFrameUrl())
                 .verified(user.isVerified())
                 .profileCompleted(userProfile.isProfileCompleted())
+                .tokenType(accountState == AccountState.ACTIVE ? TokenType.ACCESS : TokenType.ONBOARDING)
+                .accountState(accountState)
                 .build();
     }
 
@@ -373,7 +411,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String newOtp = generateOtpCode();
-        redisTemplate.opsForValue().set(OTP_PREFIX + email, newOtp, Duration.ofMinutes(2));
+        redisTemplate.opsForValue().set(OTP_PREFIX + email, newOtp, OTP_TTL);
+        redisTemplate.delete(OTP_ATTEMPT_PREFIX + email);
         redisTemplate.opsForValue().set(lockKey, "1", Duration.ofSeconds(60));
 
         emailService.sendOtpEmail(email, newOtp);
@@ -615,6 +654,16 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
+        UserProfile userProfile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        if (!userProfile.isProfileCompleted() && !user.isVerified()) {
+            throw new AppException(
+                    ResponseCode.ACCOUNT_ONBOARDING_REQUIRED,
+                    "Vui lòng xác thực email trước khi đổi mật khẩu"
+            );
+        }
+
         if (!passwordEncoder.matches(request.oldPassword(), user.getPasswordHash())) {
             throw new AppException(ResponseCode.INCORRECT_IDENTIFIER);
         }
@@ -624,10 +673,11 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        UserProfile userProfile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
         userProfile.setProfileCompleted(true);
         userProfileRepository.save(userProfile);
+        if (user.isVerified()) {
+            log.info("[AuthService] Account setup completed for userId={}; re-login required", userId);
+        }
 
     }
 
@@ -659,7 +709,7 @@ public class AuthServiceImpl implements AuthService {
         String savedOtp = redisTemplate.opsForValue().get(OTP_PREFIX + email);
         if (savedOtp == null || !savedOtp.equals(request.verifyCode())) {
             metricService.incrementCounter("sqb.auth.otp", "action", "self_verify", "status", "failed");
-            throw new AppException(ResponseCode.VERIFICATION_CODE_INVALID);
+            recordInvalidOtpAttempt(email);
         }
 
         user.setVerified(true);
@@ -667,7 +717,9 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
         redisTemplate.delete(OTP_PREFIX + email);
         redisTemplate.delete(RESEND_LOCK_PREFIX + email);
+        redisTemplate.delete(OTP_ATTEMPT_PREFIX + email);
         metricService.incrementCounter("sqb.auth.otp", "action", "self_verify", "status", "success");
+        log.info("[AuthService] Email ownership verified for userId={}", userId);
     }
 
     private void sendVerificationOtp(String email) {
@@ -677,10 +729,27 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String newOtp = generateOtpCode();
-        redisTemplate.opsForValue().set(OTP_PREFIX + email, newOtp, Duration.ofMinutes(2));
+        redisTemplate.opsForValue().set(OTP_PREFIX + email, newOtp, OTP_TTL);
+        redisTemplate.delete(OTP_ATTEMPT_PREFIX + email);
         redisTemplate.opsForValue().set(lockKey, "1", Duration.ofSeconds(60));
         emailService.sendOtpEmail(email, newOtp);
         metricService.incrementCounter("sqb.auth.otp", "action", "self_request", "status", "success");
+    }
+
+    private void recordInvalidOtpAttempt(String email) {
+        String attemptKey = OTP_ATTEMPT_PREFIX + email;
+        Long attempts = redisTemplate.opsForValue().increment(attemptKey);
+        if (attempts != null && attempts == 1L) {
+            redisTemplate.expire(attemptKey, OTP_TTL);
+        }
+        if (attempts != null && attempts >= OTP_MAX_ATTEMPTS) {
+            redisTemplate.delete(OTP_PREFIX + email);
+            throw new AppException(
+                    ResponseCode.OTP_ATTEMPT_LIMIT_EXCEEDED,
+                    "Bạn đã nhập sai OTP quá 5 lần. Vui lòng yêu cầu mã mới"
+            );
+        }
+        throw new AppException(ResponseCode.VERIFICATION_CODE_INVALID);
     }
 
     @Override
@@ -707,6 +776,10 @@ public class AuthServiceImpl implements AuthService {
         String email = payload.getUsername();
         String deviceId = payload.getDeviceId();
 
+        if (payload.getTokenType() != TokenType.REFRESH) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
+
         // Kiểm tra RT trong Redis
         String redisKey = "rt:" + email + ":" + deviceId;
         String savedRt = redisTemplate.opsForValue().get(redisKey);
@@ -722,8 +795,19 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE);
         }
 
+        UserProfile userProfile = userProfileRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        if (AccountState.from(user.isVerified(), userProfile.isProfileCompleted()) != AccountState.ACTIVE) {
+            redisTemplate.delete(redisKey);
+            if (isWebClient) {
+                cookieUtils.clearCookie("refreshToken");
+            }
+            throw new AppException(ResponseCode.ACCOUNT_ONBOARDING_REQUIRED);
+        }
+
         // Sinh cặp Token mới (Refresh Token Rotation - RTR)
-        Map<String, String> rtAtResult = generateAtAndRt(user.getId(), user.getRole(), email, deviceId);
+        Map<String, String> rtAtResult = generateAtAndRt(
+                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE);
         String newAccessToken = rtAtResult.get("accessToken");
         String newRefreshToken = rtAtResult.get("refreshToken");
 

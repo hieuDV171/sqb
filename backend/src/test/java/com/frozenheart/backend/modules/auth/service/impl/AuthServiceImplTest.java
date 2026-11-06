@@ -3,11 +3,19 @@ package com.frozenheart.backend.modules.auth.service.impl;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
+import com.frozenheart.backend.core.entity.user.DevicePlatform;
+import com.frozenheart.backend.core.entity.user.UserRole;
+import com.frozenheart.backend.core.security.AccountState;
 import com.frozenheart.backend.core.security.JwtService;
+import com.frozenheart.backend.core.security.TokenType;
+import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.CookieUtils;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.auth.dto.user.ChangePasswordRequest;
 import com.frozenheart.backend.modules.auth.dto.user.ConfirmEmailVerificationRequest;
+import com.frozenheart.backend.modules.auth.dto.user.LoginRequest;
+import com.frozenheart.backend.modules.auth.dto.admin.AuthResponse;
 import com.frozenheart.backend.modules.auth.service.EmailService;
 import com.frozenheart.backend.modules.device.repository.UserDeviceRepository;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
@@ -27,10 +35,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,7 +72,7 @@ class AuthServiceImplTest {
     @Test
     void changePasswordMarksFirstLoginSetupCompleted() {
         setCurrentUser(21L, "student@sqb.edu.vn");
-        User user = User.builder().id(21L).email("student@sqb.edu.vn").passwordHash("old-hash").build();
+        User user = User.builder().id(21L).email("student@sqb.edu.vn").passwordHash("old-hash").verified(true).build();
         UserProfile profile = UserProfile.builder().user(user).profileCompleted(false).build();
 
         when(userRepository.findById(21L)).thenReturn(Optional.of(user));
@@ -76,6 +88,57 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void loginForIncompleteAccountReturnsOnboardingTokenWithoutRefreshToken() {
+        User user = User.builder()
+                .id(24L)
+                .email("admin@sqb.edu.vn")
+                .passwordHash("temporary-hash")
+                .role(UserRole.ADMIN)
+                .verified(false)
+                .active(true)
+                .build();
+        UserProfile profile = UserProfile.builder().user(user).profileCompleted(false).build();
+        LoginRequest request = new LoginRequest(
+                user.getEmail(), "temporary", "web-device", null, DevicePlatform.WEB,
+                "Chrome", "Windows", "1.0.0"
+        );
+
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("temporary", "temporary-hash")).thenReturn(true);
+        when(userProfileRepository.findByUserId(24L)).thenReturn(Optional.of(profile));
+        when(userDeviceRepository.findActiveDevicesByDeviceIdWithUser("web-device")).thenReturn(List.of());
+        when(userDeviceRepository.findByUserIdAndDeviceId(24L, "web-device")).thenReturn(Optional.empty());
+        when(jwtService.generateOnboardingToken(org.mockito.ArgumentMatchers.anyMap(), org.mockito.ArgumentMatchers.eq(user.getEmail())))
+                .thenReturn("onboarding-token");
+
+        AuthResponse response = service.login(request);
+
+        assertEquals(TokenType.ONBOARDING, response.tokenType());
+        assertEquals(AccountState.EMAIL_VERIFICATION_REQUIRED, response.accountState());
+        assertEquals("onboarding-token", response.accessToken());
+        assertEquals(null, response.refreshToken());
+        verify(jwtService, never()).generateRefreshToken(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        verify(cookieUtils).clearCookie("refreshToken");
+    }
+
+    @Test
+    void changePasswordRejectsUnverifiedFirstLoginAccount() {
+        setCurrentUser(23L, "unverified@sqb.edu.vn");
+        User user = User.builder().id(23L).email("unverified@sqb.edu.vn").verified(false).build();
+        UserProfile profile = UserProfile.builder().user(user).profileCompleted(false).build();
+
+        when(userRepository.findById(23L)).thenReturn(Optional.of(user));
+        when(userProfileRepository.findByUserId(23L)).thenReturn(Optional.of(profile));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.changePassword(new ChangePasswordRequest("temporary", "private-password"))
+        );
+
+        assertEquals(ResponseCode.ACCOUNT_ONBOARDING_REQUIRED, exception.getResponseCode());
+    }
+
+    @Test
     void confirmEmailVerificationUsesCurrentJwtUser() {
         setCurrentUser(22L, "student@sqb.edu.vn");
         User user = User.builder().id(22L).email("student@sqb.edu.vn").verified(false).build();
@@ -88,6 +151,25 @@ class AuthServiceImplTest {
 
         assertTrue(user.isVerified());
         verify(userRepository).save(user);
+        verify(redisTemplate).delete("otp:student@sqb.edu.vn");
+    }
+
+    @Test
+    void confirmEmailVerificationInvalidatesOtpAfterFifthWrongAttempt() {
+        setCurrentUser(25L, "student@sqb.edu.vn");
+        User user = User.builder().id(25L).email("student@sqb.edu.vn").verified(false).build();
+
+        when(userRepository.findById(25L)).thenReturn(Optional.of(user));
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("otp:student@sqb.edu.vn")).thenReturn("123456");
+        when(valueOperations.increment("otp_attempt:student@sqb.edu.vn")).thenReturn(5L);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.confirmEmailVerification(new ConfirmEmailVerificationRequest("000000"))
+        );
+
+        assertEquals(ResponseCode.OTP_ATTEMPT_LIMIT_EXCEEDED, exception.getResponseCode());
         verify(redisTemplate).delete("otp:student@sqb.edu.vn");
     }
 

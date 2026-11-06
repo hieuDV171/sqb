@@ -9,6 +9,8 @@ export type DevicePlatform = (typeof DevicePlatform)[keyof typeof DevicePlatform
 
 export type UserRole = "STUDENT" | "LECTURER" | "ADMIN";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
+export type AuthTokenType = "ACCESS" | "ONBOARDING";
+export type AccountState = "EMAIL_VERIFICATION_REQUIRED" | "PASSWORD_CHANGE_REQUIRED" | "ACTIVE";
 
 export interface LoginRequest {
     email: string;
@@ -32,6 +34,8 @@ export interface AuthResponse {
     frameUrl?: string;
     verified: boolean;
     profileCompleted: boolean;
+    tokenType: AuthTokenType;
+    accountState: AccountState;
 }
 
 export interface ChangePasswordRequest {

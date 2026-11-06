@@ -69,7 +69,7 @@
   html {
     min-width: 20rem;
     scroll-padding-top: calc(var(--app-header-height) + var(--space-4));
-    font-family: var(--font-sans);
+    font-family: var(--font-sans), sans-serif;
     background: var(--background);
   }
 

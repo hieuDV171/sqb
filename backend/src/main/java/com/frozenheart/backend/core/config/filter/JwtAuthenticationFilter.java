@@ -2,6 +2,7 @@ package com.frozenheart.backend.core.config.filter;
 
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.security.JwtService;
+import com.frozenheart.backend.core.security.TokenType;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,10 +16,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -50,11 +53,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (username != null && authentication == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                if (jwtService.isTokenValid(jwtPayload, userDetails)) {
+                if (jwtService.isTokenValid(jwtPayload, userDetails)
+                        && (jwtPayload.getTokenType() == TokenType.ACCESS
+                        || jwtPayload.getTokenType() == TokenType.ONBOARDING)) {
+                    var authorities = jwtPayload.getTokenType() == TokenType.ONBOARDING
+                            ? List.of(new SimpleGrantedAuthority("ROLE_ONBOARDING"))
+                            : userDetails.getAuthorities();
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null, // không đặt MK vào đây
-                            userDetails.getAuthorities()
+                            authorities
                     );
 
                     authenticationToken.setDetails(jwtPayload);

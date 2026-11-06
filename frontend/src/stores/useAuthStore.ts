@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type UserRole = 'STUDENT' | 'LECTURER' | 'ADMIN';
+export type AuthTokenType = 'ACCESS' | 'ONBOARDING';
+export type AccountState = 'EMAIL_VERIFICATION_REQUIRED' | 'PASSWORD_CHANGE_REQUIRED' | 'ACTIVE';
 
 export interface UserInfo {
   id: number;
@@ -16,39 +18,36 @@ export interface UserInfo {
  
 interface AuthState {
   accessToken: string | null;
+  tokenType: AuthTokenType | null;
+  accountState: AccountState | null;
   isAuthenticated: boolean;
   user: UserInfo | null;
-  setAuth: (accessToken: string, user?: UserInfo) => void;
+  setAuth: (accessToken: string, user: UserInfo, tokenType: AuthTokenType, accountState: AccountState) => void;
   setTokens: (accessToken: string) => void;
+  setAccountState: (accountState: AccountState) => void;
   setUserRole: (role: UserRole) => void;
   updateUser: (partial: Partial<UserInfo>) => void;
   logout: () => void;
 }
 
-type PersistedAuthState = Pick<AuthState, 'accessToken' | 'isAuthenticated' | 'user'>;
+type PersistedAuthState = Pick<AuthState, 'accessToken' | 'tokenType' | 'accountState' | 'isAuthenticated' | 'user'>;
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       accessToken: null,
+      tokenType: null,
+      accountState: null,
       isAuthenticated: false,
       user: null,
 
-      setAuth: (accessToken, user) => {
-        const resolvedUser: UserInfo = user
-          ? { ...user, role: user.role || 'STUDENT' }
-          : {
-              id: 999,
-              username: 'sinhvien.hust@edu.vn',
-              verified: true,
-              profileCompleted: true,
-              role: 'STUDENT',
-            };
-
+      setAuth: (accessToken, user, tokenType, accountState) => {
         set({
           accessToken,
+          tokenType,
+          accountState,
           isAuthenticated: true,
-          user: resolvedUser,
+          user: { ...user, role: user.role || 'STUDENT' },
         });
       },
 
@@ -58,6 +57,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           user: state.user,
         })),
+
+      setAccountState: (accountState) => set({ accountState }),
 
       setUserRole: (role: UserRole) =>
         set((state) => ({
@@ -72,26 +73,33 @@ export const useAuthStore = create<AuthState>()(
       logout: () =>
         set({
           accessToken: null,
+          tokenType: null,
+          accountState: null,
           isAuthenticated: false,
           user: null,
         }),
     }),
     {
       name: 'sqb-auth-storage', // key in localStorage
-      version: 1,
+      version: 2,
       // Refresh Token của web chỉ tồn tại trong HttpOnly cookie do Backend quản lý.
       partialize: (state): PersistedAuthState => ({
         accessToken: state.accessToken,
+        tokenType: state.tokenType,
+        accountState: state.accountState,
         isAuthenticated: state.isAuthenticated,
         user: state.user,
       }),
       migrate: (persistedState): PersistedAuthState => {
         const persisted = persistedState as Partial<PersistedAuthState>;
+        const hasCurrentSessionContract = Boolean(persisted.tokenType && persisted.accountState);
 
         return {
-          accessToken: persisted.accessToken ?? null,
-          isAuthenticated: Boolean(persisted.isAuthenticated && persisted.accessToken),
-          user: persisted.user ?? null,
+          accessToken: hasCurrentSessionContract ? persisted.accessToken ?? null : null,
+          tokenType: hasCurrentSessionContract ? persisted.tokenType ?? null : null,
+          accountState: hasCurrentSessionContract ? persisted.accountState ?? null : null,
+          isAuthenticated: Boolean(hasCurrentSessionContract && persisted.isAuthenticated && persisted.accessToken),
+          user: hasCurrentSessionContract ? persisted.user ?? null : null,
         };
       },
     }

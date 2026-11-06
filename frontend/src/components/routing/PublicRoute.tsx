@@ -7,9 +7,12 @@ interface PublicRouteProps {
 }
 
 export function PublicRoute({ children }: PublicRouteProps) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, accountState } = useAuthStore();
 
   if (isAuthenticated) {
+    if (accountState !== 'ACTIVE') {
+      return <Navigate to="/account-setup" replace />;
+    }
     // Chuyển hướng người dùng về trang đích tương ứng với vai trò
     if (user?.role === 'ADMIN') {
       return <Navigate to="/admin/users" replace />;

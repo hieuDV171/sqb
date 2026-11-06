@@ -1,6 +1,8 @@
 package com.frozenheart.backend.modules.auth.dto.admin;
 
 import com.frozenheart.backend.core.entity.user.UserRole;
+import com.frozenheart.backend.core.security.AccountState;
+import com.frozenheart.backend.core.security.TokenType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -35,7 +37,13 @@ public record AuthResponse(
         boolean verified,
 
         @Schema(description = "Trạng thái đã hoàn tất cập nhật hồ sơ cá nhân", example = "true")
-        boolean profileCompleted
+        boolean profileCompleted,
+
+        @Schema(description = "Loại token được cấp: ACCESS hoặc ONBOARDING", example = "ACCESS")
+        TokenType tokenType,
+
+        @Schema(description = "Trạng thái thiết lập tài khoản hiện tại", example = "ACTIVE")
+        AccountState accountState
 
 ) {
 }

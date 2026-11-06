@@ -68,7 +68,8 @@ server:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 86400000 # 24 hours // TODO: Sửa 15 phút khi lên production
+  access-token-expiration: 900000 # 15 minutes
+  onboarding-token-expiration: 600000 # 10 minutes, no refresh token
   refresh-token-expiration: 604800000 # 7 days
   issuer: backend # bên phát hành token
 

@@ -46,6 +46,11 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 JwtPayload jwtPayload = jwtService.decodeToken(authHeader);
                 String username = jwtPayload.getUsername();
 
+                if (jwtPayload.getTokenType() != TokenType.ACCESS
+                        || jwtPayload.getAccountState() != AccountState.ACTIVE) {
+                    throw new MessageDeliveryException("Unauthorized: Account setup is incomplete");
+                }
+
                 if (username != null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                     if (jwtService.isTokenValid(jwtPayload, userDetails)) {

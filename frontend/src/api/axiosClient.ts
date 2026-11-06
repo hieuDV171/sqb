@@ -72,6 +72,23 @@ axiosClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
         const formattedError = error.response?.data ? humps.camelizeKeys(error.response.data) : error;
+        const responseCode = formattedError?.code;
+
+        if (error.response?.status === 403 && responseCode === '1013') {
+            if (typeof window !== 'undefined' && window.location.pathname !== '/account-setup') {
+                window.location.href = '/account-setup';
+            }
+            return Promise.reject(formattedError);
+        }
+
+        if (error.response?.status === 401 && useAuthStore.getState().tokenType === 'ONBOARDING') {
+            useAuthStore.getState().logout();
+            toast.warning('Phiên thiết lập đã hết hạn. Vui lòng đăng nhập lại.', 'Hết phiên thiết lập');
+            if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                window.location.href = '/login';
+            }
+            return Promise.reject(formattedError);
+        }
 
         // 1. Xử lý 401 (Unauthorized) - Silent Refresh Token
         // Web lưu Refresh Token trong HttpOnly cookie, không đọc token này từ JavaScript.

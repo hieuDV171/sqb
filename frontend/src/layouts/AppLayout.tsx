@@ -5,7 +5,6 @@ import { stompClient } from '@/lib/stompClient';
 import { onForegroundMessage, syncCurrentFidIfAuthenticated } from '@/lib/firebase';
 import { toast } from '@/stores/useToastStore';
 import { Header } from './Header';
-import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { useChatRealtimeListener, FloatingChatWidget } from '@/features/chat';
@@ -24,7 +23,7 @@ function readPushMessage(payload: unknown): PushMessageShape {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { isAuthenticated, user, updateUser } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -96,12 +95,6 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
 
       <FloatingChatWidget />
-      <ChangePasswordModal
-        isOpen={Boolean(isAuthenticated && user && !user.profileCompleted)}
-        required
-        onClose={() => {}}
-        onSuccess={() => updateUser({ profileCompleted: true })}
-      />
     </div>
   );
 }

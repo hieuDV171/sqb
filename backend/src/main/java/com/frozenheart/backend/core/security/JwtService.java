@@ -56,7 +56,14 @@ public class JwtService {
                 .role(claims.get("role", String.class))
                 .userId(claims.get("userId", Long.class))
                 .deviceId(claims.get("deviceId", String.class))
+                .tokenType(readEnumClaim(claims, "tokenType", TokenType.class))
+                .accountState(readEnumClaim(claims, "accountState", AccountState.class))
                 .build();
+    }
+
+    private <E extends Enum<E>> E readEnumClaim(Claims claims, String name, Class<E> enumType) {
+        String value = claims.get(name, String.class);
+        return value == null ? null : Enum.valueOf(enumType, value);
     }
 
     private String generateToken(Map<String, Object> extraClaims, String subject, long expiration) {
@@ -71,14 +78,16 @@ public class JwtService {
     }
 
     public String generateAccessToken(Map<String, Object> extraClaims, String subject) {
-
         return generateToken(extraClaims, subject, jwtProperties.getAccessTokenExpiration());
-    
+    }
+
+    public String generateOnboardingToken(Map<String, Object> extraClaims, String subject) {
+        return generateToken(extraClaims, subject, jwtProperties.getOnboardingTokenExpiration());
     }
 
     public String generateRefreshToken(String subject, String deviceId) {
         Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("type", "refresh");
+        extraClaims.put("tokenType", TokenType.REFRESH.name());
         extraClaims.put("deviceId", deviceId);
         return generateToken(extraClaims, subject, jwtProperties.getRefreshTokenExpiration());
     }

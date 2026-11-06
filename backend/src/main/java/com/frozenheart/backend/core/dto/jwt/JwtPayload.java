@@ -6,6 +6,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.security.AccountState;
+import com.frozenheart.backend.core.security.TokenType;
 
 import lombok.*;
 
@@ -20,6 +22,8 @@ public class JwtPayload {
     private Long userId;
     private String role;
     private String deviceId;
+    private TokenType tokenType;
+    private AccountState accountState;
 
     public static JwtPayload getCurrentUserPayload() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

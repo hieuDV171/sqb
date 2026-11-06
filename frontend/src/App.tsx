@@ -30,6 +30,8 @@ import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ProtectedRoute } from "./components/routing/ProtectedRoute";
 import { PublicRoute } from "./components/routing/PublicRoute";
+import { OnboardingRoute } from "./components/routing/OnboardingRoute";
+import { AccountSetupPage } from "./pages/auth/AccountSetupPage";
 import { RoleGuard } from "./components/routing/RoleGuard";
 import { GlobalToastContainer } from "./components/ui/GlobalToastContainer";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -50,6 +52,10 @@ export default function App() {
         {/* Public Routes (Không cho phép người đã login vào lại trang đăng nhập) */}
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<LoginPage />} />
+        </Route>
+
+        <Route element={<OnboardingRoute />}>
+          <Route path="/account-setup" element={<AccountSetupPage />} />
         </Route>
 
         {/* Error Pages */}

@@ -38,10 +38,11 @@ export function useAuth() {
                 frameUrl: authData.frameUrl,
                 verified: authData.verified,
                 profileCompleted: authData.profileCompleted
-            })
+            }, authData.tokenType, authData.accountState)
 
-            // Đăng nhập thành công -> Điều hướng về trang mặc định theo vai trò (Role-based Navigation)
-            if (authData.role === 'ADMIN') {
+            if (authData.accountState !== 'ACTIVE') {
+                navigate('/account-setup');
+            } else if (authData.role === 'ADMIN') {
                 navigate('/admin/users');
             } else if (authData.role === 'LECTURER') {
                 navigate('/lecturer/sessions');
