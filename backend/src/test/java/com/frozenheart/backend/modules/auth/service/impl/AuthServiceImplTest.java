@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.auth.service.impl;
 
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserDevice;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -180,6 +181,7 @@ class AuthServiceImplTest {
 
         assertTrue(user.isVerified());
         verify(userRepository).save(user);
+        verify(eventPublisher).publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.USER, user.getId()));
         verify(redisTemplate).delete("otp:student@sqb.edu.vn");
     }
 

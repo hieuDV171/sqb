@@ -65,6 +65,18 @@ public class FriendshipController {
         return ResponseEntity.ok(GlobalResponse.success());
     }
 
+    @Operation(summary = "Rút lời mời kết bạn đã gửi", description = "Chỉ người gửi được rút lời mời đang chờ.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Đã rút lời mời"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy lời mời đang chờ của người gửi"),
+            @ApiResponse(responseCode = "409", description = "Lời mời đã được chấp nhận (ALREADY_FRIENDS)")
+    })
+    @DeleteMapping("/requests/sent/{receiverId}")
+    public ResponseEntity<GlobalResponse<Void>> cancelSentRequest(@PathVariable Long receiverId) {
+        friendshipService.cancelSentRequest(receiverId);
+        return ResponseEntity.ok(GlobalResponse.success());
+    }
+
     @Operation(summary = "Hủy kết bạn (Unfriend)", description = "Xóa quan hệ bạn bè giữa người dùng hiện tại và người bạn chỉ định.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Hủy kết bạn thành công"),

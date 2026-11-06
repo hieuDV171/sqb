@@ -10,6 +10,8 @@ public interface FriendshipService {
 
     void declineFriendRequest(DeclineFriendRequestDto request);
 
+    void cancelSentRequest(Long receiverId);
+
     void unfriend(Long friendId);
 
     FriendListResponseDto getMyFriends(Long after, Integer limit);

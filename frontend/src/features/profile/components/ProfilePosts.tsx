@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Ban, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -12,6 +13,24 @@ export function ProfilePosts({ userId, isOwnProfile }: { userId: number; isOwnPr
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
   const checkingAccess = !isOwnProfile && !query.isFetchedAfterMount && query.isFetching;
   const blocked = isProfilePostsBlocked(query.error);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const supportsAutoLoad = typeof IntersectionObserver !== 'undefined';
+  const { fetchNextPage, hasNextPage, isFetching, isError } = query;
+  const canAutoLoad = supportsAutoLoad && !checkingAccess && !blocked && hasNextPage && !isFetching && !isError;
+  const pageCount = query.data?.pages.length ?? 0;
+
+  useEffect(() => {
+    const target = sentinel.current;
+    if (!canAutoLoad || !target) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      observer.disconnect();
+      void fetchNextPage({ cancelRefetch: false });
+    }, { rootMargin: '0px 0px 320px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [canAutoLoad, fetchNextPage, pageCount]);
 
   return (
     <section aria-labelledby="profile-posts-heading" className="space-y-4">
@@ -35,10 +54,13 @@ export function ProfilePosts({ userId, isOwnProfile }: { userId: number; isOwnPr
         <>
           {items.map((post) => <PostFeedCard key={post.postId} item={toFeedItem(post)} />)}
           {query.hasNextPage && (
-            <div className="flex flex-col items-center gap-2">
+            <div ref={sentinel} className="flex min-h-px flex-col items-center gap-2">
               {query.isFetchNextPageError && <p role="alert" className="text-sm text-destructive">Không thể tải thêm bài viết.</p>}
-              <Button variant="outline" disabled={query.isFetching} onClick={() => void query.fetchNextPage()}>
-                {query.isFetchingNextPage ? 'Đang tải…' : query.isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm bài viết'}
+              {query.isFetchingNextPage && <p role="status" className="py-2 text-sm text-muted-foreground">Đang tải thêm bài viết…</p>}
+              <Button variant="outline"
+                className={supportsAutoLoad && !query.isFetchNextPageError ? 'sr-only focus-visible:not-sr-only' : undefined}
+                disabled={query.isFetching} onClick={() => void query.fetchNextPage({ cancelRefetch: false })}>
+                {query.isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm bài viết'}
               </Button>
             </div>
           )}

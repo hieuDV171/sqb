@@ -3,9 +3,11 @@ package com.frozenheart.backend.modules.friendship.repository;
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipId;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -28,6 +30,17 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Friendsh
          OR (f.sender.id = :userId2 AND f.receiver.id = :userId1)
       """)
   Optional<Friendship> findFriendshipsBetween(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("""
+      SELECT f
+      FROM Friendship f
+      JOIN FETCH f.sender
+      JOIN FETCH f.receiver
+      WHERE (f.id.senderId = :userId1 AND f.id.receiverId = :userId2)
+         OR (f.id.senderId = :userId2 AND f.id.receiverId = :userId1)
+      """)
+  Optional<Friendship> findFriendshipsBetweenForUpdate(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
 
   int countByReceiverIdAndStatus(Long receiverId, FriendshipStatus status);
 

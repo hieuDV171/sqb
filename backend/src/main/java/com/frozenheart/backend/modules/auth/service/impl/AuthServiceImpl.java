@@ -704,6 +704,7 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.delete(RESEND_LOCK_PREFIX + email);
         redisTemplate.delete(OTP_ATTEMPT_PREFIX + email);
         metricService.incrementCounter("sqb.auth.otp", "action", "self_verify", "status", "success");
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.USER, userId));
         log.info("[AuthService] Email ownership verified for userId={}", userId);
     }
 

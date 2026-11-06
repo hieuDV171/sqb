@@ -292,3 +292,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Hồ sơ thành viên vẫn truy cập được khi có quan hệ chặn. Backend là nguồn quyết định quyền đọc bài viết qua `GET /users/{userId}/posts` và endpoint chi tiết. Khi nhận `USER_IS_BLOCKED`, FE thay phần bài viết bằng biểu tượng Cấm và thông báo, không hiển thị các bài đã lưu trong cache cho trạng thái này.
 - Hồ sơ chính chủ dùng `GET /posts/me`; hồ sơ thành viên dùng API theo tác giả và tuân theo phạm vi công khai/bạn bè. Phân trang dùng cursor hiện hữu.
+
+### [ADR-018] Rút lời mời đang chờ và xử lý tranh chấp với chấp nhận
+
+- Rút lời mời là hành động của người gửi trên quan hệ `PENDING`, tách khỏi từ chối và hủy kết bạn. Quan hệ theo dõi quản lý riêng.
+- Các thao tác thay đổi quan hệ hiện hữu lấy khóa ghi trên bản ghi trước khi kiểm tra trạng thái. Nếu rút thành công trước, thao tác chấp nhận không còn lời mời. Nếu chấp nhận trước, thao tác rút trả 409.

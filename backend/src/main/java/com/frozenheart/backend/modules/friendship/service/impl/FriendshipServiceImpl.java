@@ -69,7 +69,7 @@ public class FriendshipServiceImpl implements FriendshipService {
                                         "Chỉ người dùng đồng cấp (cùng vai trò Sinh viên - Sinh viên hoặc Giảng viên - Giảng viên) mới có thể kết bạn với nhau");
                 }
 
-                Optional<Friendship> existingOpt = friendshipRepository.findFriendshipsBetween(requesterId,
+                Optional<Friendship> existingOpt = friendshipRepository.findFriendshipsBetweenForUpdate(requesterId,
                                 addresseeId);
 
                 if (existingOpt.isPresent()) {
@@ -127,7 +127,7 @@ public class FriendshipServiceImpl implements FriendshipService {
                                         "Không thể tương tác do mối quan hệ bị chặn");
                 }
 
-                Friendship friendship = friendshipRepository.findFriendshipsBetween(requesterId, currentUserId)
+                Friendship friendship = friendshipRepository.findFriendshipsBetweenForUpdate(requesterId, currentUserId)
                                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND,
                                                 "Không tìm thấy lời mời kết bạn"));
 
@@ -165,11 +165,12 @@ public class FriendshipServiceImpl implements FriendshipService {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 Long requesterId = request.getRequesterId();
 
-                Friendship friendship = friendshipRepository.findFriendshipsBetween(requesterId, currentUserId)
+                Friendship friendship = friendshipRepository.findFriendshipsBetweenForUpdate(requesterId, currentUserId)
                                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND,
                                                 "Không tìm thấy lời mời kết bạn"));
 
-                if (!Objects.equals(friendship.getReceiver().getId(), currentUserId)) {
+                if (friendship.getStatus() != FriendshipStatus.PENDING
+                                || !Objects.equals(friendship.getReceiver().getId(), currentUserId)) {
                         throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                                         "Bạn không có quyền từ chối lời mời kết bạn này");
                 }
@@ -181,10 +182,28 @@ public class FriendshipServiceImpl implements FriendshipService {
 
         @Override
         @Transactional
+        public void cancelSentRequest(Long receiverId) {
+                Long senderId = JwtPayload.getCurrentUserPayload().getUserId();
+                Friendship friendship = friendshipRepository.findFriendshipsBetweenForUpdate(senderId, receiverId)
+                                .filter(row -> Objects.equals(row.getId().getSenderId(), senderId))
+                                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND,
+                                                "Không tìm thấy lời mời đã gửi"));
+
+                if (friendship.getStatus() == FriendshipStatus.ACCEPTED) {
+                        throw new AppException(ResponseCode.ALREADY_FRIENDS, "Lời mời đã được chấp nhận");
+                }
+                if (friendship.getStatus() != FriendshipStatus.PENDING) {
+                        throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Lời mời không còn chờ phản hồi");
+                }
+                friendshipRepository.delete(friendship);
+        }
+
+        @Override
+        @Transactional
         public void unfriend(Long friendId) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-                Friendship friendship = friendshipRepository.findFriendshipsBetween(currentUserId, friendId)
+                Friendship friendship = friendshipRepository.findFriendshipsBetweenForUpdate(currentUserId, friendId)
                                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND,
                                                 "Hai người chưa là bạn bè của nhau"));
 

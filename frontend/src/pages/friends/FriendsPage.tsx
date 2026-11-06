@@ -19,7 +19,7 @@ const tabs = [
   { id: 'sent', label: 'Lời mời đã gửi', empty: 'Chưa có lời mời đã gửi' },
 ] as const;
 
-type Action = 'accept' | 'decline' | 'unfriend' | 'message';
+type Action = 'accept' | 'decline' | 'cancel' | 'unfriend' | 'message';
 
 export function FriendsPage() {
   const [params, setParams] = useSearchParams();
@@ -35,6 +35,7 @@ export function FriendsPage() {
       switch (action) {
         case 'accept': await userService.acceptFriendRequest({ requesterId: id }); break;
         case 'decline': await userService.declineFriendRequest({ requesterId: id }); break;
+        case 'cancel': await userService.cancelSentFriendRequest(id); break;
         case 'unfriend': await userService.unfriend(id); break;
         case 'message': {
           const { data } = await chatService.createDirectConversation({ targetUserId: id });
@@ -46,12 +47,19 @@ export function FriendsPage() {
     onSuccess: async (_, { action }) => {
       if (action === 'message') return;
       setConfirm(undefined);
-      toast.success({ accept: 'Đã chấp nhận lời mời', decline: 'Đã từ chối lời mời', unfriend: 'Đã hủy kết bạn' }[action]);
+      toast.success({ accept: 'Đã chấp nhận lời mời', decline: 'Đã từ chối lời mời', cancel: 'Đã rút lời mời', unfriend: 'Đã hủy kết bạn' }[action]);
       await Promise.all(['myFriends', 'receivedRequests', 'sentRequests', 'userProfile', 'followingList', 'followersList'].map(
         (key) => queryClient.invalidateQueries({ queryKey: [key] }),
       ));
     },
-    onError: () => toast.error('Không thể hoàn tất thao tác. Hãy thử lại.'),
+    onError: (error, { action }) => {
+      toast.error(error.message || 'Không thể hoàn tất thao tác. Hãy thử lại.');
+      if (action === 'accept' || action === 'decline' || action === 'cancel') {
+        for (const key of ['myFriends', 'receivedRequests', 'sentRequests', 'userProfile']) {
+          void queryClient.invalidateQueries({ queryKey: [key] });
+        }
+      }
+    },
   });
 
   const rows: { person: ConnectionPerson; date: string; key: string }[] = active.id === 'friends'
@@ -72,7 +80,17 @@ export function FriendsPage() {
   function actions(person: ConnectionPerson) {
     const id = person.userId;
     const pending = mutation.isPending && mutation.variables?.id === id ? mutation.variables?.action : undefined;
-    if (active.id === 'sent') return <Badge variant="secondary">Đang chờ phản hồi</Badge>;
+    if (active.id === 'sent') return (
+      <>
+        <Badge variant="secondary">Đang chờ phản hồi</Badge>
+        {id != null && (
+          <Button variant="outline" disabled={mutation.isPending}
+            onClick={() => mutation.mutate({ action: 'cancel', id })}>
+            {pending === 'cancel' ? 'Đang rút…' : 'Rút lời mời'}
+          </Button>
+        )}
+      </>
+    );
     if (id == null) return null;
     if (active.id === 'received') return (
       <>
@@ -119,7 +137,7 @@ export function FriendsPage() {
         <Label htmlFor="connection-search">Tìm theo tên trong các mục đã tải</Label>
         <Input id="connection-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
       </div>
-      {active.id === 'sent' && <p className="text-sm text-muted-foreground">Lời mời sẽ hiện ở đây cho đến khi người nhận phản hồi.</p>}
+      {active.id === 'sent' && <p className="text-sm text-muted-foreground">Bạn có thể rút lời mời khi người nhận chưa phản hồi.</p>}
       <ConnectionList query={lists[active.id]} count={visible.length} empty={active.empty} searching={Boolean(term)}>
         {visible.map(({ person, date, key }) => {
           const formatted = connectionDate(date);

@@ -66,7 +66,7 @@ public class BlockServiceImpl implements BlockService {
                 blockRepository.save(userBlock);
 
                 // Hủy quan hệ bạn bè (Friendship) nếu có
-                Optional<Friendship> friendshipOpt = friendshipRepository.findFriendshipsBetween(currentUserId,
+                Optional<Friendship> friendshipOpt = friendshipRepository.findFriendshipsBetweenForUpdate(currentUserId,
                                 targetUserId);
                 if (friendshipOpt.isPresent()) {
                         Friendship friendship = friendshipOpt.get();

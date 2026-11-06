@@ -101,6 +101,11 @@ export const userService = {
     return (await axiosClient.delete<GlobalResponse<void>>(`/friendships/${friendId}`)) as any;
   },
 
+  cancelSentFriendRequest: (receiverId: number): Promise<GlobalResponse<void>> =>
+    axiosClient.delete<GlobalResponse<void>, GlobalResponse<void>>(`/friendships/requests/sent/${receiverId}`, {
+      skipToast: true,
+    }),
+
   // ==================== FOLLOWS ====================
   getFollowing: async (
     after?: number,
