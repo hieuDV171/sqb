@@ -173,7 +173,7 @@ export interface FollowerUserDto {
   schoolFaculty?: string | null;
   code?: string | null;
   followedMeAt: string;
-  isFollowingBack: boolean;
+  followingBack: boolean;
   isFriend: boolean;
 }
 
