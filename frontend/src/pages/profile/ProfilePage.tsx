@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileHeader } from '@/features/profile/components/ProfileHeader';
 import { ProfileAcademicInfo } from '@/features/profile/components/ProfileAcademicInfo';
 import { ProfileGamificationStats } from '@/features/profile/components/ProfileGamificationStats';
+import { ProfilePosts } from '@/features/profile/components/ProfilePosts';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -50,6 +51,7 @@ export function ProfilePage() {
             <ProfileAcademicInfo profile={profile.data} />
             <ProfileGamificationStats profile={profile.data} />
           </div>
+          <ProfilePosts key={profile.data.userId} userId={profile.data.userId} isOwnProfile={isOwnProfile} />
         </>
       ) : (
         <EmptyState icon={UserRound} title="Không tìm thấy hồ sơ" description="Hồ sơ này hiện không có dữ liệu để hiển thị." />

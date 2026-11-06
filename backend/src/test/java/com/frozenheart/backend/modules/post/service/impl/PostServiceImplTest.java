@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.post.service.impl;
 
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
@@ -11,6 +12,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
+import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
@@ -43,10 +45,12 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -91,6 +95,17 @@ class PostServiceImplTest {
 
         assertEquals(reactionType, response.getMyReaction());
         assertEquals(reactionType != null, response.isReactedByMe());
+    }
+
+    @Test
+    void getUserPostsRejectsBlockedViewerBeforeReadingPosts() {
+        setCurrentUser(7L);
+        when(blockRepository.isBlockedBetween(7L, 8L)).thenReturn(true);
+
+        AppException error = assertThrows(AppException.class, () -> service.getUserPosts(8L, null, 10));
+
+        assertEquals(ResponseCode.USER_IS_BLOCKED, error.getResponseCode());
+        verifyNoInteractions(postRepository, friendshipRepository, reactRepository);
     }
 
     @Test

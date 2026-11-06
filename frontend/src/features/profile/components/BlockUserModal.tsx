@@ -22,9 +22,11 @@ export function BlockUserModal({ isOpen, onClose, targetUserId, targetUserName }
     onSuccess: () => {
       toast.success(`Đã chặn ${targetUserName}`);
       for (const key of ['blockedUsers', 'userProfile', 'followingList', 'followersList',
-        'myFriends', 'receivedRequests', 'sentRequests', 'activity-feeds']) {
+        'myFriends', 'receivedRequests', 'sentRequests', 'activity-feeds', 'post-detail']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
+      queryClient.removeQueries({ queryKey: ['profile-posts', targetUserId], type: 'inactive' });
+      void queryClient.resetQueries({ queryKey: ['profile-posts', targetUserId], type: 'active' });
       onClose();
       navigate('/feed');
     },
@@ -41,7 +43,7 @@ export function BlockUserModal({ isOpen, onClose, targetUserId, targetUserName }
           </div>
           <AlertDialog.Title className="wrap-break-word text-lg font-semibold">Chặn {targetUserName}?</AlertDialog.Title>
           <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
-            Khi chặn, các kết nối bạn bè và theo dõi giữa hai tài khoản sẽ bị gỡ. Bạn có thể bỏ chặn trong danh sách chặn.
+            Hai bên sẽ không xem được bài viết của nhau. Các kết nối bạn bè và theo dõi sẽ bị gỡ. Bạn có thể bỏ chặn trong danh sách chặn.
           </AlertDialog.Description>
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>Quay lại</Button>

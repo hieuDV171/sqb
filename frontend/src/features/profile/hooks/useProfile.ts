@@ -11,5 +11,6 @@ export function useProfile(target: 'me' | number, enabled: boolean) {
       return response.data;
     },
     enabled,
+    ...(target !== 'me' ? { refetchOnMount: 'always', refetchOnWindowFocus: 'always' } as const : {}),
   });
 }

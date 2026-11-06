@@ -21,7 +21,7 @@ export const practiceService = {
     userId: number,
     params?: GetUserSessionsParams
   ): Promise<GlobalResponse<UserSubmissionsResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<UserSubmissionsResponse>>(
+    return axiosClient.get<GlobalResponse<UserSubmissionsResponse>, GlobalResponse<UserSubmissionsResponse>>(
       `/users/${userId}/sessions`,
       {
         params: {
@@ -32,7 +32,6 @@ export const practiceService = {
         },
       }
     );
-    return response.data;
   },
 
   /**
@@ -42,10 +41,9 @@ export const practiceService = {
   getSessionQuestions: async (
     sessionId: number
   ): Promise<GlobalResponse<SessionQuestionsResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<SessionQuestionsResponse>>(
+    return axiosClient.get<GlobalResponse<SessionQuestionsResponse>, GlobalResponse<SessionQuestionsResponse>>(
       `/sessions/${sessionId}/questions`
     );
-    return response.data;
   },
 
   /**
@@ -56,11 +54,10 @@ export const practiceService = {
     questionId: number,
     request: AnswerQuestionRequest
   ): Promise<GlobalResponse<AnswerQuestionResponse>> => {
-    const response = await axiosClient.post<GlobalResponse<AnswerQuestionResponse>>(
+    return axiosClient.post<GlobalResponse<AnswerQuestionResponse>, GlobalResponse<AnswerQuestionResponse>>(
       `/questions/${questionId}/answer`,
       request
     );
-    return response.data;
   },
 
   /**
@@ -70,10 +67,9 @@ export const practiceService = {
   getQuestionStatistics: async (
     questionId: number
   ): Promise<GlobalResponse<QuestionStatisticsResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<QuestionStatisticsResponse>>(
+    return axiosClient.get<GlobalResponse<QuestionStatisticsResponse>, GlobalResponse<QuestionStatisticsResponse>>(
       `/questions/${questionId}/statistics`
     );
-    return response.data;
   },
 
   /**
@@ -84,11 +80,10 @@ export const practiceService = {
     questionId: number,
     request: RateQuestionRequest
   ): Promise<GlobalResponse<RateQuestionResponse>> => {
-    const response = await axiosClient.post<GlobalResponse<RateQuestionResponse>>(
+    return axiosClient.post<GlobalResponse<RateQuestionResponse>, GlobalResponse<RateQuestionResponse>>(
       `/questions/${questionId}/rate`,
       request
     );
-    return response.data;
   },
 
   /**
@@ -100,7 +95,7 @@ export const practiceService = {
     after?: number,
     limit?: number
   ): Promise<GlobalResponse<QuestionRatingsResponse>> => {
-    const response = await axiosClient.get<GlobalResponse<QuestionRatingsResponse>>(
+    return axiosClient.get<GlobalResponse<QuestionRatingsResponse>, GlobalResponse<QuestionRatingsResponse>>(
       `/questions/${questionId}/ratings`,
       {
         params: {
@@ -109,6 +104,5 @@ export const practiceService = {
         },
       }
     );
-    return response.data;
   },
 };

@@ -42,7 +42,11 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
         )}
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label={ROLE_LABELS[currentRole]}>
+      <nav
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden focus-visible:outline-offset-[-2px]"
+        aria-label={ROLE_LABELS[currentRole]}
+        tabIndex={0}
+      >
         <div className="space-y-6">
           {sections.map((section) => (
             <section key={section.label} aria-labelledby={isCollapsed ? undefined : `nav-${section.label}`}>

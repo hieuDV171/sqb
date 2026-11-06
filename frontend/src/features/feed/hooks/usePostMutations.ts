@@ -11,18 +11,18 @@ export function usePostMutations() {
     mutationFn: (data: CreatePostRequest) => postService.createPost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
-      queryClient.invalidateQueries({ queryKey: ['my-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
         type: 'success',
         title: 'Thành công',
         message: 'Đã xuất bản bài viết lên bảng tin!',
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       addToast({
         type: 'error',
         title: 'Đăng bài thất bại',
-        message: err?.response?.data?.message || 'Không thể tạo bài viết. Vui lòng thử lại!',
+        message: err.message || 'Không thể tạo bài viết. Vui lòng thử lại!',
       });
     },
   });
@@ -33,17 +33,18 @@ export function usePostMutations() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
       queryClient.invalidateQueries({ queryKey: ['post-detail', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
         type: 'success',
         title: 'Thành công',
         message: 'Bài viết đã được chỉnh sửa!',
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       addToast({
         type: 'error',
         title: 'Chỉnh sửa thất bại',
-        message: err?.response?.data?.message || 'Không thể cập nhật bài viết.',
+        message: err.message || 'Không thể cập nhật bài viết.',
       });
     },
   });
@@ -52,18 +53,18 @@ export function usePostMutations() {
     mutationFn: (id: number) => postService.deletePost(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
-      queryClient.invalidateQueries({ queryKey: ['my-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
         type: 'success',
         title: 'Đã xóa',
         message: 'Bài viết đã được gỡ bỏ.',
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       addToast({
         type: 'error',
         title: 'Lỗi',
-        message: err?.response?.data?.message || 'Không thể xóa bài viết này.',
+        message: err.message || 'Không thể xóa bài viết này.',
       });
     },
   });
@@ -74,17 +75,18 @@ export function usePostMutations() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
       queryClient.invalidateQueries({ queryKey: ['post-detail', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
         type: 'success',
         title: 'Thành công',
         message: 'Đã lưu nhận xét chuyên môn của Giảng viên!',
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       addToast({
         type: 'error',
         title: 'Lỗi',
-        message: err?.response?.data?.message || 'Không thể lưu nhận xét.',
+        message: err.message || 'Không thể lưu nhận xét.',
       });
     },
   });

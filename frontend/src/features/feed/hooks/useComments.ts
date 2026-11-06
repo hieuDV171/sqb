@@ -49,6 +49,7 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
       queryClient.invalidateQueries({ queryKey });
 
       if (targetType === 'POST') {
+        void queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
         queryClient.setQueriesData<InfiniteData<CursorResponse<ActivityFeedItemDto>>>(
           { queryKey: ['activity-feeds'] },
           (oldData) => {
@@ -78,11 +79,11 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
         );
       }
     },
-    onError: (err: any) => {
+    onError: (err) => {
       addToast({
         type: 'error',
         title: 'Bình luận thất bại',
-        message: err?.response?.data?.message || 'Không thể đăng bình luận.',
+        message: err.message || 'Không thể đăng bình luận.',
       });
     },
   });
@@ -172,6 +173,9 @@ export function useComments(targetType: 'POST' | 'COMMENT', targetId: number) {
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
       queryClient.invalidateQueries({ queryKey: ['post-detail', targetId] });
+      if (targetType === 'POST') {
+        void queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
+      }
     },
   });
 

@@ -113,6 +113,9 @@ export function usePostReact() {
       toast.error('Không thể cập nhật cảm xúc. Vui lòng kiểm tra kết nối mạng!');
     },
     onSuccess: (res, data) => {
+      if (data.targetType === 'POST') {
+        void queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
+      }
       // 5. Cập nhật dữ liệu chuẩn xác từ Server (Reconciliation)
       if (res?.data) {
         const { myReaction, totalCount, reactionCounts } = res.data;

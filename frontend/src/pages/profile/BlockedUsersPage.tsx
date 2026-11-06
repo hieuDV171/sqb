@@ -17,6 +17,7 @@ export function BlockedUsersPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['blockedUsers'] }),
         queryClient.invalidateQueries({ queryKey: ['userProfile', id] }),
+        queryClient.invalidateQueries({ queryKey: ['profile-posts', id] }),
         queryClient.invalidateQueries({ queryKey: ['activity-feeds'] }),
       ]);
     },

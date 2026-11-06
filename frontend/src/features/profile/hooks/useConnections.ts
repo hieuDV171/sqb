@@ -6,6 +6,7 @@ function useConnectionList<T, Page extends CursorResponse<T>>(
   key: string,
   load: (after?: number) => Promise<GlobalResponse<Page>>,
   enabled = true,
+  refreshOnFocus = false,
 ) {
   return useInfiniteQuery({
     queryKey: [key],
@@ -16,14 +17,15 @@ function useConnectionList<T, Page extends CursorResponse<T>>(
       return last.pagination?.hasNext && after != null && after !== previous ? after : undefined;
     },
     enabled,
+    ...(refreshOnFocus ? { staleTime: 0, refetchOnWindowFocus: true } : {}),
   });
 }
 
 export function useFriendLists(active: 'friends' | 'received' | 'sent') {
   return {
     friends: useConnectionList('myFriends', userService.getMyFriends, active === 'friends'),
-    received: useConnectionList('receivedRequests', userService.getReceivedFriendRequests, active === 'received'),
-    sent: useConnectionList('sentRequests', userService.getSentFriendRequests, active === 'sent'),
+    received: useConnectionList('receivedRequests', userService.getReceivedFriendRequests, active === 'received', true),
+    sent: useConnectionList('sentRequests', userService.getSentFriendRequests, active === 'sent', true),
   };
 }
 

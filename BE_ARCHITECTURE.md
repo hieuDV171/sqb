@@ -287,3 +287,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - FID thuộc cặp `userId + deviceId`. Login và đồng bộ kiểm tra xung đột dưới khóa giao dịch PostgreSQL theo FID. Login bỏ qua FID xung đột để người dùng vẫn vào được hệ thống. Đồng bộ trả 409 và chỉ cập nhật thiết bị đang hoạt động. Khi đổi tài khoản trên trình duyệt dùng chung, logout tài khoản cũ giải phóng FID. Login mới chỉ ghi vào thiết bị của chính tài khoản đăng nhập.
 - Hủy FID yêu cầu phiên đầy đủ và dùng một câu cập nhật có điều kiện theo cả cặp sở hữu lẫn FID đang lưu. Frontend xếp hàng callback chưa gửi được và gửi lại khi vào phiên `ACTIVE`.
+
+### [ADR-017] Tách quyền xem hồ sơ khỏi quyền xem bài viết
+
+- Hồ sơ thành viên vẫn truy cập được khi có quan hệ chặn. Backend là nguồn quyết định quyền đọc bài viết qua `GET /users/{userId}/posts` và endpoint chi tiết. Khi nhận `USER_IS_BLOCKED`, FE thay phần bài viết bằng biểu tượng Cấm và thông báo, không hiển thị các bài đã lưu trong cache cho trạng thái này.
+- Hồ sơ chính chủ dùng `GET /posts/me`; hồ sơ thành viên dùng API theo tác giả và tuân theo phạm vi công khai/bạn bè. Phân trang dùng cursor hiện hữu.

@@ -29,11 +29,14 @@ export const postService = {
    */
   getMyPosts: async (
     after?: number,
-    limit: number = 10
+    limit: number = 10,
+    signal?: AbortSignal,
   ): Promise<GlobalResponse<CursorResponse<PostResponseDto>>> => {
-    return (await axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>>('/posts/me', {
+    return axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>, GlobalResponse<CursorResponse<PostResponseDto>>>('/posts/me', {
       params: { after, limit },
-    })) as unknown as GlobalResponse<CursorResponse<PostResponseDto>>;
+      signal,
+      skipToast: true,
+    });
   },
 
   /**
@@ -43,14 +46,17 @@ export const postService = {
   getUserPosts: async (
     userId: number,
     after?: number,
-    limit: number = 10
+    limit: number = 10,
+    signal?: AbortSignal,
   ): Promise<GlobalResponse<CursorResponse<PostResponseDto>>> => {
-    return (await axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>>(
+    return axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>, GlobalResponse<CursorResponse<PostResponseDto>>>(
       `/users/${userId}/posts`,
       {
         params: { after, limit },
+        signal,
+        skipToast: true,
       }
-    )) as unknown as GlobalResponse<CursorResponse<PostResponseDto>>;
+    );
   },
 
   /**
