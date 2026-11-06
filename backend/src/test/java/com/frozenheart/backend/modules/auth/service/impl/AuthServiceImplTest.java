@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.auth.service.impl;
 
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserDevice;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
 import com.frozenheart.backend.core.entity.user.UserRole;
@@ -35,15 +36,17 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
@@ -99,14 +102,13 @@ class AuthServiceImplTest {
                 .build();
         UserProfile profile = UserProfile.builder().user(user).profileCompleted(false).build();
         LoginRequest request = new LoginRequest(
-                user.getEmail(), "temporary", "web-device", null, DevicePlatform.WEB,
+                user.getEmail(), "temporary", "web-device", "untrusted-fid", DevicePlatform.WEB,
                 "Chrome", "Windows", "1.0.0"
         );
 
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("temporary", "temporary-hash")).thenReturn(true);
         when(userProfileRepository.findByUserId(24L)).thenReturn(Optional.of(profile));
-        when(userDeviceRepository.findActiveDevicesByDeviceIdWithUser("web-device")).thenReturn(List.of());
         when(userDeviceRepository.findByUserIdAndDeviceId(24L, "web-device")).thenReturn(Optional.empty());
         when(jwtService.generateOnboardingToken(org.mockito.ArgumentMatchers.anyMap(), org.mockito.ArgumentMatchers.eq(user.getEmail())))
                 .thenReturn("onboarding-token");
@@ -119,6 +121,33 @@ class AuthServiceImplTest {
         assertEquals(null, response.refreshToken());
         verify(jwtService, never()).generateRefreshToken(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
         verify(cookieUtils).clearCookie("refreshToken");
+        verify(userDeviceRepository, never()).lockFidForTransaction("untrusted-fid");
+    }
+
+    @Test
+    void loginSucceedsWithoutBindingAnotherAccountsFidEvenWithMatchingDeviceId() {
+        String email = "student@sqb.edu.vn";
+        String deviceId = "shared-device-id";
+        String fid = "another-accounts-fid";
+        User user = User.builder().id(26L).email(email).passwordHash("hash")
+                .role(UserRole.STUDENT).verified(true).active(true).build();
+        UserProfile profile = UserProfile.builder().user(user).profileCompleted(true).build();
+        UserDevice device = UserDevice.builder().user(user).deviceId(deviceId).build();
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userProfileRepository.findByUserId(26L)).thenReturn(Optional.of(profile));
+        when(passwordEncoder.matches("password", "hash")).thenReturn(true);
+        when(userDeviceRepository.findByUserIdAndDeviceId(26L, deviceId)).thenReturn(Optional.of(device));
+        when(userDeviceRepository.isFidBoundToAnotherDevice(fid, 26L, deviceId)).thenReturn(true);
+        when(jwtService.generateAccessToken(anyMap(), eq(email))).thenReturn("access");
+        when(jwtService.generateRefreshToken(email, deviceId)).thenReturn("refresh");
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        AuthResponse response = service.login(new LoginRequest(
+                email, "password", deviceId, fid, DevicePlatform.WEB, null, null, null));
+
+        assertEquals(TokenType.ACCESS, response.tokenType());
+        assertNull(device.getFid());
+        verify(userDeviceRepository).save(device);
     }
 
     @Test

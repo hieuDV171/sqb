@@ -10,6 +10,7 @@ import {
   type Messaging,
 } from 'firebase/messaging';
 import { deviceService } from '@/services/deviceService';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -28,6 +29,36 @@ let messagingInstance: Messaging | null = null;
 let isFidLifecycleBound = false;
 
 const FID_STORAGE_KEY = 'sqb_fid';
+const PENDING_FID_PREFIX = 'sqb_pending_fid_unregister:';
+
+function hasActiveSession() {
+  const { isAuthenticated, tokenType, accountState } = useAuthStore.getState();
+  return isAuthenticated && tokenType === 'ACCESS' && accountState === 'ACTIVE';
+}
+
+function queueFidUnregister(fid: string) {
+  localStorage.setItem(PENDING_FID_PREFIX + fid, '1');
+  if (localStorage.getItem(FID_STORAGE_KEY) === fid) {
+    localStorage.removeItem(FID_STORAGE_KEY);
+  }
+}
+
+async function flushPendingFidUnregisters() {
+  if (!hasActiveSession()) return;
+
+  const keys = Object.keys(localStorage).filter((key) => key.startsWith(PENDING_FID_PREFIX));
+  for (const key of keys) {
+    if (!hasActiveSession()) return;
+    if (localStorage.getItem(key) === null) continue;
+    const fid = key.slice(PENDING_FID_PREFIX.length);
+    try {
+      await deviceService.unregisterFid(fid);
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('[FID] Chưa đồng bộ được yêu cầu hủy đăng ký:', error);
+    }
+  }
+}
 
 /**
  * Lấy instance Messaging một cách an toàn (tránh crash trên các trình duyệt không hỗ trợ Push API)
@@ -57,14 +88,13 @@ function bindFidLifecycleListeners(messaging: Messaging) {
   // 1. Lắng nghe khi FID được sinh hoặc làm mới
   onRegistered(messaging, async (fid: string) => {
     console.log('[FID] onRegistered callback nhận FID thành công:', fid.substring(0, 15) + '...');
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(FID_STORAGE_KEY, fid);
-    }
+    if (Notification.permission !== 'granted') return;
+    localStorage.removeItem(PENDING_FID_PREFIX + fid);
+    localStorage.setItem(FID_STORAGE_KEY, fid);
 
     // Tự động đồng bộ FID lên server nếu người dùng đã đăng nhập
     try {
-      const { useAuthStore } = await import('@/stores/useAuthStore');
-      if (useAuthStore.getState().isAuthenticated) {
+      if (hasActiveSession()) {
         await deviceService.syncFid(fid);
         console.log('[FID] Đã tự động đồng bộ FID mới lên server thành công.');
       }
@@ -76,14 +106,9 @@ function bindFidLifecycleListeners(messaging: Messaging) {
   // 2. Lắng nghe khi app instance bị hủy đăng ký khỏi FCM
   onUnregistered(messaging, async (unregisteredFid: string) => {
     console.warn('[FID] onUnregistered callback kích hoạt cho FID:', unregisteredFid?.substring(0, 15) + '...');
-    if (unregisteredFid) {
-      await deviceService.unregisterFid(unregisteredFid).catch((err) => {
-        console.warn('[FID] Gửi yêu cầu deactive FID lên backend thất bại:', err?.message);
-      });
-    }
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(FID_STORAGE_KEY);
-    }
+    if (!unregisteredFid) return;
+    queueFidUnregister(unregisteredFid);
+    await flushPendingFidUnregisters();
   });
 }
 
@@ -172,16 +197,13 @@ export async function requestFid(): Promise<string | null> {
  */
 export async function unregisterCurrentFid(): Promise<void> {
   try {
+    if (typeof window === 'undefined') return;
+    const currentFid = localStorage.getItem(FID_STORAGE_KEY);
+    if (currentFid) queueFidUnregister(currentFid);
+    await flushPendingFidUnregisters();
+
     const messaging = await getMessagingSafe();
-    if (messaging) {
-      await unregister(messaging);
-    } else {
-      const currentFid = typeof window !== 'undefined' ? localStorage.getItem(FID_STORAGE_KEY) : null;
-      if (currentFid) {
-        await deviceService.unregisterFid(currentFid).catch(() => {});
-        localStorage.removeItem(FID_STORAGE_KEY);
-      }
-    }
+    if (messaging) await unregister(messaging);
     console.info('[FID] Đã hủy đăng ký FID thành công.');
   } catch (error) {
     console.warn('[FID] Lỗi khi gọi unregister FID:', error);
@@ -205,16 +227,16 @@ export async function onForegroundMessage(callback: (payload: unknown) => void) 
  * Chủ động đồng bộ FID đã lưu lên server nếu người dùng đã xác thực
  */
 export async function syncCurrentFidIfAuthenticated(): Promise<void> {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !hasActiveSession()) return;
+  await flushPendingFidUnregisters();
+  if (!hasActiveSession() || !('Notification' in window) || Notification.permission !== 'granted') return;
+
   const fid = localStorage.getItem(FID_STORAGE_KEY);
   if (!fid) return;
 
   try {
-    const { useAuthStore } = await import('@/stores/useAuthStore');
-    if (useAuthStore.getState().isAuthenticated) {
-      await deviceService.syncFid(fid);
-      console.log('[FID] syncCurrentFidIfAuthenticated thành công cho FID:', fid.substring(0, 15) + '...');
-    }
+    await deviceService.syncFid(fid);
+    console.log('[FID] syncCurrentFidIfAuthenticated thành công cho FID:', fid.substring(0, 15) + '...');
   } catch (error: any) {
     console.warn('[FID] syncCurrentFidIfAuthenticated thất bại:', error?.message);
   }

@@ -8,6 +8,7 @@ import com.frozenheart.backend.core.security.CustomUserDetailsService;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -64,7 +65,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/refresh").permitAll()
                         .requestMatchers("/public/**").permitAll()
-                        .requestMatchers("/devices/fid/unregister").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/docs/**", "/docs", "/api-docs/**").permitAll()
 
@@ -83,11 +83,17 @@ public class SecurityConfig {
 
                         .anyRequest().access((authentication, _) -> {
                             var current = authentication.get();
-                            boolean onboarding = current.getAuthorities().stream()
-                                    .anyMatch(authority -> "ROLE_ONBOARDING".equals(authority.getAuthority()));
-                            boolean anonymous = current.getAuthorities().stream()
-                                    .anyMatch(authority -> "ROLE_ANONYMOUS".equals(authority.getAuthority()));
-                            return new AuthorizationDecision(current.isAuthenticated() && !anonymous && !onboarding);
+
+                            if (current == null || !current.isAuthenticated() || current instanceof AnonymousAuthenticationToken) {
+                                return new AuthorizationDecision(false);
+                            }
+
+                            var authorities = current.getAuthorities();
+
+                            boolean onboarding = authorities.stream().anyMatch(authority -> "ROLE_ONBOARDING".equals(authority.getAuthority()));
+
+                            return new AuthorizationDecision(!onboarding);
+
                         })
                 )
                 .authenticationProvider(authenticationProvider())

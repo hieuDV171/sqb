@@ -75,9 +75,10 @@ public class DeviceController {
         return ResponseEntity.ok(GlobalResponse.success());
     }
 
-    @Operation(summary = "Hủy đăng ký Firebase Installation ID (FID)", description = "Vô hiệu hóa thiết bị và xóa FID khi người dùng tắt quyền thông báo hoặc sự kiện onUnregistered xảy ra.")
+    @Operation(summary = "Hủy đăng ký Firebase Installation ID (FID)", description = "Chỉ xóa FID đang khớp trên thiết bị của phiên đăng nhập hiện tại. Giữ nguyên trạng thái thiết bị và phiên đăng nhập.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Hủy đăng ký FID thành công")
+            @ApiResponse(responseCode = "200", description = "Đã xử lý yêu cầu, kể cả khi FID không còn khớp"),
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
     })
     @PostMapping("/fid/unregister")
     public ResponseEntity<GlobalResponse<Void>> unregisterFid(
@@ -90,7 +91,9 @@ public class DeviceController {
     @Operation(summary = "Đồng bộ Firebase Installation ID (FID)", description = "Cập nhật hoặc liên kết FID mới cho thiết bị hiện tại của người dùng đang đăng nhập.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đồng bộ FID thành công"),
-            @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
+            @ApiResponse(responseCode = "404", description = "Thiết bị hiện tại không hoạt động hoặc không tồn tại"),
+            @ApiResponse(responseCode = "409", description = "FID đã gắn với thiết bị khác (FID_ALREADY_BOUND)")
     })
     @PostMapping("/fid")
     public ResponseEntity<GlobalResponse<Void>> syncFid(

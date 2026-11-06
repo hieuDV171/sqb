@@ -120,7 +120,8 @@ public class AuthServiceImpl implements AuthService {
 
         metricService.incrementCounter("sqb.auth.login", "status", "success", "reason", "none");
 
-        saveOrUpdateUserDevice(user, request);
+        saveOrUpdateUserDevice(user, request,
+                AccountState.from(user.isVerified(), userProfile.isProfileCompleted()));
 
         AuthResponse authResponse = buildAuthResponse(request.deviceId(), user, userProfile);
         if (authResponse.tokenType() == TokenType.ONBOARDING) {
@@ -158,32 +159,16 @@ public class AuthServiceImpl implements AuthService {
 
     }
 
-    private void saveOrUpdateUserDevice(User user, LoginRequest request) {
-        // 1. Device takeover: Thu hồi phiên của bất kỳ tài khoản nào khác đang active
-        // trên thiết bị này
-        List<UserDevice> otherActiveDevices = userDeviceRepository
-                .findActiveDevicesByDeviceIdWithUser(request.deviceId());
-        List<UserDevice> devicesToDeactivate = new ArrayList<>();
-        for (UserDevice otherDevice : otherActiveDevices) {
-            if (otherDevice.getUser() != null && !otherDevice.getUser().getId().equals(user.getId())) {
-                otherDevice.setActive(false);
-                otherDevice.setFid(null);
-                devicesToDeactivate.add(otherDevice);
-
-                // Xóa Refresh Token của người dùng cũ trong Redis
-                String oldEmail = otherDevice.getUser().getEmail();
-                if (oldEmail != null) {
-                    redisTemplate.delete("rt:" + oldEmail + ":" + request.deviceId());
-                    log.info("[AuthService] Đã tự động thu hồi phiên của user {} trên thiết bị {}", oldEmail,
-                            request.deviceId());
-                }
+    private void saveOrUpdateUserDevice(User user, LoginRequest request, AccountState accountState) {
+        String fid = accountState == AccountState.ACTIVE ? request.fid() : null;
+        if (fid != null && !fid.isBlank()) {
+            userDeviceRepository.lockFidForTransaction(fid);
+            if (userDeviceRepository.isFidBoundToAnotherDevice(fid, user.getId(), request.deviceId())) {
+                fid = null;
             }
         }
-        if (!devicesToDeactivate.isEmpty()) {
-            userDeviceRepository.saveAll(devicesToDeactivate);
-        }
 
-        // 2. Kích hoạt hoặc tạo mới UserDevice cho người dùng hiện tại
+        // Client cung cấp deviceId, nên chỉ cập nhật thiết bị thuộc tài khoản đăng nhập.
         UserDevice device = userDeviceRepository.findByUserIdAndDeviceId(user.getId(), request.deviceId())
                 .orElseGet(() -> UserDevice.builder()
                         .user(user)
@@ -191,7 +176,7 @@ public class AuthServiceImpl implements AuthService {
                         .createdAt(Instant.now())
                         .build());
 
-        device.setFid(request.fid());
+        device.setFid(fid == null || fid.isBlank() ? null : fid);
         device.setPlatform(request.platform());
         device.setDeviceName(request.deviceName());
         device.setOsVersion(request.osVersion());

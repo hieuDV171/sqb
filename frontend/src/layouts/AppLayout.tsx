@@ -47,10 +47,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // 1. Tự động đồng bộ FID nếu trình duyệt đã được cấp quyền trước đó
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      syncCurrentFidIfAuthenticated().catch(() => {});
-    }
+    // Xử lý cả yêu cầu hủy đang chờ khi quyền thông báo đã bị tắt.
+    syncCurrentFidIfAuthenticated().catch(() => {});
 
     // 2. Lắng nghe thông báo khi người dùng đang mở tab (Foreground Toast)
     let unsubscribe: (() => void) | undefined;
