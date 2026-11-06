@@ -86,9 +86,6 @@ class StompManager {
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
-      debug: (msg: string) => {
-        console.log('[STOMP Debug]:', msg);
-      },
       onConnect: () => {
         console.log('[StompManager] Connected to STOMP broker at', this.socketUrl);
         this.setStatus('CONNECTED');

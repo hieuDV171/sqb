@@ -8,6 +8,7 @@ declare module "axios" {
     export interface AxiosRequestConfig {
         skipToast?: boolean;
         skipAuthRefresh?: boolean;
+        _retry?: boolean;
     }
 }
 
@@ -51,9 +52,24 @@ const requireAccessToken = (
     return accessToken;
 };
 
+function readSessionIdentity(token: string): string | null {
+    try {
+        const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const { userId, deviceId } = JSON.parse(atob(payload));
+        return typeof userId === 'number' && typeof deviceId === 'string' && deviceId
+            ? JSON.stringify([userId, deviceId])
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 // Request Interceptor: Tự động đính kèm Access Token và chuyển camelCase -> snake_case bằng humps
 axiosClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
+    if (config._retry && (!token || config.headers.Authorization !== `Bearer ${token}`)) {
+        throw new axios.CanceledError('Session changed before retry');
+    }
     if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -70,9 +86,17 @@ axiosClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 axiosClient.interceptors.response.use(
     (response) => humps.camelizeKeys(response.data) as unknown as typeof response, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
     async (error) => {
+        if (axios.isCancel(error)) return Promise.reject(error);
+
         const originalRequest = error.config;
         const formattedError = error.response?.data ? humps.camelizeKeys(error.response.data) : error;
         const responseCode = formattedError?.code;
+        const currentToken = useAuthStore.getState().accessToken;
+
+        if (error.response?.status === 401 && originalRequest?.headers?.Authorization &&
+            originalRequest.headers.Authorization !== `Bearer ${currentToken}`) {
+            return Promise.reject(formattedError);
+        }
 
         if (error.response?.status === 403 && responseCode === '1013') {
             if (typeof window !== 'undefined' && window.location.pathname !== '/account-setup') {
@@ -98,18 +122,21 @@ axiosClient.interceptors.response.use(
             !originalRequest?.skipAuthRefresh &&
             useAuthStore.getState().isAuthenticated
         ) {
+            originalRequest._retry = true;
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 })
                     .then((token) => {
+                        if (useAuthStore.getState().accessToken !== token) {
+                            return Promise.reject(formattedError);
+                        }
                         originalRequest.headers.Authorization = `Bearer ${token}`;
                         return axiosClient(originalRequest);
                     })
                     .catch((err) => Promise.reject(err));
             }
 
-            originalRequest._retry = true;
             isRefreshing = true;
 
             try {
@@ -130,6 +157,11 @@ axiosClient.interceptors.response.use(
                     accessToken: string;
                 }>;
                 const newAccessToken = requireAccessToken(formattedRefreshData);
+                const expectedIdentity = currentToken && readSessionIdentity(currentToken);
+                if (useAuthStore.getState().accessToken !== currentToken ||
+                    !expectedIdentity || readSessionIdentity(newAccessToken) !== expectedIdentity) {
+                    throw new Error('Refresh response does not match the current session');
+                }
 
                 // Chỉ cập nhật Access Token; Refresh Token web ở trong HttpOnly cookie.
                 useAuthStore
@@ -144,6 +176,9 @@ axiosClient.interceptors.response.use(
                 return axiosClient(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError, null);
+                if (useAuthStore.getState().accessToken !== currentToken) {
+                    return Promise.reject(refreshError);
+                }
                 useAuthStore.getState().logout();
                 toast.warning("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.", "Hết phiên đăng nhập");
 
