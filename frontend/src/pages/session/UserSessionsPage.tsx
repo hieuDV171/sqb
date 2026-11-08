@@ -57,7 +57,7 @@ export function UserSessionsPage() {
         <>
           {filtered.length ? (
             <div className="grid gap-4 md:grid-cols-2">
-              {filtered.map((session) => <UserSessionCard key={session.sessionId} session={session} />)}
+              {filtered.map((session) => <UserSessionCard key={session.sessionId} session={session} userId={numericUserId} />)}
             </div>
           ) : (
             <div className="rounded-2xl border border-border bg-card p-8 text-center">

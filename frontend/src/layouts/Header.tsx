@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   ChevronDown,
@@ -46,6 +46,10 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const { logout } = useAuth();
   const stompStatus = useStompStatus();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchQuery = location.pathname === '/search'
+    ? new URLSearchParams(location.search).get('q') ?? ''
+    : '';
 
   const [openPanel, setOpenPanel] = useState<'profile' | 'notifications' | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -130,13 +134,16 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
               ref={desktopSearchTriggerRef}
               type="button"
               onClick={() => openSearch(desktopSearchTriggerRef.current)}
+              aria-label={searchQuery ? `Tìm kiếm: ${searchQuery}` : 'Tìm kiếm toàn cục'}
               aria-haspopup="dialog"
               aria-expanded={isSearchOpen}
               aria-controls="global-search-panel"
               className="group flex h-11 w-full max-w-xl items-center gap-3 rounded-2xl border border-border bg-surface-subtle px-4 text-left text-sm text-muted-foreground transition-[border-color,background-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Search className="size-4 shrink-0 transition-colors group-hover:text-primary" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate">Tìm người, môn học, bài viết hoặc câu hỏi</span>
+              <span className={cn('min-w-0 flex-1 truncate', searchQuery && 'text-foreground')}>
+                {searchQuery || 'Tìm người, môn học, bài viết hoặc câu hỏi'}
+              </span>
               <kbd className="hidden rounded-lg border border-border bg-card px-2 py-1 font-mono text-[0.68rem] font-semibold text-muted-foreground lg:inline-flex">
                 Ctrl K
               </kbd>
@@ -290,7 +297,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
         onClose={() => setIsChangePasswordOpen(false)}
         onSuccess={() => useAuthStore.getState().updateUser({ profileCompleted: true })}
       />
-      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} triggerRef={activeSearchTriggerRef} />
+      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} initialQuery={searchQuery} triggerRef={activeSearchTriggerRef} />
     </>
   );
 }

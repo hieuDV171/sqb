@@ -12,10 +12,12 @@ interface PracticeSummaryModalProps {
   onReviewFromStart: () => void;
   sessionTitle?: string;
   subjectName?: string;
+  returnTo: string;
+  returnLabel: string;
 }
 
 export function PracticeSummaryModal({
-  isOpen, onClose, questions, userAnswersRecord, onReviewFromStart, sessionTitle, subjectName,
+  isOpen, onClose, questions, userAnswersRecord, onReviewFromStart, sessionTitle, subjectName, returnTo, returnLabel,
 }: PracticeSummaryModalProps) {
   let correctCount = 0;
   let incorrectCount = 0;
@@ -57,8 +59,8 @@ export function PracticeSummaryModal({
           </dl>
           <div className="grid gap-2">
             <Button className="min-h-11" onClick={onReviewFromStart}><BookOpen aria-hidden="true" /> Xem lại từ câu đầu</Button>
-            <Button variant="ghost" className="min-h-11" render={<Link to="/questions" />} nativeButton={false}>
-              <ArrowLeft aria-hidden="true" /> Về ngân hàng câu hỏi
+            <Button variant="ghost" className="min-h-11" render={<Link to={returnTo} />} nativeButton={false}>
+              <ArrowLeft aria-hidden="true" /> {returnLabel}
             </Button>
           </div>
         </Dialog.Popup>

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { reactService, type ReactionType } from '@/features/feed/services/reactService';
 import { updatePracticeQuestion } from '@/features/practice/hooks/updatePracticeQuestion';
@@ -21,15 +21,33 @@ import {
 } from '@/features/practice';
 import { ErrorState } from '@/components/ui/error-state';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/stores/useToastStore';
 import { StudyHeader } from './StudyHeader';
 
 export function PracticeWorkspacePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const numericSessionId = Number(sessionId);
-  return <PracticeWorkspace key={sessionId} numericSessionId={numericSessionId} />;
+  const [searchParams] = useSearchParams();
+  const { state } = useLocation();
+  const questionId = Number(searchParams.get('questionId'));
+  const memberId = state?.fromMemberSessions as number | undefined;
+  const fromMember = memberId !== undefined && Number.isSafeInteger(memberId) && memberId > 0;
+  return (
+    <PracticeWorkspace
+      key={`${sessionId}:${questionId}`}
+      numericSessionId={Number(sessionId)}
+      initialQuestionId={questionId}
+      returnTo={fromMember ? `/users/${memberId}/sessions` : '/questions'}
+      returnLabel={fromMember ? 'Phiên đề xuất của thành viên' : 'Ngân hàng câu hỏi'}
+    />
+  );
 }
 
-function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
+function PracticeWorkspace({ numericSessionId, initialQuestionId, returnTo, returnLabel }: {
+  numericSessionId: number;
+  initialQuestionId: number;
+  returnTo: string;
+  returnLabel: string;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: sessionData, isLoading, isError, error, refetch } =
@@ -38,17 +56,47 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
     usePracticeAnswer();
 
   // Local state for practice session
-  const [requestedIndex, setCurrentIndex] = useState(0);
+  const [requestedIndex, setCurrentIndex] = useState<number | null>(null);
   const [selectedOptionsMap, setSelectedOptionsMap] = useState<Record<number, string[]>>({});
   const [userAnswersRecord, setUserAnswersRecord] = useState<
     Record<number, { isCorrect: boolean; selected: string[] }>
   >({});
   const reactionMutation = useMutation({
-    mutationFn: ({ questionId, reactionType }: { questionId: number; reactionType: ReactionType }) =>
-      reactService.toggleReact({ targetType: 'QUESTION', targetId: questionId, reactionType }),
-    onSuccess: async ({ data }, { questionId }) => {
-      if (!data) return;
-      await queryClient.cancelQueries({ queryKey: ['practiceSession', numericSessionId] });
+    mutationFn: async ({ questionId, reactionType }: { questionId: number; reactionType: ReactionType }) => {
+      const { data } = await reactService.toggleReact(
+        { targetType: 'QUESTION', targetId: questionId, reactionType },
+        { skipToast: true },
+      );
+      if (!data) throw new Error('Không thể cập nhật lượt thích câu hỏi.');
+      return data;
+    },
+    onMutate: async ({ questionId, reactionType }) => {
+      await queryClient.cancelQueries({ queryKey: ['practiceSession', numericSessionId], exact: true });
+      let previous: { reactCount: number; myReaction: ReactionType | null } | undefined;
+      updatePracticeQuestion(queryClient, numericSessionId, questionId, (question) => {
+        const myReaction = question.myInteraction.myReaction ?? null;
+        const toggledOff = myReaction === reactionType;
+        previous = { reactCount: question.reactCount, myReaction };
+        return {
+          ...question,
+          reactCount: Math.max(0, question.reactCount + (toggledOff ? -1 : myReaction ? 0 : 1)),
+          myInteraction: { ...question.myInteraction, myReaction: toggledOff ? null : reactionType },
+        };
+      });
+      return previous;
+    },
+    onError: (_error, { questionId }, previous) => {
+      if (previous) {
+        updatePracticeQuestion(queryClient, numericSessionId, questionId, (question) => ({
+          ...question,
+          reactCount: previous.reactCount,
+          myInteraction: { ...question.myInteraction, myReaction: previous.myReaction },
+        }));
+      }
+      toast.error('Không thể cập nhật lượt thích câu hỏi.');
+    },
+    onSuccess: async (data, { questionId }) => {
+      await queryClient.cancelQueries({ queryKey: ['practiceSession', numericSessionId], exact: true });
       updatePracticeQuestion(queryClient, numericSessionId, questionId, (question) => ({
         ...question,
         reactCount: data.totalCount,
@@ -74,12 +122,13 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
   const questionHeading = useRef<HTMLHeadingElement>(null);
 
   const questions = sessionData?.questions || [];
-  const currentIndex = Math.min(requestedIndex, Math.max(0, questions.length - 1));
+  const linkedIndex = questions.findIndex((question) => question.questionId === initialQuestionId);
+  const currentIndex = Math.min(requestedIndex ?? Math.max(0, linkedIndex), Math.max(0, questions.length - 1));
   const currentQuestion = questions[currentIndex];
   const ratedQuestion = questions.find((question) => question.questionId === rateTarget.id);
   const returnLink = (
-    <Button variant="ghost" render={<Link to="/questions" />} nativeButton={false} className="min-h-11">
-      <ArrowLeft aria-hidden="true" /> Ngân hàng câu hỏi
+    <Button variant="ghost" render={<Link to={returnTo} />} nativeButton={false} className="min-h-11">
+      <ArrowLeft aria-hidden="true" /> {returnLabel}
     </Button>
   );
 
@@ -169,7 +218,8 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
         <PracticeEmptyState
           title="Phiên này chưa có câu hỏi nào"
           message="Các câu hỏi trong phiên đang chờ giảng viên hoàn tất duyệt hoặc chưa được thêm vào."
-          onAction={() => navigate('/questions')}
+          actionText={returnLabel}
+          onAction={() => navigate(returnTo)}
         />
       </div>
     );
@@ -270,6 +320,8 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
         onReviewFromStart={handleReviewFromStart}
         sessionTitle={sessionData.title}
         subjectName={sessionData.subjectName}
+        returnTo={returnTo}
+        returnLabel={returnLabel}
       />
     </div>
   );

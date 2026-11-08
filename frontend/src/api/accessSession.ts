@@ -34,7 +34,7 @@ export function isAccessTokenExpiring(token: string): boolean {
     return typeof expiresAt === 'number' && expiresAt * 1000 <= Date.now() + 5000;
 }
 
-let pendingRefresh: { token: string; result: Promise<string> } | undefined;
+let pendingRefresh: { token: string; request: Promise<string | null>; result: Promise<string> } | undefined;
 
 export async function refreshAccessToken(token: string): Promise<string> {
     const session = useAuthStore.getState();
@@ -48,10 +48,11 @@ export async function refreshAccessToken(token: string): Promise<string> {
         return pendingRefresh.result;
     }
 
-    const result = requestRefresh(token).finally(() => {
+    const request = requestRefresh(token);
+    const result = applyRefresh(token, request).finally(() => {
         pendingRefresh = undefined;
     });
-    pendingRefresh = { token, result };
+    pendingRefresh = { token, request, result };
     return result;
 }
 
@@ -66,13 +67,21 @@ function expireSession(token: string): void {
     }
 }
 
-async function requestRefresh(token: string): Promise<string> {
+async function requestRefresh(token: string): Promise<string | null> {
     // Use the HttpOnly cookie with a plain Axios request to avoid the interceptors.
     const response = await axios.post<GlobalResponse<{ access_token: string }>>(
         `${API_BASE_URL.replace(/\/$/, '')}/auth/refresh`,
         undefined,
         { withCredentials: true, timeout: 15000 },
-    ).catch((error: unknown) => {
+    );
+    const refreshData = humps.camelizeKeys(response.data) as GlobalResponse<{ accessToken: string }>;
+    const newToken = refreshData?.data?.accessToken;
+    const identity = readSessionIdentity(token);
+    return typeof newToken === 'string' && identity && readSessionIdentity(newToken) === identity ? newToken : null;
+}
+
+async function applyRefresh(token: string, request: Promise<string | null>): Promise<string> {
+    const newToken = await request.catch((error: unknown) => {
         if (useAuthStore.getState().accessToken !== token) {
             throw new axios.CanceledError('Session changed during refresh');
         }
@@ -91,14 +100,31 @@ async function requestRefresh(token: string): Promise<string> {
         throw new axios.CanceledError('Session changed during refresh');
     }
 
-    const refreshData = humps.camelizeKeys(response.data) as GlobalResponse<{ accessToken: string }>;
-    const newToken = refreshData?.data?.accessToken;
-    const identity = readSessionIdentity(token);
-    if (typeof newToken !== 'string' || !identity || readSessionIdentity(newToken) !== identity) {
+    if (!newToken) {
         expireSession(token);
         throw new Error('Refresh response does not match the current session');
     }
 
     session.setTokens(newToken);
     return newToken;
+}
+
+export async function revokeAccessSession(token: string, canRefresh: boolean): Promise<void> {
+    const logout = (accessToken: string) => axios.post(
+        `${API_BASE_URL.replace(/\/$/, '')}/auth/logout`,
+        undefined,
+        { headers: { Authorization: `Bearer ${accessToken}` }, timeout: 15000 },
+    );
+
+    // Let a concurrent rotation finish before revoking the refresh token for this device.
+    const refresh = pendingRefresh?.token === token ? pendingRefresh.request : undefined;
+    const rotatedToken = await refresh?.catch(() => null);
+    try {
+        await logout(rotatedToken ?? token);
+    } catch (error) {
+        if (!canRefresh || refresh || !axios.isAxiosError(error) || error.response?.status !== 401) throw error;
+        const freshToken = await requestRefresh(token);
+        if (!freshToken) throw new Error('Refresh response does not match the session being signed out', { cause: error });
+        await logout(freshToken);
+    }
 }

@@ -1,4 +1,4 @@
-import { Component, useState, useEffect, type ReactNode } from 'react';
+import { Component, useState, type ReactNode } from 'react';
 import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import {
   Search,
@@ -40,20 +40,8 @@ function SearchPageContent() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryParam = searchParams.get('q') || '';
-  const typeParam = (searchParams.get('type') as SearchType) || 'ALL';
-
-  const [inputQuery, setInputQuery] = useState(queryParam);
-  const [selectedType, setSelectedType] = useState<SearchType>(typeParam);
+  const selectedType = (searchParams.get('type') as SearchType) || 'ALL';
   const [cursor, setCursor] = useState<number | undefined>(undefined);
-
-  // Sync state when URL params change
-  useEffect(() => {
-    // URL là nguồn dữ liệu chuẩn cho back/forward và deep link của trang tìm kiếm.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setInputQuery(queryParam);
-    setSelectedType(typeParam);
-    setCursor(undefined);
-  }, [queryParam, typeParam]);
 
   const {
     data: searchData,
@@ -70,19 +58,7 @@ function SearchPageContent() {
   });
   const recordSearchMutation = useRecordSearch();
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputQuery.trim()) {
-      const confirmedQuery = inputQuery.trim();
-      if (confirmedQuery.length >= 2) {
-        recordSearchMutation.mutate(confirmedQuery);
-      }
-      setSearchParams({ q: confirmedQuery, type: selectedType });
-    }
-  };
-
   const handleTabChange = (type: SearchType) => {
-    setSelectedType(type);
     setCursor(undefined);
     setSearchParams({ q: queryParam, type });
   };
@@ -108,41 +84,7 @@ function SearchPageContent() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header & Search Bar Box */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
-        <div className="max-w-2xl mx-auto text-center space-y-3 mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-xs font-semibold">
-            <Search className="w-3.5 h-3.5" />
-            Tra Cứu Toàn Cục SQB
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-            Tìm Kiếm Đa Thực Thể
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Tra cứu nhanh bài viết chia sẻ, sinh viên & giảng viên, ngân hàng câu hỏi và môn học trong trường.
-          </p>
-        </div>
-
-        {/* Input Form */}
-        <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto">
-          <div className="relative flex items-center shadow-md rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-            <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 ml-4 shrink-0" />
-            <input
-              type="text"
-              value={inputQuery}
-              onChange={(e) => setInputQuery(e.target.value)}
-              placeholder="Nhập từ khóa tìm kiếm..."
-              className="w-full px-4 py-3.5 text-sm sm:text-base bg-transparent text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3.5 m-1 rounded-xl font-bold text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shrink-0 cursor-pointer"
-            >
-              Tìm kiếm
-            </button>
-          </div>
-        </form>
-      </div>
+      <h1 className="sr-only">Kết quả tìm kiếm</h1>
 
       {/* Tabs Toolbar */}
       {queryParam && (
@@ -154,6 +96,7 @@ function SearchPageContent() {
                 <button
                   key={tab.key}
                   type="button"
+                  aria-pressed={selectedType === tab.key}
                   onClick={() => handleTabChange(tab.key)}
                   className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                     selectedType === tab.key
@@ -178,6 +121,7 @@ function SearchPageContent() {
               disabled={isFetching}
               className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               title="Làm mới"
+              aria-label="Làm mới kết quả tìm kiếm"
             >
               <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             </button>
@@ -190,7 +134,7 @@ function SearchPageContent() {
         <EmptyState
           icon={Search}
           title="Bắt đầu tìm kiếm thông tin"
-          description="Nhập từ khóa về môn học, bài viết bạn quan tâm hoặc tên bạn bè để tra cứu toàn bộ dữ liệu hệ thống."
+          description="Nhập từ khóa vào ô tìm kiếm ở thanh trên cùng."
         />
       ) : isLoading ? (
         <div className="space-y-3">
@@ -293,8 +237,8 @@ function SearchPageContent() {
 
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-4 text-xs text-slate-500">
-                      <span>{item.post.reactCount || 0} cảm xúc</span>
-                      <span>{item.post.commentCount || 0} bình luận</span>
+                      {item.post.reactCount != null && <span>{item.post.reactCount} cảm xúc</span>}
+                      {item.post.commentCount != null && <span>{item.post.commentCount} bình luận</span>}
                     </div>
                     <Link
                       to={`/posts/${item.post.postId}`}
@@ -333,13 +277,15 @@ function SearchPageContent() {
                     <span className="text-xs text-slate-500">
                       {item.question.ratingCount ? `${item.question.ratingCount} lượt đánh giá` : 'Câu hỏi đã kiểm duyệt'}
                     </span>
-                    <Link
-                      to={`/sessions?questionId=${item.question.questionId}`}
-                      onClick={recordCurrentQuery}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
-                    >
-                      Luyện tập câu này <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {item.question.sessionId && (
+                      <Link
+                        to={`/sessions/${item.question.sessionId}/practice?questionId=${item.question.questionId}`}
+                        onClick={recordCurrentQuery}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
+                      >
+                        Luyện tập câu này <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}
@@ -364,11 +310,11 @@ function SearchPageContent() {
                       {item.session.questionCount || 0} câu hỏi trong phiên
                     </span>
                     <Link
-                      to={`/sessions/${item.session.sessionId}`}
+                      to={`/sessions/${item.session.sessionId}/practice`}
                       onClick={recordCurrentQuery}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
                     >
-                      Mở phiên đề xuất <ArrowRight className="w-3.5 h-3.5" />
+                      Luyện tập phiên này <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
@@ -398,8 +344,6 @@ function SearchPageContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      setInputQuery(item.subject?.subjectName || '');
-                      setSelectedType('QUESTION');
                       const subjectName = item.subject?.subjectName || '';
                       recordCurrentQuery();
                       setSearchParams({ q: subjectName, type: 'QUESTION' });

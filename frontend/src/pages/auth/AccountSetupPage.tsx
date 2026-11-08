@@ -1,6 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Check, Eye, EyeOff, KeyRound, LogOut, MailCheck, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/common/BrandMark';
 import { Button } from '@/components/ui/button';
@@ -8,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authService } from '@/services/authService';
+import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { toast } from '@/stores/useToastStore';
 
@@ -18,9 +17,8 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 export function AccountSetupPage() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { user, accountState, updateUser, setAccountState, logout } = useAuthStore();
+  const { logout } = useAuth();
+  const { user, accountState, updateUser, setAccountState } = useAuthStore();
   const needsEmailVerification = accountState === 'EMAIL_VERIFICATION_REQUIRED';
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -28,7 +26,7 @@ export function AccountSetupPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
-  const [busyAction, setBusyAction] = useState<'send' | 'verify' | 'password' | 'logout' | null>(null);
+  const [busyAction, setBusyAction] = useState<'send' | 'verify' | 'password' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sendOtp = async () => {
@@ -85,23 +83,12 @@ export function AccountSetupPage() {
     setBusyAction('password');
     try {
       await authService.changePassword({ oldPassword, newPassword });
-      await authService.logout().catch(() => undefined);
       logout();
-      queryClient.clear();
       toast.success('Hãy đăng nhập lại bằng mật khẩu mới.', 'Thiết lập tài khoản hoàn tất');
-      navigate('/login', { replace: true });
     } catch (caught) {
       setError(errorMessage(caught, 'Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.'));
       setBusyAction(null);
     }
-  };
-
-  const leaveSetup = async () => {
-    setBusyAction('logout');
-    await authService.logout().catch(() => undefined);
-    logout();
-    queryClient.clear();
-    navigate('/login', { replace: true });
   };
 
   return (
@@ -109,7 +96,7 @@ export function AccountSetupPage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="flex items-center justify-between gap-4">
           <BrandMark />
-          <Button type="button" variant="ghost" onClick={leaveSetup} disabled={busyAction !== null}>
+          <Button type="button" variant="ghost" onClick={logout} disabled={busyAction !== null}>
             <LogOut className="size-4" /> Đăng xuất
           </Button>
         </header>

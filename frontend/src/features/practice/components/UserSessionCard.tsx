@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/stores/useToastStore';
 import type { SubmissionSessionSummaryDto } from '@/features/session/types/session.types';
 
-export function UserSessionCard({ session }: { session: SubmissionSessionSummaryDto }) {
+export function UserSessionCard({ session, userId }: { session: SubmissionSessionSummaryDto; userId: number }) {
   const practicePath = `/sessions/${session.sessionId}/practice`;
   const [copied, setCopied] = useState(false);
 
@@ -42,7 +42,7 @@ export function UserSessionCard({ session }: { session: SubmissionSessionSummary
           <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-3.5" /> {session.commentCount ?? 0}<span className="sr-only"> bình luận</span></span>
           {session.createdAt && <time dateTime={session.createdAt}>{new Date(session.createdAt).toLocaleDateString('vi-VN')}</time>}
         </p>
-        <Button variant="outline" className="min-h-11" render={<Link to={practicePath} />} nativeButton={false}>
+        <Button variant="outline" className="min-h-11" render={<Link to={practicePath} state={{ fromMemberSessions: userId }} />} nativeButton={false}>
           <PlayCircle aria-hidden="true" /> Luyện tập
         </Button>
       </footer>

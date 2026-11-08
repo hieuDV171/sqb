@@ -21,7 +21,7 @@ export const reactService = {
    * Thả hoặc hủy cảm xúc (Toggle React) cho bài viết hoặc bình luận
    * POST /api/v1/react
    */
-  toggleReact: async (data: ReactRequest): Promise<GlobalResponse<ReactResponseDto>> => {
-    return axiosClient.post<GlobalResponse<ReactResponseDto>, GlobalResponse<ReactResponseDto>>('/react', data);
+  toggleReact: async (data: ReactRequest, options?: { skipToast?: boolean }): Promise<GlobalResponse<ReactResponseDto>> => {
+    return axiosClient.post<GlobalResponse<ReactResponseDto>, GlobalResponse<ReactResponseDto>>('/react', data, options);
   },
 };

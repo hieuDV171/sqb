@@ -21,9 +21,11 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 pb-10">
-      <Button nativeButton={false} variant="ghost" render={<Link to={isOwnProfile ? '/feed' : '/friends'} />}>
-        <ArrowLeft aria-hidden="true" /> {isOwnProfile ? 'Bảng tin' : 'Bạn bè'}
-      </Button>
+      {isOwnProfile && (
+        <Button nativeButton={false} variant="ghost" render={<Link to="/feed" />}>
+          <ArrowLeft aria-hidden="true" /> Bảng tin
+        </Button>
+      )}
 
       {!isValid ? (
         <EmptyState icon={UserRound} title="Đường dẫn hồ sơ không hợp lệ" description="Hãy mở lại hồ sơ từ bảng tin hoặc danh sách bạn bè." />

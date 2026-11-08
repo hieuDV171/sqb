@@ -46,9 +46,6 @@ interface PanelPosition {
 }
 
 const DESKTOP_BREAKPOINT = 768;
-const PANEL_MAX_WIDTH = 672;
-const VIEWPORT_GUTTER = 16;
-
 function getUserDisplayName(user: UserSearchResultDto) {
   return (
     user.fullName?.trim() ||
@@ -96,15 +93,15 @@ export function GlobalSearchModal({
     }
 
     const resetTimer = window.setTimeout(() => {
-      setSearchTerm('');
-      setDebouncedQuery('');
+      setSearchTerm(initialQuery);
+      setDebouncedQuery(initialQuery);
     }, 0);
     if (wasOpenRef.current) {
       wasOpenRef.current = false;
       window.setTimeout(() => triggerRef?.current?.focus(), 0);
     }
     return () => window.clearTimeout(resetTimer);
-  }, [isOpen, triggerRef]);
+  }, [initialQuery, isOpen, triggerRef]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -119,17 +116,10 @@ export function GlobalSearchModal({
       }
 
       const rect = triggerRef.current.getBoundingClientRect();
-      const width = Math.min(PANEL_MAX_WIDTH, window.innerWidth - VIEWPORT_GUTTER * 2);
-      const idealLeft = rect.left + rect.width / 2 - width / 2;
-      const left = Math.max(
-        VIEWPORT_GUTTER,
-        Math.min(idealLeft, window.innerWidth - width - VIEWPORT_GUTTER)
-      );
-
       setPanelPosition({
-        top: rect.bottom + 8,
-        left,
-        width,
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
       });
     };
 
@@ -224,10 +214,12 @@ export function GlobalSearchModal({
         if (item.post) navigate(`/posts/${item.post.postId}`);
         break;
       case 'QUESTION':
-        if (item.question) navigate(`/sessions?questionId=${item.question.questionId}`);
+        if (item.question?.sessionId) {
+          navigate(`/sessions/${item.question.sessionId}/practice?questionId=${item.question.questionId}`);
+        }
         break;
       case 'SESSION':
-        if (item.session) navigate(`/sessions/${item.session.sessionId}`);
+        if (item.session) navigate(`/sessions/${item.session.sessionId}/practice`);
         break;
       case 'SUBJECT':
         if (item.subject) {
@@ -270,15 +262,15 @@ export function GlobalSearchModal({
               }
             : undefined
         }
-        className={`flex max-h-[min(76vh,680px)] w-full flex-col overflow-hidden border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900 ${
+        className={`flex max-h-[min(76vh,680px)] w-full flex-col overflow-hidden border border-border bg-card shadow-xl ${
           isDesktop
             ? 'rounded-2xl animate-in fade-in zoom-in-95 duration-150'
             : 'max-w-2xl rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150'
         }`}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="relative flex min-h-14 items-center border-b border-slate-100 px-4 dark:border-slate-800 sm:px-5">
-          <Search aria-hidden="true" className="h-5 w-5 shrink-0 text-indigo-500" />
+        <div className="relative flex min-h-11 items-center gap-3 border-b border-border px-4 focus-within:border-ring">
+          <Search aria-hidden="true" className="size-4 shrink-0 text-primary" />
           <input
             ref={inputRef}
             type="search"
@@ -288,7 +280,7 @@ export function GlobalSearchModal({
             aria-label="Nhập từ khóa tìm kiếm"
             aria-controls="global-search-results"
             placeholder="Tìm môn học, sinh viên, bài viết, câu hỏi ôn tập..."
-            className="h-14 w-full bg-transparent px-3 text-base font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="h-11 w-full min-w-0 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground md:text-sm"
           />
 
           <div className="flex shrink-0 items-center gap-1.5">
@@ -395,8 +387,9 @@ export function GlobalSearchModal({
                     <button
                       key={`${item.type}-${item.relevanceScore ?? index}-${index}`}
                       type="button"
+                      disabled={item.type === 'QUESTION' && !item.question?.sessionId}
                       onClick={() => handleNavigateItem(item)}
-                      className="group flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-xl border border-transparent p-3 text-left transition-colors hover:border-indigo-100 hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/30"
+                      className="group flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-xl border border-transparent p-3 text-left transition-colors hover:border-indigo-100 hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-default disabled:opacity-60 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/30"
                     >
                       <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-indigo-900/50 dark:group-hover:text-indigo-300">
                         {item.type === 'USER' && <User aria-hidden="true" className="h-4 w-4" />}

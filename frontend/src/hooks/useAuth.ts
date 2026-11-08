@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from '@tanstack/react-query';
 import type { LoginRequest } from '@/types/auth.types';
 import { authService } from '@/services/authService';
+import { toast } from '@/stores/useToastStore';
 
 import { stompClient } from '@/lib/stompClient';
 
@@ -65,17 +66,14 @@ export function useAuth() {
         }
     };
 
-    const logout = async () => {
-        try {
-            await authService.logout();
-        } catch (e) {
-            console.error('Logout error', e);
-        } finally {
-            stompClient.disconnect();
-            logoutStore();
-            queryClient.clear();
-            navigate('/login');
-        }
+    const logout = () => {
+        void authService.logout().catch(() => {
+            toast.warning('Đã thoát trên trình duyệt. Máy chủ chưa xác nhận thu hồi phiên.');
+        });
+        stompClient.disconnect();
+        logoutStore();
+        queryClient.clear();
+        navigate('/login', { replace: true });
     };
 
     return { login, logout, isLoading, error }

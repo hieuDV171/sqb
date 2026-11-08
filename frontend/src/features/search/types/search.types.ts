@@ -46,6 +46,7 @@ export interface QuestionOptionDto {
 
 export interface QuestionSearchResultDto {
   questionId: number;
+  sessionId?: number;
   questionCode?: string;
   content: string;
   subjectId?: number;

@@ -162,6 +162,9 @@ public class GlobalSearchResponseDto {
         @Schema(description = "ID câu hỏi", example = "88")
         private Long questionId;
 
+        @Schema(description = "ID phiên luyện tập công khai chứa câu hỏi", example = "42")
+        private Long sessionId;
+
         @Schema(description = "Mã định danh câu hỏi", example = "PRN211-Q088")
         private String questionCode;
 

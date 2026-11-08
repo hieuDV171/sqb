@@ -9,10 +9,15 @@ import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.socialinteraction.Search;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserRole;
+import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.repository.PostRepository.SearchPostCounters;
 import com.frozenheart.backend.modules.search.document.*;
 import com.frozenheart.backend.modules.search.dto.*;
 import com.frozenheart.backend.modules.search.repository.SearchRepository;
 import com.frozenheart.backend.modules.search.service.SearchService;
+import com.frozenheart.backend.modules.session.repository.QuestionRepository;
+import com.frozenheart.backend.modules.session.repository.QuestionRepository.SearchPracticeTarget;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +34,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -41,6 +48,8 @@ public class SearchServiceImpl implements SearchService {
     private final UserRepository userRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final PostRepository postRepository;
+    private final QuestionRepository questionRepository;
 
     private static final String TRENDING_SEARCHES_KEY_PREFIX = "trending_searches:v2:";
     private static final String TRENDING_SEARCHES_SEEN_KEY_PREFIX = "trending_searches:v2:seen:";
@@ -85,6 +94,7 @@ public class SearchServiceImpl implements SearchService {
             }
 
             long totalHits = response.hits().total() != null ? response.hits().total().value() : items.size();
+            resolveCurrentSearchData(items);
             Long nextCursor = hasNext ? (long) (fromOffset + pageSize) : null;
 
             return GlobalSearchResponseDto.builder()
@@ -238,6 +248,48 @@ public class SearchServiceImpl implements SearchService {
     // HELPER METHODS
     // ==========================================
 
+    private void resolveCurrentSearchData(List<GlobalSearchResponseDto.SearchResultItemDto> items) {
+        var posts = items.stream()
+                .map(GlobalSearchResponseDto.SearchResultItemDto::getPost)
+                .filter(Objects::nonNull)
+                .map(GlobalSearchResponseDto.PostSearchResultDto::getPostId)
+                .toList();
+        if (!posts.isEmpty()) {
+            JwtPayload viewer = JwtPayload.getCurrentUserPayload();
+            var countersById = postRepository.findSearchPostCounters(
+                            posts, viewer.getUserId(), UserRole.ADMIN.name().equalsIgnoreCase(viewer.getRole()))
+                    .stream()
+                    .collect(Collectors.toMap(SearchPostCounters::getPostId, Function.identity()));
+            items.removeIf(item -> {
+                var post = item.getPost();
+                if (post == null) return false;
+                var counters = countersById.get(post.getPostId());
+                if (counters == null) return true;
+                post.setReactCount(counters.getReactCount());
+                post.setCommentCount(counters.getCommentCount());
+                return false;
+            });
+        }
+
+        var questions = items.stream()
+                .map(GlobalSearchResponseDto.SearchResultItemDto::getQuestion)
+                .filter(Objects::nonNull)
+                .map(GlobalSearchResponseDto.QuestionSearchResultDto::getQuestionId)
+                .toList();
+        if (!questions.isEmpty()) {
+            var sessionsByQuestion = questionRepository.findSearchPracticeTargets(questions).stream()
+                    .collect(Collectors.toMap(SearchPracticeTarget::getQuestionId, SearchPracticeTarget::getSessionId));
+            items.removeIf(item -> {
+                var question = item.getQuestion();
+                if (question == null) return false;
+                Long sessionId = sessionsByQuestion.get(question.getQuestionId());
+                if (sessionId == null) return true;
+                question.setSessionId(sessionId);
+                return false;
+            });
+        }
+    }
+
     private List<String> resolveTargetIndices(SearchType type) {
         if (type == null || type == SearchType.ALL) {
             return List.of(
@@ -333,8 +385,6 @@ public class SearchServiceImpl implements SearchService {
                                 .authorFrameUrl(doc.getAuthorFrameUrl())
                                 .postType(doc.getPostType())
                                 .mediaUrls(doc.getMediaUrls())
-                                .reactCount(doc.getReactCount())
-                                .commentCount(doc.getCommentCount())
                                 .createdAt(doc.getCreatedAt())
                                 .build())
                         .build();

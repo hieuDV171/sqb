@@ -306,7 +306,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 ### [ADR-020] Trạng thái cảm xúc của người học trong API luyện tập
 
 - `GET /sessions/{sessionId}/questions` bổ sung `my_interaction.my_reaction`. Backend lấy cảm xúc của người dùng hiện tại bằng một truy vấn theo toàn bộ ID câu hỏi của phiên.
-- Frontend cập nhật trạng thái và số đếm của đúng câu hỏi từ kết quả `POST /react`. Bình luận thành công cập nhật số đếm trên câu hỏi trong cache. Thẻ phiên ở bảng tin hiển thị số đếm của target `SESSION`.
+- Frontend cập nhật lạc quan trạng thái và số đếm của đúng câu hỏi, đối chiếu với kết quả `POST /react` và hoàn tác hai trường này khi yêu cầu thất bại. Bình luận thành công cập nhật số đếm trên câu hỏi trong cache. Thẻ phiên ở bảng tin hiển thị số đếm của target `SESSION`.
 
 ### [ADR-021] Ẩn kết quả duyệt từng câu trong luyện tập công khai
 
@@ -322,3 +322,13 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Sau khi áp dụng changeset 09-02, dừng tiến trình ghi và chạy `backend/scripts/migrate-question-reports.sql` trên PostgreSQL. Script chuyển báo lỗi theo khóa người dùng/câu hỏi, giữ bản có sẵn ở bảng đích, tính lại thống kê sao của các câu liên quan rồi bỏ cột `user_ratings.is_error` trong cùng giao dịch.
 - Backend chỉ đọc báo lỗi từ `question_error_reports`, kể cả Game 5. API chấm sao từ chối các trường ngoài hợp đồng để payload báo lỗi cũ không trở thành lượt chấm 1 sao.
+
+### [ADR-024] Kết thúc phiên cục bộ ngay khi đăng xuất
+
+- Frontend giữ access token của phiên cần thu hồi cho yêu cầu nền, xóa trạng thái và cache cục bộ, ngắt STOMP rồi về trang đăng nhập. Nếu đang có lượt làm mới, yêu cầu thu hồi đợi lần xoay token đó kết thúc. Nếu backend trả 401 cho phiên ACCESS, frontend có thể dùng cookie để xin token cùng người dùng và thiết bị rồi thử thu hồi lại.
+- Yêu cầu đăng nhập mới trong cùng tab đợi tác vụ thu hồi kết thúc để tránh thao tác trên phiên vừa được tạo. Backend vẫn thu hồi refresh token và vô hiệu hóa thiết bị dựa trên danh tính trong access token.
+
+### [ADR-025] Lấy bộ đếm bài viết và đích luyện tập từ PostgreSQL khi tìm kiếm
+
+- Elasticsearch xếp hạng và phân trang theo các bản ghi khớp. PostgreSQL trả bộ đếm hiện tại cho các ID bài viết trong trang và kiểm tra quyền xem, bao gồm trạng thái xóa, chặn và bạn bè.
+- PostgreSQL trả ID phiên theo lô cho các câu hỏi thuộc phiên đã xét duyệt. Cả câu được duyệt lẫn câu bị từ chối có thể xuất hiện và cùng dùng hợp đồng phản hồi công khai không có trạng thái duyệt từng câu.

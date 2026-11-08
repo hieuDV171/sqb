@@ -21,6 +21,18 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     List<Question> findBySessionIdIn(List<Long> sessionIds);
 
+    interface SearchPracticeTarget {
+        Long getQuestionId();
+        Long getSessionId();
+    }
+
+    @Query("""
+            SELECT q.id AS questionId, s.id AS sessionId
+            FROM Question q JOIN q.session s
+            WHERE q.id IN :ids AND s.status = 'RESOLVED' AND q.status IN ('APPROVED', 'REJECTED')
+            """)
+    List<SearchPracticeTarget> findSearchPracticeTargets(@Param("ids") List<Long> ids);
+
     @Query("""
             SELECT q FROM Question q
             LEFT JOIN FETCH q.ownedMedias
