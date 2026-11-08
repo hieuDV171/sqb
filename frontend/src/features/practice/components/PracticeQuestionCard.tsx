@@ -1,33 +1,18 @@
-import React, { useState } from 'react';
-import {
-  Check,
-  X,
-  Lightbulb,
-  Heart,
-  BarChart3,
-  Star,
-  MessageSquare,
-  Bot,
-  User,
-  ArrowRight,
-  ArrowLeft,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Maximize2,
-} from 'lucide-react';
+import { useState } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
+import { ArrowLeft, ArrowRight, BarChart3, Check, Heart, Lightbulb, Loader2, Maximize2, MessageSquare, Star, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { reactService } from '@/features/feed/services/reactService';
 import type { PracticeQuestionDto } from '../types/practice.types';
 
 interface PracticeQuestionCardProps {
   question: PracticeQuestionDto;
-  questionIndex: number;
-  totalQuestions: number;
   selectedOptions: string[];
   onToggleOption: (key: string) => void;
   onSubmitAnswer: () => void;
   isSubmittingAnswer: boolean;
+  answerError?: string;
   onPrevQuestion: () => void;
   onNextQuestion: () => void;
   hasPrev: boolean;
@@ -36,367 +21,155 @@ interface PracticeQuestionCardProps {
   onOpenRate: (questionId: number, code?: string) => void;
   onOpenDiscussion: (questionId: number, code?: string) => void;
   localAnswerResult?: { isCorrect: boolean; selected: string[] };
+  reaction?: { liked: boolean; count: number };
+  onReactionChange: (value: { liked: boolean; count: number }) => void;
 }
 
-export const PracticeQuestionCard: React.FC<PracticeQuestionCardProps> = ({
-  question,
-  questionIndex,
-  totalQuestions,
-  selectedOptions,
-  onToggleOption,
-  onSubmitAnswer,
-  isSubmittingAnswer,
-  onPrevQuestion,
-  onNextQuestion,
-  hasPrev,
-  hasNext,
-  onOpenStats,
-  onOpenRate,
-  onOpenDiscussion,
-  localAnswerResult,
-}) => {
-  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
-  const [isLiked, setIsLiked] = useState<boolean>(false);
-  const [likesCount, setLikesCount] = useState<number>(question.reactCount || 0);
+export function PracticeQuestionCard({
+  question, selectedOptions, onToggleOption, onSubmitAnswer, isSubmittingAnswer, answerError,
+  onPrevQuestion, onNextQuestion, hasPrev, hasNext, onOpenStats, onOpenRate, onOpenDiscussion, localAnswerResult,
+  reaction, onReactionChange,
+}: PracticeQuestionCardProps) {
+  const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
+  const [reacting, setReacting] = useState(false);
+  const { questionId, questionCode, hiddenFields } = question;
+  const answered = question.myInteraction.answered || Boolean(localAnswerResult);
+  const OptionBody = answered ? 'div' : 'label';
+  const correct = localAnswerResult?.isCorrect;
+  const correctKeys = hiddenFields?.correctAnswer?.split(',').map((key) => key.trim()) ?? [];
 
-  const isAnswered = question.myInteraction.answered || !!localAnswerResult;
-  const isCorrect = localAnswerResult
-    ? localAnswerResult.isCorrect
-    : undefined;
-
-  const correctAnswerStr = question.hiddenFields?.correctAnswer || '';
-  const correctKeys = correctAnswerStr
-    ? correctAnswerStr.split(',').map((k) => k.trim())
-    : [];
-
-  const handleToggleLike = async () => {
+  async function toggleLike() {
+    setReacting(true);
     try {
-      setIsLiked(!isLiked);
-      setLikesCount((prev) => (isLiked ? Math.max(0, prev - 1) : prev + 1));
-      await reactService.toggleReact({
-        targetType: 'QUESTION',
-        targetId: question.questionId,
-        reactionType: 'LIKE',
-      });
-    } catch (err) {
-      // rollback
-      setIsLiked(isLiked);
-      setLikesCount(question.reactCount || 0);
+      const { data } = await reactService.toggleReact({ targetType: 'QUESTION', targetId: questionId, reactionType: 'LIKE' });
+      if (data) onReactionChange({ liked: data.myReaction === 'LIKE', count: data.totalCount });
+    } catch {
+      // Axios displays the request error.
+    } finally {
+      setReacting(false);
     }
-  };
+  }
+
+  function imagePreview(url: string, label: string) {
+    return (
+      <Button variant="outline" className="relative h-auto max-w-full p-1" aria-label={label} onClick={() => setPreview({ url, label })}>
+        <img src={url} alt="" className="max-h-40 max-w-full rounded-lg object-contain" loading="lazy" />
+        <Maximize2 aria-hidden="true" className="absolute bottom-2 right-2 rounded bg-background p-1 size-6" />
+      </Button>
+    );
+  }
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden transition-all space-y-6 p-5 sm:p-8">
-      {/* Card Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-        {/* Left: Question Number & Source Badges */}
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs sm:text-sm tracking-tight shadow-xs">
-            Câu {questionIndex + 1} / {totalQuestions}
+    <article className="space-y-6 rounded-2xl border border-border bg-card p-4 sm:p-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full bg-academic-soft px-3 py-1 font-medium text-academic">
+            {question.source === 'LLM' ? 'AI hỗ trợ' : 'Tự biên soạn'}
           </span>
-
-          {question.source === 'LLM' ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/60">
-              <Bot className="w-3.5 h-3.5" /> AI Sinh
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60">
-              <User className="w-3.5 h-3.5" /> Tự biên soạn
-            </span>
-          )}
-
-          {question.questionCode && (
-            <span className="text-slate-400 font-mono text-[11px] hidden sm:inline">
-              #{question.questionCode}
-            </span>
-          )}
+          {questionCode && <span className="font-mono">#{questionCode}</span>}
+        </p>
+        <div role="group" aria-label="Tương tác với câu hỏi" className="flex flex-wrap gap-2">
+          <Button variant="ghost" className="min-h-11 min-w-11 px-2" aria-label="Thích câu hỏi" aria-pressed={reaction?.liked ?? false} disabled={reacting} onClick={() => void toggleLike()}>
+            <Heart aria-hidden="true" className={reaction?.liked ? 'fill-current text-destructive' : undefined} />
+            {reaction?.count ?? question.reactCount ?? 0}
+          </Button>
+          <Button variant="ghost" size="icon" className="size-11" aria-label="Xem thống kê câu hỏi" onClick={() => onOpenStats(questionId, questionCode)}>
+            <BarChart3 aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" className="min-h-11 min-w-11 px-2" aria-label={question.myInteraction.rated ? 'Xem hoặc sửa đánh giá' : 'Đánh giá hoặc báo lỗi'} onClick={() => onOpenRate(questionId, questionCode)}>
+            <Star aria-hidden="true" className={question.myInteraction.rated ? 'fill-current text-warning' : undefined} />
+            {question.ratingCount ?? 0}
+          </Button>
+          <Button variant="ghost" className="min-h-11 min-w-11 px-2" aria-label="Thảo luận về câu hỏi" onClick={() => onOpenDiscussion(questionId, questionCode)}>
+            <MessageSquare aria-hidden="true" /> {question.commentCount ?? 0}
+          </Button>
         </div>
+      </header>
 
-        {/* Right: Social & Interaction Actions */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Reaction Button */}
-          <button
-            type="button"
-            onClick={handleToggleLike}
-            className={cn(
-              'p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold',
-              isLiked
-                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                : 'text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800'
-            )}
-            title="Thích câu hỏi này"
-          >
-            <Heart className={cn('w-4 h-4', isLiked && 'fill-rose-500')} />
-            {likesCount > 0 && <span>{likesCount}</span>}
-          </button>
-
-          {/* Stats Button */}
-          <button
-            type="button"
-            onClick={() => onOpenStats(question.questionId, question.questionCode)}
-            className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-all cursor-pointer"
-            title="Xem thống kê tỷ lệ đúng và bẫy trắc nghiệm"
-          >
-            <BarChart3 className="w-4 h-4" />
-          </button>
-
-          {/* Rating Button */}
-          <button
-            type="button"
-            onClick={() => onOpenRate(question.questionId, question.questionCode)}
-            className={cn(
-              'p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold',
-              question.myInteraction.rated
-                ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/60'
-                : 'text-slate-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-            )}
-            title="Đánh giá chất lượng hoặc Báo lỗi câu hỏi"
-          >
-            <Star
-              className={cn(
-                'w-4 h-4',
-                question.myInteraction.rated && 'fill-amber-500 text-amber-500'
-              )}
-            />
-            {question.ratingCount > 0 && <span>{question.ratingCount}</span>}
-          </button>
-
-          {/* Discussion Button */}
-          <button
-            type="button"
-            onClick={() => onOpenDiscussion(question.questionId, question.questionCode)}
-            className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-            title="Thảo luận và hỏi đáp về câu hỏi"
-          >
-            <MessageSquare className="w-4 h-4" />
-            {question.commentCount > 0 && <span>{question.commentCount}</span>}
-          </button>
+      <p className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed sm:text-lg">{question.content}</p>
+      {!!question.imageUrls?.length && (
+        <div className="flex flex-wrap gap-3">
+          {question.imageUrls.map((url, index) => (
+            <div key={url + index} className="min-w-0">{imagePreview(url, `Phóng to hình minh họa ${index + 1}`)}</div>
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Question Content */}
-      <div className="space-y-4">
-        <div className="text-slate-900 dark:text-slate-100 text-sm sm:text-base leading-relaxed font-medium whitespace-pre-line">
-          {question.content}
-        </div>
-
-        {/* Question Image Attachments */}
-        {question.imageUrls && question.imageUrls.length > 0 && (
-          <div className="flex flex-wrap gap-3 pt-1">
-            {question.imageUrls.map((url, i) => (
-              <div
-                key={i}
-                onClick={() => setLightboxImg(url)}
-                className="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 h-32 sm:h-44 w-auto cursor-pointer shadow-xs hover:shadow-md transition-all"
-              >
-                <img
-                  src={url}
-                  alt={`Question Media ${i + 1}`}
-                  className="h-full w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-slate-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                  <Maximize2 className="w-5 h-5 drop-shadow-md" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Options List */}
-      <div className="space-y-3 pt-2">
-        {question.options.map((opt) => {
-          const isSelected = selectedOptions.includes(opt.key);
-          const isCorrectOption = correctKeys.includes(opt.key);
-
-          let optionStyle = 'bg-slate-50/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 hover:border-indigo-400 hover:bg-slate-100/80';
-          let badgeStyle = 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
-
-          if (!isAnswered) {
-            if (isSelected) {
-              optionStyle = 'bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-1 ring-indigo-500 shadow-xs';
-              badgeStyle = 'bg-indigo-600 text-white';
-            }
-          } else {
-            // Already answered: reveal correctness
-            if (isCorrectOption) {
-              optionStyle = 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/50 shadow-xs';
-              badgeStyle = 'bg-emerald-600 text-white';
-            } else if (isSelected && !isCorrectOption) {
-              optionStyle = 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 text-rose-950 dark:text-rose-100 ring-1 ring-rose-500 shadow-xs line-through opacity-85';
-              badgeStyle = 'bg-rose-600 text-white';
-            } else {
-              optionStyle = 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-200/60 dark:border-slate-800 text-slate-400 dark:text-slate-500';
-              badgeStyle = 'bg-slate-200/70 dark:bg-slate-800 text-slate-400';
-            }
-          }
-
+      <fieldset className="min-w-0 space-y-3">
+        <legend className="mb-3 text-sm font-medium text-muted-foreground">
+          {answered ? 'Các phương án' : 'Chọn một hoặc nhiều phương án'}
+        </legend>
+        {question.options.map(({ key, text, mediaUrl }) => {
+          const selected = (localAnswerResult?.selected ?? selectedOptions).includes(key);
+          const correctOption = answered && correctKeys.includes(key);
+          const wrongOption = answered && selected && !correctOption && correct !== undefined;
           return (
-            <div
-              key={opt.key}
-              onClick={() => {
-                if (!isAnswered) onToggleOption(opt.key);
-              }}
-              className={cn(
-                'group flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl border transition-all duration-200',
-                optionStyle,
-                !isAnswered ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'
-              )}
-            >
-              {/* Option Key Badge (A, B, C, D) */}
-              <div
-                className={cn(
-                  'w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 transition-all',
-                  badgeStyle
+            <div key={key} className={cn(
+              'rounded-xl border border-border bg-surface-subtle',
+              selected && !answered && 'border-academic bg-academic-soft',
+              correctOption && 'border-success bg-success-soft',
+              wrongOption && 'border-destructive bg-destructive/10',
+            )}>
+              <OptionBody className={cn('flex min-h-12 items-start gap-3 rounded-xl p-3 text-sm leading-relaxed', !answered && 'cursor-pointer hover:bg-muted/40')}>
+                {!answered && (
+                  <input type="checkbox" checked={selected} onChange={() => onToggleOption(key)}
+                    disabled={isSubmittingAnswer} className="mt-1 size-4 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
                 )}
-              >
-                {opt.key}
-              </div>
-
-              {/* Option Text & Media */}
-              <div className="flex-1 min-w-0 pt-0.5 space-y-2">
-                <div className="text-xs sm:text-sm leading-relaxed">{opt.text}</div>
-
-                {opt.mediaUrl && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLightboxImg(opt.mediaUrl!);
-                    }}
-                    className="inline-block rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 h-16 sm:h-20 w-auto cursor-pointer hover:opacity-90 shadow-2xs"
-                  >
-                    <img
-                      src={opt.mediaUrl}
-                      alt={`Option ${opt.key}`}
-                      className="h-full w-auto object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Status Icons */}
-              {isAnswered && (
-                <div className="shrink-0 self-center pl-2">
-                  {isCorrectOption ? (
-                    <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                      <Check className="w-5 h-5 text-emerald-600" />
-                      <span className="hidden sm:inline">Đáp án đúng</span>
-                    </div>
-                  ) : isSelected ? (
-                    <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold text-xs">
-                      <X className="w-5 h-5 text-rose-600" />
-                      <span className="hidden sm:inline">Lựa chọn sai</span>
-                    </div>
-                  ) : null}
-                </div>
-              )}
+                <span className="shrink-0 font-semibold">{key}.</span>
+                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{text}</span>
+                {correctOption && <span className="inline-flex shrink-0 items-center gap-1 font-medium text-success"><Check aria-hidden="true" className="size-4" /> Đúng</span>}
+                {wrongOption && <span className="inline-flex shrink-0 items-center gap-1 font-medium text-destructive"><X aria-hidden="true" className="size-4" /> Đã chọn</span>}
+              </OptionBody>
+              {mediaUrl && <div className="px-3 pb-3">{imagePreview(mediaUrl, `Phóng to hình của phương án ${key}`)}</div>}
             </div>
           );
         })}
-      </div>
+      </fieldset>
 
-      {/* Answer Button or Result Alert */}
-      {!isAnswered ? (
-        <div className="pt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={onSubmitAnswer}
-            disabled={selectedOptions.length === 0 || isSubmittingAnswer}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer"
-          >
-            {isSubmittingAnswer ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang kiểm tra...</span>
-              </>
-            ) : (
-              <>
-                <span>Kiểm tra đáp án</span>
-                <Check className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
-      ) : (
-        /* Result Banner & Explanation Card */
-        <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {/* Result Alert Box */}
-          <div
-            className={cn(
-              'p-4 rounded-2xl border flex items-center gap-3',
-              isCorrect === false
-                ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200'
-                : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200'
-            )}
-          >
-            {isCorrect === false ? (
-              <XCircle className="w-6 h-6 text-rose-600 dark:text-rose-400 shrink-0" />
-            ) : (
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            )}
-            <div className="text-xs sm:text-sm">
-              <span className="font-black block text-sm">
-                {isCorrect === false
-                  ? 'Chưa chính xác!'
-                  : 'Chính xác! Làm rất tốt 🎉'}
-              </span>
-              <span>
-                Đáp án chuẩn của câu hỏi này là: <strong>{correctAnswerStr}</strong>
-              </span>
-            </div>
+      {answered ? (
+        <div className="space-y-3" role="status">
+          <div className={cn(
+            'rounded-xl border border-border bg-muted px-4 py-3 text-sm',
+            correct === true && 'border-success bg-success-soft',
+            correct === false && 'border-destructive bg-destructive/10',
+          )}>
+            <p className="font-semibold">{correct === undefined ? 'Đã trả lời trước đó' : correct ? 'Trả lời đúng' : 'Trả lời chưa đúng'}</p>
+            {hiddenFields?.correctAnswer && <p className="mt-1">Đáp án đúng <strong>{hiddenFields.correctAnswer}</strong></p>}
           </div>
-
-          {/* Explanation Card */}
-          {question.hiddenFields?.explanation && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-blue-900 dark:text-blue-300">
-                <Lightbulb className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span>Giải thích chi tiết:</span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                {question.hiddenFields.explanation}
-              </p>
+          {hiddenFields?.explanation && (
+            <div className="space-y-2 rounded-xl border border-border bg-surface-subtle p-4">
+              <h3 className="flex items-center gap-2 text-sm font-semibold"><Lightbulb aria-hidden="true" className="size-4 text-academic" /> Giải thích</h3>
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{hiddenFields.explanation}</p>
             </div>
           )}
         </div>
-      )}
-
-      {/* Card Navigation Footer */}
-      <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-slate-800">
-        <button
-          type="button"
-          onClick={onPrevQuestion}
-          disabled={!hasPrev}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Câu trước</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onNextQuestion}
-          disabled={!hasNext}
-          className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-xs cursor-pointer active:scale-95"
-        >
-          <span>Câu tiếp theo</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Lightbox Zoom Modal */}
-      {lightboxImg && (
-        <div
-          onClick={() => setLightboxImg(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm cursor-zoom-out animate-in fade-in"
-        >
-          <img
-            src={lightboxImg}
-            alt="Enlarged Visual"
-            className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
-          />
+      ) : (
+        <div className="space-y-2">
+          {answerError && <p role="alert" className="text-sm text-destructive">{answerError}</p>}
+          <Button className="min-h-11" disabled={!selectedOptions.length || isSubmittingAnswer} onClick={onSubmitAnswer}>
+            {isSubmittingAnswer && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
+            {isSubmittingAnswer ? 'Đang kiểm tra…' : 'Kiểm tra đáp án'}
+          </Button>
         </div>
       )}
-    </div>
+
+      <footer className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+        <Button variant="outline" className="min-h-11" disabled={!hasPrev} onClick={onPrevQuestion}><ArrowLeft aria-hidden="true" /> Câu trước</Button>
+        <Button variant="outline" className="min-h-11" disabled={!hasNext} onClick={onNextQuestion}>Câu tiếp <ArrowRight aria-hidden="true" /></Button>
+      </footer>
+
+      <Dialog.Root open={Boolean(preview)} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/70" />
+          <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-4xl -translate-y-1/2 rounded-2xl border border-border bg-card p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <Dialog.Title className="font-semibold">{preview?.label}</Dialog.Title>
+              <Dialog.Close render={<Button variant="ghost" size="icon" className="size-11" aria-label="Đóng hình" />}><X aria-hidden="true" /></Dialog.Close>
+            </div>
+            {preview && <img src={preview.url} alt={preview.label} className="mx-auto max-h-[72dvh] max-w-full object-contain" />}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </article>
   );
-};
+}

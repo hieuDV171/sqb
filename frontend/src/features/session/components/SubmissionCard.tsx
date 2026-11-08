@@ -1,20 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Clock,
-  Eye,
-  CheckCircle2,
-  Copy,
-  Check,
-  MessageSquare,
-  Heart,
-  ChevronRight,
-  Edit3,
-  Trash2,
-  HelpCircle,
-  PlayCircle,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Check, ChevronRight, Copy, Edit3, Heart, MessageSquare, PlayCircle, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from '@/stores/useToastStore';
 import type { SubmissionSessionSummaryDto, SessionStatus } from '../types/session.types';
 
 interface SubmissionCardProps {
@@ -24,200 +13,69 @@ interface SubmissionCardProps {
   onDelete?: (sessionId: number, sessionCode: string) => void;
 }
 
-export const SubmissionCard: React.FC<SubmissionCardProps> = ({
-  submission,
-  onViewDetail,
-  onEdit,
-  onDelete,
-}) => {
-  const navigate = useNavigate();
+const statuses: Record<SessionStatus, { label: string; className: string }> = {
+  PENDING: { label: 'Chờ duyệt', className: 'bg-warning-soft text-warning' },
+  REVIEWING: { label: 'Đang xem xét', className: 'bg-academic-soft text-academic' },
+  RESOLVED: { label: 'Đã duyệt', className: 'bg-success-soft text-success' },
+};
+
+export function SubmissionCard({ submission, onViewDetail, onEdit, onDelete }: SubmissionCardProps) {
   const [copied, setCopied] = useState(false);
+  const { sessionId, sessionCode, title, status, subjectName, subjectCode, content, createdAt } = submission;
+  const badge = statuses[status];
+  const editable = status === 'PENDING';
 
-  // Luôn dùng trạng thái thực tế do backend trả về. Bộ lọc chỉ quyết định
-  // bản ghi nào được tải, không được dùng để suy diễn trạng thái của bản ghi.
-  const effectiveStatus: SessionStatus = submission.status;
-
-  const handleCopyCode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(submission.sessionCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const formattedDate = new Date(submission.createdAt).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const getStatusBadge = (status: SessionStatus) => {
-    switch (status) {
-      case 'PENDING':
-        return {
-          label: 'Chờ duyệt',
-          icon: Clock,
-          className:
-            'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-        };
-      case 'REVIEWING':
-        return {
-          label: 'Đang xem xét',
-          icon: Eye,
-          className:
-            'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-        };
-      case 'RESOLVED':
-        return {
-          label: 'Đã duyệt',
-          icon: CheckCircle2,
-          className:
-            'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-        };
-      default:
-        return {
-          label: 'Chờ duyệt',
-          icon: Clock,
-          className:
-            'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-        };
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(sessionCode);
+      setCopied(true);
+    } catch {
+      toast.error('Không thể sao chép mã phiên.');
     }
-  };
-
-  const statusInfo = getStatusBadge(effectiveStatus);
-  const StatusIcon = statusInfo.icon;
-  const isEditable = effectiveStatus === 'PENDING';
+  }
 
   return (
-    <div
-      onClick={() => onViewDetail(submission.sessionId)}
-      className="group relative bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-400/60 dark:hover:border-indigo-500/50 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer backdrop-blur-xs flex flex-col justify-between"
-    >
-      <div>
-        {/* Header row: Subject Tag, Session Code & Status Badge */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Subject Code Badge */}
-            <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-              {submission.subjectCode}
-            </span>
-
-            {/* Session Code with Copy */}
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              title="Nhấn để sao chép mã phiên"
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-            >
-              <span>{submission.sessionCode}</span>
-              {copied ? (
-                <Check className="w-3 h-3 text-emerald-500" />
-              ) : (
-                <Copy className="w-3 h-3 text-slate-400" />
-              )}
-            </button>
-          </div>
-
-          {/* Status Badge */}
-          <span
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border',
-              statusInfo.className
-            )}
-          >
-            <StatusIcon className="w-3.5 h-3.5" />
-            <span>{statusInfo.label}</span>
-          </span>
-        </div>
-
-        {/* Title */}
-        <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
-          {submission.title || 'Phiên đề xuất câu hỏi'}
-        </h4>
-
-        {/* Content Snippet */}
-        {submission.content && (
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
-            {submission.content}
-          </p>
+    <article className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <header className="flex flex-wrap items-center gap-2">
+        <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', badge?.className)}>{badge?.label}</span>
+        {subjectCode && <span className="text-xs font-medium text-muted-foreground">{subjectCode}</span>}
+        {sessionCode && (
+          <Button variant="ghost" className="min-h-11 max-w-full px-2 font-mono text-xs text-muted-foreground"
+            aria-label={copied ? 'Đã sao chép mã phiên' : 'Sao chép mã phiên'} onClick={() => void copyCode()}>
+            <span className="truncate">#{sessionCode}</span>
+            {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          </Button>
         )}
-
-        {/* Subject Full Name */}
-        <p className="text-xs text-slate-500 dark:text-slate-500 mt-2 font-medium">
-          Môn học: <span className="text-slate-700 dark:text-slate-300">{submission.subjectName}</span>
+      </header>
+      <div className="flex-1 space-y-2">
+        <h2 className="break-words text-lg font-semibold leading-snug">{title || 'Phiên đề xuất câu hỏi'}</h2>
+        {subjectName && <p className="break-words text-sm font-medium text-academic">{subjectName}</p>}
+        {content && <p className="line-clamp-2 break-words text-sm text-muted-foreground">{content}</p>}
+      </div>
+      <footer className="space-y-3 border-t border-border pt-3">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <span>{submission.questionCounts ?? 0} câu hỏi</span>
+          <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-3.5" /> {submission.reactCount ?? 0}<span className="sr-only"> lượt thích</span></span>
+          <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-3.5" /> {submission.commentCount ?? 0}<span className="sr-only"> bình luận</span></span>
+          {createdAt && <time dateTime={createdAt}>{new Date(createdAt).toLocaleDateString('vi-VN')}</time>}
         </p>
-      </div>
-
-      {/* Footer Info & Actions */}
-      <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-        {/* Meta Stats */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400">
-            <HelpCircle className="w-4 h-4" />
-            <span>{submission.questionCounts || 0} câu hỏi</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Heart className="w-3.5 h-3.5" />
-            <span>{submission.reactCount || 0}</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>{submission.commentCount || 0}</span>
-          </div>
-
-          <span className="text-slate-400 dark:text-slate-500">
-            {formattedDate}
-          </span>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="min-h-11" onClick={() => onViewDetail(sessionId)}>
+            Chi tiết <ChevronRight aria-hidden="true" />
+          </Button>
+          {editable && onEdit && (
+            <Button variant="ghost" size="icon" className="size-11" aria-label="Chỉnh sửa phiên" onClick={() => onEdit(submission)}><Edit3 aria-hidden="true" /></Button>
+          )}
+          {editable && onDelete && (
+            <Button variant="ghost" size="icon" className="size-11 text-destructive" aria-label="Xóa phiên" onClick={() => onDelete(sessionId, sessionCode)}><Trash2 aria-hidden="true" /></Button>
+          )}
+          {status === 'RESOLVED' && (
+            <Button className="min-h-11" render={<Link to={`/sessions/${sessionId}/practice`} />} nativeButton={false}>
+              <PlayCircle aria-hidden="true" /> Luyện tập
+            </Button>
+          )}
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {isEditable && onEdit && (
-            <button
-              type="button"
-              onClick={() => onEdit(submission)}
-              title="Chỉnh sửa phiên đề xuất"
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-          )}
-
-          {isEditable && onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(submission.sessionId, submission.sessionCode)}
-              title="Xóa phiên nộp nháp"
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-
-          {effectiveStatus === 'RESOLVED' && (
-            <button
-              type="button"
-              onClick={() => navigate(`/sessions/${submission.sessionId}/practice`)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
-            >
-              <PlayCircle className="w-3.5 h-3.5" />
-              <span>Luyện tập</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => onViewDetail(submission.sessionId)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
-          >
-            <span>Chi tiết</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    </div>
+      </footer>
+    </article>
   );
-};
+}

@@ -6,14 +6,17 @@ interface UseMySubmissionsOptions {
   subjectId?: number;
   status?: SessionStatus;
   limit?: number;
+  enabled?: boolean;
 }
 
 export function useMySubmissions({
   subjectId,
   status,
   limit = 10,
+  enabled = true,
 }: UseMySubmissionsOptions = {}) {
   return useInfiniteQuery({
+    enabled,
     queryKey: ['my-submissions', { subjectId, status, limit }],
     queryFn: async ({ pageParam }) => {
       const response = await sessionService.getMySubmissions({

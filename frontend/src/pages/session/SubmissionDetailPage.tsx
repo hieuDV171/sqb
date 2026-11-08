@@ -113,10 +113,10 @@ export function SubmissionDetailPage() {
         <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
           <AlertCircle className="w-7 h-7" />
         </div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        <h3 className="text-lg font-bold text-foreground">
           Không tìm thấy thông tin phiên
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-muted-foreground">
           {error?.message || 'Phiên đề xuất này không tồn tại hoặc bạn không có quyền truy cập.'}
         </p>
         <div className="flex justify-center gap-3 pt-2">
@@ -130,7 +130,7 @@ export function SubmissionDetailPage() {
           <button
             type="button"
             onClick={() => refetch()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-xs"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-xs"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Thử lại</span>
@@ -141,13 +141,13 @@ export function SubmissionDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={() => navigate('/sessions')}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-border text-xs sm:text-sm font-semibold text-foreground hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Về danh sách phiên</span>
@@ -179,7 +179,7 @@ export function SubmissionDetailPage() {
       </div>
 
       {/* Main Header Card */}
-      <div className="bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-5 sm:p-7 shadow-xs backdrop-blur-md space-y-4">
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs backdrop-blur-md space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
@@ -189,7 +189,7 @@ export function SubmissionDetailPage() {
             <button
               type="button"
               onClick={handleCopyCode}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             >
               <span>{detail.sessionCode}</span>
               {copied ? (
@@ -212,14 +212,14 @@ export function SubmissionDetailPage() {
         </div>
 
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
             {detail.title}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Môn học: <strong className="text-slate-700 dark:text-slate-300">{detail.subjectName}</strong>
+          <p className="text-xs text-muted-foreground mt-1">
+            Môn học: <strong className="text-foreground">{detail.subjectName}</strong>
           </p>
           {(detail.classCode || detail.semesterName) && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Lớp học phần: <strong>{detail.classCode || '—'}</strong>
               {detail.semesterName && <> · Học kỳ <strong>{detail.semesterName}</strong></>}
             </p>
@@ -227,8 +227,8 @@ export function SubmissionDetailPage() {
         </div>
 
         {detail.content && (
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-            <span className="font-semibold block text-slate-900 dark:text-white mb-1">
+          <div className="p-4 bg-surface-subtle rounded-2xl border border-border text-xs sm:text-sm text-foreground leading-relaxed">
+            <span className="font-semibold block text-foreground mb-1">
               Ghi chú đề xuất:
             </span>
             {detail.content}
@@ -249,7 +249,7 @@ export function SubmissionDetailPage() {
                 Giảng viên phụ trách: <strong>{detail.reviewedByLecturer}</strong>
               </p>
               {detail.reviewedAt && (
-                <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                <p className="text-muted-foreground text-[11px]">
                   Thời gian duyệt: {new Date(detail.reviewedAt).toLocaleString('vi-VN')}
                 </p>
               )}
@@ -264,14 +264,14 @@ export function SubmissionDetailPage() {
               <span className="font-bold text-indigo-950 dark:text-indigo-200 text-xs sm:text-sm block">
                 Phiên câu hỏi đã sẵn sàng để luyện tập!
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] text-muted-foreground">
                 Làm bài trắc nghiệm, kiểm tra đúng/sai và đối chiếu giải thích chi tiết
               </span>
             </div>
             <button
               type="button"
               onClick={() => navigate(`/sessions/${detail.sessionId}/practice`)}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/85 font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer shrink-0"
             >
               <PlayCircle className="w-4 h-4" />
               <span>Bắt đầu luyện tập</span>
@@ -279,7 +279,7 @@ export function SubmissionDetailPage() {
           </div>
         )}
 
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+        <div className="pt-3 border-t border-border/80 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
@@ -295,7 +295,7 @@ export function SubmissionDetailPage() {
             </span>
           </div>
 
-          <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+          <span className="font-semibold text-academic">
             {detail.questions?.length || 0} câu hỏi
           </span>
         </div>
@@ -303,7 +303,7 @@ export function SubmissionDetailPage() {
 
       {/* Questions List */}
       <div className="space-y-4">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-indigo-600" />
           <span>Danh sách câu hỏi trắc nghiệm ({detail.questions?.length || 0})</span>
         </h3>
@@ -312,9 +312,9 @@ export function SubmissionDetailPage() {
           {detail.questions?.map((q, idx) => (
             <div
               key={q.questionId || idx}
-              className="bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-xs backdrop-blur-xs space-y-4"
+              className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4"
             >
-              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-border pb-3">
                 <span className="text-xs font-bold px-3 py-1 rounded-xl bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
                   Câu hỏi #{idx + 1}
                 </span>
@@ -326,7 +326,7 @@ export function SubmissionDetailPage() {
                       <span>AI Generated</span>
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-foreground font-medium">
                       <User className="w-3.5 h-3.5" />
                       <span>Tự soạn thảo</span>
                     </span>
@@ -340,7 +340,7 @@ export function SubmissionDetailPage() {
                 </div>
               </div>
 
-              <p className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">
                 {q.content}
               </p>
 
@@ -373,7 +373,7 @@ export function SubmissionDetailPage() {
                       'p-3 rounded-2xl border text-xs sm:text-sm flex items-start gap-3 transition-colors',
                       opt.isCorrect
                         ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200 font-medium'
-                        : 'bg-slate-50/70 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300'
+                        : 'bg-slate-50/70 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700/60 text-foreground'
                     )}
                   >
                     <span
@@ -381,7 +381,7 @@ export function SubmissionDetailPage() {
                         'w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0',
                         opt.isCorrect
                           ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                          : 'bg-slate-200 dark:bg-slate-700 text-foreground'
                       )}
                     >
                       {opt.key}

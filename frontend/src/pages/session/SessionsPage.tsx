@@ -1,11 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import {
-  BookOpen,
-  Plus,
-  ListOrdered,
-  Sparkles,
-} from 'lucide-react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { ClipboardList, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   useEnrolledSubjects,
@@ -21,14 +17,18 @@ import {
   type SessionStatus,
   type SubmissionSessionSummaryDto,
   type MySubmissionDetailResponse,
+  type UpdateSubmissionSessionRequest,
 } from '@/features/session';
+import { StudyHeader } from './StudyHeader';
 
 export function SessionsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'propose' ? 'propose' : 'submissions';
+  const [searchParams] = useSearchParams();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const isProposing = pathname.replace(/\/$/, '') === '/sessions/propose' || searchParams.get('tab') === 'propose';
 
   const setTab = (tab: 'submissions' | 'propose') => {
-    setSearchParams(tab === 'propose' ? { tab: 'propose' } : {});
+    navigate(tab === 'propose' ? '/sessions/propose' : '/questions');
   };
 
   // Filter States
@@ -45,12 +45,13 @@ export function SessionsPage() {
   } | null>(null);
 
   // Queries & Mutations
-  const { data: subjects = [] } = useEnrolledSubjects();
+  const subjectQuery = useEnrolledSubjects(!isProposing);
 
   const {
     data: submissionsPages,
     isLoading: isLoadingSubmissions,
-    isError: isErrorSubmissions,
+    isLoadingError: isErrorSubmissions,
+    isFetchNextPageError,
     error: submissionsError,
     refetch: refetchSubmissions,
     hasNextPage,
@@ -59,11 +60,14 @@ export function SessionsPage() {
   } = useMySubmissions({
     subjectId: selectedSubjectId,
     status: selectedStatus,
+    enabled: !isProposing,
   });
 
   const {
     data: sessionDetailData,
     isLoading: isLoadingDetail,
+    error: detailError,
+    refetch: refetchDetail,
   } = useSubmissionDetail(detailSessionId);
 
   const { updateMutation, deleteMutation } = useSessionMutations();
@@ -83,7 +87,7 @@ export function SessionsPage() {
     setDetailSessionId(null);
   };
 
-  const handleOpenEditFromCard = async (sub: SubmissionSessionSummaryDto) => {
+  const handleOpenEditFromCard = (sub: SubmissionSessionSummaryDto) => {
     setDetailSessionId(sub.sessionId);
     // Detail data will load into sessionDetailData; when loaded, user can edit
   };
@@ -93,7 +97,7 @@ export function SessionsPage() {
     setDetailSessionId(null);
   };
 
-  const handleSaveEdit = async (sessionId: number, data: any) => {
+  const handleSaveEdit = async (sessionId: number, data: UpdateSubmissionSessionRequest) => {
     await updateMutation.mutateAsync({ sessionId, data });
     setEditDetail(null);
   };
@@ -109,75 +113,54 @@ export function SessionsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-              <BookOpen className="w-6 h-6" />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              Ngân Hàng Câu Hỏi & Đề Xuất
-            </h1>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Đóng góp câu hỏi trắc nghiệm, theo dõi xét duyệt và tích lũy điểm thưởng chuyên môn
-          </p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <StudyHeader
+        section="Học tập"
+        title={isProposing ? 'Đề xuất câu hỏi' : 'Ngân hàng câu hỏi'}
+        description={isProposing
+          ? 'Chọn lớp học phần, soạn câu hỏi và gửi để giảng viên xét duyệt.'
+          : 'Theo dõi các phiên bạn đã nộp, xem kết quả duyệt và luyện tập với bộ câu hỏi của mình.'}
+      />
 
-        {/* Tab Switcher Pills */}
-        <div className="flex items-center p-1.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl self-start sm:self-auto shadow-xs">
-          <button
-            type="button"
-            onClick={() => setTab('submissions')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer',
-              activeTab === 'submissions'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            )}
-          >
-            <ListOrdered className="w-4 h-4 text-indigo-600" />
-            <span>Phiên nộp của tôi</span>
-            {allSubmissions.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold">
-                {allSubmissions.length}
-              </span>
-            )}
-          </button>
+      <nav aria-label="Ngân hàng câu hỏi" className="flex flex-wrap gap-2">
+        <Button
+          variant={isProposing ? 'ghost' : 'secondary'}
+          render={<Link to="/questions" />}
+          nativeButton={false}
+          aria-current={isProposing ? undefined : 'page'}
+          className={cn('min-h-11', !isProposing && 'bg-academic-soft text-academic')}
+        >
+          <ClipboardList aria-hidden="true" /> Phiên nộp của tôi
+        </Button>
+        <Button
+          variant={isProposing ? 'secondary' : 'outline'}
+          render={<Link to="/sessions/propose" />}
+          nativeButton={false}
+          aria-current={isProposing ? 'page' : undefined}
+          className={cn('min-h-11', isProposing && 'bg-academic-soft text-academic')}
+        >
+          <Plus aria-hidden="true" /> Đề xuất phiên mới
+        </Button>
+      </nav>
 
-          <button
-            type="button"
-            onClick={() => setTab('propose')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer',
-              activeTab === 'propose'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            )}
-          >
-            <Plus className="w-4 h-4 text-indigo-600" />
-            <span>Đề xuất phiên mới</span>
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          </button>
-        </div>
-      </div>
-
-      {/* Tab 1: Submissions Tab */}
-      {activeTab === 'submissions' && (
+      {!isProposing && (
         <div className="space-y-6">
           {/* Filter Bar */}
           <SubmissionFilterBar
-            subjects={subjects}
+            subjects={subjectQuery.data ?? []}
             selectedSubjectId={selectedSubjectId}
             onSelectSubject={setSelectedSubjectId}
             selectedStatus={selectedStatus}
             onSelectStatus={setSelectedStatus}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onProposeNew={() => setTab('propose')}
           />
+          {subjectQuery.isError && (
+            <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              Không tải được danh sách môn học.
+              <Button variant="outline" onClick={() => void subjectQuery.refetch()} className="min-h-11">Thử lại</Button>
+            </div>
+          )}
 
           {/* Submissions List */}
           <SubmissionList
@@ -185,10 +168,12 @@ export function SessionsPage() {
             isLoading={isLoadingSubmissions}
             isError={isErrorSubmissions}
             errorMessage={submissionsError?.message}
-            onRetry={refetchSubmissions}
+            onRetry={() => void refetchSubmissions()}
             hasNextPage={Boolean(hasNextPage)}
             isFetchingNextPage={isFetchingNextPage}
-            onFetchNextPage={fetchNextPage}
+            isFetchNextPageError={isFetchNextPageError}
+            selectedSubjectId={selectedSubjectId}
+            onFetchNextPage={() => void fetchNextPage()}
             currentStatusFilter={selectedStatus}
             searchQuery={searchQuery}
             onViewDetail={handleOpenDetail}
@@ -200,7 +185,7 @@ export function SessionsPage() {
       )}
 
       {/* Tab 2: Propose Session Form Tab */}
-      {activeTab === 'propose' && (
+      {isProposing && (
         <ProposeSessionForm
           onSuccessNavigate={() => setTab('submissions')}
           onViewMySubmissions={() => setTab('submissions')}
@@ -211,6 +196,8 @@ export function SessionsPage() {
       <SubmissionDetailModal
         detail={sessionDetailData}
         isLoading={isLoadingDetail}
+        errorMessage={detailError?.message}
+        onRetry={() => void refetchDetail()}
         isOpen={detailSessionId !== null}
         onClose={handleCloseDetail}
         onEdit={handleOpenEditFromDetail}

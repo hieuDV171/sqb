@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
-import { RefreshCw, AlertCircle, ArrowDown } from 'lucide-react';
+import { RefreshCw, ArrowDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/error-state';
 import { SubmissionCard } from './SubmissionCard';
 import { SubmissionCardSkeleton } from './SubmissionCardSkeleton';
 import { EmptySubmissions } from './EmptySubmissions';
@@ -16,7 +18,9 @@ interface SubmissionListProps {
   onRetry: () => void;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
   onFetchNextPage: () => void;
+  selectedSubjectId?: number;
   currentStatusFilter?: SessionStatus;
   searchQuery: string;
   onViewDetail: (sessionId: number) => void;
@@ -33,7 +37,9 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
   onRetry,
   hasNextPage,
   isFetchingNextPage,
+  isFetchNextPageError,
   onFetchNextPage,
+  selectedSubjectId,
   currentStatusFilter,
   searchQuery,
   onViewDetail,
@@ -58,7 +64,7 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
   // Loading State
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2" aria-busy="true" aria-label="Đang tải các phiên nộp">
         <SubmissionCardSkeleton />
         <SubmissionCardSkeleton />
         <SubmissionCardSkeleton />
@@ -69,74 +75,53 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
   // Error State
   if (isError) {
     return (
-      <div className="bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-3xl p-8 text-center space-y-3">
-        <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
-          <AlertCircle className="w-6 h-6" />
-        </div>
-        <h4 className="text-base font-bold text-rose-900 dark:text-rose-200">
-          Không thể tải danh sách phiên nộp
-        </h4>
-        <p className="text-xs text-rose-700 dark:text-rose-400 max-w-md mx-auto">
-          {errorMessage || 'Đã có lỗi xảy ra trong quá trình truy xuất dữ liệu từ máy chủ.'}
-        </p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Thử lại</span>
-        </button>
-      </div>
+      <ErrorState title="Không thể tải danh sách phiên nộp" message={errorMessage} onRetry={onRetry} />
     );
   }
 
-  // Empty State
-  if (filteredSubmissions.length === 0) {
-    return (
-      <EmptySubmissions
-        filtered={Boolean(searchQuery.trim() || currentStatusFilter)}
-        onProposeNew={onProposeNew}
-      />
-    );
-  }
-
-  // Success List
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4">
-        {filteredSubmissions.map((sub) => (
-          <SubmissionCard
-            key={sub.sessionId}
-            submission={sub}
-            onViewDetail={onViewDetail}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
-      </div>
+      {filteredSubmissions.length === 0 ? (
+        <EmptySubmissions
+          filtered={Boolean(searchQuery.trim() || currentStatusFilter || selectedSubjectId)}
+          hasNextPage={hasNextPage}
+          onProposeNew={onProposeNew}
+        />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filteredSubmissions.map((sub) => (
+            <SubmissionCard
+              key={sub.sessionId}
+              submission={sub}
+              onViewDetail={onViewDetail}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Infinite Scroll / Load More trigger */}
       {hasNextPage && (
-        <div className="flex justify-center pt-4 pb-2">
-          <button
-            type="button"
+        <div className="space-y-2 text-center">
+          {isFetchNextPageError && <p role="status" className="text-sm text-destructive">Không tải được trang tiếp theo.</p>}
+          <Button
+            variant="outline"
             onClick={onFetchNextPage}
             disabled={isFetchingNextPage}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs sm:text-sm font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+            className="min-h-11"
           >
             {isFetchingNextPage ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" />
                 <span>Đang tải thêm phiên...</span>
               </>
             ) : (
               <>
-                <ArrowDown className="w-4 h-4 text-indigo-600" />
-                <span>Tải thêm phiên cũ hơn</span>
+                <ArrowDown aria-hidden="true" />
+                <span>{isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm phiên'}</span>
               </>
             )}
-          </button>
+          </Button>
         </div>
       )}
     </div>

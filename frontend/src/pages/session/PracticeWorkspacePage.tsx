@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Award,
@@ -17,23 +17,29 @@ import {
   QuestionDiscussionModal,
 } from '@/features/practice';
 import { ErrorState } from '@/components/ui/error-state';
+import { Button } from '@/components/ui/button';
+import { StudyHeader } from './StudyHeader';
 
-export const PracticeWorkspacePage: React.FC = () => {
+export function PracticeWorkspacePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const navigate = useNavigate();
   const numericSessionId = Number(sessionId);
+  return <PracticeWorkspace key={sessionId} numericSessionId={numericSessionId} />;
+}
 
+function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
+  const navigate = useNavigate();
   const { data: sessionData, isLoading, isError, error, refetch } =
     usePracticeSession(numericSessionId);
-  const { mutateAsync: submitAnswerMutation, isPending: isSubmittingAnswer } =
+  const { mutateAsync: submitAnswerMutation, isPending: isSubmittingAnswer, error: answerError, variables: answerVariables } =
     usePracticeAnswer();
 
   // Local state for practice session
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [requestedIndex, setCurrentIndex] = useState(0);
   const [selectedOptionsMap, setSelectedOptionsMap] = useState<Record<number, string[]>>({});
   const [userAnswersRecord, setUserAnswersRecord] = useState<
     Record<number, { isCorrect: boolean; selected: string[] }>
   >({});
+  const [reactions, setReactions] = useState<Record<number, { liked: boolean; count: number }>>({});
 
   // Modals state
   const [statsTarget, setStatsTarget] = useState<{
@@ -49,27 +55,21 @@ export const PracticeWorkspacePage: React.FC = () => {
     code?: string;
   }>({ id: null });
   const [isSummaryOpen, setIsSummaryOpen] = useState<boolean>(false);
+  const questionHeading = useRef<HTMLHeadingElement>(null);
 
   const questions = sessionData?.questions || [];
+  const currentIndex = Math.min(requestedIndex, Math.max(0, questions.length - 1));
   const currentQuestion = questions[currentIndex];
+  const returnLink = (
+    <Button variant="ghost" render={<Link to="/questions" />} nativeButton={false} className="min-h-11">
+      <ArrowLeft aria-hidden="true" /> Ngân hàng câu hỏi
+    </Button>
+  );
 
-  // Initialize selected options from existing answered questions if any
-  useEffect(() => {
-    if (questions.length > 0) {
-      const initialAnswers: Record<number, { isCorrect: boolean; selected: string[] }> = {};
-      questions.forEach((q) => {
-        if (q.myInteraction.answered && q.hiddenFields?.correctAnswer) {
-          initialAnswers[q.questionId] = {
-            isCorrect: true, // Default indicator if answered previously
-            selected: q.hiddenFields.correctAnswer.split(',').map((s) => s.trim()),
-          };
-        }
-      });
-      if (Object.keys(initialAnswers).length > 0) {
-        setUserAnswersRecord((prev) => ({ ...initialAnswers, ...prev }));
-      }
-    }
-  }, [questions]);
+  const selectQuestion = (index: number) => {
+    setCurrentIndex(index);
+    requestAnimationFrame(() => questionHeading.current?.focus());
+  };
 
   // Handle option toggle for current question
   const handleToggleOption = (key: string) => {
@@ -95,7 +95,7 @@ export const PracticeWorkspacePage: React.FC = () => {
     if (!currentQuestion) return;
     const qId = currentQuestion.questionId;
     const selected = selectedOptionsMap[qId] || [];
-    if (selected.length === 0) return;
+    if (selected.length === 0 || isSubmittingAnswer) return;
 
     try {
       const res = await submitAnswerMutation({
@@ -115,16 +115,13 @@ export const PracticeWorkspacePage: React.FC = () => {
           selected,
         },
       }));
-    } catch (err) {
-      console.error('Failed to submit answer:', err);
+    } catch {
+      // The active question shows the mutation error.
     }
   };
 
-  // Restart practice session
-  const handleRestartPractice = () => {
-    setUserAnswersRecord({});
-    setSelectedOptionsMap({});
-    setCurrentIndex(0);
+  const handleReviewFromStart = () => {
+    selectQuestion(0);
     setIsSummaryOpen(false);
   };
 
@@ -133,15 +130,17 @@ export const PracticeWorkspacePage: React.FC = () => {
   }
 
   if (isError || !sessionData) {
+    const validId = Number.isSafeInteger(numericSessionId) && numericSessionId > 0;
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="mx-auto max-w-4xl space-y-4">
+        {returnLink}
         <ErrorState
           title="Không thể tải phiên luyện tập"
           message={
             (error as Error)?.message ||
             'Phiên câu hỏi không tồn tại hoặc bạn chưa được cấp quyền truy cập.'
           }
-          onRetry={() => refetch()}
+          onRetry={validId ? () => void refetch() : undefined}
         />
       </div>
     );
@@ -160,71 +159,58 @@ export const PracticeWorkspacePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6">
-      {/* Top Breadcrumb & Session Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
-        <div>
-          <button
-            type="button"
-            onClick={() => navigate('/questions')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-2 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại Ngân hàng câu hỏi</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-              {sessionData.subjectCode || 'MÔN HỌC'}
-            </span>
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight line-clamp-1">
-              {sessionData.title}
-            </h1>
-          </div>
-        </div>
-
-        {/* Action button: Bảng điểm tổng kết */}
-        <button
-          type="button"
-          onClick={() => setIsSummaryOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs sm:text-sm font-bold transition-all cursor-pointer self-start sm:self-auto border border-amber-500/20 shadow-2xs"
-        >
-          <Award className="w-4 h-4" />
-          <span>Tổng kết kết quả</span>
-        </button>
-      </div>
-
-      {/* Progress Bar & Question Palette */}
-      <PracticeProgressBar
-        questions={questions}
-        currentIndex={currentIndex}
-        onSelectQuestion={(idx) => setCurrentIndex(idx)}
-        userAnswersRecord={userAnswersRecord}
-        onOpenSummary={() => setIsSummaryOpen(true)}
+    <div className="mx-auto max-w-6xl space-y-5">
+      {returnLink}
+      <StudyHeader
+        section="Luyện tập"
+        title={sessionData.title}
+        description={[sessionData.subjectName || sessionData.subjectCode, sessionData.sessionCode, `${questions.length} câu hỏi`].filter(Boolean).join(' · ')}
+        action={(
+          <Button variant="outline" onClick={() => setIsSummaryOpen(true)} className="min-h-11">
+            <Award aria-hidden="true" /> Kết quả luyện tập
+          </Button>
+        )}
       />
 
-      {/* Active Question Card */}
-      {currentQuestion && (
-        <PracticeQuestionCard
-          question={currentQuestion}
-          questionIndex={currentIndex}
-          totalQuestions={questions.length}
-          selectedOptions={selectedOptionsMap[currentQuestion.questionId] || []}
-          onToggleOption={handleToggleOption}
-          onSubmitAnswer={handleSubmitAnswer}
-          isSubmittingAnswer={isSubmittingAnswer}
-          onPrevQuestion={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-          onNextQuestion={() =>
-            setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))
-          }
-          hasPrev={currentIndex > 0}
-          hasNext={currentIndex < questions.length - 1}
-          onOpenStats={(id, code) => setStatsTarget({ id, code })}
-          onOpenRate={(id, code) => setRateTarget({ id, code })}
-          onOpenDiscussion={(id, code) => setDiscussionTarget({ id, code })}
-          localAnswerResult={userAnswersRecord[currentQuestion.questionId]}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_17rem]">
+        <section className="min-w-0" aria-labelledby="active-practice-question">
+          <h2
+            ref={questionHeading}
+            id="active-practice-question"
+            tabIndex={-1}
+            className="mb-3 scroll-mt-24 text-sm font-semibold text-academic focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+          >
+            Câu {currentIndex + 1} / {questions.length}
+          </h2>
+          {currentQuestion && (
+            <PracticeQuestionCard
+              key={currentQuestion.questionId}
+              question={currentQuestion}
+              selectedOptions={selectedOptionsMap[currentQuestion.questionId] ?? []}
+              onToggleOption={handleToggleOption}
+              onSubmitAnswer={handleSubmitAnswer}
+              isSubmittingAnswer={isSubmittingAnswer}
+              answerError={answerVariables?.questionId === currentQuestion.questionId ? answerError?.message : undefined}
+              onPrevQuestion={() => selectQuestion(currentIndex - 1)}
+              onNextQuestion={() => selectQuestion(currentIndex + 1)}
+              hasPrev={currentIndex > 0}
+              hasNext={currentIndex < questions.length - 1}
+              onOpenStats={(id, code) => setStatsTarget({ id, code })}
+              onOpenRate={(id, code) => setRateTarget({ id, code })}
+              onOpenDiscussion={(id, code) => setDiscussionTarget({ id, code })}
+              localAnswerResult={userAnswersRecord[currentQuestion.questionId]}
+              reaction={reactions[currentQuestion.questionId]}
+              onReactionChange={(reaction) => setReactions((previous) => ({ ...previous, [currentQuestion.questionId]: reaction }))}
+            />
+          )}
+        </section>
+        <PracticeProgressBar
+          questions={questions}
+          currentIndex={currentIndex}
+          onSelectQuestion={selectQuestion}
+          userAnswersRecord={userAnswersRecord}
         />
-      )}
+      </div>
 
       {/* Stats Modal */}
       <QuestionStatsModal
@@ -257,10 +243,10 @@ export const PracticeWorkspacePage: React.FC = () => {
         onClose={() => setIsSummaryOpen(false)}
         questions={questions}
         userAnswersRecord={userAnswersRecord}
-        onRestartPractice={handleRestartPractice}
+        onReviewFromStart={handleReviewFromStart}
         sessionTitle={sessionData.title}
         subjectName={sessionData.subjectName}
       />
     </div>
   );
-};
+}
