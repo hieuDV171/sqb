@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProposedSessions, UserSessionCard } from '@/features/practice';
 import { useEnrolledSubjects } from '@/features/session';
+import { StudySubjectSelect } from '@/features/session/components/StudySubjectSelect';
 import { StudyHeader } from './StudyHeader';
 
 export function UserSessionsPage() {
@@ -31,14 +32,7 @@ export function UserSessionsPage() {
 
       <section aria-label="Lọc bộ câu hỏi" className="space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-          <label className="min-w-0 space-y-1.5 text-sm font-medium">
-            <span className="block">Môn học</span>
-            <select className={fieldClass} value={selectedSubjectId ?? ''}
-              onChange={(event) => setSelectedSubjectId(event.target.value ? Number(event.target.value) : undefined)}>
-              <option value="">Tất cả môn học</option>
-              {subjects.data?.map((subject) => <option key={subject.subjectId} value={subject.subjectId}>{subject.code} · {subject.name}</option>)}
-            </select>
-          </label>
+          <StudySubjectSelect subjects={subjects.data ?? []} value={selectedSubjectId} onChange={setSelectedSubjectId} />
           <label className="min-w-0 space-y-1.5 text-sm font-medium">
             <span className="block">Tìm trong các bộ đã tải</span>
             <input className={fieldClass} type="search" value={searchQuery}

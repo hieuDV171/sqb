@@ -86,6 +86,7 @@ export interface SubmissionSessionSummaryDto {
   semesterId: number;
   semesterName: string;
   questionCounts: number;
+  approvedQuestionCount?: number | null;
   createdAt: string;
   reactCount: number;
   commentCount: number;

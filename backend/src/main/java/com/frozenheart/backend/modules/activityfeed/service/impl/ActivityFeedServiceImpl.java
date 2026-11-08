@@ -152,9 +152,14 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (r1, _) -> r1))
                 : Map.of();
 
+        List<Long> awardIds = feeds.stream().filter(f -> f.getActionType() == ActionType.EARNED_BADGE)
+                .map(ActivityFeed::getId).toList();
+        Map<Long, ReactRepository.BadgeCheerCount> badgeCheers = awardIds.isEmpty() ? Map.of()
+                : reactRepository.countBadgeCheers(awardIds, currentUserId == null ? 0L : currentUserId)
+                        .stream().collect(Collectors.toMap(ReactRepository.BadgeCheerCount::getTargetId, count -> count));
         List<ActivityFeedItemDto> items = feeds.stream()
                 .map(feed -> mapToItemDto(feed, profileMap, postMap, sessionMap, questionMap,
-                        userPostReactMap, userSessionReactMap, userQuestionReactMap))
+                        userPostReactMap, userSessionReactMap, userQuestionReactMap, badgeCheers.get(feed.getId())))
                 .toList();
 
         return CursorResponse.<ActivityFeedItemDto>builder()
@@ -236,7 +241,8 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             Map<Long, Question> questionMap,
             Map<Long, ReactionType> userPostReactMap,
             Map<Long, ReactionType> userSessionReactMap,
-            Map<Long, ReactionType> userQuestionReactMap) {
+            Map<Long, ReactionType> userQuestionReactMap,
+            ReactRepository.BadgeCheerCount badgeCheers) {
 
         AuthorDto actorDto;
         if (feed.getUser() != null) {
@@ -318,6 +324,11 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             ReactionType userReact = userQuestionReactMap.get(targetId);
             contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
             contentMap.put("reacted_by_me", userReact != null);
+        }
+
+        if (feed.getActionType() == ActionType.EARNED_BADGE) {
+            contentMap.put("react_count", badgeCheers == null ? 0L : badgeCheers.getTotal());
+            contentMap.put("reacted_by_me", badgeCheers != null && badgeCheers.getViewerCount() > 0);
         }
 
         return ActivityFeedItemDto.builder()

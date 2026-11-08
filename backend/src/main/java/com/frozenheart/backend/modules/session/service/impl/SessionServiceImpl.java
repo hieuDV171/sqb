@@ -345,6 +345,8 @@ public class SessionServiceImpl implements SessionService {
                         .semesterName(s.getSemesterName())
                         .status(s.getStatus())
                         .questionCounts(s.getQuestionCount())
+                        .approvedQuestionCount(isOwner && s.getStatus() == SessionStatus.RESOLVED
+                                ? s.getApprovedQuestionCount() : null)
                         .createdAt(s.getCreatedAt())
                         .reactCount(s.getReactCount())
                         .commentCount(s.getCommentCount())

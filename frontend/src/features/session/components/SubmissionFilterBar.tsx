@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import type { SubjectResponse, SessionStatus } from '../types/session.types';
+import { StudySubjectSelect } from './StudySubjectSelect';
 
 interface SubmissionFilterBarProps {
   subjects: SubjectResponse[];
@@ -15,7 +16,7 @@ const statuses: { value?: SessionStatus; label: string }[] = [
   { label: 'Tất cả' },
   { value: 'PENDING', label: 'Chờ duyệt' },
   { value: 'REVIEWING', label: 'Đang xem xét' },
-  { value: 'RESOLVED', label: 'Đã duyệt' },
+  { value: 'RESOLVED', label: 'Đã xét duyệt' },
 ];
 
 const fieldClass = 'min-h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
@@ -39,19 +40,7 @@ export function SubmissionFilterBar({
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <label className="min-w-0 space-y-1.5 text-sm font-medium">
-          <span className="block">Môn học</span>
-          <select
-            className={fieldClass}
-            value={selectedSubjectId ?? ''}
-            onChange={(event) => onSelectSubject(event.target.value ? Number(event.target.value) : undefined)}
-          >
-            <option value="">Tất cả môn học</option>
-            {subjects.map(({ subjectId, code, name }) => (
-              <option key={subjectId} value={subjectId}>{code} · {name}</option>
-            ))}
-          </select>
-        </label>
+        <StudySubjectSelect subjects={subjects} value={selectedSubjectId} onChange={onSelectSubject} />
         <label className="min-w-0 space-y-1.5 text-sm font-medium">
           <span className="block">Tìm trong các phiên đã tải</span>
           <input

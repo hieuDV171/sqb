@@ -3,7 +3,6 @@ import { Dialog } from '@base-ui/react/dialog';
 import { ArrowLeft, ArrowRight, BarChart3, Check, Heart, Lightbulb, Loader2, Maximize2, MessageSquare, Star, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { reactService } from '@/features/feed/services/reactService';
 import type { PracticeQuestionDto } from '../types/practice.types';
 
 interface PracticeQuestionCardProps {
@@ -21,34 +20,26 @@ interface PracticeQuestionCardProps {
   onOpenRate: (questionId: number, code?: string) => void;
   onOpenDiscussion: (questionId: number, code?: string) => void;
   localAnswerResult?: { isCorrect: boolean; selected: string[] };
-  reaction?: { liked: boolean; count: number };
-  onReactionChange: (value: { liked: boolean; count: number }) => void;
+  isUpdatingReaction: boolean;
+  onToggleReaction: () => void;
 }
 
 export function PracticeQuestionCard({
   question, selectedOptions, onToggleOption, onSubmitAnswer, isSubmittingAnswer, answerError,
   onPrevQuestion, onNextQuestion, hasPrev, hasNext, onOpenStats, onOpenRate, onOpenDiscussion, localAnswerResult,
-  reaction, onReactionChange,
+  isUpdatingReaction, onToggleReaction,
 }: PracticeQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
-  const [reacting, setReacting] = useState(false);
   const { questionId, questionCode, hiddenFields } = question;
+  const reacted = Boolean(question.myInteraction.myReaction);
   const answered = question.myInteraction.answered || Boolean(localAnswerResult);
   const OptionBody = answered ? 'div' : 'label';
-  const correct = localAnswerResult?.isCorrect;
+  const correct = localAnswerResult?.isCorrect ?? hiddenFields?.wasCorrect ?? undefined;
+  const savedOptions = hiddenFields?.selectedOptions;
+  const changedSinceAnswer = Boolean(!localAnswerResult && hiddenFields?.questionUpdatedSinceAnswer);
+  const selectedKeys = localAnswerResult?.selected
+    ?? (changedSinceAnswer ? [] : savedOptions?.map((option) => option.key) ?? selectedOptions);
   const correctKeys = hiddenFields?.correctAnswer?.split(',').map((key) => key.trim()) ?? [];
-
-  async function toggleLike() {
-    setReacting(true);
-    try {
-      const { data } = await reactService.toggleReact({ targetType: 'QUESTION', targetId: questionId, reactionType: 'LIKE' });
-      if (data) onReactionChange({ liked: data.myReaction === 'LIKE', count: data.totalCount });
-    } catch {
-      // Axios displays the request error.
-    } finally {
-      setReacting(false);
-    }
-  }
 
   function imagePreview(url: string, label: string) {
     return (
@@ -69,9 +60,9 @@ export function PracticeQuestionCard({
           {questionCode && <span className="font-mono">#{questionCode}</span>}
         </p>
         <div role="group" aria-label="Tương tác với câu hỏi" className="flex flex-wrap gap-2">
-          <Button variant="ghost" className="min-h-11 min-w-11 px-2" aria-label="Thích câu hỏi" aria-pressed={reaction?.liked ?? false} disabled={reacting} onClick={() => void toggleLike()}>
-            <Heart aria-hidden="true" className={reaction?.liked ? 'fill-current text-destructive' : undefined} />
-            {reaction?.count ?? question.reactCount ?? 0}
+          <Button variant="ghost" className="min-h-11 min-w-11 px-2" aria-label="Thích câu hỏi" aria-pressed={reacted} disabled={isUpdatingReaction} onClick={onToggleReaction}>
+            <Heart aria-hidden="true" className={reacted ? 'fill-current text-destructive' : undefined} />
+            {question.reactCount ?? 0}
           </Button>
           <Button variant="ghost" size="icon" className="size-11" aria-label="Xem thống kê câu hỏi" onClick={() => onOpenStats(questionId, questionCode)}>
             <BarChart3 aria-hidden="true" />
@@ -100,9 +91,9 @@ export function PracticeQuestionCard({
           {answered ? 'Các phương án' : 'Chọn một hoặc nhiều phương án'}
         </legend>
         {question.options.map(({ key, text, mediaUrl }) => {
-          const selected = (localAnswerResult?.selected ?? selectedOptions).includes(key);
+          const selected = selectedKeys.includes(key);
           const correctOption = answered && correctKeys.includes(key);
-          const wrongOption = answered && selected && !correctOption && correct !== undefined;
+          const wrongOption = answered && selected && !correctOption && correctKeys.length > 0;
           return (
             <div key={key} className={cn(
               'rounded-xl border border-border bg-surface-subtle',
@@ -117,8 +108,12 @@ export function PracticeQuestionCard({
                 )}
                 <span className="shrink-0 font-semibold">{key}.</span>
                 <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{text}</span>
-                {correctOption && <span className="inline-flex shrink-0 items-center gap-1 font-medium text-success"><Check aria-hidden="true" className="size-4" /> Đúng</span>}
-                {wrongOption && <span className="inline-flex shrink-0 items-center gap-1 font-medium text-destructive"><X aria-hidden="true" className="size-4" /> Đã chọn</span>}
+                {answered && (correctOption || selected) && (
+                  <span className="flex shrink-0 flex-col items-end gap-1 text-xs font-medium">
+                    {correctOption && <span className="inline-flex items-center gap-1 text-success"><Check aria-hidden="true" className="size-4" /> Đáp án đúng</span>}
+                    {selected && <span className={wrongOption ? 'text-destructive' : 'text-muted-foreground'}>Bạn đã chọn</span>}
+                  </span>
+                )}
               </OptionBody>
               {mediaUrl && <div className="px-3 pb-3">{imagePreview(mediaUrl, `Phóng to hình của phương án ${key}`)}</div>}
             </div>
@@ -134,6 +129,12 @@ export function PracticeQuestionCard({
             correct === false && 'border-destructive bg-destructive/10',
           )}>
             <p className="font-semibold">{correct === undefined ? 'Đã trả lời trước đó' : correct ? 'Trả lời đúng' : 'Trả lời chưa đúng'}</p>
+            {changedSinceAnswer && <p className="mt-1">Câu hỏi đã được cập nhật sau lần bạn trả lời. Kết quả trên là kết quả đã lưu.</p>}
+            {changedSinceAnswer && !!savedOptions?.length && (
+              <ul className="mt-2 space-y-1" aria-label="Phương án đã chọn trước khi cập nhật">
+                {savedOptions.map(({ key, text }) => <li key={key}><strong>{key}.</strong> {text}</li>)}
+              </ul>
+            )}
             {hiddenFields?.correctAnswer && <p className="mt-1">Đáp án đúng <strong>{hiddenFields.correctAnswer}</strong></p>}
           </div>
           {hiddenFields?.explanation && (

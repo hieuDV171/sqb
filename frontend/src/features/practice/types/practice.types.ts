@@ -1,15 +1,23 @@
 import type { QuestionOption, CursorPaginationDto, SubmissionSessionSummaryDto } from '@/features/session/types/session.types';
+import type { ReactionType } from '@/features/feed/services/reactService';
 
 export type QuestionSource = 'HOMO_SAPIENS' | 'LLM';
 
 export interface MyInteractionDto {
   answered: boolean;
   rated: boolean;
+  myReaction?: ReactionType | null;
+  myRating?: number | null;
+  ratingComment?: string | null;
+  reported?: boolean;
 }
 
 export interface HiddenFieldsDto {
   correctAnswer?: string;
   explanation?: string;
+  selectedOptions?: Array<{ key: string; text: string }>;
+  wasCorrect?: boolean | null;
+  questionUpdatedSinceAnswer?: boolean;
 }
 
 export interface PracticeQuestionDto {
@@ -67,7 +75,6 @@ export interface QuestionStatisticsResponse {
 
 export interface RateQuestionRequest {
   rating: number; // 0 to 4
-  isError?: boolean;
   comment?: string;
 }
 
@@ -79,7 +86,6 @@ export interface RateQuestionResponse {
 export interface RatingItemDto {
   userId: number;
   rating: number;
-  isError: boolean;
   comment?: string;
   createdAt: string;
 }

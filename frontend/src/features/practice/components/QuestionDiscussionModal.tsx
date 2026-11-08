@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, MessageSquare, Send, Loader2, User } from 'lucide-react';
 import { commentService } from '@/features/feed/services/commentService';
 import type { CommentResponseDto } from '@/types/post.types';
+import { updatePracticeQuestion } from '../hooks/updatePracticeQuestion';
 
 interface QuestionDiscussionModalProps {
   questionId: number | null;
+  sessionId: number;
   questionCode?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +15,7 @@ interface QuestionDiscussionModalProps {
 
 export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = ({
   questionId,
+  sessionId,
   questionCode,
   isOpen,
   onClose,
@@ -38,17 +41,32 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
   });
 
   const { mutateAsync: sendComment, isPending: isSending } = useMutation({
-    mutationFn: async (text: string) => {
-      if (!questionId) return;
-      await commentService.createComment({
+    mutationFn: async ({ text, targetId }: { text: string; targetId: number }) => {
+      const response = await commentService.createComment({
         targetType: 'QUESTION',
-        targetId: questionId,
+        targetId,
         content: text,
       });
+      return response.data;
     },
-    onSuccess: () => {
+    onSuccess: async (comment, { targetId }) => {
       setCommentText('');
-      queryClient.invalidateQueries({ queryKey: ['questionComments', questionId] });
+      if (!comment) return;
+      const listKey = ['questionComments', targetId];
+      const sessionKey = ['practiceSession', sessionId];
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: listKey }),
+        queryClient.cancelQueries({ queryKey: sessionKey }),
+      ]);
+      queryClient.setQueryData<CommentResponseDto[]>(listKey, (current) =>
+        current?.some((item) => item.commentId === comment.commentId) ? current : [comment, ...(current ?? [])],
+      );
+      updatePracticeQuestion(queryClient, sessionId, targetId, (question) => ({
+        ...question,
+        commentCount: (question.commentCount ?? 0) + 1,
+      }));
+      void queryClient.invalidateQueries({ queryKey: listKey });
+      void queryClient.invalidateQueries({ queryKey: sessionKey, refetchType: 'none' });
     },
   });
 
@@ -57,7 +75,11 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim() || isSending) return;
-    await sendComment(commentText.trim());
+    try {
+      await sendComment({ text: commentText.trim(), targetId: questionId });
+    } catch {
+      // Keep the text available for retry.
+    }
   };
 
   const comments = commentsData || [];

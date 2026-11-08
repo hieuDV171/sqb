@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1794162059290-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_question_error_reports
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_question_error_reports
+                  name: rated_question_id
+                  type: BIGINT
+            tableName: question_error_reports
+  - changeSet:
+      id: 1794162059290-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: rated_question_id
+            baseTableName: question_error_reports
+            constraintName: FK_QUESTION_ERROR_REPORTS_ON_RATED_QUESTION
+            referencedColumnNames: id
+            referencedTableName: questions
+  - changeSet:
+      id: 1794162059290-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: user_id
+            baseTableName: question_error_reports
+            constraintName: FK_QUESTION_ERROR_REPORTS_ON_USER
+            referencedColumnNames: id
+            referencedTableName: users
+

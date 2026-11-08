@@ -59,6 +59,8 @@ public record SubmissionsResponse(
 
             @Schema(description = "Số lượng câu hỏi trong phiên", example = "5")
             int questionCounts,
+            @Schema(description = "Số câu được duyệt, chỉ trả cho người nộp sau khi xét duyệt")
+            Long approvedQuestionCount,
 
             @Schema(description = "Thời điểm khởi tạo phiên nộp")
             Instant createdAt,

@@ -371,7 +371,6 @@ public class SearchServiceImpl implements SearchService {
                                 .subjectName(doc.getSubjectName())
                                 .topicId(doc.getTopicId())
                                 .topicName(doc.getTopicName())
-                                .status(doc.getStatus())
                                 .difficulty(doc.getDifficulty())
                                 .content(doc.getContent())
                                 .options(doc.getOptions() != null
@@ -383,7 +382,6 @@ public class SearchServiceImpl implements SearchService {
                                                         .build())
                                                 .toList()
                                         : Collections.emptyList())
-                                .explanation(doc.getExplanation())
                                 .imageUrls(doc.getImageUrls())
                                 .avgRating(doc.getAvgRating())
                                 .ratingCount(doc.getRatingCount())

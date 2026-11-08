@@ -52,10 +52,8 @@ export interface QuestionSearchResultDto {
   subjectName?: string;
   topicId?: number;
   topicName?: string;
-  status?: string;
   difficulty?: string;
   options?: QuestionOptionDto[];
-  explanation?: string;
   imageUrls?: string[];
   avgRating?: number;
   ratingCount?: number;

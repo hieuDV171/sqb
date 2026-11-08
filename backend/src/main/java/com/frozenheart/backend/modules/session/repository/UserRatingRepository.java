@@ -21,9 +21,6 @@ public interface UserRatingRepository extends JpaRepository<UserRating, UserRati
 
     Optional<UserRating> findByIdUserIdAndIdRatedQuestionId(Long userId, Long ratedQuestionId);
 
-    @Query("SELECT ur FROM UserRating ur JOIN FETCH ur.ratedQuestion q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.subject sub LEFT JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p WHERE ur.id.userId = :userId AND ur.id.ratedQuestionId = :ratedQuestionId")
-    Optional<UserRating> findByUserIdAndRatedQuestionIdFetchQuestionAndSession(@Param("userId") Long userId, @Param("ratedQuestionId") Long ratedQuestionId);
-
     @Query("SELECT ur FROM UserRating ur WHERE ur.id.userId = :userId AND ur.id.ratedQuestionId IN :questionIds")
     List<UserRating> findByUserIdAndRatedQuestionIdIn(@Param("userId") Long userId, @Param("questionIds") List<Long> questionIds);
 
@@ -49,6 +46,18 @@ public interface UserRatingRepository extends JpaRepository<UserRating, UserRati
     List<UserRating> findRatingsByQuestionIdWithCursor(@Param("ratedQuestionId") Long ratedQuestionId,
                                                        @Param("after") Long after,
                                                        Pageable pageable);
+
+    @Query("""
+            SELECT ur.id.ratedQuestionId AS questionId, COUNT(ur) AS ratingCount
+            FROM UserRating ur WHERE ur.id.ratedQuestionId IN :questionIds
+            GROUP BY ur.id.ratedQuestionId
+            """)
+    List<QuestionRatingCount> countStarsByQuestionIds(@Param("questionIds") List<Long> questionIds);
+
+    interface QuestionRatingCount {
+        Long getQuestionId();
+        long getRatingCount();
+    }
 
 }
 

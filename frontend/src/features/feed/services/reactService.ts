@@ -1,7 +1,7 @@
 import { axiosClient } from '@/api/axiosClient';
 import type { GlobalResponse } from '@/types/response.types';
 
-export type InteractionTargetType = 'POST' | 'COMMENT' | 'QUESTION' | 'SESSION';
+export type InteractionTargetType = 'POST' | 'COMMENT' | 'QUESTION' | 'SESSION' | 'BADGE_AWARD';
 export type ReactionType = 'LIKE' | 'LOVE' | 'WOW';
 
 export interface ReactRequest {
@@ -11,7 +11,7 @@ export interface ReactRequest {
 }
 
 export interface ReactResponseDto {
-  myReaction: string | null;
+  myReaction: ReactionType | null;
   reactionCounts: Record<string, number>;
   totalCount: number;
 }
@@ -22,6 +22,6 @@ export const reactService = {
    * POST /api/v1/react
    */
   toggleReact: async (data: ReactRequest): Promise<GlobalResponse<ReactResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<ReactResponseDto>>('/react', data)) as any;
+    return axiosClient.post<GlobalResponse<ReactResponseDto>, GlobalResponse<ReactResponseDto>>('/react', data);
   },
 };

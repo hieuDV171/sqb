@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { reactService, type ReactionType } from '@/features/feed/services/reactService';
+import { updatePracticeQuestion } from '@/features/practice/hooks/updatePracticeQuestion';
 import {
   ArrowLeft,
   Award,
@@ -28,6 +31,7 @@ export function PracticeWorkspacePage() {
 
 function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: sessionData, isLoading, isError, error, refetch } =
     usePracticeSession(numericSessionId);
   const { mutateAsync: submitAnswerMutation, isPending: isSubmittingAnswer, error: answerError, variables: answerVariables } =
@@ -39,7 +43,19 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
   const [userAnswersRecord, setUserAnswersRecord] = useState<
     Record<number, { isCorrect: boolean; selected: string[] }>
   >({});
-  const [reactions, setReactions] = useState<Record<number, { liked: boolean; count: number }>>({});
+  const reactionMutation = useMutation({
+    mutationFn: ({ questionId, reactionType }: { questionId: number; reactionType: ReactionType }) =>
+      reactService.toggleReact({ targetType: 'QUESTION', targetId: questionId, reactionType }),
+    onSuccess: async ({ data }, { questionId }) => {
+      if (!data) return;
+      await queryClient.cancelQueries({ queryKey: ['practiceSession', numericSessionId] });
+      updatePracticeQuestion(queryClient, numericSessionId, questionId, (question) => ({
+        ...question,
+        reactCount: data.totalCount,
+        myInteraction: { ...question.myInteraction, myReaction: data.myReaction ?? null },
+      }));
+    },
+  });
 
   // Modals state
   const [statsTarget, setStatsTarget] = useState<{
@@ -60,6 +76,7 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
   const questions = sessionData?.questions || [];
   const currentIndex = Math.min(requestedIndex, Math.max(0, questions.length - 1));
   const currentQuestion = questions[currentIndex];
+  const ratedQuestion = questions.find((question) => question.questionId === rateTarget.id);
   const returnLink = (
     <Button variant="ghost" render={<Link to="/questions" />} nativeButton={false} className="min-h-11">
       <ArrowLeft aria-hidden="true" /> Ngân hàng câu hỏi
@@ -199,8 +216,11 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
               onOpenRate={(id, code) => setRateTarget({ id, code })}
               onOpenDiscussion={(id, code) => setDiscussionTarget({ id, code })}
               localAnswerResult={userAnswersRecord[currentQuestion.questionId]}
-              reaction={reactions[currentQuestion.questionId]}
-              onReactionChange={(reaction) => setReactions((previous) => ({ ...previous, [currentQuestion.questionId]: reaction }))}
+              isUpdatingReaction={reactionMutation.isPending}
+              onToggleReaction={() => reactionMutation.mutate({
+                questionId: currentQuestion.questionId,
+                reactionType: currentQuestion.myInteraction.myReaction ?? 'LIKE',
+              })}
             />
           )}
         </section>
@@ -221,16 +241,20 @@ function PracticeWorkspace({ numericSessionId }: { numericSessionId: number }) {
       />
 
       {/* Rate Modal */}
-      <QuestionRateModal
-        questionId={rateTarget.id}
-        questionCode={rateTarget.code}
-        sessionId={numericSessionId}
-        isOpen={!!rateTarget.id}
-        onClose={() => setRateTarget({ id: null })}
-      />
+      {ratedQuestion && (
+        <QuestionRateModal
+          key={ratedQuestion.questionId}
+          questionId={ratedQuestion.questionId}
+          questionCode={ratedQuestion.questionCode}
+          sessionId={numericSessionId}
+          interaction={ratedQuestion.myInteraction}
+          onClose={() => setRateTarget({ id: null })}
+        />
+      )}
 
       {/* Discussion Modal */}
       <QuestionDiscussionModal
+        sessionId={numericSessionId}
         questionId={discussionTarget.id}
         questionCode={discussionTarget.code}
         isOpen={!!discussionTarget.id}

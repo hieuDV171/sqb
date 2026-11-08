@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 @Builder
@@ -32,8 +33,9 @@ public record ProposeSessionRequest(
 
         @Schema(description = "Danh sách các câu hỏi đề xuất trong phiên", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotEmpty(message = "Danh sách câu hỏi không được để trống")
+        @Size(min = 3, message = "Mỗi phiên đề xuất cần ít nhất 3 câu hỏi")
         @Valid
-        List<QuestionProposeDto> questions
+        List<@NotNull QuestionProposeDto> questions
 ) {
     @Builder
     @Schema(description = "Thông tin chi tiết một câu hỏi đề xuất")

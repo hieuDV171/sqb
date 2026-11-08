@@ -8,6 +8,8 @@ import { ActivityFeedRenderer } from '@/features/feed/components/ActivityFeedRen
 import { FeedCardSkeleton } from '@/features/feed/components/FeedCardSkeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { Button } from '@/components/ui/button';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { FeedSidebarRight } from './components/FeedSidebarRight';
 import { sessionService } from '@/features/session/services/sessionService';
 import type { SubjectItem } from '@/types/post.types';
@@ -32,6 +34,7 @@ export function FeedPage() {
 
   const {
     items,
+    data,
     isLoading,
     isError,
     isFetchNextPageError,
@@ -39,6 +42,7 @@ export function FeedPage() {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
+    isFetching,
   } = useActivityFeed(currentFilter);
 
   const { newCount, triggerRefresh } = useNewFeedCount();
@@ -69,6 +73,8 @@ export function FeedPage() {
         return item.content.subjectCode === selectedCode;
       })
     : items;
+  const canAutoLoad = displayedItems.length > 0 && hasNextPage && !isError && !isFetching;
+  const { sentinel, supportsAutoLoad } = useInfiniteScroll(canAutoLoad, fetchNextPage, data?.pages.length ?? 0);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -136,13 +142,17 @@ export function FeedPage() {
               </div>
             )}
             {hasNextPage && (!isError || isFetchNextPageError) && (
-              <div className="grid justify-items-center gap-2 py-4">
+              <div ref={sentinel} className="grid min-h-px justify-items-center gap-2">
                 {isFetchNextPageError && <p role="alert" className="text-sm text-destructive">Không thể tải thêm hoạt động.</p>}
-                <button type="button" onClick={() => void fetchNextPage()} disabled={isFetchingNextPage}
-                  className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:text-primary disabled:opacity-50">
-                  {isFetchingNextPage && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
-                  {isFetchingNextPage ? 'Đang tải…' : isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm hoạt động cũ hơn'}
-                </button>
+                {isFetchingNextPage && (
+                  <p role="status" className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> Đang tải thêm hoạt động…
+                  </p>
+                )}
+                <Button variant="outline" onClick={() => void fetchNextPage({ cancelRefetch: false })} disabled={isFetching}
+                  className={supportsAutoLoad && displayedItems.length > 0 && !isFetchNextPageError ? 'sr-only focus-visible:not-sr-only' : 'my-4 min-h-11'}>
+                  {isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm hoạt động cũ hơn'}
+                </Button>
               </div>
             )}
           </PullToRefreshFeed>

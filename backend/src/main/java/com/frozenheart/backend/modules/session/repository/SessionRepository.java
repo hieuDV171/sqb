@@ -34,6 +34,7 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                             semester.name AS semesterName,
                             s.status AS status,
                             COUNT(q) AS questionCount,
+                            SUM(CASE WHEN q.status = com.frozenheart.backend.core.entity.session.QuestionStatus.APPROVED THEN 1 ELSE 0 END) AS approvedQuestionCount,
                             s.createdAt AS createdAt,
                             s.reactCount AS reactCount,
                             s.commentCount AS commentCount

@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 @Schema(description = "Yêu cầu cập nhật phiên đề xuất câu hỏi")
@@ -27,7 +29,7 @@ public record UpdateSubmissionSessionRequest(
         Long courseClassId,
 
         @Schema(description = "Danh sách câu hỏi cần cập nhật hoặc thêm mới")
-        @Valid List<QuestionUpdateDto> questions
+        @Valid @Size(min = 3, message = "Mỗi phiên đề xuất cần ít nhất 3 câu hỏi") List<@NotNull QuestionUpdateDto> questions
 ) {
     @Schema(description = "Thông tin câu hỏi cập nhật trong phiên")
     @Builder

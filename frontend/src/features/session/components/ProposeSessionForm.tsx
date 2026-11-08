@@ -317,8 +317,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       document.getElementById('proposal-title')?.focus();
       return false;
     }
-    if (questions.length === 0) {
-      toast.error('Phiên đề xuất phải chứa ít nhất 1 câu hỏi');
+    if (questions.length < 3) {
+      toast.error('Mỗi phiên đề xuất cần ít nhất 3 câu hỏi');
       return false;
     }
 
@@ -915,7 +915,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       <div className="flex flex-col justify-between gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">3. Gửi xét duyệt</h2>
-          <p className="text-sm text-muted-foreground">{questions.length} câu hỏi trong phiên</p>
+          <p className="text-sm text-muted-foreground">{questions.length} câu hỏi trong phiên · Tối thiểu 3 câu</p>
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">

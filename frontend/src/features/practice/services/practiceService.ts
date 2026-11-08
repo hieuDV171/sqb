@@ -73,7 +73,7 @@ export const practiceService = {
   },
 
   /**
-   * 17.5 Đánh giá chất lượng câu hỏi & Báo lỗi (Feedback / Rating / Error Hunter)
+   * 17.5 Đánh giá sao chất lượng câu hỏi
    * POST /api/v1/questions/{questionId}/rate
    */
   rateQuestion: async (
@@ -84,6 +84,10 @@ export const practiceService = {
       `/questions/${questionId}/rate`,
       request
     );
+  },
+
+  reportQuestion(questionId: number, description: string) {
+    return axiosClient.put<GlobalResponse<void>, GlobalResponse<void>>(`/questions/${questionId}/report`, { description });
   },
 
   /**

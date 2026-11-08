@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionSource;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -93,7 +94,13 @@ public record SessionQuestionsResponse(
             boolean answered,
 
             @Schema(description = "Người dùng đã đánh giá câu hỏi này chưa", example = "false")
-            boolean rated
+            boolean rated,
+
+            @Schema(description = "Cảm xúc hiện tại của người dùng, nếu đã tương tác", example = "LIKE")
+            ReactionType myReaction,
+            Double myRating,
+            String ratingComment,
+            boolean reported
         ) {
     }
 
@@ -104,8 +111,14 @@ public record SessionQuestionsResponse(
             String correctAnswer,
 
             @Schema(description = "Lời giải chi tiết câu hỏi", example = "SJF ưu tiên tiến trình ngắn, tiến trình dài có thể bị đói tài nguyên CPU.")
-            String explanation
+            String explanation,
+            List<SubmittedOptionDto> selectedOptions,
+            Boolean wasCorrect,
+            boolean questionUpdatedSinceAnswer
         ) {
+    }
+
+    public record SubmittedOptionDto(String key, String text) {
     }
 }
 

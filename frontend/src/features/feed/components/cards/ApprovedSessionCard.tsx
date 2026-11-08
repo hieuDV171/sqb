@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
-import { CheckCircle2, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle2, BookOpen, ArrowRight, Heart, MessageSquare, Sparkles } from 'lucide-react';
 
 interface ApprovedSessionCardProps {
   item: ActivityFeedItemDto;
@@ -79,7 +79,11 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
       </div>
 
       {/* Action */}
-      <div className="flex items-center justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-4" /> {content.reactCount ?? 0} lượt thích phiên</span>
+          <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-4" /> {content.commentCount ?? 0} bình luận về phiên</span>
+        </div>
         <button
           type="button"
           onClick={() => {

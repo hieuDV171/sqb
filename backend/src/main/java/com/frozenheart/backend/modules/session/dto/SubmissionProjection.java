@@ -31,6 +31,7 @@ public interface SubmissionProjection {
     SessionStatus getStatus();
 
     Integer getQuestionCount();
+    Long getApprovedQuestionCount();
 
     Instant getCreatedAt();
 

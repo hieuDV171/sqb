@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { Ban, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -6,6 +5,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { FeedCardSkeleton } from '@/features/feed/components/FeedCardSkeleton';
 import { PostFeedCard } from '@/features/feed/components/PostFeedCard';
 import { toFeedItem } from '@/features/feed/utils/toFeedItem';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { isProfilePostsBlocked, useProfilePosts } from '../hooks/useProfilePosts';
 
 export function ProfilePosts({ userId, isOwnProfile }: { userId: number; isOwnProfile: boolean }) {
@@ -13,24 +13,12 @@ export function ProfilePosts({ userId, isOwnProfile }: { userId: number; isOwnPr
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
   const checkingAccess = !isOwnProfile && !query.isFetchedAfterMount && query.isFetching;
   const blocked = isProfilePostsBlocked(query.error);
-  const sentinel = useRef<HTMLDivElement>(null);
-  const supportsAutoLoad = typeof IntersectionObserver !== 'undefined';
   const { fetchNextPage, hasNextPage, isFetching, isError } = query;
-  const canAutoLoad = supportsAutoLoad && !checkingAccess && !blocked && hasNextPage && !isFetching && !isError;
-  const pageCount = query.data?.pages.length ?? 0;
-
-  useEffect(() => {
-    const target = sentinel.current;
-    if (!canAutoLoad || !target) return;
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) return;
-      observer.disconnect();
-      void fetchNextPage({ cancelRefetch: false });
-    }, { rootMargin: '0px 0px 320px 0px' });
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [canAutoLoad, fetchNextPage, pageCount]);
+  const { sentinel, supportsAutoLoad } = useInfiniteScroll(
+    !checkingAccess && !blocked && hasNextPage && !isFetching && !isError,
+    fetchNextPage,
+    query.data?.pages.length ?? 0,
+  );
 
   return (
     <section aria-labelledby="profile-posts-heading" className="space-y-4">

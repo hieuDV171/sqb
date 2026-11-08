@@ -302,3 +302,23 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Trong mỗi tab, REST và STOMP chờ chung một lần gọi `POST /auth/refresh` nếu access token đã hết hạn hoặc còn tối đa 5 giây. Refresh vẫn dùng cookie HttpOnly và chỉ chấp nhận access token mới khớp `userId` và `deviceId` của phiên đang chờ.
 - STOMP dùng token hợp lệ trước mỗi `CONNECT`. Nếu broker từ chối xác thực, client thử phục hồi một lần trước khi dừng. Lỗi mạng tạm thời giữ phiên và STOMP thử lại sau 5 giây. Khi refresh bị từ chối, frontend kết thúc phiên tương ứng và đưa người dùng về đăng nhập.
+
+### [ADR-020] Trạng thái cảm xúc của người học trong API luyện tập
+
+- `GET /sessions/{sessionId}/questions` bổ sung `my_interaction.my_reaction`. Backend lấy cảm xúc của người dùng hiện tại bằng một truy vấn theo toàn bộ ID câu hỏi của phiên.
+- Frontend cập nhật trạng thái và số đếm của đúng câu hỏi từ kết quả `POST /react`. Bình luận thành công cập nhật số đếm trên câu hỏi trong cache. Thẻ phiên ở bảng tin hiển thị số đếm của target `SESSION`.
+
+### [ADR-021] Ẩn kết quả duyệt từng câu trong luyện tập công khai
+
+- Luyện tập phiên đã xét duyệt bao gồm cả câu được duyệt và câu bị từ chối. API luyện tập và tìm kiếm công khai ẩn trạng thái duyệt từng câu. Kết quả chi tiết và tổng số được duyệt thuộc luồng riêng của người nộp hoặc giảng viên.
+- Phiên mới và yêu cầu thay thế danh sách câu hỏi cần ít nhất ba câu. Phiên cũ vẫn truy cập được. Sau khi trả lời, người học xem lại phương án và kết quả đã lưu. Nếu câu hỏi đã được cập nhật, FE hiển thị riêng phương án cũ.
+
+### [ADR-022] Lưu báo lỗi và lượt chúc mừng độc lập
+
+- Báo lỗi dùng bảng `question_error_reports`. Các truy vấn đánh giá sao bỏ qua bản ghi báo lỗi cũ. Game 5 đọc báo lỗi mới và đọc bản ghi cũ nếu cần. Khi người dùng chấm sao lên bản ghi báo lỗi cũ, Backend sao lưu báo lỗi trước khi cập nhật sao.
+- Lượt chúc mừng dùng phản ứng `BADGE_AWARD` theo `feed_id`. Backend khóa sự kiện khi ghi và lấy số đếm theo lô khi dựng bảng tin. Người nhận và người bị chặn không thể gửi lượt chúc mừng đó.
+
+### [ADR-023] Hoàn tất chuyển dữ liệu báo lỗi sang bảng riêng
+
+- Sau khi áp dụng changeset 09-02, dừng tiến trình ghi và chạy `backend/scripts/migrate-question-reports.sql` trên PostgreSQL. Script chuyển báo lỗi theo khóa người dùng/câu hỏi, giữ bản có sẵn ở bảng đích, tính lại thống kê sao của các câu liên quan rồi bỏ cột `user_ratings.is_error` trong cùng giao dịch.
+- Backend chỉ đọc báo lỗi từ `question_error_reports`, kể cả Game 5. API chấm sao từ chối các trường ngoài hợp đồng để payload báo lỗi cũ không trở thành lượt chấm 1 sao.

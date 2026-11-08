@@ -4,6 +4,8 @@ import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -11,9 +13,18 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT f FROM ActivityFeed f JOIN FETCH f.user
+            WHERE f.id = :feedId
+              AND f.actionType = com.frozenheart.backend.core.entity.activityfeed.ActionType.EARNED_BADGE
+            """)
+    Optional<ActivityFeed> findBadgeAwardForUpdate(@Param("feedId") Long feedId);
 
     @EntityGraph(attributePaths = { "user" })
     List<ActivityFeed> findByIdLessThanOrderByIdDesc(Long after, Pageable pageable);

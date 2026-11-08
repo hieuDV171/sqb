@@ -26,9 +26,6 @@ public record QuestionRatingsResponse(
             @Schema(description = "Điểm số đánh giá [0; 4]", example = "4.0")
             double rating,
 
-            @Schema(description = "Có gắn cờ báo lỗi nội dung câu hỏi hay không", example = "false")
-            boolean isError,
-
             @Schema(description = "Nhận xét của người đánh giá", example = "Câu hỏi hay, phân loại tốt!")
             String comment,
 

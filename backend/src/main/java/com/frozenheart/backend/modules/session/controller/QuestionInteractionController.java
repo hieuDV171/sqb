@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,6 +17,7 @@ import com.frozenheart.backend.modules.session.dto.QuestionRatingsResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
 import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RateQuestionResponse;
+import com.frozenheart.backend.modules.session.dto.ReportQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.SessionQuestionsResponse;
 import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 import com.frozenheart.backend.modules.session.service.QuestionInteractionService;
@@ -38,6 +40,24 @@ public class QuestionInteractionController {
 
     private final QuestionInteractionService questionInteractionService;
     private final SessionService sessionService;
+
+    @Operation(summary = "Gửi hoặc cập nhật báo lỗi câu hỏi",
+            description = "Lưu một báo lỗi theo cặp người dùng và câu hỏi thuộc phiên đã xét duyệt. Gửi lại sẽ cập nhật nội dung báo lỗi.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lưu báo lỗi thành công"),
+            @ApiResponse(responseCode = "400", description = "Mô tả lỗi bị bỏ trống hoặc dài quá 500 ký tự"),
+            @ApiResponse(responseCode = "401", description = "Phiên đăng nhập thiếu hoặc hết hạn"),
+            @ApiResponse(responseCode = "403", description = "Câu hỏi thuộc phiên chưa xét duyệt hoặc người gọi không có quyền"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy câu hỏi")
+    })
+    @PutMapping("/questions/{questionId}/report")
+    public ResponseEntity<GlobalResponse<Void>> reportQuestion(
+            @Parameter(description = "ID câu hỏi cần báo lỗi", example = "105")
+            @PathVariable Long questionId,
+            @Valid @RequestBody ReportQuestionRequest request) {
+        questionInteractionService.reportQuestion(questionId, request.description());
+        return ResponseEntity.ok(GlobalResponse.success(null));
+    }
 
     @Operation(summary = "Lấy danh sách phiên đề xuất của một người dùng", description = "Truy vấn danh sách các phiên do một người dùng đề xuất. Nếu xem trang cá nhân của người khác, chỉ các phiên đã được phê duyệt (RESOLVED) mới được hiển thị.")
     @ApiResponses({
@@ -111,10 +131,12 @@ public class QuestionInteractionController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Đánh giá chất lượng câu hỏi", description = "Đánh giá câu hỏi theo thang điểm từ 0 đến 4 (0: Hoàn toàn sai/lỗi, 1: LLM bịa, 2: Tác giả chưa vững, 3: Cơ bản, 4: Câu hỏi hay) kèm nhận xét hoặc báo lỗi.")
+    @Operation(summary = "Đánh giá chất lượng câu hỏi",
+            description = "Lưu hoặc cập nhật đánh giá sao theo thang điểm từ 0 đến 4, tương ứng từ 1 đến 5 sao. Có thể gửi kèm nhận xét.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đánh giá câu hỏi thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu đánh giá không hợp lệ (điểm ngoài khoảng 0-4)"),
+            @ApiResponse(responseCode = "400", description = "Dữ liệu đánh giá không hợp lệ"),
+            @ApiResponse(responseCode = "403", description = "Câu hỏi thuộc phiên chưa xét duyệt hoặc người gọi không có quyền"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy câu hỏi")
     })
     @PostMapping("/questions/{questionId}/rate")

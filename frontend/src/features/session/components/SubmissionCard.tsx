@@ -16,7 +16,7 @@ interface SubmissionCardProps {
 const statuses: Record<SessionStatus, { label: string; className: string }> = {
   PENDING: { label: 'Chờ duyệt', className: 'bg-warning-soft text-warning' },
   REVIEWING: { label: 'Đang xem xét', className: 'bg-academic-soft text-academic' },
-  RESOLVED: { label: 'Đã duyệt', className: 'bg-success-soft text-success' },
+  RESOLVED: { label: 'Đã xét duyệt', className: 'bg-success-soft text-success' },
 };
 
 export function SubmissionCard({ submission, onViewDetail, onEdit, onDelete }: SubmissionCardProps) {
@@ -55,6 +55,9 @@ export function SubmissionCard({ submission, onViewDetail, onEdit, onDelete }: S
       <footer className="space-y-3 border-t border-border pt-3">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <span>{submission.questionCounts ?? 0} câu hỏi</span>
+          {submission.approvedQuestionCount != null && (
+            <span>{submission.approvedQuestionCount}/{submission.questionCounts} câu được duyệt</span>
+          )}
           <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-3.5" /> {submission.reactCount ?? 0}<span className="sr-only"> lượt thích</span></span>
           <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-3.5" /> {submission.commentCount ?? 0}<span className="sr-only"> bình luận</span></span>
           {createdAt && <time dateTime={createdAt}>{new Date(createdAt).toLocaleDateString('vi-VN')}</time>}

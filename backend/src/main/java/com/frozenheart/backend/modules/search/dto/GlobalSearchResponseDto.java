@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
-import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -178,9 +177,6 @@ public class GlobalSearchResponseDto {
         @Schema(description = "Tên chủ đề kiến thức", example = "LINQ to Objects")
         private String topicName;
 
-        @Schema(description = "Trạng thái câu hỏi", example = "APPROVED")
-        private QuestionStatus status;
-
         @Schema(description = "Độ khó câu hỏi", example = "MEDIUM")
         private QuestionDifficulty difficulty;
 
@@ -189,9 +185,6 @@ public class GlobalSearchResponseDto {
 
         @Schema(description = "Danh sách các lựa chọn đáp án")
         private List<QuestionOptionDto> options;
-
-        @Schema(description = "Giải thích chi tiết cho câu hỏi")
-        private String explanation;
 
         @Schema(description = "Danh sách URL hình ảnh minh họa trong câu hỏi")
         private List<String> imageUrls;

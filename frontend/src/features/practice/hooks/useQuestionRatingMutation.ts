@@ -40,6 +40,8 @@ export function useQuestionRatingMutation() {
                     myInteraction: {
                       ...q.myInteraction,
                       rated: true,
+                      myRating: variables.request.rating,
+                      ratingComment: variables.request.comment,
                     },
                   };
                 }

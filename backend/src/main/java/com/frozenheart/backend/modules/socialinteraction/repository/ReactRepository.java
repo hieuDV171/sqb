@@ -32,4 +32,20 @@ public interface ReactRepository extends JpaRepository<React, Long> {
     );
 
     int countByTargetTypeAndTargetId(InteractionTargetType targetType, Long targetId);
+
+    @Query("""
+            SELECT r.targetId AS targetId, COUNT(r) AS total,
+                   SUM(CASE WHEN r.user.id = :viewerId THEN 1 ELSE 0 END) AS viewerCount
+            FROM React r
+            WHERE r.targetType = com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType.BADGE_AWARD
+              AND r.targetId IN :feedIds
+            GROUP BY r.targetId
+            """)
+    List<BadgeCheerCount> countBadgeCheers(@Param("feedIds") Collection<Long> feedIds, @Param("viewerId") Long viewerId);
+
+    interface BadgeCheerCount {
+        Long getTargetId();
+        long getTotal();
+        long getViewerCount();
+    }
 }

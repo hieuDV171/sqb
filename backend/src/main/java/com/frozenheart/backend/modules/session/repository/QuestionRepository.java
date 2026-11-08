@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +28,10 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             ORDER BY q.displayOrder ASC
             """)
     List<Question> findQuestionsBySessionId(@Param("sessionId") Long sessionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM Question q JOIN FETCH q.session WHERE q.id = :questionId")
+    Optional<Question> findByIdForFeedback(@Param("questionId") Long questionId);
 
     @Modifying
     @Query("UPDATE Question q SET q.reactCount = COALESCE(q.reactCount, 0) + :delta WHERE q.id = :questionId")

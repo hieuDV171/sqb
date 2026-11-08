@@ -20,6 +20,7 @@ public class InteractionTargetValidator {
     public void validateTargetExists(InteractionTargetType targetType, Long targetId) {
         if (targetType == null || targetId == null) return;
         switch (targetType) {
+            case BADGE_AWARD -> throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE);
             case POST -> {
                 if (!postRepository.existsById(targetId)) {
                     throw new AppException(ResponseCode.POST_NOT_FOUND);

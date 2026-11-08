@@ -18,6 +18,8 @@ public interface QuestionInteractionService {
 
     RateQuestionResponse rateQuestion(Long questionId, RateQuestionRequest request);
 
+    void reportQuestion(Long questionId, String description);
+
     QuestionRatingsResponse getQuestionRatings(Long questionId, Long after, Integer limit);
 
 }

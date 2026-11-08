@@ -81,7 +81,7 @@ export const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
         };
       case 'RESOLVED':
         return {
-          label: 'Đã duyệt',
+          label: 'Đã xét duyệt',
           icon: CheckCircle2,
           className:
             'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',

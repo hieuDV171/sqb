@@ -24,6 +24,10 @@ import com.frozenheart.backend.core.entity.session.QuestionSource;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
+import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
+import com.frozenheart.backend.core.entity.socialinteraction.React;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
+import com.frozenheart.backend.core.entity.socialinteraction.QuestionErrorReport;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswer;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswerId;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
@@ -41,10 +45,12 @@ import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RateQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.SessionQuestionsResponse;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
+import com.frozenheart.backend.modules.session.repository.QuestionErrorReportRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.session.repository.UserAnswerRepository;
 import com.frozenheart.backend.modules.session.repository.UserRatingRepository;
 import com.frozenheart.backend.modules.session.service.QuestionInteractionService;
+import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -58,6 +64,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         private final UserAnswerRepository userAnswerRepository;
         private final UserRatingRepository userRatingRepository;
         private final UserRepository userRepository;
+        private final ReactRepository reactRepository;
+        private final QuestionErrorReportRepository errorReportRepository;
 
         @Override
         @Transactional(readOnly = true)
@@ -95,16 +103,19 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         private List<SessionQuestionsResponse.PracticeQuestionDto> mapQuestionsToDtos(List<Question> questions, Long currentUserId) {
                 List<Long> questionIds = questions.stream().map(Question::getId).toList();
 
-                final Set<Long> answeredQIds = questionIds.isEmpty() ? Set.of()
-                                : userAnswerRepository.findByUserIdAndQuestionIdIn(currentUserId, questionIds).stream()
-                                                .map(a -> a.getQuestion().getId())
-                                                .collect(Collectors.toSet());
-
-                final Set<Long> ratedQIds = questionIds.isEmpty() ? Set.of()
-                                : userRatingRepository.findByUserIdAndRatedQuestionIdIn(currentUserId, questionIds)
+                if (questionIds.isEmpty()) return List.of();
+                var answers = userAnswerRepository.findByUserIdAndQuestionIdIn(currentUserId, questionIds).stream()
+                                .collect(Collectors.toMap(a -> a.getId().getQuestionId(), a -> a));
+                var ratings = userRatingRepository.findByUserIdAndRatedQuestionIdIn(currentUserId, questionIds).stream()
+                                .collect(Collectors.toMap(r -> r.getId().getRatedQuestionId(), r -> r));
+                var reported = Set.copyOf(errorReportRepository.findReportedQuestionIds(currentUserId, questionIds));
+                var ratingCounts = userRatingRepository.countStarsByQuestionIds(questionIds).stream()
+                                .collect(Collectors.toMap(UserRatingRepository.QuestionRatingCount::getQuestionId,
+                                                UserRatingRepository.QuestionRatingCount::getRatingCount));
+                final Map<Long, ReactionType> reactions =
+                                reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.QUESTION, questionIds)
                                                 .stream()
-                                                .map(r -> r.getRatedQuestion().getId())
-                                                .collect(Collectors.toSet());
+                                                .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (first, _) -> first));
 
                 return questions.stream().map(q -> {
                         List<String> imageUrls = q.getOwnedMedias() != null ? q.getOwnedMedias().stream()
@@ -112,13 +123,18 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         .map(QuestionMedia::getUrl)
                                         .toList() : List.of();
 
-                        boolean answered = answeredQIds.contains(q.getId());
-                        boolean rated = ratedQIds.contains(q.getId());
+                        UserAnswer answer = answers.get(q.getId());
+                        UserRating feedback = ratings.get(q.getId());
+                        boolean rated = feedback != null;
 
                         SessionQuestionsResponse.MyInteractionDto myInteraction = SessionQuestionsResponse.MyInteractionDto
                                         .builder()
-                                        .answered(answered)
+                                        .answered(answer != null)
                                         .rated(rated)
+                                        .myReaction(reactions.get(q.getId()))
+                                        .myRating(rated ? feedback.getRating() : null)
+                                        .ratingComment(rated ? feedback.getComment() : null)
+                                        .reported(reported.contains(q.getId()))
                                         .build();
 
                         List<String> correctKeys = q.getOptions() != null ? q.getOptions().stream()
@@ -126,10 +142,17 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         .map(QuestionOption::getKey)
                                         .toList() : List.of();
 
-                        SessionQuestionsResponse.HiddenFieldsDto hiddenFields = answered
+                        SessionQuestionsResponse.HiddenFieldsDto hiddenFields = answer != null
                                         ? SessionQuestionsResponse.HiddenFieldsDto.builder()
                                                         .correctAnswer(String.join(", ", correctKeys))
                                                         .explanation(q.getExplanation())
+                                                        .selectedOptions(answer.getSelectedOptions() == null ? List.of() :
+                                                                        answer.getSelectedOptions().stream()
+                                                                                        .map(option -> new SessionQuestionsResponse.SubmittedOptionDto(option.getKey(), option.getText()))
+                                                                                        .toList())
+                                                        .wasCorrect(answer.isCorrect())
+                                                        .questionUpdatedSinceAnswer(q.getUpdatedAt() != null && answer.getCreatedAt() != null
+                                                                        && q.getUpdatedAt().isAfter(answer.getCreatedAt()))
                                                         .build()
                                         : null;
 
@@ -158,7 +181,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                         .hiddenFields(hiddenFields)
                                         .reactCount(q.getReactCount() != null ? q.getReactCount() : 0)
                                         .commentCount(q.getCommentCount() != null ? q.getCommentCount() : 0)
-                                        .ratingCount(q.getRatingCount() != null ? q.getRatingCount() : 0)
+                                        .ratingCount(ratingCounts.getOrDefault(q.getId(), 0L).intValue())
                                         .build();
                 }).toList();
         }
@@ -281,28 +304,48 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         @Transactional
         public RateQuestionResponse rateQuestion(Long questionId, RateQuestionRequest request) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-
-                Question question = questionRepository.findById(questionId)
-                                .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
-
+                Question question = lockFeedbackQuestion(questionId);
                 User userRef = userRepository.getReferenceById(currentUserId);
-                UserRatingId ratingId = new UserRatingId(currentUserId, questionId);
+                UserRatingId id = new UserRatingId(currentUserId, questionId);
+                UserRating rating = userRatingRepository.findById(id)
+                                .orElseGet(() -> UserRating.builder().id(id).user(userRef)
+                                                .ratedQuestion(question).createdAt(Instant.now()).build());
+                rating.setRating(request.rating().doubleValue());
+                rating.setComment(request.comment());
+                userRatingRepository.save(rating);
+                RateQuestionResponse summary = readRatingSummary(questionId);
+                question.setAvgRating(summary.newAvgRating());
+                question.setRatingCount(summary.newRatingCount());
+                return summary;
+        }
 
-                boolean isError = request.isError() != null && request.isError();
-                double rating = isError ? 0 : request.rating().doubleValue();
+        @Override
+        @Transactional
+        public void reportQuestion(Long questionId, String description) {
+                Long userId = JwtPayload.getCurrentUserPayload().getUserId();
+                Question question = lockFeedbackQuestion(questionId);
+                saveReport(new UserRatingId(userId, questionId), userRepository.getReferenceById(userId),
+                                question, description.strip());
+        }
 
-                UserRating userRating = UserRating.builder()
-                                .id(ratingId)
-                                .user(userRef)
-                                .ratedQuestion(question)
-                                .rating(rating)
-                                .isError(isError)
-                                .comment(request.comment())
-                                .createdAt(Instant.now())
-                                .build();
+        private Question lockFeedbackQuestion(Long questionId) {
+                Question question = questionRepository.findByIdForFeedback(questionId)
+                                .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
+                if (question.getSession().getStatus() != SessionStatus.RESOLVED) {
+                        throw new AppException(ResponseCode.ACCESS_DENIED);
+                }
+                return question;
+        }
 
-                userRatingRepository.save(userRating);
+        private void saveReport(UserRatingId id, User user, Question question, String description) {
+                QuestionErrorReport report = errorReportRepository.findById(id)
+                                .orElseGet(() -> QuestionErrorReport.builder().id(id).reporter(user)
+                                                .question(question).createdAt(Instant.now()).build());
+                report.setDescription(description);
+                errorReportRepository.save(report);
+        }
 
+        private RateQuestionResponse readRatingSummary(Long questionId) {
                 RatingAverageProjection ratingAverage = userRatingRepository
                                 .getAvgAndCountByQuestionId(questionId);
                 double newAvgRating = ratingAverage != null && ratingAverage.getAvgRating() != null
@@ -311,11 +354,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 long newCount = ratingAverage != null && ratingAverage.getTotalRatings() != null
                                 ? ratingAverage.getTotalRatings()
                                 : 0L;
-
-                question.setRatingCount((int) newCount);
-
-                // Hoạt động thường xuyên, không đánh index
-                questionRepository.save(question);
 
                 return RateQuestionResponse.builder()
                                 .newAvgRating(newAvgRating)
@@ -364,7 +402,6 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 .map(r -> QuestionRatingsResponse.RatingItemDto.builder()
                                                 .userId(r.getId().getUserId())
                                                 .rating(r.getRating())
-                                                .isError(r.isError())
                                                 .comment(r.getComment())
                                                 .createdAt(r.getCreatedAt())
                                                 .build())

@@ -184,8 +184,8 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
       return;
     }
 
-    if (questions.length === 0) {
-      toast.error('Phiên cần có ít nhất 1 câu hỏi');
+    if (questions.length < 3) {
+      toast.error('Mỗi phiên đề xuất cần ít nhất 3 câu hỏi');
       return;
     }
 
@@ -286,7 +286,7 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-indigo-600" />
-                <span>Danh sách câu hỏi ({questions.length})</span>
+                <span>Danh sách câu hỏi ({questions.length}, tối thiểu 3)</span>
               </h4>
               <button
                 type="button"

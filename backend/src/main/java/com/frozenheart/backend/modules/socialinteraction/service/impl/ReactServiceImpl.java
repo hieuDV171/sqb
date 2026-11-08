@@ -8,6 +8,8 @@ import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.socialinteraction.dto.ReactRequest;
+import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
+import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.socialinteraction.dto.ReactResponseDto;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.socialinteraction.service.ReactService;
@@ -29,6 +31,8 @@ public class ReactServiceImpl implements ReactService {
     private final UserRepository userRepository;
     private final InteractionTargetValidator targetValidator;
     private final CounterMetricsService counterMetricsService;
+    private final ActivityFeedRepository activityFeedRepository;
+    private final BlockRepository blockRepository;
 
     /**
      * Xử lý tương tác cảm xúc đa hình (Toggle Reaction) trên các thực thể (Post, Comment, Question...).
@@ -42,9 +46,20 @@ public class ReactServiceImpl implements ReactService {
     @Override
     @Transactional
     public ReactResponseDto toggleReact(ReactRequest request) {
-        targetValidator.validateTargetExists(request.getTargetType(), request.getTargetId());
-
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+        if (request.getTargetType() == InteractionTargetType.BADGE_AWARD) {
+            var award = activityFeedRepository.findBadgeAwardForUpdate(request.getTargetId())
+                    .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND));
+            Long recipientId = award.getUser().getId();
+            if (Objects.equals(recipientId, currentUserId) || blockRepository.isBlockedBetween(currentUserId, recipientId)) {
+                throw new AppException(ResponseCode.ACCESS_DENIED);
+            }
+            if (request.getReactionType() != ReactionType.LIKE) {
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE);
+            }
+        } else {
+            targetValidator.validateTargetExists(request.getTargetType(), request.getTargetId());
+        }
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 

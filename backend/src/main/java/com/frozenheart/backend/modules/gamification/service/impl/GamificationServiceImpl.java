@@ -9,7 +9,9 @@ import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.prediction.*;
 import com.frozenheart.backend.core.entity.session.*;
-import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
+import com.frozenheart.backend.core.entity.socialinteraction.QuestionErrorReport;
+import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
+import com.frozenheart.backend.modules.session.repository.QuestionErrorReportRepository;
 import com.frozenheart.backend.core.entity.user.*;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
@@ -100,7 +102,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final QuestionRepository questionRepository;
     private final SessionRepository sessionRepository;
     private final SubjectRepository subjectRepository;
-    private final UserRatingRepository userRatingRepository;
+    private final QuestionErrorReportRepository errorReportRepository;
     private final CounterMetricsService counterMetricsService;
     private final AnonymizerUtil anonymizerUtil;
     private final CurrentSemesterHolder currentSemesterHolder;
@@ -882,18 +884,9 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     @Transactional
     public void reviewErrorGame5(Long ratingUserId, Long questionId, ReviewErrorRequest request) {
-        UserRating userRating = userRatingRepository
-                .findByUserIdAndRatedQuestionIdFetchQuestionAndSession(ratingUserId, questionId)
+        Question question = errorReportRepository.findByIdWithReviewContext(new UserRatingId(ratingUserId, questionId))
+                .map(QuestionErrorReport::getQuestion)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND));
-
-        if (!userRating.isError()) {
-            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Đánh giá này không phải là báo lỗi");
-        }
-
-        Question question = userRating.getRatedQuestion();
-        if (question == null) {
-            throw new AppException(ResponseCode.QUESTION_NOT_FOUND);
-        }
 
         if (Boolean.TRUE.equals(request.isComfirmed()) && question.getStatus() == QuestionStatus.APPROVED) {
             Subject subject = (question.getSession() != null && question.getSession().getCourseClass() != null)
