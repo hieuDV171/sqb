@@ -297,3 +297,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Rút lời mời là hành động của người gửi trên quan hệ `PENDING`, tách khỏi từ chối và hủy kết bạn. Quan hệ theo dõi quản lý riêng.
 - Các thao tác thay đổi quan hệ hiện hữu lấy khóa ghi trên bản ghi trước khi kiểm tra trạng thái. Nếu rút thành công trước, thao tác chấp nhận không còn lời mời. Nếu chấp nhận trước, thao tác rút trả 409.
+
+### [ADR-019] Dùng chung luồng làm mới phiên web cho REST và STOMP
+
+- Trong mỗi tab, REST và STOMP chờ chung một lần gọi `POST /auth/refresh` nếu access token đã hết hạn hoặc còn tối đa 5 giây. Refresh vẫn dùng cookie HttpOnly và chỉ chấp nhận access token mới khớp `userId` và `deviceId` của phiên đang chờ.
+- STOMP dùng token hợp lệ trước mỗi `CONNECT`. Nếu broker từ chối xác thực, client thử phục hồi một lần trước khi dừng. Lỗi mạng tạm thời giữ phiên và STOMP thử lại sau 5 giây. Khi refresh bị từ chối, frontend kết thúc phiên tương ứng và đưa người dùng về đăng nhập.

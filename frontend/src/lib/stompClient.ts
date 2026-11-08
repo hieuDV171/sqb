@@ -3,22 +3,18 @@ import SockJS from 'sockjs-client';
 import humps from 'humps';
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { API_BASE_URL, isAccessTokenExpiring, refreshAccessToken } from '@/api/accessSession';
 
 export type StompConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'ERROR';
 
 type StatusListener = (status: StompConnectionStatus) => void;
+const RECONNECT_DELAY = 5000;
 
 class StompManager {
   private client: Client | null = null;
   private status: StompConnectionStatus = 'DISCONNECTED';
   private listeners: Set<StatusListener> = new Set();
-  private socketUrl: string;
-
-  constructor() {
-    const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
-    // Backend Spring WebSocket endpoint registered at /ws under context-path /api/v1
-    this.socketUrl = `${rawBase.replace(/\/$/, '')}/ws`;
-  }
+  private socketUrl = `${API_BASE_URL.replace(/\/$/, '')}/ws`;
 
   public getStatus(): StompConnectionStatus {
     return this.status;
@@ -46,87 +42,85 @@ class StompManager {
   }
 
   public connect(): void {
-    const token = useAuthStore.getState().accessToken;
+    if (useAuthStore.getState().tokenType !== 'ACCESS' || this.client?.active) return;
 
-    if (!token) {
-      console.warn('[StompManager] Cannot connect: No access token available');
-      this.setStatus('DISCONNECTED');
-      return;
-    }
-
-    if (this.client && this.status === 'CONNECTED') {
-      return;
-    }
-
-    // Nếu client cũ đang chạy nhưng chưa connected (có thể đang kẹt reconnect hoặc lỗi), dọn dẹp trước
-    if (this.client) {
-      try {
-        this.client.deactivate();
-      } catch (e) {
-        console.error('[StompManager] Error deactivating stale client:', e);
-      }
-      this.client = null;
-    }
-
-    this.setStatus('CONNECTING');
-
-    this.client = new Client({
+    let connectToken: string | undefined;
+    let rejectedToken: string | undefined;
+    const client = new Client({
       webSocketFactory: () => new SockJS(this.socketUrl),
-      beforeConnect: () => {
-        const latestToken = useAuthStore.getState().accessToken;
-        if (this.client && latestToken) {
-          this.client.connectHeaders = {
-            Authorization: `Bearer ${latestToken}`,
-          };
-        }
+      beforeConnect: async () => {
+        connectToken = await this.prepareConnectToken(client, rejectedToken);
+        if (connectToken) client.connectHeaders = { Authorization: `Bearer ${connectToken}` };
       },
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,
-      },
-      reconnectDelay: 5000,
+      reconnectDelay: RECONNECT_DELAY,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       onConnect: () => {
+        if (this.client !== client) return;
+        rejectedToken = undefined;
         console.log('[StompManager] Connected to STOMP broker at', this.socketUrl);
         this.setStatus('CONNECTED');
       },
       onDisconnect: () => {
+        if (this.client !== client) return;
         console.log('[StompManager] Disconnected from STOMP broker');
         this.setStatus('DISCONNECTED');
       },
       onStompError: (frame) => {
+        if (this.client !== client) return;
         const errorMsg = frame.headers['message'] || '';
         console.error('[StompManager] Broker error:', errorMsg, frame.body);
         this.setStatus('ERROR');
 
-        // Nếu là lỗi xác thực (Token hết hạn / không hợp lệ), ngắt kết nối ngay để tránh reconnect loop vô tận
-        if (
-          errorMsg.toLowerCase().includes('unauthorized') ||
-          errorMsg.toLowerCase().includes('jwt') ||
-          errorMsg.toLowerCase().includes('expired')
-        ) {
-          console.warn('[StompManager] Token authentication failed. Stopping reconnect loop.');
-          this.disconnect();
+        if (/unauthorized|jwt|expired/i.test(errorMsg)) {
+          // The broker closes the socket after ERROR. Recover once on the next reconnect.
+          if (rejectedToken) {
+            this.disconnect();
+          } else {
+            rejectedToken = connectToken;
+          }
         }
       },
       onWebSocketClose: () => {
-        if (this.status !== 'DISCONNECTED') {
-          this.setStatus('DISCONNECTED');
-        }
+        if (this.client === client) this.setStatus('DISCONNECTED');
       },
     });
 
-    this.client.activate();
+    this.client = client;
+    client.activate();
+  }
+
+  private async prepareConnectToken(client: Client, rejectedToken?: string): Promise<string | undefined> {
+    while (this.client === client && client.active) {
+      const session = useAuthStore.getState();
+      const token = session.accessToken;
+      if (session.tokenType !== 'ACCESS' || !token) {
+        this.disconnect();
+        return;
+      }
+
+      this.setStatus('CONNECTING');
+      try {
+        const validToken = token === rejectedToken || isAccessTokenExpiring(token)
+          ? await refreshAccessToken(token)
+          : token;
+        if (this.client === client && useAuthStore.getState().accessToken === validToken) return validToken;
+      } catch {
+        if (this.client !== client) return;
+        // A temporary refresh failure (for example, offline) can recover on the next attempt.
+        this.setStatus('ERROR');
+        await new Promise((resolve) => setTimeout(resolve, RECONNECT_DELAY));
+      }
+    }
   }
 
   public disconnect(): void {
-    if (this.client) {
-      try {
-        this.client.deactivate();
-      } catch (err) {
+    const client = this.client;
+    this.client = null;
+    if (client) {
+      void client.deactivate().catch((err) => {
         console.error('[StompManager] Error deactivating client:', err);
-      }
-      this.client = null;
+      });
     }
     this.setStatus('DISCONNECTED');
   }
@@ -176,9 +170,9 @@ class StompManager {
 
 export const stompClient = new StompManager();
 
-// Tự động ngắt kết nối WebSocket STOMP khi người dùng đăng xuất (isAuthenticated = false)
-useAuthStore.subscribe((state) => {
-  if (!state.isAuthenticated && stompClient.getStatus() !== 'DISCONNECTED') {
+// Ngắt STOMP khi phiên ACCESS kết thúc, kể cả khi đang chờ reconnect.
+useAuthStore.subscribe((state, previousState) => {
+  if (previousState.tokenType === 'ACCESS' && state.tokenType !== 'ACCESS') {
     stompClient.disconnect();
   }
 });
