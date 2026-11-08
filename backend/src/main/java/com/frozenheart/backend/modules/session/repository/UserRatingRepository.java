@@ -41,7 +41,7 @@ public interface UserRatingRepository extends JpaRepository<UserRating, UserRati
            "FROM UserRating ur WHERE ur.id.ratedQuestionId = :ratedQuestionId")
     RatingAverageProjection getAvgAndCountByQuestionId(@Param("ratedQuestionId") Long ratedQuestionId);
 
-    @Query("SELECT ur FROM UserRating ur LEFT JOIN FETCH ur.user WHERE ur.id.ratedQuestionId = :ratedQuestionId " +
+    @Query("SELECT ur FROM UserRating ur WHERE ur.id.ratedQuestionId = :ratedQuestionId " +
            "AND (:after IS NULL OR ur.id.userId < :after) ORDER BY ur.id.userId DESC")
     List<UserRating> findRatingsByQuestionIdWithCursor(@Param("ratedQuestionId") Long ratedQuestionId,
                                                        @Param("after") Long after,

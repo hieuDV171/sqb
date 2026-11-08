@@ -23,6 +23,9 @@ public record QuestionRatingsResponse(
             @Schema(description = "ID người đánh giá", example = "55")
             Long userId,
 
+            @Schema(description = "Tên hiển thị của người đánh giá", example = "Nguyễn An")
+            String reviewerName,
+
             @Schema(description = "Điểm số đánh giá [0; 4]", example = "4.0")
             double rating,
 

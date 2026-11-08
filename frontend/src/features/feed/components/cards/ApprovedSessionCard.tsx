@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
 import { CheckCircle2, BookOpen, ArrowRight, Heart, MessageSquare, Sparkles } from 'lucide-react';
 
@@ -8,8 +8,8 @@ interface ApprovedSessionCardProps {
 }
 
 export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }) => {
-  const navigate = useNavigate();
   const { actor, content, createdAt } = item;
+  const sessionId = item.targetType === 'SESSION' ? item.targetId ?? content.sessionId : content.sessionId;
 
   return (
     <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 rounded-3xl border border-emerald-500/30 dark:border-emerald-800/50 p-5 shadow-xs transition-all hover:shadow-md mb-4">
@@ -84,20 +84,13 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
           <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-4" /> {content.reactCount ?? 0} lượt thích phiên</span>
           <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-4" /> {content.commentCount ?? 0} bình luận về phiên</span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (content.sessionId) {
-              navigate(`/sessions/${content.sessionId}`);
-            } else {
-              navigate('/sessions');
-            }
-          }}
+        {typeof sessionId === 'number' && Number.isSafeInteger(sessionId) && sessionId > 0 && <Link
+          to={`/sessions/${sessionId}/practice`}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
         >
           <span>Luyện tập ngay</span>
           <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        </Link>}
       </div>
     </div>
   );

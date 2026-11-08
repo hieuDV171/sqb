@@ -85,6 +85,7 @@ export interface RateQuestionResponse {
 
 export interface RatingItemDto {
   userId: number;
+  reviewerName?: string | null;
   rating: number;
   comment?: string;
   createdAt: string;

@@ -108,6 +108,21 @@
   width: 100%;
 }
 
+html:has([data-feed-page]),
+body:has([data-feed-page]) {
+  scrollbar-width: none;
+}
+
+html:has([data-feed-page])::-webkit-scrollbar,
+body:has([data-feed-page])::-webkit-scrollbar {
+  display: none;
+}
+
+/* Keep the document as the feed's vertical scroll container. */
+main:has([data-feed-page]) {
+  overflow: clip visible;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

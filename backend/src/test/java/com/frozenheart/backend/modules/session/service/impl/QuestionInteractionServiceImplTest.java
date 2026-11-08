@@ -12,8 +12,10 @@ import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.socialinteraction.QuestionErrorReport;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswer;
 import com.frozenheart.backend.core.entity.socialinteraction.UserAnswerId;
+import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.modules.session.dto.AnswerStatisticsProjection;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
@@ -26,11 +28,13 @@ import com.frozenheart.backend.modules.session.repository.UserAnswerRepository;
 import com.frozenheart.backend.modules.session.repository.UserRatingRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
+import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -52,12 +56,34 @@ class QuestionInteractionServiceImplTest {
     @Mock UserAnswerRepository userAnswerRepository;
     @Mock UserRatingRepository userRatingRepository;
     @Mock UserRepository userRepository;
+    @Mock UserProfileRepository userProfileRepository;
     @Mock ReactRepository reactRepository;
     @Mock QuestionErrorReportRepository errorReportRepository;
     @Mock AnswerStatisticsProjection answerStatistics;
     @Mock RatingStatisticsProjection ratingStatistics;
 
     @InjectMocks QuestionInteractionServiceImpl service;
+
+    @Test
+    void loadsReviewerNamesInOneBatchForTheReturnedPage() {
+        long questionId = 101L;
+        var first = UserRating.builder().id(new UserRatingId(30L, questionId)).build();
+        var second = UserRating.builder().id(new UserRatingId(20L, questionId)).build();
+        var nextPage = UserRating.builder().id(new UserRatingId(10L, questionId)).build();
+        when(questionRepository.findById(questionId)).thenReturn(Optional.of(Question.builder().id(questionId).build()));
+        when(userRatingRepository.findRatingsByQuestionIdWithCursor(questionId, null, PageRequest.of(0, 3)))
+                .thenReturn(List.of(first, second, nextPage));
+        when(userProfileRepository.findAllById(List.of(30L, 20L)))
+                .thenReturn(List.of(UserProfile.builder().userId(30L).fullName("Nguyễn An").build()));
+
+        var page = service.getQuestionRatings(questionId, null, 2);
+
+        assertEquals(2, page.items().size());
+        assertEquals("Nguyễn An", page.items().getFirst().reviewerName());
+        assertNull(page.items().getLast().reviewerName());
+        assertEquals(20L, page.pagination().after());
+        verify(userProfileRepository).findAllById(List.of(30L, 20L));
+    }
 
     @Test
     void submitsAReportWithoutCreatingARatingAndCanThenSaveOneStar() {

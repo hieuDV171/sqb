@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCheck, Settings, ArrowRight, Loader2, Inbox } from 'lucide-react';
 import { useNotifications, useMarkAllAsRead } from '../hooks/useNotification';
@@ -11,7 +11,6 @@ interface NotificationDropdownProps {
 }
 
 export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const [isPushSettingsOpen, setIsPushSettingsOpen] = useState(false);
 
   const { data: notificationData, isLoading } = useNotifications({ limit: 6 });
@@ -20,38 +19,20 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
   const notifications = notificationData?.items || [];
   const unreadCount = notificationData?.unreadCount ?? 0;
 
-  // Handle click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        !isPushSettingsOpen
-      ) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose, isPushSettingsOpen]);
-
   if (!isOpen) return null;
 
   return (
     <>
       <div
-        ref={dropdownRef}
+        id="header-notifications"
+        role="dialog"
+        aria-labelledby="header-notifications-title"
         className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+            <h3 id="header-notifications-title" className="font-bold text-slate-900 dark:text-slate-100 text-sm">
               Thông Báo
             </h3>
             {unreadCount > 0 && (

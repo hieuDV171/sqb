@@ -47,13 +47,18 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const stompStatus = useStompStatus();
   const navigate = useNavigate();
 
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [openPanel, setOpenPanel] = useState<'profile' | 'notifications' | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const profilePanelRef = useRef<HTMLDivElement>(null);
+  const notificationPanelRef = useRef<HTMLDivElement>(null);
+  const profileTriggerRef = useRef<HTMLButtonElement>(null);
+  const notificationTriggerRef = useRef<HTMLButtonElement>(null);
   const desktopSearchTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null);
   const activeSearchTriggerRef = useRef<HTMLElement | null>(null);
+  const isProfileOpen = openPanel === 'profile';
+  const isNotificationOpen = openPanel === 'notifications';
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -63,10 +68,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
           ? desktopSearchTriggerRef.current
           : mobileSearchTriggerRef.current;
         setIsSearchOpen((current) => !current);
-      }
-      if (event.key === 'Escape') {
-        setIsProfileOpen(false);
-        setIsNotificationOpen(false);
+        setOpenPanel(null);
       }
     };
 
@@ -74,8 +76,31 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, []);
 
+  useEffect(() => {
+    if (!openPanel) return;
+    const panelRef = openPanel === 'profile' ? profilePanelRef : notificationPanelRef;
+    const triggerRef = openPanel === 'profile' ? profileTriggerRef : notificationTriggerRef;
+    const handleOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !panelRef.current?.contains(event.target)) {
+        setOpenPanel(null);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      setOpenPanel(null);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', handleOutsidePointer, true);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointer, true);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openPanel]);
+
   const openSearch = (trigger: HTMLElement | null) => {
     activeSearchTriggerRef.current = trigger;
+    setOpenPanel(null);
     setIsSearchOpen(true);
   };
 
@@ -140,17 +165,16 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
               {theme === 'dark' ? <Sun className="size-5 text-reward" /> : <Moon className="size-5" />}
             </button>
 
-            <div className="relative">
+            <div ref={notificationPanelRef} className="relative">
               <button
+                ref={notificationTriggerRef}
                 type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  setIsNotificationOpen((current) => !current);
-                }}
+                onClick={() => setOpenPanel((current) => current === 'notifications' ? null : 'notifications')}
                 className="relative grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={unreadNotifications > 0 ? `${unreadNotifications} thông báo chưa đọc` : 'Thông báo'}
                 aria-haspopup="dialog"
                 aria-expanded={isNotificationOpen}
+                aria-controls={isNotificationOpen ? 'header-notifications' : undefined}
               >
                 <Bell className="size-5" />
                 {unreadNotifications > 0 && (
@@ -159,20 +183,19 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                   </span>
                 )}
               </button>
-              <NotificationDropdown isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
+              <NotificationDropdown isOpen={isNotificationOpen} onClose={() => setOpenPanel(null)} />
             </div>
 
-            <div className="relative">
+            <div ref={profilePanelRef} className="relative">
               <button
+                ref={profileTriggerRef}
                 type="button"
-                onClick={() => {
-                  setIsNotificationOpen(false);
-                  setIsProfileOpen((current) => !current);
-                }}
+                onClick={() => setOpenPanel((current) => current === 'profile' ? null : 'profile')}
                 className="flex h-11 items-center gap-2 rounded-2xl border border-transparent px-1.5 transition-colors duration-200 hover:border-border hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Mở menu tài khoản"
                 aria-haspopup="menu"
                 aria-expanded={isProfileOpen}
+                aria-controls={isProfileOpen ? 'header-account-menu' : undefined}
               >
                 <span className="relative grid size-9 shrink-0 place-items-center overflow-visible rounded-full bg-primary text-sm font-bold text-primary-foreground">
                   {user?.avatarUrl ? (
@@ -190,9 +213,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
               </button>
 
               {isProfileOpen && (
-                <>
-                  <button type="button" className="fixed inset-0 z-40 cursor-default" onClick={() => setIsProfileOpen(false)} aria-label="Đóng menu tài khoản" />
-                  <div role="menu" className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-[var(--shadow-primitive-md)]">
+                  <div id="header-account-menu" role="menu" aria-label="Tài khoản" className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-[var(--shadow-primitive-md)]">
                     <div className="border-b border-border bg-surface-subtle px-4 py-4">
                       <p className="truncate text-sm font-semibold text-foreground">{user?.username || 'Tài khoản SQB'}</p>
                       <div className="mt-2 flex items-center gap-2">
@@ -219,7 +240,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                             type="button"
                             role="menuitem"
                             onClick={() => {
-                              setIsProfileOpen(false);
+                              setOpenPanel(null);
                               navigate(item.path);
                             }}
                             className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
@@ -233,7 +254,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                         type="button"
                         role="menuitem"
                         onClick={() => {
-                          setIsProfileOpen(false);
+                          setOpenPanel(null);
                           setIsChangePasswordOpen(true);
                         }}
                         className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
@@ -248,7 +269,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                         type="button"
                         role="menuitem"
                         onClick={() => {
-                          setIsProfileOpen(false);
+                          setOpenPanel(null);
                           logout();
                         }}
                         className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
@@ -258,7 +279,6 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                       </button>
                     </div>
                   </div>
-                </>
               )}
             </div>
           </div>

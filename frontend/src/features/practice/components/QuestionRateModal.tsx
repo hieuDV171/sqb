@@ -83,7 +83,10 @@ export function QuestionRateModal({ questionId, questionCode, sessionId, interac
               {ratings.isSuccess && reviews.length === 0 && <p className="text-sm text-muted-foreground">Chưa có đánh giá sao.</p>}
               {reviews.map((review) => (
                 <article key={review.userId} className="space-y-1 rounded-xl border border-border bg-surface-subtle p-3 text-sm">
-                  <p className="font-medium">{review.rating + 1}/5 sao</p>
+                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                    <p className="min-w-0 break-words font-semibold">{review.reviewerName?.trim() || 'Người đánh giá'}</p>
+                    <p className="font-medium text-muted-foreground">{review.rating + 1}/5 sao</p>
+                  </div>
                   {review.comment && <p className="whitespace-pre-wrap break-words text-muted-foreground">{review.comment}</p>}
                 </article>
               ))}

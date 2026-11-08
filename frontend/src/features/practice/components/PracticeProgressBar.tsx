@@ -20,8 +20,8 @@ export function PracticeProgressBar({ questions, currentIndex, onSelectQuestion,
         <progress aria-label="Số câu đã trả lời" className="block h-2 w-full accent-primary" max={questions.length} value={answeredCount} />
       </div>
       <nav aria-label="Chọn câu hỏi" className="flex flex-wrap gap-2">
-        {questions.map(({ questionId, myInteraction }, index) => {
-          const correct = userAnswersRecord[questionId]?.isCorrect;
+        {questions.map(({ questionId, myInteraction, hiddenFields }, index) => {
+          const correct = userAnswersRecord[questionId]?.isCorrect ?? hiddenFields?.wasCorrect ?? undefined;
           const status = correct === true ? 'Đúng' : correct === false ? 'Sai' : myInteraction.answered ? 'Đã trả lời trước đó' : 'Chưa trả lời';
           return (
             <button

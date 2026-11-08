@@ -33,6 +33,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.UserAnswerId;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRating;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionResponse;
@@ -52,6 +53,7 @@ import com.frozenheart.backend.modules.session.repository.UserRatingRepository;
 import com.frozenheart.backend.modules.session.service.QuestionInteractionService;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
+import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -64,6 +66,7 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
         private final UserAnswerRepository userAnswerRepository;
         private final UserRatingRepository userRatingRepository;
         private final UserRepository userRepository;
+        private final UserProfileRepository userProfileRepository;
         private final ReactRepository reactRepository;
         private final QuestionErrorReportRepository errorReportRepository;
 
@@ -398,9 +401,16 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                         nextCursor = ratings.getLast().getId().getUserId();
                 }
 
+                List<Long> reviewerIds = ratings.stream().map(r -> r.getId().getUserId()).toList();
+                Map<Long, String> reviewerNames = reviewerIds.isEmpty() ? Map.of()
+                                : userProfileRepository.findAllById(reviewerIds).stream()
+                                                .filter(profile -> profile.getFullName() != null)
+                                                .collect(Collectors.toMap(UserProfile::getUserId, UserProfile::getFullName));
+
                 List<QuestionRatingsResponse.RatingItemDto> items = ratings.stream()
                                 .map(r -> QuestionRatingsResponse.RatingItemDto.builder()
                                                 .userId(r.getId().getUserId())
+                                                .reviewerName(reviewerNames.get(r.getId().getUserId()))
                                                 .rating(r.getRating())
                                                 .comment(r.getComment())
                                                 .createdAt(r.getCreatedAt())

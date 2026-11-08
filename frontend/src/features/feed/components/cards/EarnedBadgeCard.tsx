@@ -106,7 +106,7 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
       {/* Footer cheer action */}
       <div className="flex items-center justify-between pt-1">
         <span className="text-xs text-slate-400" role="status">
-          {cheerCount > 0 ? `${cheerCount} lượt chúc mừng` : isOwnAward ? '' : 'Hãy là người đầu tiên chúc mừng!'}
+          {cheerCount > 0 ? `${cheerCount} lượt chúc mừng` : isOwnAward ? 'Huy hiệu của bạn · Chưa có lượt chúc mừng' : 'Hãy là người đầu tiên chúc mừng!'}
         </span>
 
         {!isOwnAward && <button

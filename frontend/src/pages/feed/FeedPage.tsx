@@ -77,7 +77,7 @@ export function FeedPage() {
   const { sentinel, supportsAutoLoad } = useInfiniteScroll(canAutoLoad, fetchNextPage, data?.pages.length ?? 0);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div data-feed-page className="mx-auto max-w-6xl">
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-primary">

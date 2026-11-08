@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { practiceService } from '../services/practiceService';
+import { updatePracticeQuestion } from './updatePracticeQuestion';
 import type {
   AnswerQuestionRequest,
   AnswerQuestionResponse,
-  SessionQuestionsResponse,
 } from '../types/practice.types';
 
 interface AnswerMutationParams {
@@ -21,36 +21,22 @@ export function usePracticeAnswer() {
       if (!res.data) throw new Error(res.message || 'Không thể nộp câu trả lời');
       return res.data;
     },
-    onSuccess: (data, variables) => {
-      const { questionId, sessionId } = variables;
+    onSuccess: async (data, { questionId, sessionId, request }) => {
 
-      // Update practice session cache if sessionId is provided
       if (sessionId) {
-        queryClient.setQueryData<SessionQuestionsResponse>(
-          ['practiceSession', sessionId],
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              questions: old.questions.map((q) => {
-                if (q.questionId === questionId) {
-                  return {
-                    ...q,
-                    myInteraction: {
-                      ...q.myInteraction,
-                      answered: true,
-                    },
-                    hiddenFields: {
-                      correctAnswer: data.correctAnswer,
-                      explanation: data.explanation,
-                    },
-                  };
-                }
-                return q;
-              }),
-            };
-          }
-        );
+        await queryClient.cancelQueries({ queryKey: ['practiceSession', sessionId] });
+        updatePracticeQuestion(queryClient, sessionId, questionId, (question) => ({
+          ...question,
+          myInteraction: { ...question.myInteraction, answered: true },
+          hiddenFields: {
+            correctAnswer: data.correctAnswer,
+            explanation: data.explanation,
+            selectedOptions: question.options
+              .filter(({ key }) => request.selectedOptions.includes(key))
+              .map(({ key, text }) => ({ key, text })),
+            wasCorrect: data.isCorrect,
+          },
+        }));
       }
 
       // Invalidate question statistics so the stats modal reflects new community answer
