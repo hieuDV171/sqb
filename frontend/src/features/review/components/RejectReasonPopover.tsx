@@ -1,155 +1,97 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Loader2, Send, XCircle } from 'lucide-react';
+import { useId, useState, type FormEvent } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
+import { Loader2, X, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { getRejectionReasonLabel } from '@/lib/rejectionReasons';
 import type { RejectionReasonCode } from '../types/review.types';
+
+const reasons: RejectionReasonCode[] = [
+  'DUPLICATE', 'INCORRECT_ANSWER', 'AMBIGUOUS_OR_INCOMPLETE', 'OUT_OF_SCOPE',
+  'LOW_QUALITY', 'UNSPECIFIED', 'OTHER',
+];
 
 interface RejectReasonPopoverProps {
   disabled?: boolean;
-  isRejected?: boolean;
-  isSubmitting?: boolean;
+  isRejected: boolean;
+  rejectionCode?: RejectionReasonCode | null;
+  rejectionReason?: string | null;
   onConfirm: (code: RejectionReasonCode, reason?: string) => Promise<void>;
 }
 
-const QUICK_REASONS: Array<{ code: RejectionReasonCode; label: string }> = [
-  { code: 'DUPLICATE', label: 'Trùng lặp' },
-  { code: 'INCORRECT_ANSWER', label: 'Sai hoặc thiếu đáp án đúng' },
-  { code: 'AMBIGUOUS_OR_INCOMPLETE', label: 'Đề bài mơ hồ/thiếu dữ kiện' },
-  { code: 'OUT_OF_SCOPE', label: 'Ngoài phạm vi môn học' },
-  { code: 'LOW_QUALITY', label: 'Chất lượng chưa đạt' },
-  { code: 'UNSPECIFIED', label: 'Từ chối không nêu lý do' },
-];
+export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejectionReason, onConfirm }: RejectReasonPopoverProps) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState<RejectionReasonCode | null>(null);
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const formId = useId();
 
-export const RejectReasonPopover: React.FC<RejectReasonPopoverProps> = ({
-  disabled = false,
-  isRejected = false,
-  isSubmitting = false,
-  onConfirm,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [showOther, setShowOther] = useState(false);
-  const [otherReason, setOtherReason] = useState('');
-  const rootRef = useRef<HTMLDivElement>(null);
-  const firstActionRef = useRef<HTMLButtonElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    window.setTimeout(() => firstActionRef.current?.focus(), 0);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (showOther) textareaRef.current?.focus();
-  }, [showOther]);
-
-  const submit = async (code: RejectionReasonCode, reason?: string) => {
-    await onConfirm(code, reason);
-    setIsOpen(false);
-    setShowOther(false);
-    setOtherReason('');
-  };
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!code || saving || (code === 'OTHER' && !reason.trim())) return;
+    setSaving(true);
+    try {
+      await onConfirm(code, reason.trim() || undefined);
+      setOpen(false);
+    } catch {
+      // Keep the selected reason and note available for retry.
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((value) => !value)}
-        disabled={disabled || isSubmitting}
-        className="min-h-10 flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-      >
-        {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-        <span>{isRejected ? 'Đổi lý do' : 'Từ chối'}</span>
-        <ChevronDown className="w-3.5 h-3.5" />
-      </button>
-
-      {isOpen && (
-        <div
-          role="menu"
-          aria-label="Chọn lý do từ chối"
-          className="absolute z-30 right-0 bottom-full mb-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-xl"
-        >
-          {!showOther ? (
-            <>
-              <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Chọn nhanh lý do
-              </p>
-              {QUICK_REASONS.map((item, index) => (
-                <button
-                  key={item.code}
-                  ref={index === 0 ? firstActionRef : undefined}
-                  role="menuitem"
-                  type="button"
-                  onClick={() => submit(item.code)}
-                  className="w-full min-h-10 rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-                >
-                  {item.label}
-                </button>
+    <Dialog.Root open={open} onOpenChange={(next) => {
+      if (saving) return;
+      if (next) {
+        setCode(rejectionCode && reasons.includes(rejectionCode) ? rejectionCode : null);
+        setReason(rejectionReason ?? '');
+      }
+      setOpen(next);
+    }}>
+      <Dialog.Trigger render={<Button variant="destructive" className="min-h-11" disabled={disabled} />}>
+        <XCircle aria-hidden="true" /> {isRejected ? 'Đổi lý do' : 'Từ chối'}
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <Dialog.Title className="text-lg font-semibold">Lý do từ chối</Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">Lý do được hiển thị cho người nộp phiên.</Dialog.Description>
+            </div>
+            <Dialog.Close render={<Button size="icon" variant="ghost" aria-label="Đóng" disabled={saving} />}>
+              <X aria-hidden="true" />
+            </Dialog.Close>
+          </div>
+          <form onSubmit={submit} className="space-y-4">
+            <fieldset className="space-y-1" disabled={saving}>
+              <legend className="mb-1 text-sm font-medium">Chọn một lý do</legend>
+              {reasons.map((value) => (
+                <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3 text-sm has-checked:border-academic has-checked:bg-academic-soft">
+                  <input type="radio" name={formId} value={value} checked={code === value}
+                    onChange={() => setCode(value)} className="size-4 accent-academic" />
+                  {getRejectionReasonLabel(value)}
+                </label>
               ))}
-              <button
-                role="menuitem"
-                type="button"
-                onClick={() => setShowOther(true)}
-                className="w-full min-h-10 rounded-xl px-3 py-2 text-left text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-              >
-                Lý do khác…
-              </button>
-            </>
-          ) : (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (otherReason.trim()) submit('OTHER', otherReason.trim());
-              }}
-              className="space-y-3 p-1"
-            >
-              <label htmlFor="other-rejection-reason" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                Lý do khác
-              </label>
-              <textarea
-                ref={textareaRef}
-                id="other-rejection-reason"
-                value={otherReason}
-                maxLength={1000}
-                rows={3}
-                onChange={(event) => setOtherReason(event.target.value)}
-                placeholder="Mô tả ngắn gọn để sinh viên có thể cải thiện…"
-                className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-800 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-              />
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowOther(false)}
-                  className="min-h-10 px-3 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  Quay lại
-                </button>
-                <button
-                  type="submit"
-                  disabled={!otherReason.trim() || isSubmitting}
-                  className="min-h-10 inline-flex items-center gap-1.5 px-3 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-50"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  Xác nhận
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      )}
-    </div>
+            </fieldset>
+            <div className="space-y-2">
+              <Label htmlFor={formId}>{code === 'OTHER' ? 'Lý do cụ thể (bắt buộc)' : 'Ghi chú thêm (tùy chọn)'}</Label>
+              <textarea id={formId} rows={3} maxLength={1000} value={reason} disabled={saving}
+                required={code === 'OTHER'} onChange={(event) => setReason(event.target.value)}
+                className="w-full rounded-xl border border-input bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Dialog.Close render={<Button variant="outline" className="min-h-11" disabled={saving} />}>Quay lại</Dialog.Close>
+              <Button type="submit" variant="destructive" className="min-h-11"
+                disabled={!code || saving || (code === 'OTHER' && !reason.trim())}>
+                {saving && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
+                {saving ? 'Đang lưu…' : 'Lưu lý do từ chối'}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-};
+}

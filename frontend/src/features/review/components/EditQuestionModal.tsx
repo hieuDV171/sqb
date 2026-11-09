@@ -1,278 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import type { SessionQuestionReviewDto, EditQuestionRequest } from '../types/review.types';
+import { useId, useState, type FormEvent } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
+import { Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { QuestionOption } from '@/features/session/types/session.types';
-import { X, Plus, Trash2, CheckCircle2, Loader2, Save } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { toast } from '@/stores/useToastStore';
+import type { EditQuestionRequest, SessionQuestionReviewDto } from '../types/review.types';
 
 interface EditQuestionModalProps {
-  isOpen: boolean;
-  question: SessionQuestionReviewDto | null;
+  question: SessionQuestionReviewDto;
   questionNumber: number;
   isSaving: boolean;
   onClose: () => void;
   onSave: (data: EditQuestionRequest) => Promise<void>;
 }
 
-export const EditQuestionModal: React.FC<EditQuestionModalProps> = ({
-  isOpen,
-  question,
-  questionNumber,
-  isSaving,
-  onClose,
-  onSave,
-}) => {
-  const [content, setContent] = useState('');
-  const [explanation, setExplanation] = useState('');
-  const [options, setOptions] = useState<QuestionOption[]>([]);
+const letters = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const textareaClass = 'w-full rounded-xl border border-input bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring';
+
+export function EditQuestionModal({ question, questionNumber, isSaving, onClose, onSave }: EditQuestionModalProps) {
+  const id = useId();
+  const [content, setContent] = useState(question.content ?? '');
+  const [explanation, setExplanation] = useState(question.explanation ?? '');
+  const [options, setOptions] = useState<QuestionOption[]>(() => question.options?.length
+    ? question.options.map((option) => ({ ...option }))
+    : letters.slice(0, 4).map((key, index) => ({ key, text: '', isCorrect: index === 0 })));
   const [autoApprove, setAutoApprove] = useState(true);
+  const [error, setError] = useState('');
+  const nextKey = letters.find((key) => !options.some((option) => option.key === key));
 
-  useEffect(() => {
-    if (question) {
-      setContent(question.content || '');
-      setExplanation(question.explanation || '');
-      setOptions(
-        question.options && question.options.length > 0
-          ? JSON.parse(JSON.stringify(question.options))
-          : [
-              { key: 'A', text: '', isCorrect: true },
-              { key: 'B', text: '', isCorrect: false },
-              { key: 'C', text: '', isCorrect: false },
-              { key: 'D', text: '', isCorrect: false },
-            ]
-      );
-      setAutoApprove(true);
-    }
-  }, [question]);
+  function updateOption(key: string, patch: Partial<QuestionOption>) {
+    setOptions((previous) => previous.map((option) => option.key === key ? { ...option, ...patch } : option));
+  }
 
-  if (!isOpen || !question) return null;
-
-  const handleOptionChange = (idx: number, text: string) => {
-    setOptions((prev) =>
-      prev.map((opt, i) => (i === idx ? { ...opt, text } : opt))
-    );
-  };
-
-  const handleToggleCorrect = (idx: number) => {
-    setOptions((prev) =>
-      prev.map((opt, i) => (i === idx ? { ...opt, isCorrect: !opt.isCorrect } : opt))
-    );
-  };
-
-  const handleAddOption = () => {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const nextKey = letters[options.length] || `Option ${options.length + 1}`;
-    setOptions((prev) => [...prev, { key: nextKey, text: '', isCorrect: false }]);
-  };
-
-  const handleRemoveOption = (idx: number) => {
-    if (options.length <= 2) {
-      toast.error('Câu hỏi phải có tối thiểu 2 phương án lựa chọn');
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSaving) return;
+    if (!content.trim() || options.length < 2 || options.some((option) => !option.text?.trim() && !option.mediaUrl)
+      || !options.some((option) => option.isCorrect)) {
+      setError('Nhập nội dung câu hỏi, ít nhất hai phương án và đánh dấu ít nhất một đáp án đúng.');
       return;
     }
-    const filtered = options.filter((_, i) => i !== idx);
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const reindexed = filtered.map((opt, i) => ({
-      ...opt,
-      key: letters[i] || `${i + 1}`,
-    }));
-    setOptions(reindexed);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!content.trim()) {
-      toast.error('Nội dung câu hỏi không được để trống');
-      return;
+    setError('');
+    try {
+      await onSave({ content: content.trim(), explanation: explanation.trim(), options, autoApprove });
+    } catch {
+      setError('Không thể lưu thay đổi. Bạn có thể thử lại.');
     }
-
-    const hasEmptyOption = options.some((opt) => !opt.text.trim());
-    if (hasEmptyOption) {
-      toast.error('Vui lòng nhập nội dung cho tất cả các phương án lựa chọn');
-      return;
-    }
-
-    const hasCorrectOption = options.some((opt) => opt.isCorrect);
-    if (!hasCorrectOption) {
-      toast.error('Vui lòng chọn ít nhất một đáp án đúng');
-      return;
-    }
-
-    await onSave({
-      content: content.trim(),
-      explanation: explanation.trim(),
-      options,
-      autoApprove,
-    });
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
-              Biên tập Câu hỏi {questionNumber}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Giảng viên trực tiếp chỉnh sửa nội dung, lựa chọn và lời giải đáp án
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Question Content */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Nội dung câu hỏi đề xuất <span className="text-rose-500">*</span>:
-            </label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={3}
-              placeholder="Nhập nội dung đề bài..."
-              className="w-full bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-xs md:text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
-            />
-          </div>
-
-          {/* Options List */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Các phương án lựa chọn <span className="text-rose-500">*</span>:
+    <Dialog.Root open onOpenChange={(open) => { if (!open && !isSaving) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto flex max-h-[calc(100dvh-2rem)] max-w-2xl -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+          <header className="flex items-start justify-between gap-2 border-b border-border p-4">
+            <div className="space-y-1">
+              <Dialog.Title className="text-xl font-semibold">Biên tập câu {questionNumber}</Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">Chỉnh nội dung, phương án và lời giải.</Dialog.Description>
+            </div>
+            <Dialog.Close render={<Button variant="ghost" size="icon" aria-label="Đóng biên tập" disabled={isSaving} />}>
+              <X aria-hidden="true" />
+            </Dialog.Close>
+          </header>
+          <form onSubmit={submit} className="min-h-0 overflow-y-auto">
+            <fieldset disabled={isSaving} className="space-y-4 p-4">
+              <div className="space-y-2">
+                <Label htmlFor={`${id}-content`}>Nội dung câu hỏi</Label>
+                <textarea id={`${id}-content`} rows={3} required value={content} className={textareaClass}
+                  onChange={(event) => setContent(event.target.value)} />
+              </div>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold">Phương án trả lời</legend>
+                {options.map((option) => (
+                  <div key={option.key} className="space-y-2 rounded-xl border border-border bg-surface-subtle p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor={`${id}-option-${option.key}`}>Phương án {option.key}</Label>
+                      {options.length > 2 && (
+                        <Button variant="ghost" size="icon" type="button" aria-label={`Xóa phương án ${option.key}`}
+                          onClick={() => setOptions((previous) => previous.filter((item) => item.key !== option.key))}>
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      )}
+                    </div>
+                    <Input id={`${id}-option-${option.key}`} required={!option.mediaUrl} value={option.text ?? ''}
+                      className="min-h-11" onChange={(event) => updateOption(option.key, { text: event.target.value })} />
+                    {option.mediaUrl && <img src={option.mediaUrl} alt={`Ảnh phương án ${option.key}`} className="max-h-20 max-w-full rounded-lg object-contain" />}
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                      <input type="checkbox" checked={option.isCorrect} className="size-4 accent-academic"
+                        onChange={(event) => updateOption(option.key, { isCorrect: event.target.checked })} />
+                      Đáp án đúng
+                    </label>
+                  </div>
+                ))}
+                {nextKey && (
+                  <Button type="button" variant="outline" className="min-h-11" onClick={() => setOptions([
+                    ...options, { key: nextKey, text: '', isCorrect: false },
+                  ])}><Plus aria-hidden="true" /> Thêm phương án</Button>
+                )}
+              </fieldset>
+              <div className="space-y-2">
+                <Label htmlFor={`${id}-explanation`}>Lời giải</Label>
+                <textarea id={`${id}-explanation`} rows={3} value={explanation} className={textareaClass}
+                  onChange={(event) => setExplanation(event.target.value)} />
+              </div>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={autoApprove} onChange={(event) => setAutoApprove(event.target.checked)}
+                  className="size-4 accent-academic" /> Phê duyệt sau khi lưu
               </label>
-              <button
-                type="button"
-                onClick={handleAddOption}
-                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Thêm phương án</span>
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              {options.map((opt, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  {/* Correct Toggle Pill */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleCorrect(idx)}
-                    title={opt.isCorrect ? 'Đáp án đúng (Bấm để hủy)' : 'Bấm để đặt làm đáp án đúng'}
-                    className={cn(
-                      'w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-all cursor-pointer border',
-                      opt.isCorrect
-                        ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
-                    )}
-                  >
-                    {opt.key}
-                  </button>
-
-                  {/* Option Text Input */}
-                  <input
-                    type="text"
-                    value={opt.text}
-                    onChange={(e) => handleOptionChange(idx, e.target.value)}
-                    placeholder={`Nội dung lựa chọn ${opt.key}...`}
-                    className={cn(
-                      'flex-1 bg-slate-50 dark:bg-slate-800/60 rounded-xl px-3 py-2 text-xs md:text-sm text-slate-800 dark:text-slate-100 border transition-all focus:outline-hidden',
-                      opt.isCorrect
-                        ? 'border-emerald-300 dark:border-emerald-800/60 bg-emerald-50/20'
-                        : 'border-slate-200 dark:border-slate-700 focus:border-blue-500'
-                    )}
-                  />
-
-                  {/* Remove Button */}
-                  {options.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveOption(idx)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              * Bấm vào chữ cái đầu (A, B, C...) để đánh dấu/hủy đáp án đúng (hỗ trợ nhiều đáp án đúng).
-            </p>
-          </div>
-
-          {/* Explanation */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Lời giải thích chi tiết:
-            </label>
-            <textarea
-              value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
-              rows={2}
-              placeholder="Giải thích tại sao đáp án trên là chính xác..."
-              className="w-full bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 text-xs md:text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
-            />
-          </div>
-
-          {/* Auto Approve Checkbox */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={autoApprove}
-                onChange={(e) => setAutoApprove(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                Tự động Phê duyệt câu hỏi này vào ngân hàng sau khi lưu
-              </span>
-            </label>
-          </div>
-        </form>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            Hủy
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Đang lưu...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>Lưu thay đổi</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            </fieldset>
+            {error && <p role="alert" className="px-4 pb-3 text-sm text-destructive">{error}</p>}
+            <footer className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-card p-4">
+              <Dialog.Close render={<Button variant="outline" className="min-h-11" disabled={isSaving} />}>Hủy</Dialog.Close>
+              <Button type="submit" className="min-h-11" disabled={isSaving}>
+                {isSaving && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
+                {isSaving ? 'Đang lưu…' : autoApprove ? 'Lưu và phê duyệt' : 'Lưu thay đổi'}
+              </Button>
+            </footer>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-};
+}

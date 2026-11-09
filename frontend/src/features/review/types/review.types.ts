@@ -36,18 +36,6 @@ export interface GetReviewableSessionsParams {
   after?: number;
   limit?: number;
   course_class_id?: number;
-  sort_by?: string;
-}
-
-export interface ReviewCourseClassOption {
-  courseClassId: number;
-  classCode: string;
-  subjectId: number;
-  subjectCode: string;
-  subjectName: string;
-  semesterId: number;
-  semesterName: string;
-  activeSemester: boolean;
 }
 
 // ==========================================
@@ -132,7 +120,7 @@ export type RejectionReasonCode =
   | 'AUTO_REJECTED_ON_COMPLETION';
 
 // ==========================================
-// 16.5 PUT /api/v1/questions/{questionId}
+// 16.5 PUT /api/v1/lecturer/questions/{questionId}
 // ==========================================
 
 export interface EditQuestionRequest {

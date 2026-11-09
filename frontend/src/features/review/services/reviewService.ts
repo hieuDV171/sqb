@@ -26,7 +26,6 @@ export const reviewService = {
           after: params?.after,
           limit: params?.limit || 10,
           course_class_id: params?.course_class_id,
-          sort_by: params?.sort_by,
         },
       }
     )) as unknown as GlobalResponse<ReviewableSessionsResponse>;
@@ -53,7 +52,8 @@ export const reviewService = {
   ): Promise<GlobalResponse<ApproveQuestionsResponse>> => {
     return (await axiosClient.post<GlobalResponse<ApproveQuestionsResponse>>(
       '/lecturer/sessions/approve',
-      data
+      data,
+      { skipToast: true },
     )) as unknown as GlobalResponse<ApproveQuestionsResponse>;
   },
 
@@ -66,7 +66,8 @@ export const reviewService = {
   ): Promise<GlobalResponse<void>> => {
     return (await axiosClient.post<GlobalResponse<void>>(
       '/lecturer/sessions/reject',
-      data
+      data,
+      { skipToast: true },
     )) as unknown as GlobalResponse<void>;
   },
 
@@ -80,7 +81,8 @@ export const reviewService = {
   ): Promise<GlobalResponse<EditQuestionResponse>> => {
     return (await axiosClient.put<GlobalResponse<EditQuestionResponse>>(
       `/lecturer/questions/${questionId}`,
-      data
+      data,
+      { skipToast: true },
     )) as unknown as GlobalResponse<EditQuestionResponse>;
   },
 
@@ -92,7 +94,9 @@ export const reviewService = {
     sessionId: number
   ): Promise<GlobalResponse<void>> => {
     return (await axiosClient.post<GlobalResponse<void>>(
-      `/lecturer/sessions/${sessionId}/complete-review`
+      `/lecturer/sessions/${sessionId}/complete-review`,
+      undefined,
+      { skipToast: true },
     )) as unknown as GlobalResponse<void>;
   },
 };

@@ -1,118 +1,42 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Clock3, Inbox } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { ReviewableSessionItemDto } from '../types/review.types';
-import { BookOpen, Calendar, ArrowRight, UserCheck, Clock3, Inbox, GraduationCap } from 'lucide-react';
 
-interface PendingSessionCardProps {
-  session: ReviewableSessionItemDto;
-}
-
-export const PendingSessionCard: React.FC<PendingSessionCardProps> = ({ session }) => {
-  const navigate = useNavigate();
-
-  const formattedDate = new Date(session.createdAt).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
+export function PendingSessionCard({ session, queueSearch }: { session: ReviewableSessionItemDto; queueSearch: string }) {
+  const reviewing = session.status === 'REVIEWING';
+  const StatusIcon = reviewing ? Clock3 : Inbox;
+  const date = new Date(session.createdAt);
+  const title = session.title || 'Đề xuất câu hỏi';
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 md:p-6 shadow-xs hover:shadow-md transition-all space-y-4">
-      {/* Header Info */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          {session.topic && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>{session.topic}</span>
-            </span>
-          )}
-
-          {session.subjectCode && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">
-              <GraduationCap className="w-3.5 h-3.5" /> {session.subjectCode}
-            </span>
-          )}
-
-          <span className="text-xs font-mono font-semibold text-slate-400">
-            #{session.sessionId}
+    <article className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className={reviewing ? 'bg-academic-soft text-academic' : 'bg-warning-soft text-warning'}>
+          <StatusIcon aria-hidden="true" /> {reviewing ? 'Đang duyệt' : 'Chờ duyệt'}
+        </Badge>
+        <span className="font-mono text-xs text-muted-foreground">#{session.sessionId}</span>
+        {[session.subjectCode, session.classCode, session.semesterName].filter(Boolean).length > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {[session.subjectCode, session.classCode && `Lớp ${session.classCode}`, session.semesterName].filter(Boolean).join(' · ')}
           </span>
-        </div>
-
-        {/* Status Badge */}
-        <span
-          className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-            session.status === 'REVIEWING'
-              ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-              : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-          }`}
-        >
-          {session.status === 'REVIEWING' ? (
-            <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" /> Đang xem xét</span>
-          ) : (
-            <span className="inline-flex items-center gap-1"><Inbox className="w-3.5 h-3.5" /> Chờ duyệt</span>
-          )}
-        </span>
-      </div>
-
-      {(session.classCode || session.semesterName) && (
-        <div className="flex flex-wrap gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-          {session.classCode && <span>Lớp: <strong className="text-slate-700 dark:text-slate-200">{session.classCode}</strong></span>}
-          {session.semesterName && <span>Học kỳ: <strong className="text-slate-700 dark:text-slate-200">{session.semesterName}</strong></span>}
-        </div>
-      )}
-
-      {/* Title & Content */}
-      <div className="space-y-1.5">
-        <h4 className="font-bold text-base md:text-lg text-slate-800 dark:text-slate-100 hover:text-indigo-600 transition-colors">
-          {session.title || 'Đề xuất câu hỏi ôn tập'}
-        </h4>
-        {session.content && (
-          <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
-            {session.content}
-          </p>
         )}
       </div>
-
-      {/* Footer Info */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 flex-wrap gap-3">
-        {/* Author & Time */}
-        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-1.5">
-            <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 text-[10px] font-bold overflow-hidden">
-              {session.author.avatarUrl ? (
-                <img
-                  src={session.author.avatarUrl}
-                  alt={session.author.fullName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <UserCheck className="w-3.5 h-3.5" />
-              )}
-            </div>
-            <span className="font-medium text-slate-700 dark:text-slate-300">
-              {session.author.fullName}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1 text-[11px]">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <span>{formattedDate}</span>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <button
-          type="button"
-          onClick={() => navigate(`/lecturer/reviews/${session.sessionId}`)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer"
-        >
-          <span>Đánh giá ngay</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+      <div className="space-y-1">
+        <h2 className="wrap-break-word text-lg font-semibold">{title}</h2>
+        {session.topic && <p className="text-sm font-medium text-academic">{session.topic}</p>}
+        {session.content && <p className="line-clamp-2 wrap-break-word text-sm text-muted-foreground">{session.content}</p>}
       </div>
-    </div>
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <span>{session.author?.fullName || 'Học viên ẩn danh'}</span>
+          {!Number.isNaN(date.valueOf()) && <time dateTime={session.createdAt}>{date.toLocaleString('vi-VN')}</time>}
+        </p>
+        <Button className="min-h-11" nativeButton={false}
+          render={<Link to={`/lecturer/sessions/${session.sessionId}/review`} state={{ queueSearch }} />}>
+          {reviewing ? 'Tiếp tục duyệt' : 'Mở phiên duyệt'} <ArrowRight aria-hidden="true" />
+        </Button>
+      </footer>
+    </article>
   );
-};
+}

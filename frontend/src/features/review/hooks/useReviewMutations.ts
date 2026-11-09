@@ -1,84 +1,59 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { reviewService } from '../services/reviewService';
 import { toast } from '@/stores/useToastStore';
+import { reviewService } from '../services/reviewService';
 import type {
-  ApproveQuestionsRequest,
-  RejectQuestionsRequest,
-  EditQuestionRequest,
+  ApproveQuestionsRequest, EditQuestionRequest, RejectQuestionsRequest,
 } from '../types/review.types';
 
-export const useReviewMutations = (sessionId?: number) => {
+export function useReviewMutations(sessionId: number) {
   const queryClient = useQueryClient();
+  const detailKey = ['reviewSessionDetail', sessionId] as const;
+  const queueKey = ['reviewableSessions'] as const;
 
-  const invalidateReviewQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['reviewableSessions'] });
-    if (sessionId) {
-      queryClient.invalidateQueries({ queryKey: ['reviewSessionDetail', sessionId] });
-    }
-  };
+  const refreshReview = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: queueKey }),
+    queryClient.invalidateQueries({ queryKey: detailKey, exact: true }),
+  ]);
 
-  // 16.3 Approve questions
-  const approveMutation = useMutation({
-    mutationFn: (data: ApproveQuestionsRequest) => reviewService.approveQuestions(data),
-    onSuccess: (res) => {
-      const pts = res.data?.pointsEarned || 0;
-      toast.success(`Đã phê duyệt câu hỏi thành công! (+${pts} điểm vào ngân hàng)`);
-      invalidateReviewQueries();
+  const approve = useMutation({
+    mutationFn: (request: ApproveQuestionsRequest) => reviewService.approveQuestions(request),
+    onSuccess: async (_, { questionIds }) => {
+      await refreshReview();
+      toast.success(`Đã phê duyệt ${questionIds.length} câu hỏi.`);
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi phê duyệt câu hỏi');
-    },
+    onError: () => toast.error('Không thể phê duyệt câu hỏi. Hãy thử lại.'),
   });
 
-  // 16.4 Reject questions
-  const rejectMutation = useMutation({
-    mutationFn: (data: RejectQuestionsRequest) => reviewService.rejectQuestions(data),
-    onSuccess: () => {
-      toast.success('Đã từ chối câu hỏi thành công');
-      invalidateReviewQueries();
+  const reject = useMutation({
+    mutationFn: (request: RejectQuestionsRequest) => reviewService.rejectQuestions(request),
+    onSuccess: async () => {
+      await refreshReview();
+      toast.success('Đã lưu quyết định từ chối.');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi từ chối câu hỏi');
-    },
+    onError: () => toast.error('Không thể từ chối câu hỏi. Hãy thử lại.'),
   });
 
-  // 16.5 Edit question
-  const editQuestionMutation = useMutation({
+  const edit = useMutation({
     mutationFn: ({ questionId, data }: { questionId: number; data: EditQuestionRequest }) =>
       reviewService.editQuestion(questionId, data),
-    onSuccess: (res) => {
-      const statusText = res.data?.status === 'APPROVED' ? 'và tự động phê duyệt' : '';
-      toast.success(`Đã cập nhật câu hỏi ${statusText} thành công!`);
-      invalidateReviewQueries();
+    onSuccess: async ({ data }) => {
+      await refreshReview();
+      toast.success(data?.status === 'APPROVED' ? 'Đã lưu và phê duyệt câu hỏi.' : 'Đã lưu câu hỏi.');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi chỉnh sửa câu hỏi');
-    },
+    onError: () => toast.error('Không thể lưu câu hỏi. Hãy thử lại.'),
   });
 
-  // 16.6 Complete session review
-  const completeReviewMutation = useMutation({
-    mutationFn: (targetSessionId: number) => reviewService.completeSessionReview(targetSessionId),
-    onSuccess: () => {
-      toast.success('Đã hoàn tất duyệt phiên nộp! Điểm thưởng đã được cộng cho sinh viên.');
-      invalidateReviewQueries();
+  const complete = useMutation({
+    mutationFn: () => reviewService.completeSessionReview(sessionId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queueKey }),
+        queryClient.invalidateQueries({ queryKey: detailKey, exact: true, refetchType: 'none' }),
+      ]);
+      toast.success('Đã hoàn tất duyệt phiên.');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi hoàn tất duyệt phiên');
-    },
+    onError: () => toast.error('Không thể hoàn tất duyệt phiên. Hãy thử lại.'),
   });
 
-  return {
-    approveQuestions: approveMutation.mutateAsync,
-    isApproving: approveMutation.isPending,
-
-    rejectQuestions: rejectMutation.mutateAsync,
-    isRejecting: rejectMutation.isPending,
-
-    editQuestion: editQuestionMutation.mutateAsync,
-    isEditing: editQuestionMutation.isPending,
-
-    completeReview: completeReviewMutation.mutateAsync,
-    isCompleting: completeReviewMutation.isPending,
-  };
-};
+  return { approve, reject, edit, complete };
+}
