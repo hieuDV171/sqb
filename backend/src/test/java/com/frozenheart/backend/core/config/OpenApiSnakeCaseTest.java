@@ -3,6 +3,9 @@ package com.frozenheart.backend.core.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.frozenheart.backend.modules.auth.dto.user.LoginRequest;
+import com.frozenheart.backend.modules.follow.dto.FollowResponseDto;
+import com.frozenheart.backend.modules.follow.dto.UnfollowResponseDto;
+import com.frozenheart.backend.modules.user.dto.Relationship;
 import com.frozenheart.backend.modules.user.dto.UpdateProfileRequest;
 import io.swagger.v3.core.converter.AnnotatedType;
 import io.swagger.v3.core.converter.ModelConverterContextImpl;
@@ -10,10 +13,25 @@ import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.media.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class OpenApiSnakeCaseTest {
+
+    @Test
+    void profileAndFollowPayloadsKeepTheirExistingWireNames() {
+        var mapper = JsonMapper.builder()
+                .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
+                .build();
+        var relationship = mapper.valueToTree(Relationship.builder().isFollowed(true).build());
+        assertTrue(relationship.get("is_followed").asBoolean());
+        assertFalse(relationship.get("is_following").asBoolean());
+        var follow = mapper.valueToTree(FollowResponseDto.builder().isFollowing(true).build());
+        var unfollow = mapper.valueToTree(UnfollowResponseDto.builder().isFollowing(false).build());
+        assertTrue(follow.get("following").asBoolean());
+        assertFalse(unfollow.get("following").asBoolean());
+    }
 
     @Test
     @DisplayName("Kiểm tra ModelResolver sinh schema Swagger chuẩn snake_case đồng bộ với Jackson")

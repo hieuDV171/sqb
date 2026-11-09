@@ -66,7 +66,7 @@ public class FriendshipServiceImpl implements FriendshipService {
 
                 if (requester.getRole() != addressee.getRole()) {
                         throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
-                                        "Chỉ người dùng đồng cấp (cùng vai trò Sinh viên - Sinh viên hoặc Giảng viên - Giảng viên) mới có thể kết bạn với nhau");
+                                        "Chỉ hai tài khoản cùng vai trò mới có thể kết bạn");
                 }
 
                 Optional<Friendship> existingOpt = friendshipRepository.findFriendshipsBetweenForUpdate(requesterId,

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
+import { Menu } from '@base-ui/react/menu';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
@@ -22,11 +23,30 @@ import {
   Loader2,
   Clock,
   BadgeCheck,
+  Ellipsis,
+  UserMinus,
 } from 'lucide-react';
 
 interface ProfileHeaderProps {
   profile: ProfileResponse;
   isOwnProfile: boolean;
+}
+
+const actionItemClass = 'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:cursor-default data-disabled:opacity-50';
+
+function ProfileActionMenu({ trigger, children }: { trigger: ReactElement; children: ReactNode }) {
+  return (
+    <Menu.Root modal={false}>
+      <Menu.Trigger render={trigger} />
+      <Menu.Portal>
+        <Menu.Positioner align="end" sideOffset={6} className="z-50 max-w-(--available-width)">
+          <Menu.Popup className="min-w-44 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            {children}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
 }
 
 export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
@@ -39,82 +59,74 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
   const [followModalTab, setFollowModalTab] = useState<'following' | 'followers'>('following');
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
 
-  // Đồng cấp: cùng là STUDENT hoặc cùng là LECTURER (hoặc cùng role)
   const isPeer = Boolean(currentRole && currentRole === profile.role);
+  const profileKey = ['userProfile', profile.userId] as const;
 
   const relationships = profile.relationships;
-  const isFollowing = relationships?.isFollowing ?? false;
+  const isFollowing = relationships?.isFollowed ?? false;
   const friendStatus = relationships?.friendRequestStatus ?? 'NONE';
   const isFriend = relationships?.isFriend ?? false;
 
-  // Follow / Unfollow mutation with Optimistic UI
+  const setFollowState = (following: boolean, followersCount: number) => {
+    queryClient.setQueryData<ProfileResponse>(profileKey, (old) => old && ({
+      ...old,
+      followersCount,
+      relationships: {
+        ...(old.relationships ?? { isFriend: false, isFollowing: false, friendRequestStatus: 'NONE' }),
+        isFollowed: following,
+      },
+    }));
+  };
+
   const followMutation = useMutation({
-    mutationFn: async (wasFollowing: boolean) => {
-      if (wasFollowing) {
-        return await userService.unfollowUser(profile.userId);
-      } else {
-        return await userService.followUser(profile.userId);
-      }
+    mutationFn: (wasFollowing: boolean) => {
+      return wasFollowing ? userService.unfollowUser(profile.userId) : userService.followUser(profile.userId);
     },
     onMutate: async (wasFollowing) => {
-      // 1. Dừng query profile đang chạy để tránh ghi đè dữ liệu cũ
-      await queryClient.cancelQueries({ queryKey: ['userProfile', profile.userId] });
-
-      // 2. Chụp snapshot cache hiện tại làm điểm phục hồi nếu có lỗi
-      const previousProfile = queryClient.getQueryData<ProfileResponse>(['userProfile', profile.userId]);
-      const nextFollowing = !wasFollowing;
-
-      // 3. Optimistic Update: Đổi ngay trạng thái isFollowing và tăng/giảm followersCount (0ms delay)
-      queryClient.setQueryData<ProfileResponse>(['userProfile', profile.userId], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          followersCount: Math.max(0, (old.followersCount || 0) + (nextFollowing ? 1 : -1)),
-          relationships: {
-            ...(old.relationships || { isFriend: false, isFollowed: false, friendRequestStatus: 'NONE' }),
-            isFollowing: nextFollowing,
-          },
-        };
-      });
-
-      return { previousProfile, wasFollowing };
-    },
-    onError: (_error, _vars, context) => {
-      // 4. Phục hồi lại dữ liệu cũ nếu lỗi
-      if (context?.previousProfile) {
-        queryClient.setQueryData(['userProfile', profile.userId], context.previousProfile);
+      await queryClient.cancelQueries({ queryKey: profileKey, exact: true });
+      const previous = queryClient.getQueryData<ProfileResponse>(profileKey);
+      if (previous) {
+        setFollowState(!wasFollowing, Math.max(0, (previous.followersCount ?? 0) + (wasFollowing ? -1 : 1)));
       }
-      toast.error('Thao tác không thành công. Vui lòng thử lại!');
+      return previous;
     },
-    onSuccess: (_res, _vars, context) => {
-      toast.success(context?.wasFollowing ? 'Đã hủy theo dõi' : 'Đã theo dõi người dùng');
+    onError: (_error, _vars, previous) => {
+      if (previous) {
+        setFollowState(previous.relationships?.isFollowed ?? false, previous.followersCount);
+      }
+      toast.error('Không thể cập nhật theo dõi. Hãy thử lại.');
+    },
+    onSuccess: ({ data }, wasFollowing) => {
+      if (data) setFollowState(!wasFollowing, data.newFollowersCount);
+      toast.success(wasFollowing ? 'Đã hủy theo dõi' : 'Đã theo dõi người dùng');
     },
     onSettled: () => {
-      // 5. Invalidate ngầm để đối soát với server
-      queryClient.invalidateQueries({ queryKey: ['userProfile', profile.userId] });
-      queryClient.invalidateQueries({ queryKey: ['userProfile', 'me'] });
-      queryClient.invalidateQueries({ queryKey: ['followingList'] });
-      queryClient.invalidateQueries({ queryKey: ['followersList'] });
+      return Promise.all([profileKey, ['userProfile', 'me'], ['followingList'], ['followersList']].map(
+        (queryKey) => queryClient.invalidateQueries({ queryKey }),
+      ));
     },
   });
 
-  // Friend Request mutation
   const friendMutation = useMutation({
     mutationFn: async (action: 'send' | 'unfriend') => {
       if (action === 'send') {
-        return await userService.sendFriendRequest({ addresseeId: profile.userId });
-      } else {
-        return await userService.unfriend(profile.userId);
+        const { data } = await userService.sendFriendRequest({ addresseeId: profile.userId });
+        return data.status;
       }
+      await userService.unfriend(profile.userId);
+      return 'NONE' as const;
     },
-    onSuccess: (_, action) => {
-      if (action === 'send') toast.success('Đã gửi lời mời kết bạn');
-      else if (action === 'unfriend') toast.info('Đã hủy kết bạn');
-
-      queryClient.invalidateQueries({ queryKey: ['userProfile', profile.userId] });
-      queryClient.invalidateQueries({ queryKey: ['myFriends'] });
-      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+    onSuccess: async (status, action) => {
+      if (action === 'unfriend') toast.info('Đã hủy kết bạn');
+      else toast.success(status === 'ACCEPTED' ? 'Hai bạn đã là bạn bè' : 'Đã gửi lời mời kết bạn');
+      const refresh = [profileKey, ['userProfile', 'me'], ['myFriends'], ['receivedRequests'],
+        ['sentRequests'], ['followingList'], ['followersList']].map(
+        (queryKey) => queryClient.invalidateQueries({ queryKey }),
+      );
+      if (action === 'unfriend' || status === 'ACCEPTED') {
+        refresh.push(queryClient.resetQueries({ queryKey: ['profile-posts', profile.userId], exact: true }));
+      }
+      await Promise.all(refresh);
     },
     onError: () => {
       toast.error('Thao tác kết bạn không thành công');
@@ -130,6 +142,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
     },
     onError: () => toast.error('Không thể mở cuộc trò chuyện với người dùng này'),
   });
+  const relationshipBusy = followMutation.isPending || friendMutation.isPending;
 
   const roleLabel = profile.role === 'LECTURER' ? 'Giảng viên'
     : profile.role === 'ADMIN' ? 'Quản trị viên' : 'Sinh viên';
@@ -185,39 +198,53 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
               ) : (
                 <>
                   {isPeer && (isFriend ? (
-                    <Badge variant="secondary"><UserCheck className="size-4" aria-hidden="true" /> Bạn bè</Badge>
+                    <ProfileActionMenu trigger={<Button variant="outline"><UserCheck aria-hidden="true" /> Bạn bè</Button>}>
+                      <Menu.Item className={actionItemClass} disabled={relationshipBusy}
+                        onClick={() => friendMutation.mutate('unfriend')}>
+                        <UserMinus className="size-4" aria-hidden="true" /> Hủy kết bạn
+                      </Menu.Item>
+                    </ProfileActionMenu>
                   ) : friendStatus === 'PENDING' ? (
                     <Button nativeButton={false} variant="outline" render={<Link to="/friends" />}>
                       <Clock aria-hidden="true" /> Lời mời đang chờ
                     </Button>
                   ) : (
-                    <Button disabled={friendMutation.isPending} onClick={() => friendMutation.mutate('send')}>
+                    <Button disabled={relationshipBusy} onClick={() => friendMutation.mutate('send')}>
                       {friendMutation.isPending ? <Loader2 className="motion-safe:animate-spin" aria-hidden="true" /> : <UserPlus aria-hidden="true" />}
-                      Thêm bạn
+                      Kết bạn
                     </Button>
                   ))}
-                  <Button variant={isPeer || isFollowing ? 'outline' : 'default'} aria-pressed={isFollowing}
-                    disabled={followMutation.isPending} onClick={() => followMutation.mutate(isFollowing)}>
-                    {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
-                  </Button>
-                  <Button variant="outline" disabled={messageMutation.isPending} onClick={() => messageMutation.mutate()}>
-                    <MessageSquare aria-hidden="true" /> Nhắn tin
-                  </Button>
-                  <details className="basis-full">
-                    <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
-                      Tùy chọn
-                    </summary>
-                    <div className="mt-1 flex flex-wrap gap-2 rounded-xl border border-border bg-surface-subtle p-2">
-                      {isPeer && isFriend && (
-                        <Button variant="ghost" disabled={friendMutation.isPending} onClick={() => friendMutation.mutate('unfriend')}>
-                          Hủy kết bạn
-                        </Button>
-                      )}
-                      <Button variant="destructive" onClick={() => setIsBlockModalOpen(true)}>
-                        <ShieldAlert aria-hidden="true" /> Chặn người dùng
-                      </Button>
-                    </div>
-                  </details>
+                  {isPeer ? (
+                    <Button variant="outline" disabled={messageMutation.isPending} onClick={() => messageMutation.mutate()}>
+                      <MessageSquare aria-hidden="true" /> Nhắn tin
+                    </Button>
+                  ) : (
+                    <Button variant={isFollowing ? 'outline' : 'default'} aria-pressed={isFollowing}
+                      disabled={relationshipBusy} onClick={() => followMutation.mutate(isFollowing)}>
+                      {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
+                    </Button>
+                  )}
+                  <ProfileActionMenu trigger={(
+                    <Button variant="outline" size="icon" className="size-11" aria-label="Tùy chọn hồ sơ">
+                      <Ellipsis aria-hidden="true" />
+                    </Button>
+                  )}>
+                    {isPeer ? (
+                      <Menu.Item className={actionItemClass} disabled={relationshipBusy}
+                        onClick={() => followMutation.mutate(isFollowing)}>
+                        {isFollowing ? <UserMinus className="size-4" aria-hidden="true" /> : <UserPlus className="size-4" aria-hidden="true" />}
+                        {isFollowing ? 'Hủy theo dõi' : 'Theo dõi'}
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item className={actionItemClass} disabled={messageMutation.isPending}
+                        onClick={() => messageMutation.mutate()}>
+                        <MessageSquare className="size-4" aria-hidden="true" /> Nhắn tin
+                      </Menu.Item>
+                    )}
+                    <Menu.Item className={`${actionItemClass} text-destructive`} onClick={() => setIsBlockModalOpen(true)}>
+                      <ShieldAlert className="size-4" aria-hidden="true" /> Chặn người dùng
+                    </Menu.Item>
+                  </ProfileActionMenu>
                 </>
               )}
             </div>

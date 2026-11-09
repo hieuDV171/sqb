@@ -16,7 +16,9 @@ export type FriendshipStatus = 'NONE' | 'PENDING' | 'ACCEPTED' | 'DECLINED';
 
 export interface Relationship {
   isFriend: boolean;
+  /** The profile owner follows the signed-in user. */
   isFollowing: boolean;
+  /** The signed-in user follows the profile owner. */
   isFollowed: boolean;
   friendRequestStatus: FriendshipStatus;
 }
@@ -134,14 +136,14 @@ export interface FriendRequestSentListResponseDto {
 // Follow DTOs
 export interface FollowResponseDto {
   targetUserId: number;
-  isFollowing: boolean;
+  following: boolean;
   newFollowersCount: number;
   followedAt: string;
 }
 
 export interface UnfollowResponseDto {
   targetUserId: number;
-  isFollowing: boolean;
+  following: boolean;
   newFollowersCount: number;
 }
 

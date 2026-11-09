@@ -134,15 +134,15 @@ export const userService = {
   },
 
   followUser: async (targetUserId: number): Promise<GlobalResponse<FollowResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<FollowResponseDto>>(
-      `/follows/${targetUserId}`
-    )) as any;
+    return axiosClient.post<GlobalResponse<FollowResponseDto>, GlobalResponse<FollowResponseDto>>(
+      `/follows/${targetUserId}`, undefined, { skipToast: true },
+    );
   },
 
   unfollowUser: async (targetUserId: number): Promise<GlobalResponse<UnfollowResponseDto>> => {
-    return (await axiosClient.delete<GlobalResponse<UnfollowResponseDto>>(
-      `/follows/${targetUserId}`
-    )) as any;
+    return axiosClient.delete<GlobalResponse<UnfollowResponseDto>, GlobalResponse<UnfollowResponseDto>>(
+      `/follows/${targetUserId}`, { skipToast: true },
+    );
   },
 
   // ==================== BLOCKS ====================

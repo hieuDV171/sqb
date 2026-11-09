@@ -13,3 +13,5 @@ VPS_CONFIG.txt
 DEPLOY_FRONTEND.txt
 PGNV_Đồng Văn Hiếu_20224980.xlsx
 ADMIN_ACCESS_GUIDE.md
+FRONTEND_ROADMAP.md
+/backend/scripts/migrate-question-reports.sql

@@ -16,17 +16,17 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/friendships")
 @RequiredArgsConstructor
-@Tag(name = "07. Quan hệ - Kết bạn (Friendships)", description = "Các API gửi lời mời, chấp nhận, từ chối, hủy kết bạn và quản lý danh sách bạn bè đồng cấp (Sinh viên - Sinh viên hoặc Giảng viên - Giảng viên)")
+@Tag(name = "07. Quan hệ - Kết bạn (Friendships)", description = "Các API gửi lời mời, chấp nhận, từ chối, hủy kết bạn và quản lý danh sách bạn bè cùng vai trò.")
 public class FriendshipController {
 
     private final FriendshipService friendshipService;
 
-    @Operation(summary = "Gửi lời mời kết bạn", description = "Chỉ người dùng đồng cấp (cùng vai trò Sinh viên hoặc Giảng viên) mới có thể kết bạn. Nếu người kia đã gửi lời mời trước đó, hệ thống sẽ tự động chấp nhận kết bạn.")
+    @Operation(summary = "Gửi lời mời kết bạn", description = "Hai tài khoản phải cùng vai trò. Người gửi tự động theo dõi người nhận. Nếu người kia đã gửi lời mời trước đó, thao tác này chấp nhận lời mời đó.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Gửi lời mời kết bạn thành công"),
             @ApiResponse(responseCode = "400", description = "Không thể gửi lời mời cho chính mình (CANNOT_INTERACT_WITH_SELF)"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "403", description = "Mối quan hệ bị chặn hoặc không cùng vai trò đào tạo (USER_IS_BLOCKED / ACTION_NOT_ALLOWED)"),
+            @ApiResponse(responseCode = "403", description = "Mối quan hệ bị chặn hoặc hai tài khoản khác vai trò (USER_IS_BLOCKED / ACTION_NOT_ALLOWED)"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng (USER_NOT_FOUND)"),
             @ApiResponse(responseCode = "409", description = "Đã là bạn bè hoặc lời mời đang chờ xử lý (ALREADY_FRIENDS / FRIEND_REQUEST_PENDING)")
     })
@@ -37,7 +37,7 @@ public class FriendshipController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Chấp nhận lời mời kết bạn", description = "Chấp nhận lời mời kết bạn đang ở trạng thái PENDING do người khác gửi đến.")
+    @Operation(summary = "Chấp nhận lời mời kết bạn", description = "Người nhận chấp nhận lời mời đang chờ của người cùng vai trò và tự động theo dõi người gửi.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Chấp nhận lời mời kết bạn thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
