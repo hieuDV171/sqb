@@ -2,8 +2,10 @@ package com.frozenheart.backend.core.entity.post;
 
 import com.frozenheart.backend.core.entity.media.MediaItem;
 import com.frozenheart.backend.core.entity.session.Session;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -74,6 +76,11 @@ public class Post {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id")
     private Session session;
-    // ---------------------------
 
+    public boolean canEditLecturerNote(Long viewerId, String viewerRole) {
+        return postType == PostType.QUESTION_APPROVED_NOTIFICATION
+                && viewerId != null && UserRole.LECTURER.name().equalsIgnoreCase(viewerRole)
+                && session != null && session.getStatus() == SessionStatus.RESOLVED
+                && session.getReviewer() != null && viewerId.equals(session.getReviewer().getId());
+    }
 }

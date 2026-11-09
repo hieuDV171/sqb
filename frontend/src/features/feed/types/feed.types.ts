@@ -24,6 +24,7 @@ export interface ActivityFeedContent {
   myReaction?: 'LIKE' | 'LOVE' | 'WOW' | null;
   reactionCounts?: Record<string, number>;
   lecturerNote?: string;
+  canEditLecturerNote?: boolean;
   notedLecturer?: AuthorDto;
   sessionId?: number;
   pointsEarned?: number;

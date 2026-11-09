@@ -18,6 +18,7 @@ export function toFeedItem(post: PostResponseDto): ActivityFeedItemDto {
       reactedByMe: post.reactedByMe,
       myReaction: post.myReaction,
       lecturerNote: post.lecturerNote,
+      canEditLecturerNote: post.canEditLecturerNote,
       notedLecturer: post.notedLecturer,
       subjectName: post.subjectName,
       subjectCode: post.subjectCode,

@@ -1,13 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
-import { CheckCircle2, BookOpen, ArrowRight, Heart, MessageSquare, Sparkles } from 'lucide-react';
+import { CheckCircle2, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { PostFeedCard } from '../PostFeedCard';
 
 interface ApprovedSessionCardProps {
   item: ActivityFeedItemDto;
 }
 
 export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }) => {
+  if (item.targetType === 'POST') return <PostFeedCard item={item} />;
+
   const { actor, content, createdAt } = item;
   const sessionId = item.targetType === 'SESSION' ? item.targetId ?? content.sessionId : content.sessionId;
 
@@ -80,10 +83,6 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
 
       {/* Action */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-4" /> {content.reactCount ?? 0} lượt thích phiên</span>
-          <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-4" /> {content.commentCount ?? 0} bình luận về phiên</span>
-        </div>
         {typeof sessionId === 'number' && Number.isSafeInteger(sessionId) && sessionId > 0 && <Link
           to={`/sessions/${sessionId}/practice`}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"

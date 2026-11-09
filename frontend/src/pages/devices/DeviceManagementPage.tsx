@@ -33,8 +33,8 @@ export function DeviceManagementPage() {
         await deleteDevice(actionDeviceId);
         toast.success('Đã xóa thiết bị khỏi danh sách của bạn thành công');
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Thao tác thất bại');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Thao tác thất bại');
     } finally {
       setIsSubmitting(false);
       setActionDeviceId(null);
@@ -180,6 +180,7 @@ export function DeviceManagementPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                     <Button
+                      disabled={isCurrent}
                       onClick={() => {
                         setActionDeviceId(device.deviceId);
                         setActionType('revoke');
@@ -191,16 +192,21 @@ export function DeviceManagementPage() {
                     </Button>
 
                     <Button
+                      disabled={isCurrent}
                       onClick={() => {
                         setActionDeviceId(device.deviceId);
                         setActionType('delete');
                       }}
                       className="flex items-center justify-center p-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/60 text-slate-500 dark:text-slate-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-medium rounded-xl transition-colors cursor-pointer"
+                      aria-label="Xóa khỏi danh sách thiết bị"
                       title="Xóa khỏi danh sách thiết bị"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
+                  {isCurrent && (
+                    <p className="text-xs text-muted-foreground">Để thoát thiết bị này, dùng Đăng xuất trong menu tài khoản.</p>
+                  )}
                 </CardContent>
               </Card>
             );

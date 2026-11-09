@@ -36,12 +36,19 @@ export function UserSessionCard({ session, userId }: { session: SubmissionSessio
         {session.content && <p className="line-clamp-2 break-words text-sm text-muted-foreground">{session.content}</p>}
       </div>
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <span>{session.questionCounts ?? 0} câu hỏi</span>
           <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-3.5" /> {session.reactCount ?? 0}<span className="sr-only"> lượt thích</span></span>
-          <span className="inline-flex items-center gap-1"><MessageSquare aria-hidden="true" className="size-3.5" /> {session.commentCount ?? 0}<span className="sr-only"> bình luận</span></span>
+          <Link
+            to={`${practicePath}?discussion=session`}
+            state={{ fromMemberSessions: userId }}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-medium text-academic hover:bg-academic-soft focus-visible:outline-2 focus-visible:outline-ring"
+            aria-label={`Thảo luận bộ ${session.title}, ${session.commentCount ?? 0} bình luận`}
+          >
+            <MessageSquare aria-hidden="true" className="size-3.5" /> {session.commentCount ?? 0} bình luận
+          </Link>
           {session.createdAt && <time dateTime={session.createdAt}>{new Date(session.createdAt).toLocaleDateString('vi-VN')}</time>}
-        </p>
+        </div>
         <Button variant="outline" className="min-h-11" render={<Link to={practicePath} state={{ fromMemberSessions: userId }} />} nativeButton={false}>
           <PlayCircle aria-hidden="true" /> Luyện tập
         </Button>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { searchService } from '../services/searchService';
 import type {
   SavedAndTrendingSearchesResponseDto,
@@ -32,6 +32,25 @@ export function useGlobalSearch(params: {
       return res.data;
     },
     enabled: params.enabled !== undefined ? params.enabled : !!params.query?.trim(),
+  });
+}
+
+export function useInfiniteGlobalSearch(query: string, type: SearchType, limit = 15) {
+  return useInfiniteQuery({
+    queryKey: [...SEARCH_KEYS.all, 'infinite', query, type, limit],
+    enabled: Boolean(query.trim()),
+    queryFn: async ({ pageParam }) => {
+      const response = await searchService.search({ query, type, limit, after: pageParam });
+      return response.data;
+    },
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (lastPage, _pages, _lastPageParam, pageParams) => {
+      const next = lastPage?.pagination?.after;
+      if (lastPage?.pagination?.hasNext && typeof next === 'number' && !pageParams.includes(next)) {
+        return next;
+      }
+      return undefined;
+    },
   });
 }
 

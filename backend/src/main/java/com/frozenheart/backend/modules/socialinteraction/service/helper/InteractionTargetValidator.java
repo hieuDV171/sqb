@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.socialinteraction.service.helper;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
@@ -27,8 +28,10 @@ public class InteractionTargetValidator {
                 }
             }
             case SESSION -> {
-                if (!sessionRepository.existsById(targetId)) {
-                    throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy phiên đề xuất câu hỏi");
+                var session = sessionRepository.findByIdFetchProposer(targetId)
+                        .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy phiên đề xuất câu hỏi"));
+                if (!session.isPracticeVisibleTo(JwtPayload.getCurrentUserPayload().getUserId())) {
+                    throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn chưa có quyền thảo luận về bộ câu hỏi này");
                 }
             }
             case QUESTION -> {

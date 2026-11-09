@@ -22,11 +22,12 @@ public class CommentController {
 
     private final CommentService commentService;
 
-    @Operation(summary = "Tạo bình luận mới hoặc trả lời bình luận", description = "Đăng bình luận vào bài viết (POST), phiên đề xuất (SESSION), hoặc câu hỏi (QUESTION). Hỗ trợ trả lời lồng nhau qua parent_comment_id.")
+    @Operation(summary = "Tạo bình luận mới hoặc trả lời bình luận", description = "Đăng bình luận vào bài viết (POST), phiên đề xuất (SESSION) hoặc câu hỏi (QUESTION). Nếu trả lời, bình luận cha phải thuộc cùng đối tượng.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Tạo bình luận thành công"),
-            @ApiResponse(responseCode = "400", description = "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm (MISSING_REQUIRED_PARAMETER)"),
+            @ApiResponse(responseCode = "400", description = "Thiếu nội dung hoặc bình luận cha thuộc đối tượng khác"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền thảo luận về bộ câu hỏi (ACCESS_DENIED)"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy đối tượng mục tiêu hoặc bình luận cha (POST_NOT_FOUND / RESOURCE_NOT_FOUND)")
     })
     @PostMapping("/comments")
@@ -41,7 +42,8 @@ public class CommentController {
             @ApiResponse(responseCode = "200", description = "Lấy danh sách bình luận thành công"),
             @ApiResponse(responseCode = "400", description = "Thiếu tham số target_type hoặc target_id khi lấy bình luận gốc (MISSING_REQUIRED_PARAMETER)"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy đối tượng mục tiêu (POST_NOT_FOUND / RESOURCE_NOT_FOUND)")
+            @ApiResponse(responseCode = "403", description = "Không có quyền xem thảo luận của bộ câu hỏi (ACCESS_DENIED)"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy đối tượng mục tiêu hoặc bình luận cha (POST_NOT_FOUND / RESOURCE_NOT_FOUND)")
     })
     @GetMapping("/comments")
     public ResponseEntity<GlobalResponse<CursorResponse<CommentResponseDto>>> getComments(

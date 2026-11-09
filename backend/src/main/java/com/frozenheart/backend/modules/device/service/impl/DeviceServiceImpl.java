@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.device.service.impl;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -57,6 +58,7 @@ public class DeviceServiceImpl implements DeviceService {
     public void revokeDevice(String targetDeviceId) {
 
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        ensureRemoteDevice(payload, targetDeviceId);
         Long currentUserId = payload.getUserId();
         String currentEmail = payload.getUsername();
 
@@ -75,6 +77,7 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void deleteDevice(String targetDeviceId) {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        ensureRemoteDevice(payload, targetDeviceId);
         Long currentUserId = payload.getUserId();
         String currentEmail = payload.getUsername();
 
@@ -87,6 +90,13 @@ public class DeviceServiceImpl implements DeviceService {
         }
 
         userDeviceRepository.delete(device);
+    }
+
+    private void ensureRemoteDevice(JwtPayload payload, String targetDeviceId) {
+        if (Objects.equals(payload.getDeviceId(), targetDeviceId)) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                    "Hãy dùng Đăng xuất trong menu tài khoản cho thiết bị hiện tại");
+        }
     }
 
     @Override

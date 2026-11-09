@@ -75,10 +75,13 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = payload.getUserId();
         String roleStr = payload.getRole();
 
+        PostType postType = request.getPostType();
+        if (postType == PostType.QUESTION_APPROVED_NOTIFICATION) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Bài vinh danh được tạo tự động khi chốt phiên");
+        }
+
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
-
-        PostType postType = request.getPostType();
         Subject subject = null;
 
         if (request.getSubjectId() != null || postType == PostType.LEARNING_VIDEO) {
@@ -234,19 +237,16 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = payload.getUserId();
         String roleStr = payload.getRole();
 
-        if (isNotLecturerAndAdmin(roleStr)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ Giảng viên hoặc Admin mới có quyền thêm ghi chú");
-        }
-
         Post post = postRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new AppException(ResponseCode.POST_NOT_FOUND));
 
-        User currentLecturer = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        if (!post.canEditLecturerNote(currentUserId, roleStr)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ giảng viên đã chốt phiên mới có thể ghi chú trên bài vinh danh");
+        }
 
         post.setLecturerNote(request.getContent());
         post.setLecturerNoteAddedAt(Instant.now());
-        post.setNotedLecturer(currentLecturer);
+        post.setNotedLecturer(post.getSession().getReviewer());
 
         Post savedPost = postRepository.save(post);
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.POST, savedPost.getId()));
@@ -467,7 +467,10 @@ public class PostServiceImpl implements PostService {
             ReactionType myReaction,
             Map<Long, UserProfile> profileByUserId) {
         AuthorDto authorDto = mapUserToAuthorDto(post.getPoster(), profileByUserId);
-        AuthorDto notedLecturerDto = mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId);
+        boolean approvalPost = post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION;
+        JwtPayload viewer = approvalPost ? JwtPayload.getCurrentUserPayload() : null;
+        AuthorDto notedLecturerDto = approvalPost && post.getLecturerNote() != null && post.getNotedLecturer() != null
+                ? mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId) : null;
 
         return PostResponseDto.builder()
                 .postId(post.getId())
@@ -482,8 +485,9 @@ public class PostServiceImpl implements PostService {
                 .myReaction(myReaction)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
-                .lecturerNote(post.getLecturerNote())
-                .lecturerNoteAddedAt(post.getLecturerNoteAddedAt())
+                .lecturerNote(approvalPost ? post.getLecturerNote() : null)
+                .canEditLecturerNote(viewer != null && post.canEditLecturerNote(viewer.getUserId(), viewer.getRole()))
+                .lecturerNoteAddedAt(approvalPost ? post.getLecturerNoteAddedAt() : null)
                 .notedLecturer(notedLecturerDto)
                 .subjectId(post.getSubject() != null ? post.getSubject().getId() : null)
                 .subjectName(post.getSubject() != null ? post.getSubject().getName() : null)

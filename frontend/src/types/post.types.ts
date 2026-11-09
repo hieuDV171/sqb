@@ -50,6 +50,7 @@ export interface PostResponseDto {
 
     // Giảng viên ghi chú chuyên môn (Academic Feature)
     lecturerNote?: string;
+    canEditLecturerNote?: boolean;
     lecturerNoteAddedAt?: string;
     notedLecturer?: AuthorDto;
 

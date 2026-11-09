@@ -24,11 +24,19 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + :delta WHERE p.id = :postId")
     void incrementCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
     Optional<Post> findByIdAndDeletedAtIsNull(Long id);
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
     List<Post> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
+
+    @Query("""
+            SELECT p FROM Post p JOIN FETCH p.session s LEFT JOIN FETCH s.reviewer
+            LEFT JOIN FETCH p.notedLecturer
+            WHERE s.id IN :sessionIds AND p.deletedAt IS NULL AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
+              AND p.visibility = 'PUBLIC' AND s.status = 'RESOLVED'
+            """)
+    List<Post> findPublicApprovalPostsBySessionIds(@Param("sessionIds") Collection<Long> sessionIds);
 
     @Query("SELECT p FROM Post p JOIN FETCH p.poster u WHERE p.deletedAt IS NULL AND p.visibility != com.frozenheart.backend.core.entity.post.PostVisibility.ONLY_ME")
     List<Post> findAllPublicPostsForSearch();
@@ -81,14 +89,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
     List<Post> findByPosterIdAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Long after,
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
     List<Post> findByPosterIdAndVisibilityInAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Collection<PostVisibility> visibilities,

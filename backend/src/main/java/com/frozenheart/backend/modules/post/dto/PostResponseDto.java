@@ -35,6 +35,7 @@ public class PostResponseDto {
     private Instant updatedAt;
 
     private String lecturerNote;
+    private boolean canEditLecturerNote;
     private Instant lecturerNoteAddedAt;
     private AuthorDto notedLecturer;
 

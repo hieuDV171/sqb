@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { RefreshCw, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { SubmissionCard } from './SubmissionCard';
 import { SubmissionCardSkeleton } from './SubmissionCardSkeleton';
 import { EmptySubmissions } from './EmptySubmissions';
@@ -17,9 +18,11 @@ interface SubmissionListProps {
   errorMessage?: string;
   onRetry: () => void;
   hasNextPage: boolean;
+  isFetching: boolean;
+  pageCount: number;
   isFetchingNextPage: boolean;
   isFetchNextPageError: boolean;
-  onFetchNextPage: () => void;
+  onFetchNextPage: (options: { cancelRefetch: boolean }) => Promise<unknown>;
   selectedSubjectId?: number;
   currentStatusFilter?: SessionStatus;
   searchQuery: string;
@@ -36,6 +39,8 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
   errorMessage,
   onRetry,
   hasNextPage,
+  isFetching,
+  pageCount,
   isFetchingNextPage,
   isFetchNextPageError,
   onFetchNextPage,
@@ -60,6 +65,13 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
         (s.content && s.content.toLowerCase().includes(q))
     );
   }, [submissions, searchQuery]);
+
+  const hasVisibleSubmissions = filteredSubmissions.length > 0;
+  const { sentinel, supportsAutoLoad } = useInfiniteScroll(
+    hasNextPage && !isFetching && !isError && !isFetchNextPageError && hasVisibleSubmissions,
+    onFetchNextPage,
+    pageCount,
+  );
 
   // Loading State
   if (isLoading) {
@@ -103,25 +115,17 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
 
       {hasNextPage && (
         <div className="space-y-2 text-center">
+          <div ref={sentinel} aria-hidden="true" className="h-px" />
           {isFetchNextPageError && <p role="status" className="text-sm text-destructive">Không tải được trang tiếp theo.</p>}
-          <Button
-            variant="outline"
-            onClick={onFetchNextPage}
-            disabled={isFetchingNextPage}
-            className="min-h-11"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" />
-                <span>Đang tải thêm phiên...</span>
-              </>
-            ) : (
-              <>
-                <ArrowDown aria-hidden="true" />
-                <span>{isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm phiên'}</span>
-              </>
-            )}
-          </Button>
+          {isFetchingNextPage ? (
+            <p role="status" className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw aria-hidden="true" className="size-4 motion-safe:animate-spin" /> Đang tải thêm phiên...
+            </p>
+          ) : (!supportsAutoLoad || isFetchNextPageError || !hasVisibleSubmissions) && (
+            <Button variant="outline" onClick={() => void onFetchNextPage({ cancelRefetch: false })} disabled={isFetching} className="min-h-11">
+              <ArrowDown aria-hidden="true" /> {isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm phiên'}
+            </Button>
+          )}
         </div>
       )}
     </div>

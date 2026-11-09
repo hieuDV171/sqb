@@ -70,6 +70,11 @@ public class Session {
     @OneToMany(mappedBy = "session")
     private Set<Question> questions;
 
-    @OneToOne(mappedBy = "session")
+    @OneToOne(mappedBy = "session", fetch = FetchType.LAZY)
     private Post post;
+
+    public boolean isPracticeVisibleTo(Long viewerId) {
+        return status == SessionStatus.RESOLVED
+                || (viewerId != null && proposer != null && viewerId.equals(proposer.getId()));
+    }
 }

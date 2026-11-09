@@ -78,10 +78,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                 Session session = sessionRepository.findByIdFetchCourseClass(sessionId)
                                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
-                if (session.getStatus() != SessionStatus.RESOLVED) {
-                        if (session.getProposer() == null || !session.getProposer().getId().equals(currentUserId)) {
-                                throw new AppException(ResponseCode.ACCESS_DENIED, "Phiên đề xuất chưa được phê duyệt");
-                        }
+                if (!session.isPracticeVisibleTo(currentUserId)) {
+                        throw new AppException(ResponseCode.ACCESS_DENIED, "Phiên đề xuất chưa được phê duyệt");
                 }
 
                 List<Question> questions = questionRepository.findQuestionsBySessionId(sessionId);

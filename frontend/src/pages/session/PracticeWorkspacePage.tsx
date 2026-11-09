@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { reactService, type ReactionType } from '@/features/feed/services/reactService';
@@ -6,6 +7,7 @@ import { updatePracticeQuestion } from '@/features/practice/hooks/updatePractice
 import {
   ArrowLeft,
   Award,
+  MessageSquare,
 } from 'lucide-react';
 import {
   usePracticeSession,
@@ -20,13 +22,14 @@ import {
   QuestionDiscussionModal,
 } from '@/features/practice';
 import { ErrorState } from '@/components/ui/error-state';
+import { SessionDiscussionPanel } from '@/features/practice/components/SessionDiscussionPanel';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/stores/useToastStore';
 import { StudyHeader } from './StudyHeader';
 
 export function PracticeWorkspacePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { state } = useLocation();
   const questionId = Number(searchParams.get('questionId'));
   const memberId = state?.fromMemberSessions as number | undefined;
@@ -36,15 +39,24 @@ export function PracticeWorkspacePage() {
       key={`${sessionId}:${questionId}`}
       numericSessionId={Number(sessionId)}
       initialQuestionId={questionId}
+      isSessionDiscussionOpen={searchParams.get('discussion') === 'session'}
+      onSessionDiscussionChange={(open) => {
+        const params = new URLSearchParams(searchParams);
+        if (open) params.set('discussion', 'session');
+        else params.delete('discussion');
+        setSearchParams(params, { replace: true, state, preventScrollReset: true });
+      }}
       returnTo={fromMember ? `/users/${memberId}/sessions` : '/questions'}
       returnLabel={fromMember ? 'Phiên đề xuất của thành viên' : 'Ngân hàng câu hỏi'}
     />
   );
 }
 
-function PracticeWorkspace({ numericSessionId, initialQuestionId, returnTo, returnLabel }: {
+function PracticeWorkspace({ numericSessionId, initialQuestionId, isSessionDiscussionOpen, onSessionDiscussionChange, returnTo, returnLabel }: {
   numericSessionId: number;
   initialQuestionId: number;
+  isSessionDiscussionOpen: boolean;
+  onSessionDiscussionChange: (open: boolean) => void;
   returnTo: string;
   returnLabel: string;
 }) {
@@ -233,9 +245,17 @@ function PracticeWorkspace({ numericSessionId, initialQuestionId, returnTo, retu
         title={sessionData.title}
         description={[sessionData.subjectName || sessionData.subjectCode, sessionData.sessionCode, `${questions.length} câu hỏi`].filter(Boolean).join(' · ')}
         action={(
-          <Button variant="outline" onClick={() => setIsSummaryOpen(true)} className="min-h-11">
-            <Award aria-hidden="true" /> Kết quả luyện tập
-          </Button>
+          <div className="flex flex-wrap gap-2 sm:max-w-56 sm:justify-end lg:max-w-none">
+            <Dialog.Root open={isSessionDiscussionOpen} onOpenChange={onSessionDiscussionChange}>
+              <Dialog.Trigger render={<Button variant="outline" className="min-h-11" />}>
+                <MessageSquare aria-hidden="true" /> Thảo luận bộ câu hỏi
+              </Dialog.Trigger>
+              <SessionDiscussionPanel sessionId={numericSessionId} title={sessionData.title} />
+            </Dialog.Root>
+            <Button variant="outline" onClick={() => setIsSummaryOpen(true)} className="min-h-11">
+              <Award aria-hidden="true" /> Kết quả luyện tập
+            </Button>
+          </div>
         )}
       />
 

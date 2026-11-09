@@ -46,6 +46,16 @@ class DeviceServiceImplTest {
     }
 
     @Test
+    void cannotRemotelyRevokeOrDeleteCurrentDevice() {
+        AppException revokeError = assertThrows(AppException.class, () -> service.revokeDevice("my-device"));
+        AppException deleteError = assertThrows(AppException.class, () -> service.deleteDevice("my-device"));
+
+        assertEquals(ResponseCode.ACTION_NOT_ALLOWED, revokeError.getResponseCode());
+        assertEquals(ResponseCode.ACTION_NOT_ALLOWED, deleteError.getResponseCode());
+        verifyNoInteractions(repository, redisTemplate);
+    }
+
+    @Test
     void unregisterOnlyUsesAtomicOwnerAndFidMatchAndDoesNotRevokeSession() {
         service.unregisterFid("stale-or-foreign-fid");
 

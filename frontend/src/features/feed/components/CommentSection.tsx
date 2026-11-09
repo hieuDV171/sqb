@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useComments } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
+import { Button } from '@/components/ui/button';
 import {
   Send,
   Loader2,
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react';
 
 interface CommentSectionProps {
-  targetType: 'POST' | 'COMMENT';
+  targetType: 'POST' | 'COMMENT' | 'SESSION';
   targetId: number;
 }
 
@@ -21,6 +22,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
   const {
     comments,
     isLoading,
+    isLoadingError,
+    isFetchNextPageError,
+    refetch,
     isCreating,
     createComment,
     deleteComment,
@@ -49,31 +53,40 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputContent.trim() && !commentMediaUrl) return;
+    if (isCreating || (!inputContent.trim() && !commentMediaUrl)) return;
 
-    await createComment({
-      content: inputContent.trim(),
-      mediaUrl: commentMediaUrl || undefined,
-    });
-
-    setInputContent('');
-    setCommentMediaUrl(null);
+    try {
+      await createComment({ content: inputContent.trim(), mediaUrl: commentMediaUrl || undefined });
+      setInputContent('');
+      setCommentMediaUrl(null);
+    } catch {
+      // The mutation displays the error. Keep the draft for a retry.
+    }
   };
 
   const handleReplySubmit = async (parentCommentId: number) => {
-    if (!replyContent.trim()) return;
+    if (isCreating || !replyContent.trim()) return;
 
-    await createComment({
-      content: replyContent.trim(),
-      parentCommentId,
-    });
-
-    setReplyContent('');
-    setReplyingToCommentId(null);
+    try {
+      await createComment({ content: replyContent.trim(), parentCommentId });
+      setReplyContent('');
+      setReplyingToCommentId(null);
+    } catch {
+      // Keep the reply for a retry.
+    }
   };
 
+  if (isLoadingError) {
+    return (
+      <div className="space-y-3 py-6 text-center">
+        <p role="status" className="text-sm text-muted-foreground">Không thể tải cuộc thảo luận.</p>
+        <Button variant="outline" onClick={() => void refetch()} className="min-h-11">Thử lại</Button>
+      </div>
+    );
+  }
+
   return (
-      <section aria-label="Bình luận" className="mt-3 border-t border-border pt-4">
+      <section aria-label="Bình luận" className={targetType === 'SESSION' ? undefined : 'mt-3 border-t border-border pt-4'}>
           {/* 1. Comment Input Box */}
           <form
               onSubmit={handleSubmitComment}
@@ -93,7 +106,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                       aria-label="Nội dung bình luận"
                       value={inputContent}
                       onChange={(e) => setInputContent(e.target.value)}
-                      placeholder="Viết bình luận hoặc lời giải của bạn..."
+                      placeholder={targetType === 'SESSION' ? 'Chia sẻ góp ý về cả bộ câu hỏi…' : 'Viết bình luận hoặc lời giải của bạn...'}
                       rows={1}
                       className="w-full resize-none bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
@@ -196,7 +209,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                               </span>
                                           )}
                                       </div>
-                                      <p className="whitespace-pre-wrap">
+                                      <p className="wrap-anywhere whitespace-pre-wrap">
                                           {comment.content}
                                       </p>
 
@@ -280,7 +293,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                                       comment.commentId,
                                                   )
                                               }
-                                              disabled={!replyContent.trim()}
+                                              disabled={isCreating || !replyContent.trim()}
                                               className="p-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl cursor-pointer"
                                           >
                                               <Send className="w-3 h-3" />
@@ -339,7 +352,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                       >
                           {isFetchingNextPage
                               ? "Đang tải thêm..."
-                              : "Xem các bình luận trước đó"}
+                              : isFetchNextPageError ? "Thử tải lại bình luận" : "Xem các bình luận trước đó"}
                       </button>
                   )}
               </div>

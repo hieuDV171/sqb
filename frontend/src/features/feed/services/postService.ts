@@ -84,7 +84,7 @@ export const postService = {
   },
 
   /**
-   * Giảng viên / Admin thêm hoặc sửa ghi chú chuyên môn cho bài viết
+   * Giảng viên chốt phiên thêm hoặc sửa ghi chú trên bài vinh danh
    * PUT /api/v1/posts/{id}/lecturer-notes
    */
   updateLecturerNote: async (
@@ -93,7 +93,8 @@ export const postService = {
   ): Promise<GlobalResponse<void>> => {
     return (await axiosClient.put<GlobalResponse<void>>(
       `/posts/${id}/lecturer-notes`,
-      data
+      data,
+      { skipToast: true },
     )) as unknown as GlobalResponse<void>;
   },
 

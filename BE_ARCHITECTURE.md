@@ -338,3 +338,14 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Trong `REVIEWING`, phê duyệt, từ chối và biên tập chỉ ghi quyết định hiện tại. Tiến độ 100% vẫn cho phép đổi quyết định. API chi tiết trả `session_status` để FE xác định trạng thái phiên và quyền thao tác.
 - Chốt phiên là giao dịch chuyển sang `RESOLVED`, từ chối câu còn chờ và ghi nhận thưởng, thông báo và sự kiện đồng bộ. Các thao tác ghi khóa hàng phiên theo thứ tự ID trước khi đọc câu hỏi. Yêu cầu sửa sau chốt trả `409 SESSION_REVIEW_FINALIZED`. Gọi chốt lại cùng phiên giữ nguyên kết quả đã ghi.
 - Tạo đề, đếm ngân hàng và lưu câu chính thức cuối kỳ dựa trên câu được duyệt trong phiên `RESOLVED`. Tìm kiếm và luyện tập công khai tiếp tục bao gồm cả hai nhóm câu sau chốt và ẩn quyết định từng câu. Job AI chỉ tự chốt phiên `PENDING` và kiểm tra lại trạng thái khi lấy khóa.
+
+### [ADR-027] Ghi chú và tương tác trên bài vinh danh đóng góp
+
+- Chốt phiên có câu được duyệt tạo bài công khai `QUESTION_APPROVED_NOTIFICATION`. Chỉ tài khoản `LECTURER` trùng với `session.reviewer` của phiên `RESOLVED` được thêm hoặc sửa ghi chú trên bài đó. Phiên do AI chốt không có giảng viên ghi chú. Bài thuộc loại khác không trả ghi chú cũ trong API.
+- Sự kiện `SESSION_RESOLVED_APPROVED` giữ khóa phiên trong cơ sở dữ liệu. API bảng tin tra bài công khai theo lô bằng `posts.session_id` và trả `target_type = POST`, `target_id` là ID bài viết, `content.session_id` là ID phiên để luyện tập. Sự kiện thiếu bài liên kết hiển thị ở dạng thông báo. Cảm xúc và bình luận trên bài dùng chung dữ liệu với trang chi tiết, còn tương tác `SESSION` dành riêng cho bộ câu hỏi.
+- API quản lý thiết bị chỉ thu hồi hoặc xóa thiết bị khác với `device_id` trong JWT hiện tại. Người dùng kết thúc phiên hiện tại bằng luồng đăng xuất tài khoản.
+
+### [ADR-028] Thảo luận bộ câu hỏi trong màn luyện tập
+
+- Khung thảo luận dùng bình luận `SESSION` và ID phiên. Màn luyện tập và API tương tác phiên dùng cùng quyền truy cập. Phiên `RESOLVED` mở cho người dùng đã xác thực. Phiên chưa chốt chỉ mở cho người đề xuất.
+- Phản hồi phải thuộc cùng đối tượng với bình luận cha. API đọc phản hồi trực tiếp kiểm tra quyền từ bình luận cha. Bản xem trước phản hồi, số phản hồi và hồ sơ tác giả được lấy theo lô cho mỗi trang.

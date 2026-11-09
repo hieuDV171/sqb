@@ -1,4 +1,7 @@
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
@@ -22,6 +25,8 @@ import {
   Tag,
   Trash2,
   ShieldAlert,
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
 
 const REACTIONS = [
@@ -86,8 +91,9 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isContentExpanded, setIsContentExpanded] = useState<boolean>(false);
 
-  const isAuthor = user?.id === actor.userId;
-  const isLecturerOrAdmin = user?.role === 'LECTURER' || user?.role === 'ADMIN';
+  const isApprovalPost = content.postType === 'QUESTION_APPROVED_NOTIFICATION';
+  const isAuthor = !isApprovalPost && user?.id != null && user.id === actor.userId;
+  const canEditLecturerNote = isApprovalPost && content.canEditLecturerNote === true;
 
   const handleMouseEnterPicker = () => {
     if (pickerTimeoutRef.current) {
@@ -146,7 +152,9 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const isLongText = textContent.length > 280;
 
   return (
-    <article className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-[var(--card-shadow)] md:p-5">
+    <article className={`mb-4 rounded-2xl border bg-card p-4 shadow-[var(--card-shadow)] md:p-5 ${
+      isApprovalPost ? 'border-academic/30' : 'border-border'
+    }`}>
       {/* 1. Card Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -180,6 +188,9 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
               <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base">
                 {actor.fullName}
               </span>
+              {item.actionType === 'SESSION_RESOLVED_APPROVED' && (
+                <span className="text-xs text-muted-foreground">vừa đóng góp thành công</span>
+              )}
               {actor.schoolFaculty && (
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
                   • {actor.schoolFaculty}
@@ -241,7 +252,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
             {showMenu && (
               <div className="absolute right-0 top-8 z-30 w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                {isLecturerOrAdmin && (
+                {canEditLecturerNote && (
                   <button
                     type="button"
                     onClick={() => {
@@ -312,7 +323,12 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       )}
 
       {/* 2. Post Content */}
-      <div className="mb-3.5">
+      <div className={isApprovalPost ? 'mb-3.5 space-y-3 rounded-xl border border-academic/20 bg-academic-soft p-4' : 'mb-3.5'}>
+        {isApprovalPost && (
+          <Badge variant="outline" className="border-academic/25 text-academic">
+            <CheckCircle2 aria-hidden="true" /> Đã duyệt vào ngân hàng
+          </Badge>
+        )}
         <p className="whitespace-pre-wrap text-sm leading-6 text-foreground md:text-base md:leading-7">
           {isLongText && !isContentExpanded
             ? `${textContent.slice(0, 280)}...`
@@ -326,6 +342,11 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           >
             {isContentExpanded ? 'Thu gọn' : 'Xem thêm'}
           </button>
+        )}
+        {isApprovalPost && content.sessionId != null && (
+          <Button nativeButton={false} render={<Link to={`/sessions/${content.sessionId}/practice`} />} className="min-h-11">
+            Luyện tập ngay <ArrowRight aria-hidden="true" />
+          </Button>
         )}
       </div>
 
@@ -354,7 +375,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       )}
 
       {/* 4. Lecturer Note Card (Academic Distinction) */}
-      {content.lecturerNote && (
+      {isApprovalPost && content.lecturerNote && (
         <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/40 dark:via-slate-800/40 dark:to-transparent rounded-2xl border-l-4 border-amber-500 p-3.5 mb-3.5">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs">
@@ -367,24 +388,24 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
               )}
             </div>
 
-            {isLecturerOrAdmin && (
+            {canEditLecturerNote && (
               <button
                 type="button"
                 onClick={() => setIsLecturerModalOpen(true)}
-                className="text-[11px] font-semibold text-amber-600 hover:underline cursor-pointer"
+                className="min-h-11 px-2 text-xs font-semibold text-amber-700 hover:underline dark:text-amber-400 cursor-pointer"
               >
                 Sửa
               </button>
             )}
           </div>
-          <p className="text-xs md:text-sm text-slate-800 dark:text-slate-200 italic leading-relaxed">
+          <p className="wrap-break-word whitespace-pre-wrap text-xs md:text-sm text-slate-800 dark:text-slate-200 italic leading-relaxed">
             "{content.lecturerNote}"
           </p>
         </div>
       )}
 
       {/* 5. Post Actions (Like, Comment, Share, Lecturer Note quick button) */}
-      <div className="flex items-center justify-between border-t border-border pt-2 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-1 md:gap-2">
           {/* Reaction Button with Floating Popover Picker (LIKE, LOVE, WOW) */}
           <div
@@ -472,11 +493,11 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
         </div>
 
         {/* Quick button for Lecturer if note not yet added */}
-        {isLecturerOrAdmin && !content.lecturerNote && (
+        {canEditLecturerNote && !content.lecturerNote && (
           <button
             type="button"
             onClick={() => setIsLecturerModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer"
+            className="flex min-h-11 items-center gap-1 rounded-xl bg-warning-soft px-3 text-xs font-semibold text-warning transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
           >
             <Award className="w-3.5 h-3.5 text-amber-500" />
             <span>+ Ghi chú GV</span>
@@ -488,12 +509,9 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       {showComments && <CommentSection targetType="POST" targetId={targetId} />}
 
       {/* 7. Lecturer Note Modal */}
-      <LecturerNoteModal
-        postId={targetId}
-        initialNote={content.lecturerNote}
-        isOpen={isLecturerModalOpen}
-        onClose={() => setIsLecturerModalOpen(false)}
-      />
+      {canEditLecturerNote && isLecturerModalOpen && (
+        <LecturerNoteModal postId={targetId} initialNote={content.lecturerNote} onClose={() => setIsLecturerModalOpen(false)} />
+      )}
 
       {/* 8. Report Modal */}
       <ReportModal

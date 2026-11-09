@@ -101,13 +101,13 @@ public class PostController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Giảng viên thêm/cập nhật ghi chú chuyên môn", description = "Dành riêng cho Giảng viên hoặc Admin để đính kèm nhận xét học thuật, lời khuyên vào bài đăng.")
+    @Operation(summary = "Thêm hoặc sửa ghi chú trên bài vinh danh", description = "Giảng viên đã chốt phiên có thể ghi chú trên bài QUESTION_APPROVED_NOTIFICATION của phiên đó.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cập nhật ghi chú giảng viên thành công"),
             @ApiResponse(responseCode = "400", description = "Nội dung ghi chú không được để trống"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "403", description = "Chỉ Giảng viên hoặc Admin mới có quyền (ACCESS_DENIED)"),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy bài viết hoặc tài khoản (POST_NOT_FOUND / USER_NOT_FOUND)")
+            @ApiResponse(responseCode = "403", description = "Bài không phải bài vinh danh hoặc người gọi không phải giảng viên đã chốt phiên (ACCESS_DENIED)"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy bài viết (POST_NOT_FOUND)")
     })
     @PutMapping("/posts/{id}/lecturer-notes")
     public ResponseEntity<GlobalResponse<Void>> updateLecturerNote(

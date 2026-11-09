@@ -28,9 +28,10 @@ export function useMySubmissions({
       return response.data;
     },
     initialPageParam: undefined as number | undefined,
-    getNextPageParam: (lastPage) => {
-      if (lastPage?.pagination?.hasNext && lastPage.pagination.after != null) {
-        return lastPage.pagination.after;
+    getNextPageParam: (lastPage, _pages, _lastPageParam, pageParams) => {
+      const next = lastPage?.pagination?.after;
+      if (lastPage?.pagination?.hasNext && typeof next === 'number' && !pageParams.includes(next)) {
+        return next;
       }
       return undefined;
     },

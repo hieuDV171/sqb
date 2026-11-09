@@ -1,103 +1,65 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
+import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { usePostMutations } from '../hooks/usePostMutations';
-import { Award, X, Loader2, Sparkles } from 'lucide-react';
 
 interface LecturerNoteModalProps {
   postId: number;
   initialNote?: string;
-  isOpen: boolean;
   onClose: () => void;
 }
 
-export const LecturerNoteModal: React.FC<LecturerNoteModalProps> = ({
-  postId,
-  initialNote = '',
-  isOpen,
-  onClose,
-}) => {
+export function LecturerNoteModal({ postId, initialNote = '', onClose }: LecturerNoteModalProps) {
   const [note, setNote] = useState(initialNote);
   const { updateLecturerNote, isUpdatingNote } = usePostMutations();
 
-  if (!isOpen) return null;
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const content = note.trim();
+    if (!content || isUpdatingNote) return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await updateLecturerNote({
-      id: postId,
-      data: { content: note.trim() },
-    });
-    onClose();
+    try {
+      await updateLecturerNote({ id: postId, data: { content } });
+      onClose();
+    } catch {
+      // The mutation displays the error. Keep the draft open so the lecturer can retry.
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-amber-50/50 dark:bg-amber-950/20">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                Nhận xét chuyên môn của Giảng viên
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ghi chú chính thức giúp định hướng kiến thức cho sinh viên
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5">
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Nội dung nhận xét / Hướng dẫn giải chi tiết:
+    <Dialog.Root open onOpenChange={(open) => { if (!open && !isUpdatingNote) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Popup className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-lg -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl sm:p-6">
+          <Dialog.Title className="text-lg font-semibold">Ghi chú của giảng viên</Dialog.Title>
+          <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+            Ghi chú sẽ hiển thị công khai trên bài vinh danh phiên đề xuất.
+          </Dialog.Description>
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <label className="block space-y-2 text-sm font-medium">
+              <span>Nội dung ghi chú</span>
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                rows={4}
+                required
+                disabled={isUpdatingNote}
+                className="block w-full rounded-xl border border-input bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={4}
-              placeholder="Ví dụ: Định lý Lagrange áp dụng cho bài toán này cần chú ý điều kiện liên tục trên đoạn [a,b]..."
-              className="w-full bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-3.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all resize-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={isUpdatingNote}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium text-sm shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {isUpdatingNote ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Đang lưu...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Lưu nhận xét</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" disabled={isUpdatingNote} onClick={onClose} className="min-h-11">
+                Hủy
+              </Button>
+              <Button type="submit" disabled={!note.trim() || isUpdatingNote} className="min-h-11">
+                {isUpdatingNote && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
+                {isUpdatingNote ? 'Đang lưu...' : 'Lưu ghi chú'}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-};
+}

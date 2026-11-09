@@ -55,6 +55,7 @@ export function SessionsPage() {
     error: submissionsError,
     refetch: refetchSubmissions,
     hasNextPage,
+    isFetching: isFetchingSubmissions,
     isFetchingNextPage,
     fetchNextPage,
   } = useMySubmissions({
@@ -170,10 +171,12 @@ export function SessionsPage() {
             errorMessage={submissionsError?.message}
             onRetry={() => void refetchSubmissions()}
             hasNextPage={Boolean(hasNextPage)}
+            isFetching={isFetchingSubmissions}
+            pageCount={submissionsPages?.pages.length ?? 0}
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
             selectedSubjectId={selectedSubjectId}
-            onFetchNextPage={() => void fetchNextPage()}
+            onFetchNextPage={fetchNextPage}
             currentStatusFilter={selectedStatus}
             searchQuery={searchQuery}
             onViewDetail={handleOpenDetail}

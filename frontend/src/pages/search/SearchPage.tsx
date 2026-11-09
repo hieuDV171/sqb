@@ -1,4 +1,4 @@
-import { Component, useState, type ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import {
   Search,
@@ -13,10 +13,12 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import {
-  useGlobalSearch,
+  useInfiniteGlobalSearch,
   useRecordSearch,
   type SearchType,
   type SearchResultItemDto,
@@ -41,25 +43,29 @@ function SearchPageContent() {
 
   const queryParam = searchParams.get('q') || '';
   const selectedType = (searchParams.get('type') as SearchType) || 'ALL';
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
 
   const {
     data: searchData,
     isLoading,
     isFetching,
-    isError,
+    isLoadingError,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    hasNextPage,
+    fetchNextPage,
     refetch,
-  } = useGlobalSearch({
-    query: queryParam,
-    type: selectedType,
-    after: cursor,
-    limit: 15,
-    enabled: !!queryParam.trim(),
-  });
+  } = useInfiniteGlobalSearch(queryParam, selectedType);
   const recordSearchMutation = useRecordSearch();
 
+  const items: SearchResultItemDto[] = searchData?.pages.flatMap((page) => page?.items ?? []) ?? [];
+  const totalHits = searchData?.pages[0]?.totalHits ?? items.length;
+  const { sentinel, supportsAutoLoad } = useInfiniteScroll(
+    hasNextPage && !isFetching && !isFetchNextPageError && items.length > 0,
+    fetchNextPage,
+    searchData?.pages.length ?? 0,
+  );
+
   const handleTabChange = (type: SearchType) => {
-    setCursor(undefined);
     setSearchParams({ q: queryParam, type });
   };
 
@@ -69,9 +75,6 @@ function SearchPageContent() {
       recordSearchMutation.mutate(confirmedQuery);
     }
   };
-
-  const items: SearchResultItemDto[] = searchData?.items || [];
-  const totalHits = searchData?.totalHits ?? items.length;
 
   const tabs: { key: SearchType; label: string; icon: typeof User }[] = [
     { key: 'ALL', label: 'Tất cả', icon: SlidersHorizontal },
@@ -151,7 +154,7 @@ function SearchPageContent() {
             </div>
           ))}
         </div>
-      ) : isError ? (
+      ) : isLoadingError ? (
         <ErrorState
           title="Không thể tải kết quả tìm kiếm"
           message="Máy chủ tìm kiếm hiện chưa phản hồi. Vui lòng thử lại."
@@ -160,8 +163,8 @@ function SearchPageContent() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={Search}
-          title={`Không tìm thấy kết quả nào cho "${queryParam}"`}
-          description="Hãy thử thay đổi loại bộ lọc danh mục hoặc sử dụng các từ khóa học phần khác."
+          title={hasNextPage ? 'Trang kết quả này chưa có mục phù hợp' : `Không tìm thấy kết quả nào cho "${queryParam}"`}
+          description={hasNextPage ? 'Bạn có thể tải thêm để xem các kết quả tiếp theo.' : 'Hãy thử thay đổi loại bộ lọc danh mục hoặc sử dụng các từ khóa học phần khác.'}
         />
       ) : (
         <div className="space-y-3">
@@ -359,20 +362,19 @@ function SearchPageContent() {
         </div>
       )}
 
-      {/* Pagination Load More */}
-      {searchData?.pagination?.hasNext && (
-        <div className="flex justify-center pt-4">
-          <button
-            type="button"
-            onClick={() => {
-              const nextCursor = searchData.pagination?.after;
-              if (typeof nextCursor === 'number') setCursor(nextCursor);
-            }}
-            disabled={isFetching}
-            className="px-6 py-2.5 rounded-xl font-semibold text-xs border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            {isFetching ? 'Đang tải thêm...' : 'Tải thêm kết quả'}
-          </button>
+      {hasNextPage && (
+        <div className="space-y-2 text-center">
+          <div ref={sentinel} aria-hidden="true" className="h-px" />
+          {isFetchNextPageError && <p role="status" className="text-sm text-destructive">Không tải được trang kết quả tiếp theo.</p>}
+          {isFetchingNextPage ? (
+            <p role="status" className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw aria-hidden="true" className="size-4 motion-safe:animate-spin" /> Đang tải thêm kết quả...
+            </p>
+          ) : (!supportsAutoLoad || isFetchNextPageError || items.length === 0) && (
+            <Button variant="outline" onClick={() => void fetchNextPage({ cancelRefetch: false })} disabled={isFetching} className="min-h-11">
+              {isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm kết quả'}
+            </Button>
+          )}
         </div>
       )}
     </div>

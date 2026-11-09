@@ -6,6 +6,8 @@ import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.post.PostVisibility;
+import com.frozenheart.backend.core.entity.session.Session;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
 import com.frozenheart.backend.core.entity.socialinteraction.React;
 import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
@@ -18,6 +20,7 @@ import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.PostResponseDto;
+import com.frozenheart.backend.modules.post.dto.UpdateLecturerNoteRequest;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
@@ -98,6 +101,52 @@ class PostServiceImplTest {
     }
 
     @Test
+    void lecturerWhoFinalizedCanSaveNoteOnApprovalPost() {
+        setCurrentUser(7L, UserRole.LECTURER);
+        Post post = approvalPost(7L);
+        when(postRepository.findByIdAndDeletedAtIsNull(42L)).thenReturn(Optional.of(post));
+        when(postRepository.save(post)).thenReturn(post);
+
+        service.updateLecturerNote(42L, UpdateLecturerNoteRequest.builder().content("Ghi chú").build());
+
+        assertEquals("Ghi chú", post.getLecturerNote());
+        assertEquals(7L, post.getNotedLecturer().getId());
+        verify(postRepository).save(post);
+    }
+
+    @ParameterizedTest
+    @MethodSource("deniedNoteCases")
+    void cannotSaveNoteOutsideApprovalReviewerScope(UserRole role, Post post) {
+        setCurrentUser(7L, role);
+        when(postRepository.findByIdAndDeletedAtIsNull(42L)).thenReturn(Optional.of(post));
+
+        AppException error = assertThrows(AppException.class, () -> service.updateLecturerNote(
+                42L, UpdateLecturerNoteRequest.builder().content("Ghi chú").build()));
+
+        assertEquals(ResponseCode.ACCESS_DENIED, error.getResponseCode());
+        assertNull(post.getLecturerNote());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    private static Stream<Arguments> deniedNoteCases() {
+        Post aiApproval = approvalPost(7L);
+        aiApproval.getSession().setReviewer(null);
+        return Stream.of(
+                Arguments.of(UserRole.LECTURER, approvalPost(8L)),
+                Arguments.of(UserRole.LECTURER, aiApproval),
+                Arguments.of(UserRole.ADMIN, approvalPost(7L)),
+                Arguments.of(UserRole.STUDENT, approvalPost(7L)),
+                Arguments.of(UserRole.LECTURER, Post.builder().id(42L).postType(PostType.SOCIAL_POST).build()));
+    }
+
+    private static Post approvalPost(long reviewerId) {
+        Session session = new Session();
+        session.setStatus(SessionStatus.RESOLVED);
+        session.setReviewer(User.builder().id(reviewerId).role(UserRole.LECTURER).build());
+        return Post.builder().id(42L).postType(PostType.QUESTION_APPROVED_NOTIFICATION).session(session).build();
+    }
+
+    @Test
     void getUserPostsRejectsBlockedViewerBeforeReadingPosts() {
         setCurrentUser(7L);
         when(blockRepository.isBlockedBetween(7L, 8L)).thenReturn(true);
@@ -144,9 +193,13 @@ class PostServiceImplTest {
     }
 
     private void setCurrentUser(long userId) {
+        setCurrentUser(userId, UserRole.STUDENT);
+    }
+
+    private void setCurrentUser(long userId, UserRole role) {
         JwtPayload payload = JwtPayload.builder()
                 .userId(userId)
-                .role(UserRole.STUDENT.name())
+                .role(role.name())
                 .build();
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken("student", null, List.of());

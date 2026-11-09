@@ -36,6 +36,7 @@ public class DeviceController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Thu hồi phiên thiết bị thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
+            @ApiResponse(responseCode = "403", description = "Thiết bị đích là thiết bị đang gửi yêu cầu"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy thiết bị (DEVICE_NOT_FOUND)")
     })
     @PostMapping("/{deviceId}/logout")
@@ -64,6 +65,7 @@ public class DeviceController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Xóa thiết bị thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
+            @ApiResponse(responseCode = "403", description = "Thiết bị đích là thiết bị đang gửi yêu cầu"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy thiết bị (DEVICE_NOT_FOUND)")
     })
     @DeleteMapping("/{deviceId}")

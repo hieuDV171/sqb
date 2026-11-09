@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +70,10 @@ public class CommentServiceImpl implements CommentService {
             parentComment = commentRepository.findByIdAndDeletedAtIsNull(request.getParentCommentId())
                     .orElseThrow(
                             () -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận cha"));
+            if (!request.getTargetType().name().equals(parentComment.getTargetType())
+                    || !Objects.equals(request.getTargetId(), parentComment.getTargetId())) {
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Bình luận cha thuộc một cuộc thảo luận khác");
+            }
         }
 
         List<MediaItem> mediaItems = null;
@@ -96,7 +101,7 @@ public class CommentServiceImpl implements CommentService {
         // Increment target comment counter
         incrementTargetCommentCounter(request.getTargetType(), request.getTargetId(), 1);
 
-        return mapToCommentResponseDto(saved, Map.of(), false);
+        return mapToCommentResponseDto(saved, loadProfiles(Stream.of(saved)), 0, null);
     }
 
     /**
@@ -119,14 +124,19 @@ public class CommentServiceImpl implements CommentService {
         List<Comment> commentsList;
 
         if (parentCommentId != null) {
+            Comment parent = commentRepository.findById(parentCommentId)
+                    .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận cha"));
+            String parentType = parent.getTargetType();
+            Long parentTargetId = parent.getTargetId();
+            validateSessionAccess(parent);
             if (isOldest) {
                 Long cursor = (after != null && after > 0) ? after : 0L;
-                commentsList = commentRepository.findByParentCommentIdAndIdGreaterThanOrderByIdAsc(
-                        parentCommentId, cursor, pageable);
+                commentsList = commentRepository.findByParentCommentIdAndTargetTypeAndTargetIdAndIdGreaterThanOrderByIdAsc(
+                        parentCommentId, parentType, parentTargetId, cursor, pageable);
             } else {
                 Long cursor = (after != null && after > 0) ? after : Long.MAX_VALUE;
-                commentsList = commentRepository.findByParentCommentIdAndIdLessThanOrderByIdDesc(
-                        parentCommentId, cursor, pageable);
+                commentsList = commentRepository.findByParentCommentIdAndTargetTypeAndTargetIdAndIdLessThanOrderByIdDesc(
+                        parentCommentId, parentType, parentTargetId, cursor, pageable);
             }
         } else {
             if (targetType == null || targetId == null) {
@@ -157,23 +167,23 @@ public class CommentServiceImpl implements CommentService {
             nextCursor = commentsList.getLast().getId();
         }
 
-        // Collect all user IDs for profile batch fetch
-        List<Long> userIds = commentsList.stream()
-                .map(Comment::getUser)
-                .filter(Objects::nonNull)
-                .map(User::getId)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Long, UserProfile> profileMap = userIds.isEmpty() ? Map.of()
-                : userProfileRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
-
-        // Map to DTOs
-        boolean includeRepliesPreview = (parentCommentId == null);
+        List<CommentRepository.ReplyPreview> previews = parentCommentId != null || commentsList.isEmpty() ? List.of()
+                : commentRepository.findReplyPreviews(commentsList.stream().map(Comment::getId).toList(), MAX_PREVIEW_REPLIES);
+        Map<Long, List<CommentRepository.ReplyPreview>> previewsByParent = previews.stream()
+                .collect(Collectors.groupingBy(CommentRepository.ReplyPreview::getParentId));
+        Map<Long, Comment> repliesById = previews.isEmpty() ? Map.of()
+                : commentRepository.findByIdInFetchUser(previews.stream().map(CommentRepository.ReplyPreview::getCommentId).toList())
+                        .stream().collect(Collectors.toMap(Comment::getId, reply -> reply));
+        Map<Long, UserProfile> profileMap = loadProfiles(Stream.concat(commentsList.stream(), repliesById.values().stream()));
         List<CommentResponseDto> items = commentsList.stream()
-                .map(c -> mapToCommentResponseDto(c, profileMap, includeRepliesPreview))
-                .collect(Collectors.toList());
+                .map(comment -> {
+                    var preview = previewsByParent.get(comment.getId());
+                    if (preview == null) return mapToCommentResponseDto(comment, profileMap, 0, null);
+
+                    var replies = preview.stream().map(row -> repliesById.get(row.getCommentId()))
+                            .filter(Objects::nonNull).map(reply -> mapToCommentResponseDto(reply, profileMap, 0, null)).toList();
+                    return mapToCommentResponseDto(comment, profileMap, preview.getFirst().getReplyCount(), replies);
+                }).toList();
 
         return CursorResponse.<CommentResponseDto>builder()
                 .items(items)
@@ -203,6 +213,7 @@ public class CommentServiceImpl implements CommentService {
         if (comment.getUser() == null || !Objects.equals(comment.getUser().getId(), currentUserId)) {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền sửa bình luận này");
         }
+        validateSessionAccess(comment);
 
         List<String> oldMediaKeys = (comment.getMediaUrls() != null)
                 ? comment.getMediaUrls().stream().map(MediaItem::url).filter(Objects::nonNull).toList()
@@ -235,7 +246,7 @@ public class CommentServiceImpl implements CommentService {
         comment.setUpdatedAt(Instant.now());
 
         Comment updated = commentRepository.save(comment);
-        return mapToCommentResponseDto(updated, Map.of(), false);
+        return mapToCommentResponseDto(updated, loadProfiles(Stream.of(updated)), 0, null);
     }
 
     @Override
@@ -254,6 +265,7 @@ public class CommentServiceImpl implements CommentService {
         if (!isOwner && !isAdmin) {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền xóa bình luận này");
         }
+        if (!isAdmin) validateSessionAccess(comment);
 
         List<String> mediaToDelete = (comment.getMediaUrls() != null)
                 ? comment.getMediaUrls().stream().map(MediaItem::url).filter(Objects::nonNull).toList()
@@ -281,6 +293,19 @@ public class CommentServiceImpl implements CommentService {
 
     // --- Helper Methods ---
 
+    private void validateSessionAccess(Comment comment) {
+        if (InteractionTargetType.SESSION.name().equals(comment.getTargetType())) {
+            targetValidator.validateTargetExists(InteractionTargetType.SESSION, comment.getTargetId());
+        }
+    }
+
+    private Map<Long, UserProfile> loadProfiles(Stream<Comment> comments) {
+        List<Long> userIds = comments.filter(comment -> comment.getDeletedAt() == null).map(Comment::getUser)
+                .filter(Objects::nonNull).map(User::getId).distinct().toList();
+        return userIds.isEmpty() ? Map.of() : userProfileRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(UserProfile::getUserId, profile -> profile));
+    }
+
     private void incrementTargetCommentCounter(InteractionTargetType targetType, Long targetId, int delta) {
         if (targetType == null || targetId == null)
             return;
@@ -292,15 +317,12 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private CommentResponseDto mapToCommentResponseDto(Comment comment, Map<Long, UserProfile> profileMap,
-            boolean includeRepliesPreview) {
+            int replyCount, List<CommentResponseDto> replies) {
         boolean isDeleted = comment.getDeletedAt() != null;
 
         AuthorDto authorDto = null;
         if (!isDeleted && comment.getUser() != null) {
             UserProfile profile = profileMap.get(comment.getUser().getId());
-            if (profile == null) {
-                profile = userProfileRepository.findByUserId(comment.getUser().getId()).orElse(null);
-            }
             authorDto = AuthorDto.builder()
                     .userId(comment.getUser().getId())
                     .fullName(profile != null ? profile.getFullName() : comment.getUser().getEmail())
@@ -317,33 +339,6 @@ public class CommentServiceImpl implements CommentService {
 
         String contentStr = isDeleted ? "Bình luận này đã bị xóa" : comment.getContent();
 
-        int replyCount = 0;
-        List<CommentResponseDto> repliesList = null;
-
-        if (includeRepliesPreview) {
-            replyCount = commentRepository.countByParentCommentIdAndDeletedAtIsNull(comment.getId());
-            if (replyCount > 0) {
-                Pageable previewPageable = PageRequest.of(0, MAX_PREVIEW_REPLIES);
-                List<Comment> childReplies = commentRepository.findByParentCommentIdAndIdLessThanOrderByIdDesc(
-                        comment.getId(), Long.MAX_VALUE, previewPageable);
-
-                List<Long> replyUserIds = childReplies.stream()
-                        .map(Comment::getUser)
-                        .filter(Objects::nonNull)
-                        .map(User::getId)
-                        .distinct()
-                        .collect(Collectors.toList());
-
-                Map<Long, UserProfile> replyProfileMap = replyUserIds.isEmpty() ? Map.of()
-                        : userProfileRepository.findAllById(replyUserIds).stream()
-                                .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
-
-                repliesList = childReplies.stream()
-                        .map(r -> mapToCommentResponseDto(r, replyProfileMap, false))
-                        .collect(Collectors.toList());
-            }
-        }
-
         return CommentResponseDto.builder()
                 .commentId(comment.getId())
                 .targetType(comment.getTargetType())
@@ -355,7 +350,7 @@ public class CommentServiceImpl implements CommentService {
                 .createdAt(comment.getCreatedAt())
                 .deleted(isDeleted)
                 .replyCount(replyCount)
-                .replies(repliesList)
+                .replies(replies)
                 .build();
     }
 }

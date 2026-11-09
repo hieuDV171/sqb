@@ -11,6 +11,7 @@ import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.post.Post;
+import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
 import com.frozenheart.backend.core.entity.socialinteraction.React;
@@ -95,16 +96,11 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             nextCursor = feeds.getLast().getId();
         }
 
-        List<Long> actorIds = feeds.stream()
+        Set<Long> profileIds = feeds.stream()
                 .map(ActivityFeed::getUser)
                 .filter(Objects::nonNull)
                 .map(User::getId)
-                .distinct()
-                .toList();
-
-        Map<Long, UserProfile> profileMap = actorIds.isEmpty() ? Map.of()
-                : userProfileRepository.findAllById(actorIds).stream()
-                        .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
+                .collect(Collectors.toSet());
 
         // Batch Enrichment: Gom các targetIds theo từng loại để query 1 lần (Tuyệt đối chống N+1)
         List<Long> postIds = feeds.stream()
@@ -119,15 +115,28 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 .distinct()
                 .toList();
 
+        List<Long> approvalSessionIds = feeds.stream()
+                .filter(f -> f.getActionType() == ActionType.SESSION_RESOLVED_APPROVED
+                        && f.getTargetType() == ActivityFeedTargetType.SESSION && f.getTargetId() != null)
+                .map(ActivityFeed::getTargetId).distinct().toList();
+        Map<Long, Post> approvalPosts = approvalSessionIds.isEmpty() ? Map.of()
+                : postRepository.findPublicApprovalPostsBySessionIds(approvalSessionIds).stream()
+                        .collect(Collectors.toMap(p -> p.getSession().getId(), p -> p));
         List<Long> sessionIds = feeds.stream()
                 .filter(f -> f.getTargetType() == ActivityFeedTargetType.SESSION && f.getTargetId() != null)
-                .map(ActivityFeed::getTargetId)
-                .distinct()
-                .toList();
-
-        Map<Long, Post> postMap = postIds.isEmpty() ? Map.of()
+                .filter(f -> f.getActionType() != ActionType.SESSION_RESOLVED_APPROVED
+                        || !approvalPosts.containsKey(f.getTargetId()))
+                .map(ActivityFeed::getTargetId).distinct().toList();
+        Map<Long, Post> postMap = postIds.isEmpty() ? new HashMap<>()
                 : postRepository.findByIdInAndDeletedAtIsNull(postIds).stream()
                         .collect(Collectors.toMap(Post::getId, p -> p));
+        approvalPosts.values().forEach(post -> postMap.put(post.getId(), post));
+        postMap.values().stream().filter(p -> p.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION)
+                .map(Post::getNotedLecturer).filter(Objects::nonNull)
+                .map(User::getId).forEach(profileIds::add);
+        Map<Long, UserProfile> profileMap = profileIds.isEmpty() ? Map.of()
+                : userProfileRepository.findAllById(profileIds).stream()
+                        .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
 
         Map<Long, Session> sessionMap = sessionIds.isEmpty() ? Map.of()
                 : sessionRepository.findAllById(sessionIds).stream()
@@ -137,8 +146,8 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 : questionRepository.findAllById(questionIds).stream()
                         .collect(Collectors.toMap(Question::getId, q -> q));
 
-        Map<Long, ReactionType> userPostReactMap = (currentUserId != null && !postIds.isEmpty())
-                ? reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.POST, postIds).stream()
+        Map<Long, ReactionType> userPostReactMap = (currentUserId != null && !postMap.isEmpty())
+                ? reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.POST, List.copyOf(postMap.keySet())).stream()
                         .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (r1, _) -> r1))
                 : Map.of();
 
@@ -158,8 +167,8 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 : reactRepository.countBadgeCheers(awardIds, currentUserId == null ? 0L : currentUserId)
                         .stream().collect(Collectors.toMap(ReactRepository.BadgeCheerCount::getTargetId, count -> count));
         List<ActivityFeedItemDto> items = feeds.stream()
-                .map(feed -> mapToItemDto(feed, profileMap, postMap, sessionMap, questionMap,
-                        userPostReactMap, userSessionReactMap, userQuestionReactMap, badgeCheers.get(feed.getId())))
+                .map(feed -> mapToItemDto(feed, profileMap, postMap, approvalPosts, sessionMap, questionMap,
+                        userPostReactMap, userSessionReactMap, userQuestionReactMap, badgeCheers.get(feed.getId()), payloadOpt.orElse(null)))
                 .toList();
 
         return CursorResponse.<ActivityFeedItemDto>builder()
@@ -237,12 +246,14 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             ActivityFeed feed,
             Map<Long, UserProfile> profileMap,
             Map<Long, Post> postMap,
+            Map<Long, Post> approvalPosts,
             Map<Long, Session> sessionMap,
             Map<Long, Question> questionMap,
             Map<Long, ReactionType> userPostReactMap,
             Map<Long, ReactionType> userSessionReactMap,
             Map<Long, ReactionType> userQuestionReactMap,
-            ReactRepository.BadgeCheerCount badgeCheers) {
+            ReactRepository.BadgeCheerCount badgeCheers,
+            JwtPayload viewer) {
 
         AuthorDto actorDto;
         if (feed.getUser() != null) {
@@ -280,18 +291,34 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
         ActivityFeedTargetType targetType = feed.getTargetType();
         Long targetId = feed.getTargetId();
 
+        if (feed.getActionType() == ActionType.SESSION_RESOLVED_APPROVED
+                && targetType == ActivityFeedTargetType.SESSION && targetId != null) {
+            contentMap.put("session_id", targetId);
+            Post approvalPost = approvalPosts.get(targetId);
+            if (approvalPost != null) {
+                targetType = ActivityFeedTargetType.POST;
+                targetId = approvalPost.getId();
+            }
+        }
+
         if (targetType == ActivityFeedTargetType.POST && targetId != null) {
             Post post = postMap.get(targetId);
             if (post != null) {
                 contentMap.put("comment_count", post.getCommentCount());
                 contentMap.put("react_count", post.getReactCount());
+                if (post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION) {
+                    contentMap.put("post_type", post.getPostType().name());
+                    contentMap.put("description", post.getContent());
+                    contentMap.put("can_edit_lecturer_note",
+                            viewer != null && post.canEditLecturerNote(viewer.getUserId(), viewer.getRole()));
+                }
                 if (post.getVisibility() != null) {
                     contentMap.put("visibility", post.getVisibility().name());
                 }
                 if (post.getMediaUrls() != null && !post.getMediaUrls().isEmpty()) {
                     contentMap.put("media_urls", post.getMediaUrls());
                 }
-                if (post.getLecturerNote() != null) {
+                if (post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION && post.getLecturerNote() != null) {
                     contentMap.put("lecturer_note", post.getLecturerNote());
                     if (post.getNotedLecturer() != null) {
                         UserProfile lProfile = profileMap.get(post.getNotedLecturer().getId());
@@ -333,8 +360,8 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
 
         return ActivityFeedItemDto.builder()
                 .feedId(feed.getId())
-                .targetType(feed.getTargetType())
-                .targetId(feed.getTargetId())
+                .targetType(targetType)
+                .targetId(targetId)
                 .actionType(feed.getActionType())
                 .actor(actorDto)
                 .content(contentMap)
