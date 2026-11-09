@@ -266,7 +266,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
     @Transactional(readOnly = true)
     public void syncQuestion(Long questionId) {
         questionRepository.findByIdFetchDetailsForSearch(questionId).ifPresentOrElse(q -> {
-            if (q.getStatus() == QuestionStatus.APPROVED || q.getStatus() == QuestionStatus.REJECTED) {
+            if (isPublishedQuestion(q)) {
                 QuestionSearchDoc doc = mapToQuestionDoc(q);
                 indexDocument(QuestionSearchDoc.INDEX_NAME, doc.getId().toString(), doc);
             } else {
@@ -327,7 +327,7 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         try {
             BulkRequest.Builder br = new BulkRequest.Builder();
             for (Question q : questions) {
-                if (q.getStatus() == QuestionStatus.APPROVED || q.getStatus() == QuestionStatus.REJECTED) {
+                if (isPublishedQuestion(q)) {
                     QuestionSearchDoc doc = mapToQuestionDoc(q);
                     br.operations(op -> op.index(idx -> idx
                             .index(QuestionSearchDoc.INDEX_NAME)
@@ -539,6 +539,11 @@ public class SearchSyncServiceImpl implements SearchSyncService {
                 .commentCount(s.getCommentCount())
                 .createdAt(s.getCreatedAt())
                 .build();
+    }
+
+    private boolean isPublishedQuestion(Question question) {
+        return question.getSession() != null && question.getSession().getStatus() == SessionStatus.RESOLVED
+                && (question.getStatus() == QuestionStatus.APPROVED || question.getStatus() == QuestionStatus.REJECTED);
     }
 
     private QuestionSearchDoc mapToQuestionDoc(Question q) {

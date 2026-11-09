@@ -3,11 +3,9 @@ package com.frozenheart.backend.modules.session.service.impl;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
@@ -180,24 +178,12 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         JwtPayload payload = requireReviewerPayload();
 
-        Long currentUserId = payload.getUserId();
-        String role = payload.getRole();
-
-        User lecturer = userRepository.getReferenceById(currentUserId);
-
+        sessionRepository.lockReviewSessions(List.of(sessionId), false);
         Session session = sessionRepository.findByIdFetchCourseClassAndQuestions(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
 
         assertCanReviewSession(payload, session);
-
-        if (session.getStatus() == SessionStatus.PENDING) {
-            session.setStatus(SessionStatus.REVIEWING);
-            session.setReviewer(lecturer);
-            session.setReviewedAt(Instant.now());
-
-            Session saved = sessionRepository.save(session);
-            eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.SESSION, saved.getId()));
-        }
+        beginReview(List.of(session), payload.getUserId());
 
         List<Question> questions = session.getQuestions() != null ? session.getQuestions().stream()
                 .sorted(Comparator.comparingInt(Question::getDisplayOrder))
@@ -275,6 +261,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .toList();
 
         return SessionDetailReviewResponse.builder()
+                .sessionStatus(session.getStatus())
                 .items(items)
                 .duplicateWarnings(allWarnings)
                 .build();
@@ -286,30 +273,19 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         List<Long> questionIds = normalizeQuestionIds(request != null ? request.questionIds() : null);
         JwtPayload payload = requireReviewerPayload();
         List<Question> questions = loadAuthorizedQuestions(questionIds, payload);
-        User lecturer = userRepository.getReferenceById(payload.getUserId());
         Instant now = Instant.now();
-        Set<Long> sessionIds = new HashSet<>();
 
         for (Question q : questions) {
             q.setStatus(QuestionStatus.APPROVED);
             q.setRejectionCode(null);
             q.setRejectionReason(null);
             q.setUpdatedAt(now);
-            if (q.getSession() != null) {
-                sessionIds.add(q.getSession().getId());
-            }
         }
 
         questionRepository.saveAll(questions);
-        eventPublisher.publishEvent(
-                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, questionIds));
-
-        checkAndAutoResolveSessions(sessionIds, lecturer);
         metricService.incrementCounter("sqb.exam.questions.reviewed", questions.size(), "decision", "approved");
 
-        return ApproveQuestionsResponse.builder()
-                .pointsEarned(questions.size() * Point.APPROVED_QUESTION.getPoints())
-                .build();
+        return new ApproveQuestionsResponse(0);
     }
 
     @Override
@@ -318,7 +294,6 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         List<Long> questionIds = normalizeQuestionIds(request != null ? request.questionIds() : null);
         JwtPayload payload = requireReviewerPayload();
         List<Question> questions = loadAuthorizedQuestions(questionIds, payload);
-        User lecturer = userRepository.getReferenceById(payload.getUserId());
         Instant now = Instant.now();
         QuestionRejectionCode rejectionCode = request.rejectionCode() != null
                 ? request.rejectionCode()
@@ -332,23 +307,14 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
             throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
                     "Vui lòng nhập lý do cụ thể khi chọn lý do khác");
         }
-        Set<Long> sessionIds = new HashSet<>();
-
         for (Question q : questions) {
             q.setStatus(QuestionStatus.REJECTED);
             q.setRejectionCode(rejectionCode);
             q.setRejectionReason(rejectionReason);
             q.setUpdatedAt(now);
-            if (q.getSession() != null) {
-                sessionIds.add(q.getSession().getId());
-            }
         }
 
         questionRepository.saveAll(questions);
-        eventPublisher.publishEvent(
-                EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, questionIds));
-
-        checkAndAutoResolveSessions(sessionIds, lecturer);
         metricService.incrementCounter("sqb.exam.questions.reviewed", questions.size(), "decision", "rejected");
     }
 
@@ -358,12 +324,9 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         JwtPayload payload = requireReviewerPayload();
         Long currentUserId = payload.getUserId();
 
-        User lecturer = userRepository.getReferenceById(currentUserId);
         Instant now = Instant.now();
 
-        Question question = questionRepository.findByIdFetchSessionAndCourseClass(questionId)
-                .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
-        assertCanReviewQuestion(payload, question);
+        Question question = loadAuthorizedQuestions(List.of(questionId), payload).getFirst();
 
         if (request.content() != null) {
             question.setContent(request.content());
@@ -384,18 +347,12 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         question.setRejectionReason(null);
 
         question.setUpdatedAt(now);
-        Question savedQuestion = questionRepository.save(question);
-        eventPublisher.publishEvent(
-                EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.QUESTION, savedQuestion.getId()));
-
-        if (question.getSession() != null) {
-            checkAndAutoResolveSessions(Set.of(question.getSession().getId()), lecturer);
-        }
+        questionRepository.save(question);
 
         return EditQuestionResponse.builder()
                 .questionId(question.getId())
                 .status(question.getStatus() != null ? question.getStatus().name() : "EDITING")
-                .reviewedBy(lecturer.getId())
+                .reviewedBy(currentUserId)
                 .reviewedAt(now)
                 .build();
     }
@@ -406,11 +363,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         JwtPayload payload = requireReviewerPayload();
         Long currentUserId = payload.getUserId();
 
-        User lecturer = userRepository.getReferenceById(currentUserId);
-        Instant now = Instant.now();
-
-        Session s = sessionRepository.findByIdInFetchCourseClassAndProposerAndReviewer(List.of(sessionId))
-                .stream().findFirst()
+        sessionRepository.lockReviewSessions(List.of(sessionId), false);
+        Session s = sessionRepository.findByIdFetchCourseClassProposerAndReviewer(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));
         assertCanReviewSession(payload, s);
 
@@ -418,15 +372,15 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
             return;
         }
 
-        s.setReviewer(lecturer);
-        s.setReviewedAt(now);
-
-        // Tự động đánh dấu REJECTED cho các câu còn PENDING khi GV bấm chốt hoàn tất
-        // phiên
         List<Question> questions = questionRepository.findBySessionId(sessionId);
+        if (questions.isEmpty()) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Phiên chưa có câu hỏi để chốt");
+        }
+
+        Instant now = Instant.now();
         List<Question> questionsToUpdate = new ArrayList<>();
         for (Question q : questions) {
-            if (q.getStatus() == QuestionStatus.PENDING) {
+            if (q.getStatus() == null || q.getStatus() == QuestionStatus.PENDING) {
                 q.setStatus(QuestionStatus.REJECTED);
                 q.setRejectionCode(QuestionRejectionCode.AUTO_REJECTED_ON_COMPLETION);
                 q.setRejectionReason(null);
@@ -436,12 +390,11 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         }
         if (!questionsToUpdate.isEmpty()) {
             questionRepository.saveAll(questionsToUpdate);
-            List<Long> qIds = questionsToUpdate.stream().map(Question::getId).toList();
-            eventPublisher
-                    .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, qIds));
         }
 
-        checkAndAutoResolveSessions(Set.of(sessionId), lecturer);
+        s.setReviewer(userRepository.getReferenceById(currentUserId));
+        s.setReviewedAt(now);
+        finalizeSession(s, questions, now);
     }
 
     private JwtPayload requireReviewerPayload() {
@@ -468,12 +421,17 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     }
 
     private List<Question> loadAuthorizedQuestions(List<Long> questionIds, JwtPayload payload) {
+        List<Long> sessionIds = questionRepository.findSessionIdsForReview(questionIds);
+        if (!sessionIds.isEmpty()) {
+            sessionRepository.lockReviewSessions(sessionIds, false);
+        }
         List<Question> questions = questionRepository.findByIdInFetchSessionCourseClassAndProposer(questionIds);
         if (questions.size() != questionIds.size()) {
             throw new AppException(ResponseCode.QUESTION_NOT_FOUND,
                     "Một hoặc nhiều câu hỏi không tồn tại");
         }
         questions.forEach(question -> assertCanReviewQuestion(payload, question));
+        beginReview(questions.stream().map(Question::getSession).distinct().toList(), payload.getUserId());
         return questions;
     }
 
@@ -483,6 +441,23 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                     "Câu hỏi không thuộc phiên đề xuất có thể kiểm duyệt");
         }
         assertCanReviewSession(payload, question.getSession());
+        if (question.getSession().getStatus() == SessionStatus.RESOLVED) {
+            throw new AppException(ResponseCode.SESSION_REVIEW_FINALIZED, "Phiên đã chốt kết quả duyệt");
+        }
+    }
+
+    private void beginReview(List<Session> sessions, Long reviewerId) {
+        var pending = sessions.stream().filter(session -> session.getStatus() == SessionStatus.PENDING).toList();
+        if (pending.isEmpty()) {
+            return;
+        }
+        User reviewer = userRepository.getReferenceById(reviewerId);
+        Instant now = Instant.now();
+        for (Session session : pending) {
+            session.setStatus(SessionStatus.REVIEWING);
+            session.setReviewer(reviewer);
+            session.setReviewedAt(now);
+        }
     }
 
     private void assertCanReviewSession(JwtPayload payload, Session session) {
@@ -509,126 +484,63 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         return normalized.isEmpty() ? null : normalized;
     }
 
-    private void checkAndAutoResolveSessions(Set<Long> sessionIds, User reviewer) {
-        if (sessionIds == null || sessionIds.isEmpty()) {
+    private void finalizeSession(Session session, List<Question> questions, Instant now) {
+        session.setStatus(SessionStatus.RESOLVED);
+        sessionRepository.save(session);
+        gamificationService.resolveGame2And3ForSession(session, questions);
+
+        var questionIds = questions.stream().map(Question::getId).toList();
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.SESSION, session.getId()));
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntityType.QUESTION, questionIds));
+        badgeService.checkAndGrantBadgesBatch(List.of(session.getReviewer()), BadgeTriggerEvent.REVIEWED_SESSIONS, null);
+
+        int approvedCount = (int) questions.stream().filter(q -> q.getStatus() == QuestionStatus.APPROVED).count();
+        User proposer = session.getProposer();
+        if (approvedCount == 0 || proposer == null) {
             return;
         }
 
-        List<Session> sessions = sessionRepository.findByIdInFetchCourseClassAndProposerAndReviewer(sessionIds);
-        if (sessions.isEmpty()) {
-            return;
-        }
+        Subject subject = session.getCourseClass().getSubject();
+        String subjectName = subject != null ? subject.getName() : "Môn học";
+        String subjectCode = subject != null ? subject.getCode() : "Mã môn";
+        String proposerName = anonymizerUtil.encodeUserId(proposer.getId());
 
-        List<Question> allQuestions = questionRepository.findBySessionIdIn(new ArrayList<>(sessionIds));
+        List<Post> posts = new ArrayList<>();
+        createPostAndAddFeed(posts, session, proposer, subject, subjectName, subjectCode, proposerName, now,
+                activityFeedService);
+        Post savedPost = postRepository.save(posts.getFirst());
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.POST, savedPost.getId()));
 
-        Map<Long, List<Question>> questionsBySessionMap = allQuestions.stream()
-                .filter(q -> q.getSession() != null)
-                .collect(Collectors.groupingBy(q -> q.getSession().getId()));
-        List<Session> sessionsToSave = new ArrayList<>();
-        List<UserPointRewardDto> rewardsToBatch = new ArrayList<>();
-        List<Post> postsToSave = new ArrayList<>();
-        List<Notification> notificationsToSave = new ArrayList<>();
-        Instant now = Instant.now();
+        notificationRepository.save(Notification.builder()
+                .receiver(proposer)
+                .actor(session.getReviewer())
+                .type(NotificationType.QUESTION_APPROVED)
+                .category(NotificationCategory.ACADEMIC)
+                .title("Câu hỏi của bạn đã được phê duyệt!")
+                .body("Phiên đề xuất môn [" + subjectName + "] (" + subjectCode + ") đã có câu hỏi được duyệt.")
+                .targetType(NotificationTargetType.SESSION)
+                .targetId(session.getId())
+                .creadtedAt(now)
+                .build());
+        eventPublisher.publishEvent(PushNotificationEvent.single(
+                proposer.getId(),
+                "Câu hỏi của bạn đã được phê duyệt!",
+                "Phiên đề xuất môn [" + subjectName + "] đã có câu hỏi được chấp nhận vào Ngân hàng câu hỏi.",
+                null,
+                NotificationTargetType.SESSION,
+                session.getId(),
+                "/sessions/" + session.getId(),
+                PushNotificationType.ACADEMIC));
 
-        for (Session s : sessions) {
-            List<Question> qList = questionsBySessionMap.getOrDefault(s.getId(), List.of());
-            boolean allResolved = !qList.isEmpty() && qList.stream().allMatch(
-                    q -> q.getStatus() == QuestionStatus.APPROVED || q.getStatus() == QuestionStatus.REJECTED);
-
-            if (allResolved && s.getStatus() != SessionStatus.RESOLVED) {
-                s.setStatus(SessionStatus.RESOLVED);
-                if (s.getReviewer() == null && reviewer != null) {
-                    s.setReviewer(reviewer);
-                    s.setReviewedAt(now);
-                }
-                sessionsToSave.add(s);
-
-                gamificationService.resolveGame2And3ForSession(s, qList);
-
-                boolean hasApprovedQuestion = qList.stream().anyMatch(q -> q.getStatus() == QuestionStatus.APPROVED);
-                if (hasApprovedQuestion && s.getProposer() != null) {
-                    User proposer = s.getProposer();
-                    int approvedCount = (int) qList.stream().filter(q -> q.getStatus() == QuestionStatus.APPROVED)
-                            .count();
-                    double totalPoints = approvedCount * Point.APPROVED_QUESTION.getPoints();
-
-                    rewardsToBatch.add(UserPointRewardDto.builder()
-                            .userId(proposer.getId())
-                            .pointsDelta(totalPoints)
-                            .approvedDelta(approvedCount)
-                            .reason(PointHistoryReason.SESSION_RESOLVED_BONUS)
-                            .targetType(PointHistoryTargetType.SESSION)
-                            .targetId(s.getId())
-                            .subject(s.getCourseClass().getSubject())
-                            .build());
-
-                    Subject subject = s.getCourseClass().getSubject();
-                    String subjectName = subject != null ? subject.getName() : "Môn học";
-                    String subjectCode = subject != null ? subject.getCode() : "Mã môn";
-                    String proposerName = anonymizerUtil.encodeUserId(proposer.getId());
-
-                    createPostAndAddFeed(postsToSave, s, proposer, subject, subjectName, subjectCode, proposerName, now,
-                            activityFeedService);
-
-                    // 1. Tạo thông báo nội bộ (Internal Notification - không tiết lộ số câu được
-                    // duyệt để bảo mật đề thi)
-                    Notification notif = Notification.builder()
-                            .receiver(proposer)
-                            .actor(s.getReviewer())
-                            .type(NotificationType.QUESTION_APPROVED)
-                            .category(NotificationCategory.ACADEMIC)
-                            .title("Câu hỏi của bạn đã được phê duyệt!")
-                            .body("Phiên đề xuất môn [" + subjectName + "] (" + subjectCode
-                                    + ") đã có câu hỏi được duyệt.")
-                            .targetType(NotificationTargetType.SESSION)
-                            .targetId(s.getId())
-                            .creadtedAt(now)
-                            .build();
-                    notificationsToSave.add(notif);
-
-                    // 2. Gửi thông báo đẩy bất đồng bộ (Push Notification Event - không tiết lộ số
-                    // câu được duyệt)
-                    eventPublisher.publishEvent(PushNotificationEvent.single(
-                            proposer.getId(),
-                            "Câu hỏi của bạn đã được phê duyệt!",
-                            "Phiên đề xuất môn [" + subjectName
-                                    + "] đã có câu hỏi được chấp nhận vào Ngân hàng câu hỏi.",
-                            null,
-                            NotificationTargetType.SESSION,
-                            s.getId(),
-                            "/sessions/" + s.getId(),
-                            PushNotificationType.ACADEMIC));
-                }
-            }
-        }
-
-        if (!sessionsToSave.isEmpty()) {
-            sessionRepository.saveAll(sessionsToSave);
-            List<Long> sIds = sessionsToSave.stream().map(Session::getId).toList();
-            eventPublisher
-                    .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.SESSION, sIds));
-
-            // Tự động kiểm tra và trao huy hiệu REVIEWED_SESSIONS cho Giảng viên
-            Set<User> reviewersToGrant = sessionsToSave.stream()
-                    .map(Session::getReviewer)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            if (!reviewersToGrant.isEmpty()) {
-                badgeService.checkAndGrantBadgesBatch(new ArrayList<>(reviewersToGrant),
-                        BadgeTriggerEvent.REVIEWED_SESSIONS, null);
-            }
-        }
-        if (!postsToSave.isEmpty()) {
-            List<Post> savedPosts = postRepository.saveAll(postsToSave);
-            List<Long> pIds = savedPosts.stream().map(Post::getId).toList();
-            eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.POST, pIds));
-        }
-        if (!notificationsToSave.isEmpty()) {
-            notificationRepository.saveAll(notificationsToSave);
-        }
-        if (!rewardsToBatch.isEmpty()) {
-            counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewardsToBatch);
-        }
+        counterMetricsService.awardPointsAndApprovedQuestionsBatch(List.of(UserPointRewardDto.builder()
+                .userId(proposer.getId())
+                .pointsDelta(approvedCount * Point.APPROVED_QUESTION.getPoints())
+                .approvedDelta(approvedCount)
+                .reason(PointHistoryReason.SESSION_RESOLVED_BONUS)
+                .targetType(PointHistoryTargetType.SESSION)
+                .targetId(session.getId())
+                .subject(subject)
+                .build()));
     }
 
     public static void createPostAndAddFeed(List<Post> postsToSave, Session s, User proposer, Subject subject,

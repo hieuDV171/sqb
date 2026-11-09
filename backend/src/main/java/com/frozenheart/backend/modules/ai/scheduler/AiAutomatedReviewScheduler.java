@@ -31,6 +31,8 @@ import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,6 +57,9 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class AiAutomatedReviewScheduler {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
@@ -81,7 +86,7 @@ public class AiAutomatedReviewScheduler {
         // ==========================================
         // GIAI ĐOẠN 1: TỰ ĐỘNG AI REFINEMENT SAU 3 NGÀY
         // ==========================================
-        List<Session> pendingSessionsThreeDays = loadReviewBatch(threeDaysAgo, batchLimit);
+        List<Session> pendingSessionsThreeDays = loadReviewBatch(threeDaysAgo, batchLimit, false);
 
         for (Session session : pendingSessionsThreeDays) {
             if (session.getQuestions() == null)
@@ -106,9 +111,15 @@ public class AiAutomatedReviewScheduler {
         // ==========================================
         // GIAI ĐOẠN 2: TỰ ĐỘNG CHẤP NHẬN / TỪ CHỐI SAU 6 NGÀY
         // ==========================================
-        List<Session> targetSessions = loadReviewBatch(sixDaysAgo, batchLimit);
+        if (!pendingSessionsThreeDays.isEmpty()) {
+            // Load fresh questions after the lock, even for sessions read during refinement.
+            entityManager.flush();
+            entityManager.clear();
+        }
+        List<Session> targetSessions = loadReviewBatch(sixDaysAgo, batchLimit, true);
 
         List<Question> allQuestionsToUpdate = new ArrayList<>();
+        List<Long> finalizedQuestionIds = new ArrayList<>();
         List<Session> allSessionsToUpdate = new ArrayList<>();
         List<UserPointRewardDto> rewardsToBatch = new ArrayList<>();
         List<Post> autoPostsToSave = new ArrayList<>();
@@ -123,9 +134,9 @@ public class AiAutomatedReviewScheduler {
 
             int approvedInSession = 0;
             for (Question question : questionsList) {
+                finalizedQuestionIds.add(question.getId());
                 if (question.getStatus() == QuestionStatus.APPROVED) {
                     approvedInSession++;
-                    allQuestionsToUpdate.add(question);
                     continue;
                 }
 
@@ -204,15 +215,14 @@ public class AiAutomatedReviewScheduler {
         // Thực hiện Batch Save 1 lần duy nhất cho toàn bộ danh sách
         if (!allQuestionsToUpdate.isEmpty()) {
             questionRepository.saveAll(allQuestionsToUpdate);
-            List<Long> qIds = allQuestionsToUpdate.stream().map(Question::getId).toList();
-            eventPublisher
-                    .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.QUESTION, qIds));
         }
         if (!allSessionsToUpdate.isEmpty()) {
             sessionRepository.saveAll(allSessionsToUpdate);
             List<Long> sIds = allSessionsToUpdate.stream().map(Session::getId).toList();
             eventPublisher
                     .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.SESSION, sIds));
+            eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(
+                    EntitySearchSyncEvent.EntityType.QUESTION, finalizedQuestionIds));
         }
         if (!autoPostsToSave.isEmpty()) {
             List<Post> savedPosts = postRepository.saveAll(autoPostsToSave);
@@ -229,11 +239,15 @@ public class AiAutomatedReviewScheduler {
         log.info("Automated AI review fallback workflow completed successfully.");
     }
 
-    private List<Session> loadReviewBatch(Instant cutoff, Pageable batchLimit) {
+    private List<Session> loadReviewBatch(Instant cutoff, Pageable batchLimit, boolean finalize) {
         List<Long> sessionIds = sessionRepository.findIdsByStatusAndCreatedAtBefore(
                 SessionStatus.PENDING,
                 cutoff,
                 batchLimit);
+        if (finalize && !sessionIds.isEmpty()) {
+            // A lecturer may have opened the session since the scheduler selected these IDs.
+            sessionIds = sessionRepository.lockReviewSessions(sessionIds, true);
+        }
         if (sessionIds.isEmpty()) {
             return List.of();
         }

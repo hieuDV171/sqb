@@ -14,6 +14,12 @@ export function useReviewMutations(sessionId: number) {
     queryClient.invalidateQueries({ queryKey: queueKey }),
     queryClient.invalidateQueries({ queryKey: detailKey, exact: true }),
   ]);
+  const handleDecisionError = (error: Error, fallback: string) => {
+    toast.error(error.message || fallback);
+    if ('code' in error && error.code === '2017') {
+      return refreshReview();
+    }
+  };
 
   const approve = useMutation({
     mutationFn: (request: ApproveQuestionsRequest) => reviewService.approveQuestions(request),
@@ -21,7 +27,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success(`Đã phê duyệt ${questionIds.length} câu hỏi.`);
     },
-    onError: () => toast.error('Không thể phê duyệt câu hỏi. Hãy thử lại.'),
+    onError: (error) => handleDecisionError(error, 'Không thể phê duyệt câu hỏi. Hãy thử lại.'),
   });
 
   const reject = useMutation({
@@ -30,7 +36,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success('Đã lưu quyết định từ chối.');
     },
-    onError: () => toast.error('Không thể từ chối câu hỏi. Hãy thử lại.'),
+    onError: (error) => handleDecisionError(error, 'Không thể từ chối câu hỏi. Hãy thử lại.'),
   });
 
   const edit = useMutation({
@@ -40,7 +46,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success(data?.status === 'APPROVED' ? 'Đã lưu và phê duyệt câu hỏi.' : 'Đã lưu câu hỏi.');
     },
-    onError: () => toast.error('Không thể lưu câu hỏi. Hãy thử lại.'),
+    onError: (error) => handleDecisionError(error, 'Không thể lưu câu hỏi. Hãy thử lại.'),
   });
 
   const complete = useMutation({

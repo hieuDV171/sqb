@@ -90,8 +90,13 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
         @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p WHERE s.id IN :ids")
         List<Session> findByIdInFetchCourseClassAndProposerForSearch(@Param("ids") List<Long> ids);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p LEFT JOIN FETCH s.reviewer r WHERE s.id IN :ids")
-        List<Session> findByIdInFetchCourseClassAndProposerAndReviewer(@Param("ids") Collection<Long> ids);
+        @Query(value = """
+                        SELECT id FROM sessions
+                        WHERE id IN (:ids) AND (:pendingOnly = false OR status = 'PENDING')
+                        ORDER BY id FOR UPDATE
+                        """, nativeQuery = true)
+        List<Long> lockReviewSessions(@Param("ids") Collection<Long> ids,
+                                      @Param("pendingOnly") boolean pendingOnly);
 
         @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester JOIN FETCH s.proposer " +
                         "WHERE s.status IN (com.frozenheart.backend.core.entity.session.SessionStatus.PENDING, " +

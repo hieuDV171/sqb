@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, CheckCheck, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -54,12 +55,15 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
   const rejected = questions.filter((question) => question.status === 'REJECTED').length;
   const pendingIds = questions.filter((question) => question.status === 'PENDING').map((question) => question.questionId);
   const processed = approved + rejected;
+  const finalized = review.data?.sessionStatus === 'RESOLVED';
+  const canReview = review.data?.sessionStatus === 'REVIEWING' || review.data?.sessionStatus === 'PENDING';
   const busy = approve.isPending || reject.isPending || edit.isPending || complete.isPending;
-  const actionsDisabled = busy || review.isFetching || review.isRefetchError;
+  const actionsDisabled = !canReview || busy || review.isFetching || review.isRefetchError;
 
   async function confirm() {
+    if (actionsDisabled) return;
     try {
-      if (confirmation === 'approve') {
+      if (confirmation === 'approve' && pendingIds.length > 0) {
         await approve.mutateAsync({ questionIds: pendingIds });
         setConfirmation(null);
       } else if (confirmation === 'complete') {
@@ -94,9 +98,14 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 <ClipboardCheck aria-hidden="true" className="size-4" /> Không gian giảng viên
               </p>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Duyệt phiên #{sessionId}</h1>
-              <p className="text-sm text-muted-foreground">{total} câu hỏi đề xuất</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={finalized ? 'bg-success-soft text-success' : 'bg-academic-soft text-academic'}>
+                  {finalized ? 'Đã chốt · Chỉ đọc' : canReview ? 'Chưa chốt' : 'Chưa rõ trạng thái phiên'}
+                </Badge>
+                <p className="text-sm text-muted-foreground">{total} câu hỏi đề xuất</p>
+              </div>
             </div>
-            {pendingIds.length > 0 && (
+            {canReview && total > 0 && (
               <div className="flex flex-wrap gap-2">
                 {pendingIds.length > 1 && (
                   <Button variant="outline" className="min-h-11" disabled={actionsDisabled} onClick={() => setConfirmation('approve')}>
@@ -126,7 +135,9 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                   <progress aria-label="Số câu đã xử lý" value={processed} max={total} className="h-2 w-full accent-academic" />
                 </div>
                 {processed === total && (
-                  <p className="text-sm text-success">Tất cả câu hỏi đã có quyết định.</p>
+                  <p className="text-sm text-success">
+                    {canReview ? 'Mọi câu đã có quyết định. Bạn có thể rà lại trước khi chốt.' : 'Mọi câu đã có quyết định.'}
+                  </p>
                 )}
                 <dl className="space-y-1 text-sm">
                   <div className="flex justify-between gap-2"><dt>Chờ duyệt</dt><dd className="font-semibold tabular-nums">{pendingIds.length}</dd></div>
@@ -164,6 +175,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                       await reject.mutateAsync({ questionIds: [id], rejectionCode, reason });
                     }}
                     onEdit={setEditing}
+                    readOnly={!canReview}
                     disabled={actionsDisabled}
                   />
                 ))}
@@ -171,7 +183,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
             </div>
           )}
 
-          {editing && (
+          {canReview && editing && (
             <EditQuestionModal key={editing.questionId} question={editing}
               questionNumber={questions.findIndex((question) => question.questionId === editing.questionId) + 1}
               isSaving={edit.isPending} onClose={() => setEditing(null)}
@@ -180,8 +192,9 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 setEditing(null);
               }} />
           )}
-          {confirmation && (
+          {canReview && confirmation && (
             <CompleteReviewDialog mode={confirmation} pendingCount={pendingIds.length}
+              isRefreshing={review.isFetching || review.isRefetchError}
               isSubmitting={approve.isPending || complete.isPending} onClose={() => setConfirmation(null)}
               onConfirm={() => void confirm()} />
           )}

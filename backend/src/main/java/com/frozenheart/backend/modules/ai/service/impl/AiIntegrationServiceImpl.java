@@ -56,6 +56,8 @@ import com.frozenheart.backend.modules.ai.dto.AiChatSessionSummaryResponse;
 import com.frozenheart.backend.modules.ai.dto.AiMetadataDto;
 import com.frozenheart.backend.modules.ai.repository.AiChatMessageRepository;
 import com.frozenheart.backend.modules.ai.repository.AiChatSessionRepository;
+import com.frozenheart.backend.modules.session.repository.SessionRepository;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -67,6 +69,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
     private final LocalAiClient localAiClient;
     private final BtpropHallucinationCheckerService btpropHallucinationCheckerService;
     private final QuestionRepository questionRepository;
+    private final SessionRepository sessionRepository;
     private final QuestionEditLogRepository questionEditLogRepository;
     private final AiChatMessageRepository aiChatMessageRepository;
     private final AiChatSessionRepository aiChatSessionRepository;
@@ -352,13 +355,20 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Sinh viên táy máy cái gì?");
         }
 
+        var sessionIds = questionRepository.findSessionIdsForReview(List.of(questionId));
+        if (!sessionIds.isEmpty()) {
+            sessionRepository.lockReviewSessions(sessionIds, false);
+        }
         QuestionEditLog editLog = questionEditLogRepository.findByIdFetchQuestion(request.editLogId())
                 .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
                         "Không tìm thấy nhật ký chỉnh sửa AI"));
 
         Question question = editLog.getQuestion();
-        if (question == null) {
+        if (question == null || !questionId.equals(question.getId())) {
             throw new AppException(ResponseCode.QUESTION_NOT_FOUND);
+        }
+        if (question.getSession() != null && question.getSession().getStatus() == SessionStatus.RESOLVED) {
+            throw new AppException(ResponseCode.SESSION_REVIEW_FINALIZED, "Phiên đã chốt kết quả duyệt");
         }
 
         if (Boolean.TRUE.equals(request.approve())) {

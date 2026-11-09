@@ -50,11 +50,13 @@ class AiAutomatedReviewSchedulerTest {
                 .thenReturn(List.of(11L, 12L));
         when(sessionRepository.findByIdInFetchAutomatedReviewDetails(List.of(11L, 12L)))
                 .thenReturn(List.of());
+        when(sessionRepository.lockReviewSessions(List.of(11L, 12L), true)).thenReturn(List.of(12L));
 
         scheduler.runAutomatedFallbackReviewWorkflow();
 
         verify(sessionRepository, times(2)).findIdsByStatusAndCreatedAtBefore(
                 eq(SessionStatus.PENDING), any(Instant.class), any(Pageable.class));
-        verify(sessionRepository, times(2)).findByIdInFetchAutomatedReviewDetails(List.of(11L, 12L));
+        verify(sessionRepository).findByIdInFetchAutomatedReviewDetails(List.of(11L, 12L));
+        verify(sessionRepository).findByIdInFetchAutomatedReviewDetails(List.of(12L));
     }
 }

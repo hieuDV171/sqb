@@ -6,7 +6,7 @@ import lombok.Builder;
 @Schema(description = "Kết quả phê duyệt câu hỏi")
 @Builder
 public record ApproveQuestionsResponse(
-        @Schema(description = "Tổng điểm thưởng đã cộng cho tác giả", example = "30.0")
+        @Schema(description = "Điểm được cộng bởi thao tác này. Luôn bằng 0 vì điểm được ghi nhận khi chốt phiên", example = "0.0")
         double pointsEarned
 ) {}
 

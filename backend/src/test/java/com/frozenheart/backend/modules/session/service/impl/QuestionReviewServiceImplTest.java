@@ -9,6 +9,7 @@ import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.session.Semester;
+import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserRole;
@@ -21,6 +22,7 @@ import com.frozenheart.backend.modules.gamification.service.GamificationService;
 import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
+import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.RejectQuestionsRequest;
 import com.frozenheart.backend.modules.session.repository.QuestionEditLogRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
@@ -40,6 +42,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -47,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -118,9 +122,9 @@ class QuestionReviewServiceImplTest {
     void assignedLecturerCanRejectWithStructuredReason() {
         setCurrentUser(7L, UserRole.LECTURER);
         Question question = questionAssignedTo(101L, 7L);
+        question.setStatus(QuestionStatus.APPROVED);
         when(questionRepository.findByIdInFetchSessionCourseClassAndProposer(List.of(101L)))
                 .thenReturn(List.of(question));
-        when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).build());
 
         service.rejectQuestions(new RejectQuestionsRequest(
                 List.of(101L), QuestionRejectionCode.DUPLICATE, "  Trùng câu đã có  "));
@@ -128,7 +132,9 @@ class QuestionReviewServiceImplTest {
         assertEquals(QuestionStatus.REJECTED, question.getStatus());
         assertEquals(QuestionRejectionCode.DUPLICATE, question.getRejectionCode());
         assertEquals("Trùng câu đã có", question.getRejectionReason());
+        assertEquals(SessionStatus.REVIEWING, question.getSession().getStatus());
         verify(questionRepository).saveAll(List.of(question));
+        verifyNoInteractions(counterMetricsService, gamificationService, eventPublisher);
     }
 
     @Test
@@ -168,19 +174,85 @@ class QuestionReviewServiceImplTest {
         question.setRejectionReason("Lý do cũ");
         when(questionRepository.findByIdInFetchSessionCourseClassAndProposer(List.of(101L)))
                 .thenReturn(List.of(question));
-        when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).build());
 
-        service.approveQuestions(new ApproveQuestionsRequest(List.of(101L)));
+        var response = service.approveQuestions(new ApproveQuestionsRequest(List.of(101L)));
 
         assertEquals(QuestionStatus.APPROVED, question.getStatus());
         assertNull(question.getRejectionCode());
         assertNull(question.getRejectionReason());
+        assertEquals(SessionStatus.REVIEWING, question.getSession().getStatus());
+        assertEquals(0.0, response.pointsEarned());
+        verifyNoInteractions(counterMetricsService, gamificationService, eventPublisher);
+    }
+
+    @Test
+    void chotWithNoPendingQuestionsFinalizesOnceAndRewardsOnlyOnFirstCall() {
+        setCurrentUser(7L, UserRole.LECTURER);
+        Question question = questionAssignedTo(101L, 7L);
+        question.setStatus(QuestionStatus.APPROVED);
+        Session session = question.getSession();
+        session.setProposer(User.builder().id(9L).build());
+        session.getCourseClass().setSubject(Subject.builder().id(10L).code("IT").name("Môn học").build());
+        when(sessionRepository.findByIdFetchCourseClassProposerAndReviewer(30L)).thenReturn(Optional.of(session));
+        when(questionRepository.findBySessionId(30L)).thenReturn(List.of(question));
+        when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).build());
+        when(postRepository.save(any(Post.class))).thenReturn(Post.builder().id(20L).build());
+
+        service.completeSessionReview(30L);
+        service.completeSessionReview(30L);
+
+        assertEquals(SessionStatus.RESOLVED, session.getStatus());
+        verify(sessionRepository, times(2)).lockReviewSessions(List.of(30L), false);
+        verify(sessionRepository).save(session);
+        verify(gamificationService).resolveGame2And3ForSession(session, List.of(question));
+        verify(counterMetricsService).awardPointsAndApprovedQuestionsBatch(anyList());
+        verify(notificationRepository).save(any());
+        verify(questionRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void chotRejectsPendingQuestionsWithoutRewardingAnAllRejectedSession() {
+        setCurrentUser(7L, UserRole.LECTURER);
+        Question question = questionAssignedTo(101L, 7L);
+        Session session = question.getSession();
+        when(sessionRepository.findByIdFetchCourseClassProposerAndReviewer(30L)).thenReturn(Optional.of(session));
+        when(questionRepository.findBySessionId(30L)).thenReturn(List.of(question));
+        when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).build());
+
+        service.completeSessionReview(30L);
+
+        assertEquals(SessionStatus.RESOLVED, session.getStatus());
+        assertEquals(QuestionStatus.REJECTED, question.getStatus());
+        assertEquals(QuestionRejectionCode.AUTO_REJECTED_ON_COMPLETION, question.getRejectionCode());
+        verify(questionRepository).saveAll(List.of(question));
+        verifyNoInteractions(counterMetricsService, notificationRepository, postRepository);
+    }
+
+    @Test
+    void finalizedSessionBlocksAllDecisionEndpointsEvenForAdmin() {
+        setCurrentUser(7L, UserRole.ADMIN);
+        Question question = questionAssignedTo(101L, 7L);
+        question.getSession().setStatus(SessionStatus.RESOLVED);
+        when(questionRepository.findSessionIdsForReview(List.of(101L))).thenReturn(List.of(30L));
+        when(questionRepository.findByIdInFetchSessionCourseClassAndProposer(List.of(101L)))
+                .thenReturn(List.of(question));
+
+        assertEquals(ResponseCode.SESSION_REVIEW_FINALIZED, assertThrows(AppException.class,
+                () -> service.approveQuestions(new ApproveQuestionsRequest(List.of(101L)))).getResponseCode());
+        assertEquals(ResponseCode.SESSION_REVIEW_FINALIZED, assertThrows(AppException.class,
+                () -> service.rejectQuestions(new RejectQuestionsRequest(
+                        List.of(101L), QuestionRejectionCode.DUPLICATE, null))).getResponseCode());
+        assertEquals(ResponseCode.SESSION_REVIEW_FINALIZED, assertThrows(AppException.class,
+                () -> service.editQuestion(101L, EditQuestionRequest.builder().content("Sửa").build())).getResponseCode());
+        verify(sessionRepository, times(3)).lockReviewSessions(List.of(30L), false);
+        verify(questionRepository, never()).saveAll(anyList());
+        verify(questionRepository, never()).save(any(Question.class));
     }
 
     private Question questionAssignedTo(Long questionId, Long lecturerId) {
         User lecturer = User.builder().id(lecturerId).build();
         CourseClass courseClass = CourseClass.builder().id(20L).lecturer(lecturer).build();
-        Session session = Session.builder().id(30L).courseClass(courseClass).build();
+        Session session = Session.builder().id(30L).courseClass(courseClass).status(SessionStatus.REVIEWING).build();
         return Question.builder()
                 .id(questionId)
                 .session(session)

@@ -16,11 +16,12 @@ interface ReviewQuestionCardProps {
   onApprove: (questionId: number) => void;
   onReject: (questionId: number, code: RejectionReasonCode, reason?: string) => Promise<void>;
   onEdit: (question: SessionQuestionReviewDto) => void;
+  readOnly: boolean;
   disabled: boolean;
 }
 
 export function ReviewQuestionCard({
-  question, questionNumber, duplicateWarnings, onApprove, onReject, onEdit, disabled,
+  question, questionNumber, duplicateWarnings, onApprove, onReject, onEdit, readOnly, disabled,
 }: ReviewQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const approved = question.status === 'APPROVED';
@@ -85,7 +86,7 @@ export function ReviewQuestionCard({
         </div>
       )}
       {question.editLog && <p className="text-sm text-muted-foreground">Biên tập gần nhất · {question.editLog.actorName}</p>}
-      <footer className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+      {!readOnly && <footer className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
         <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onEdit(question)}>
           <Pencil aria-hidden="true" /> Biên tập
         </Button>
@@ -97,7 +98,7 @@ export function ReviewQuestionCard({
             <CircleCheck aria-hidden="true" /> Phê duyệt
           </Button>
         )}
-      </footer>
+      </footer>}
       <Dialog.Root open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <Dialog.Portal>
           <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/70" />

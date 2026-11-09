@@ -435,6 +435,7 @@ public class SessionServiceImpl implements SessionService {
     }
 
     private Session getSession(Long userId, Long sessionId) {
+        sessionRepository.lockReviewSessions(List.of(sessionId), false);
 
         Session session = sessionRepository.findByIdFetchCourseClass(sessionId)
                 .orElseThrow(() -> new AppException(ResponseCode.SESSION_NOT_FOUND));

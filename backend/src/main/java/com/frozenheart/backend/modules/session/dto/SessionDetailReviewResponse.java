@@ -6,6 +6,7 @@ import java.util.List;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -13,6 +14,9 @@ import lombok.Builder;
 @Schema(description = "Thông tin chi tiết phiên đề xuất dành cho giảng viên duyệt")
 @Builder
 public record SessionDetailReviewResponse(
+        @Schema(description = "Trạng thái phiên. RESOLVED là phiên đã chốt và chỉ đọc", example = "REVIEWING")
+        SessionStatus sessionStatus,
+
         @Schema(description = "Danh sách câu hỏi cần duyệt trong phiên")
         List<SessionQuestionReviewDto> items,
 

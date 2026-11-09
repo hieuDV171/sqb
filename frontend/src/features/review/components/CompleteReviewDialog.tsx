@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 interface CompleteReviewDialogProps {
   mode: 'approve' | 'complete';
   pendingCount: number;
+  isRefreshing: boolean;
   isSubmitting: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function CompleteReviewDialog({ mode, pendingCount, isSubmitting, onClose, onConfirm }: CompleteReviewDialogProps) {
+export function CompleteReviewDialog({ mode, pendingCount, isRefreshing, isSubmitting, onClose, onConfirm }: CompleteReviewDialogProps) {
   const approve = mode === 'approve';
   return (
     <AlertDialog.Root open onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
@@ -22,13 +23,15 @@ export function CompleteReviewDialog({ mode, pendingCount, isSubmitting, onClose
           </AlertDialog.Title>
           <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
             {approve
-              ? `${pendingCount} câu còn chờ sẽ được phê duyệt và đưa vào ngân hàng câu hỏi. Hãy kiểm tra các cảnh báo tương đồng trước khi xác nhận.`
-              : `${pendingCount} câu còn chờ sẽ tự động bị từ chối. Backend sẽ dùng số câu đã duyệt để tính điểm thưởng cho sinh viên.`}
+              ? `${pendingCount} câu còn chờ sẽ được đánh dấu phê duyệt. Bạn vẫn có thể đổi quyết định trước khi chốt phiên.`
+              : pendingCount > 0
+                ? `${pendingCount} câu còn chờ sẽ tự động bị từ chối. Sau khi chốt, kết quả được khóa và điểm thưởng được tính theo số câu đã duyệt.`
+                : 'Sau khi chốt, kết quả được khóa và điểm thưởng được tính theo số câu đã duyệt.'}
           </AlertDialog.Description>
           <div className="flex flex-wrap justify-end gap-2">
             <AlertDialog.Close render={<Button variant="outline" className="min-h-11" disabled={isSubmitting} />}>Xem lại</AlertDialog.Close>
             <Button variant={approve ? 'default' : 'destructive'} className="min-h-11"
-              onClick={onConfirm} disabled={isSubmitting || pendingCount === 0}>
+              onClick={onConfirm} disabled={isSubmitting || isRefreshing || (approve && pendingCount === 0)}>
               {isSubmitting && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
               {isSubmitting ? 'Đang lưu…' : approve ? `Duyệt ${pendingCount} câu` : 'Xác nhận chốt phiên'}
             </Button>

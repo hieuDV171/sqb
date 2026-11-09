@@ -332,3 +332,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Elasticsearch xếp hạng và phân trang theo các bản ghi khớp. PostgreSQL trả bộ đếm hiện tại cho các ID bài viết trong trang và kiểm tra quyền xem, bao gồm trạng thái xóa, chặn và bạn bè.
 - PostgreSQL trả ID phiên theo lô cho các câu hỏi thuộc phiên đã xét duyệt. Cả câu được duyệt lẫn câu bị từ chối có thể xuất hiện và cùng dùng hợp đồng phản hồi công khai không có trạng thái duyệt từng câu.
+
+### [ADR-026] Chốt kết quả duyệt phiên bằng thao tác riêng
+
+- Trong `REVIEWING`, phê duyệt, từ chối và biên tập chỉ ghi quyết định hiện tại. Tiến độ 100% vẫn cho phép đổi quyết định. API chi tiết trả `session_status` để FE xác định trạng thái phiên và quyền thao tác.
+- Chốt phiên là giao dịch chuyển sang `RESOLVED`, từ chối câu còn chờ và ghi nhận thưởng, thông báo và sự kiện đồng bộ. Các thao tác ghi khóa hàng phiên theo thứ tự ID trước khi đọc câu hỏi. Yêu cầu sửa sau chốt trả `409 SESSION_REVIEW_FINALIZED`. Gọi chốt lại cùng phiên giữ nguyên kết quả đã ghi.
+- Tạo đề, đếm ngân hàng và lưu câu chính thức cuối kỳ dựa trên câu được duyệt trong phiên `RESOLVED`. Tìm kiếm và luyện tập công khai tiếp tục bao gồm cả hai nhóm câu sau chốt và ẩn quyết định từng câu. Job AI chỉ tự chốt phiên `PENDING` và kiểm tra lại trạng thái khi lấy khóa.

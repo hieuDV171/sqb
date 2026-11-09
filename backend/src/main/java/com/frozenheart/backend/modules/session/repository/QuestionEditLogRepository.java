@@ -22,6 +22,6 @@ public interface QuestionEditLogRepository extends JpaRepository<QuestionEditLog
     @Query("SELECT l FROM QuestionEditLog l LEFT JOIN FETCH l.actor WHERE l.question.id IN :questionIds ORDER BY l.createdAt DESC")
     List<QuestionEditLog> findByQuestionIdInFetchActorOrderByCreatedAtDesc(@Param("questionIds") List<Long> questionIds);
 
-    @Query("SELECT l FROM QuestionEditLog l JOIN FETCH l.question WHERE l.id = :id")
+    @Query("SELECT l FROM QuestionEditLog l JOIN FETCH l.question q LEFT JOIN FETCH q.session WHERE l.id = :id")
     Optional<QuestionEditLog> findByIdFetchQuestion(@Param("id") Long id);
 }

@@ -728,7 +728,7 @@ public class GamificationServiceImpl implements GamificationService {
     }
 
     // =========================================================================
-    // AUTO-RESOLVE GAME 2 & GAME 3 Inside checkAndAutoResolveSessions
+    // Resolve Game 2 & Game 3 when a review is finalized.
     // =========================================================================
     @Override
     @Transactional
@@ -1011,7 +1011,7 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         // Migrate các câu APPROVED sang legacy_questions kèm imageUrls
-        List<Question> approvedQuestions = questionRepository.findByStatusFetchMedias(QuestionStatus.APPROVED);
+        List<Question> approvedQuestions = questionRepository.findFinalizedApprovedQuestionsFetchMedias();
 
         List<LegacyQuestion> legacyToSave = approvedQuestions.stream()
                 .map(q -> {
