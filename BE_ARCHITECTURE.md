@@ -341,7 +341,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 ### [ADR-027] Ghi chú và tương tác trên bài vinh danh đóng góp
 
-- Chốt phiên có câu được duyệt tạo bài công khai `QUESTION_APPROVED_NOTIFICATION`. Chỉ tài khoản `LECTURER` trùng với `session.reviewer` của phiên `RESOLVED` được thêm hoặc sửa ghi chú trên bài đó. Phiên do AI chốt không có giảng viên ghi chú. Bài thuộc loại khác không trả ghi chú cũ trong API.
+- Chốt phiên có câu được duyệt tạo bài công khai `QUESTION_APPROVED_NOTIFICATION`. Bài thuộc loại khác không trả ghi chú cũ trong API. Quyền ghi chú ban đầu dựa trên `session.reviewer` và đã được thay bằng ADR-029.
 - Sự kiện `SESSION_RESOLVED_APPROVED` giữ khóa phiên trong cơ sở dữ liệu. API bảng tin tra bài công khai theo lô bằng `posts.session_id` và trả `target_type = POST`, `target_id` là ID bài viết, `content.session_id` là ID phiên để luyện tập. Sự kiện thiếu bài liên kết hiển thị ở dạng thông báo. Cảm xúc và bình luận trên bài dùng chung dữ liệu với trang chi tiết, còn tương tác `SESSION` dành riêng cho bộ câu hỏi.
 - API quản lý thiết bị chỉ thu hồi hoặc xóa thiết bị khác với `device_id` trong JWT hiện tại. Người dùng kết thúc phiên hiện tại bằng luồng đăng xuất tài khoản.
 
@@ -349,3 +349,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Khung thảo luận dùng bình luận `SESSION` và ID phiên. Màn luyện tập và API tương tác phiên dùng cùng quyền truy cập. Phiên `RESOLVED` mở cho người dùng đã xác thực. Phiên chưa chốt chỉ mở cho người đề xuất.
 - Phản hồi phải thuộc cùng đối tượng với bình luận cha. API đọc phản hồi trực tiếp kiểm tra quyền từ bình luận cha. Bản xem trước phản hồi, số phản hồi và hồ sơ tác giả được lấy theo lô cho mỗi trang.
+
+### [ADR-029] Quyền ghi chú theo lớp học phần của phiên được vinh danh
+
+- Tài khoản `LECTURER` có thể ghi chú trên bài `QUESTION_APPROVED_NOTIFICATION` của sinh viên khi giảng viên phụ trách lớp học phần của phiên `RESOLVED` gắn với bài (`post.session.courseClass.lecturer`). Điều kiện áp dụng cho cả phiên do AI chốt.
+- Bảng tin và API bài viết tra quyền theo lô. API lưu kiểm tra lại cùng điều kiện trước khi cập nhật. Mỗi bài có một ghi chú chung, hiển thị tên giảng viên cập nhật gần nhất.

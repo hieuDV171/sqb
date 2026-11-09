@@ -22,6 +22,7 @@ import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.dto.AuthorDto;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
@@ -48,6 +49,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
     private final FollowRepository followRepository;
     private final BlockRepository blockRepository;
     private final PostRepository postRepository;
+    private final LecturerNoteAccess lecturerNoteAccess;
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
     private final ReactRepository reactRepository;
@@ -131,6 +133,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 : postRepository.findByIdInAndDeletedAtIsNull(postIds).stream()
                         .collect(Collectors.toMap(Post::getId, p -> p));
         approvalPosts.values().forEach(post -> postMap.put(post.getId(), post));
+        Set<Long> editableNotePostIds = lecturerNoteAccess.findEditablePostIds(payloadOpt.orElse(null), postMap.values());
         postMap.values().stream().filter(p -> p.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION)
                 .map(Post::getNotedLecturer).filter(Objects::nonNull)
                 .map(User::getId).forEach(profileIds::add);
@@ -168,7 +171,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                         .stream().collect(Collectors.toMap(ReactRepository.BadgeCheerCount::getTargetId, count -> count));
         List<ActivityFeedItemDto> items = feeds.stream()
                 .map(feed -> mapToItemDto(feed, profileMap, postMap, approvalPosts, sessionMap, questionMap,
-                        userPostReactMap, userSessionReactMap, userQuestionReactMap, badgeCheers.get(feed.getId()), payloadOpt.orElse(null)))
+                        userPostReactMap, userSessionReactMap, userQuestionReactMap, badgeCheers.get(feed.getId()), editableNotePostIds))
                 .toList();
 
         return CursorResponse.<ActivityFeedItemDto>builder()
@@ -253,7 +256,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             Map<Long, ReactionType> userSessionReactMap,
             Map<Long, ReactionType> userQuestionReactMap,
             ReactRepository.BadgeCheerCount badgeCheers,
-            JwtPayload viewer) {
+            Set<Long> editableNotePostIds) {
 
         AuthorDto actorDto;
         if (feed.getUser() != null) {
@@ -309,8 +312,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 if (post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION) {
                     contentMap.put("post_type", post.getPostType().name());
                     contentMap.put("description", post.getContent());
-                    contentMap.put("can_edit_lecturer_note",
-                            viewer != null && post.canEditLecturerNote(viewer.getUserId(), viewer.getRole()));
+                    contentMap.put("can_edit_lecturer_note", editableNotePostIds.contains(targetId));
                 }
                 if (post.getVisibility() != null) {
                     contentMap.put("visibility", post.getVisibility().name());

@@ -24,19 +24,28 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + :delta WHERE p.id = :postId")
     void incrementCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     Optional<Post> findByIdAndDeletedAtIsNull(Long id);
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     List<Post> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
 
     @Query("""
-            SELECT p FROM Post p JOIN FETCH p.session s LEFT JOIN FETCH s.reviewer
+            SELECT p FROM Post p JOIN FETCH p.session s
             LEFT JOIN FETCH p.notedLecturer
             WHERE s.id IN :sessionIds AND p.deletedAt IS NULL AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
               AND p.visibility = 'PUBLIC' AND s.status = 'RESOLVED'
             """)
     List<Post> findPublicApprovalPostsBySessionIds(@Param("sessionIds") Collection<Long> sessionIds);
+
+    @Query("""
+            SELECT p.id FROM Post p JOIN p.session s JOIN s.courseClass cc JOIN s.proposer student
+            WHERE p.id IN :postIds AND p.deletedAt IS NULL AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
+              AND s.status = 'RESOLVED' AND student.role = 'STUDENT'
+              AND cc.lecturer.id = :lecturerId
+            """)
+    List<Long> findApprovalPostIdsForLecturer(@Param("postIds") Collection<Long> postIds,
+                                            @Param("lecturerId") Long lecturerId);
 
     @Query("SELECT p FROM Post p JOIN FETCH p.poster u WHERE p.deletedAt IS NULL AND p.visibility != com.frozenheart.backend.core.entity.post.PostVisibility.ONLY_ME")
     List<Post> findAllPublicPostsForSearch();
@@ -89,14 +98,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     List<Post> findByPosterIdAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Long after,
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session", "session.reviewer"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
     List<Post> findByPosterIdAndVisibilityInAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Collection<PostVisibility> visibilities,

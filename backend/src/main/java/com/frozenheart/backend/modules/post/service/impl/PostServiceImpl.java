@@ -29,6 +29,7 @@ import com.frozenheart.backend.modules.friendship.repository.FriendshipRepositor
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.*;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.post.service.PostService;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
@@ -67,6 +68,7 @@ public class PostServiceImpl implements PostService {
     private final FriendshipRepository friendshipRepository;
     private final ReactRepository reactRepository;
     private final MetricService metricService;
+    private final LecturerNoteAccess lecturerNoteAccess;
 
     @Override
     @Transactional
@@ -234,19 +236,18 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public void updateLecturerNote(Long id, UpdateLecturerNoteRequest request) {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
-        Long currentUserId = payload.getUserId();
-        String roleStr = payload.getRole();
 
         Post post = postRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new AppException(ResponseCode.POST_NOT_FOUND));
 
-        if (!post.canEditLecturerNote(currentUserId, roleStr)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ giảng viên đã chốt phiên mới có thể ghi chú trên bài vinh danh");
+        if (!lecturerNoteAccess.findEditablePostIds(payload, List.of(post)).contains(id)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Chỉ giảng viên phụ trách lớp học phần của phiên mới có thể ghi chú trên bài vinh danh này");
         }
 
         post.setLecturerNote(request.getContent());
         post.setLecturerNoteAddedAt(Instant.now());
-        post.setNotedLecturer(post.getSession().getReviewer());
+        post.setNotedLecturer(userRepository.getReferenceById(payload.getUserId()));
 
         Post savedPost = postRepository.save(post);
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.POST, savedPost.getId()));
@@ -355,7 +356,8 @@ public class PostServiceImpl implements PostService {
 
     private CursorResponse<PostResponseDto> getUserPostsInternal(Long userId, Long after, Integer limit,
             boolean isSelf) {
-        Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+        JwtPayload viewer = JwtPayload.getCurrentUserPayload();
+        Long currentUserId = viewer.getUserId();
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
         Long cursor = (after != null && after > 0) ? after : Long.MAX_VALUE;
@@ -407,12 +409,14 @@ public class PostServiceImpl implements PostService {
                                 React::getReactionType,
                                 (existing, ignored) -> existing));
         Map<Long, UserProfile> profileByUserId = loadProfilesForPosts(postsList);
+        Set<Long> editableNotePostIds = lecturerNoteAccess.findEditablePostIds(viewer, postsList);
 
         List<PostResponseDto> items = postsList.stream()
                 .map(post -> mapToPostResponseDto(
                         post,
                         reactionByPostId.get(post.getId()),
-                        profileByUserId))
+                        profileByUserId,
+                        editableNotePostIds.contains(post.getId())))
                 .collect(Collectors.toList());
 
         return CursorResponse.<PostResponseDto>builder()
@@ -459,16 +463,19 @@ public class PostServiceImpl implements PostService {
     }
 
     private PostResponseDto mapToPostResponseDto(Post post, ReactionType myReaction) {
-        return mapToPostResponseDto(post, myReaction, loadProfilesForPosts(List.of(post)));
+        List<Post> posts = List.of(post);
+        boolean canEditLecturerNote = lecturerNoteAccess.findEditablePostIds(JwtPayload.getCurrentUserPayload(), posts)
+                .contains(post.getId());
+        return mapToPostResponseDto(post, myReaction, loadProfilesForPosts(posts), canEditLecturerNote);
     }
 
     private PostResponseDto mapToPostResponseDto(
             Post post,
             ReactionType myReaction,
-            Map<Long, UserProfile> profileByUserId) {
+            Map<Long, UserProfile> profileByUserId,
+            boolean canEditLecturerNote) {
         AuthorDto authorDto = mapUserToAuthorDto(post.getPoster(), profileByUserId);
         boolean approvalPost = post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION;
-        JwtPayload viewer = approvalPost ? JwtPayload.getCurrentUserPayload() : null;
         AuthorDto notedLecturerDto = approvalPost && post.getLecturerNote() != null && post.getNotedLecturer() != null
                 ? mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId) : null;
 
@@ -486,7 +493,7 @@ public class PostServiceImpl implements PostService {
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .lecturerNote(approvalPost ? post.getLecturerNote() : null)
-                .canEditLecturerNote(viewer != null && post.canEditLecturerNote(viewer.getUserId(), viewer.getRole()))
+                .canEditLecturerNote(canEditLecturerNote)
                 .lecturerNoteAddedAt(approvalPost ? post.getLecturerNoteAddedAt() : null)
                 .notedLecturer(notedLecturerDto)
                 .subjectId(post.getSubject() != null ? post.getSubject().getId() : null)

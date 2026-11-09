@@ -22,18 +22,21 @@ import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.PostResponseDto;
 import com.frozenheart.backend.modules.post.dto.UpdateLecturerNoteRequest;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -71,7 +74,14 @@ class PostServiceImplTest {
     @Mock ReactRepository reactRepository;
     @Mock MetricService metricService;
 
-    @InjectMocks PostServiceImpl service;
+    private PostServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        service = new PostServiceImpl(postRepository, userRepository, userProfileRepository, subjectRepository,
+                mediaService, activityFeedService, eventPublisher, blockRepository, friendshipRepository,
+                reactRepository, metricService, new LecturerNoteAccess(postRepository));
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -100,13 +110,18 @@ class PostServiceImplTest {
         assertEquals(reactionType != null, response.isReactedByMe());
     }
 
-    @Test
-    void lecturerWhoFinalizedCanSaveNoteOnApprovalPost() {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(longs = 9L)
+    void sessionClassLecturerCanSaveNoteRegardlessOfReviewer(Long reviewerId) {
         setCurrentUser(7L, UserRole.LECTURER);
-        Post post = approvalPost(7L);
+        Post post = approvalPost(reviewerId);
+        when(postRepository.findApprovalPostIdsForLecturer(List.of(42L), 7L)).thenReturn(List.of(42L));
         when(postRepository.findByIdAndDeletedAtIsNull(42L)).thenReturn(Optional.of(post));
         when(postRepository.save(post)).thenReturn(post);
+        when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).role(UserRole.LECTURER).build());
 
+        assertTrue(service.getPostById(42L).isCanEditLecturerNote());
         service.updateLecturerNote(42L, UpdateLecturerNoteRequest.builder().content("Ghi chú").build());
 
         assertEquals("Ghi chú", post.getLecturerNote());
@@ -116,10 +131,11 @@ class PostServiceImplTest {
 
     @ParameterizedTest
     @MethodSource("deniedNoteCases")
-    void cannotSaveNoteOutsideApprovalReviewerScope(UserRole role, Post post) {
+    void cannotSaveNoteOutsideSessionClassOrApprovalPost(UserRole role, Post post) {
         setCurrentUser(7L, role);
         when(postRepository.findByIdAndDeletedAtIsNull(42L)).thenReturn(Optional.of(post));
 
+        assertFalse(service.getPostById(42L).isCanEditLecturerNote());
         AppException error = assertThrows(AppException.class, () -> service.updateLecturerNote(
                 42L, UpdateLecturerNoteRequest.builder().content("Ghi chú").build()));
 
@@ -129,20 +145,19 @@ class PostServiceImplTest {
     }
 
     private static Stream<Arguments> deniedNoteCases() {
-        Post aiApproval = approvalPost(7L);
-        aiApproval.getSession().setReviewer(null);
         return Stream.of(
-                Arguments.of(UserRole.LECTURER, approvalPost(8L)),
-                Arguments.of(UserRole.LECTURER, aiApproval),
+                Arguments.of(UserRole.LECTURER, approvalPost(7L)),
+                Arguments.of(UserRole.LECTURER, approvalPost(null)),
                 Arguments.of(UserRole.ADMIN, approvalPost(7L)),
                 Arguments.of(UserRole.STUDENT, approvalPost(7L)),
                 Arguments.of(UserRole.LECTURER, Post.builder().id(42L).postType(PostType.SOCIAL_POST).build()));
     }
 
-    private static Post approvalPost(long reviewerId) {
+    private static Post approvalPost(Long reviewerId) {
         Session session = new Session();
         session.setStatus(SessionStatus.RESOLVED);
-        session.setReviewer(User.builder().id(reviewerId).role(UserRole.LECTURER).build());
+        session.setProposer(User.builder().id(5L).role(UserRole.STUDENT).build());
+        if (reviewerId != null) session.setReviewer(User.builder().id(reviewerId).role(UserRole.LECTURER).build());
         return Post.builder().id(42L).postType(PostType.QUESTION_APPROVED_NOTIFICATION).session(session).build();
     }
 

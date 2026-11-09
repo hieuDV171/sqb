@@ -16,15 +16,17 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
+import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.FollowRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -49,23 +51,27 @@ class ActivityFeedServiceImplTest {
     @Mock BlockRepository blockRepository;
     @Mock PostRepository postRepository;
     @Mock SessionRepository sessionRepository;
+    @Mock QuestionRepository questionRepository;
     @Mock ReactRepository reactRepository;
-    @InjectMocks ActivityFeedServiceImpl service;
 
     @AfterEach
     void clearAuthentication() {
         SecurityContextHolder.clearContext();
     }
 
-    @Test
-    void approvalEventUsesPostInteractionsAndKeepsSessionForPractice() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void approvalEventUsesPostInteractionsAndSessionClassForNote(boolean teachesSessionClass) {
+        var service = new ActivityFeedServiceImpl(feedRepository, profileRepository, friendshipRepository,
+                followRepository, blockRepository, postRepository, new LecturerNoteAccess(postRepository),
+                sessionRepository, questionRepository, reactRepository);
         var authentication = new UsernamePasswordAuthenticationToken("lecturer", null, List.of());
         authentication.setDetails(JwtPayload.builder().userId(7L).role("LECTURER").build());
         SecurityContextHolder.getContext().setAuthentication(authentication);
         var session = new Session();
         session.setId(100L);
         session.setStatus(SessionStatus.RESOLVED);
-        session.setReviewer(User.builder().id(7L).build());
+        session.setReviewer(User.builder().id(9L).build());
         var post = Post.builder().id(200L).session(session).postType(PostType.QUESTION_APPROVED_NOTIFICATION)
                 .visibility(PostVisibility.PUBLIC).reactCount(5).commentCount(2).build();
         var event = ActivityFeed.builder().id(300L).targetType(ActivityFeedTargetType.SESSION)
@@ -75,6 +81,8 @@ class ActivityFeedServiceImplTest {
         reaction.setReactionType(ReactionType.LOVE);
         when(feedRepository.findPersonalizedFeeds(anyLong(), any(), any(), anyBoolean(), any())).thenReturn(List.of(event));
         when(postRepository.findPublicApprovalPostsBySessionIds(List.of(100L))).thenReturn(List.of(post));
+        when(postRepository.findApprovalPostIdsForLecturer(List.of(200L), 7L))
+                .thenReturn(teachesSessionClass ? List.of(200L) : List.of());
         when(reactRepository.findUserReactsByTargetIds(7L, InteractionTargetType.POST, List.of(200L)))
                 .thenReturn(List.of(reaction));
 
@@ -88,7 +96,7 @@ class ActivityFeedServiceImplTest {
         assertEquals(5, content.get("react_count"));
         assertEquals(2, content.get("comment_count"));
         assertEquals("LOVE", content.get("my_reaction"));
-        assertEquals(true, content.get("can_edit_lecturer_note"));
+        assertEquals(teachesSessionClass, content.get("can_edit_lecturer_note"));
         verifyNoInteractions(sessionRepository);
     }
 }
