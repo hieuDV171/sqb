@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/stores/useToastStore';
 
-const TYPING_IDLE_MS = 2500;
+const TYPING_IDLE_MS = 5000;
 
 interface ChatInputProps {
   conversationId: number;
@@ -263,7 +263,6 @@ export function ChatInput({
               setContent(e.target.value);
               handleTypingEvent(e.target.value);
             }}
-            onBlur={stopTyping}
             onKeyDown={handleKeyDown}
             aria-label="Nội dung tin nhắn"
             placeholder="Nhập tin nhắn…"

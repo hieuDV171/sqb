@@ -73,6 +73,8 @@ function UnlockedChatWindow({
   }, [conversationsData, hiddenData, isPinUnlocked, conversationId]);
 
   const isGroup = (conversation?.type ?? messageData?.pages[0]?.conversationType) === 'GROUP';
+  const displayName = conversation?.displayName ?? messageData?.pages[0]?.groupName;
+  const displayAvatar = conversation?.displayAvatarUrl ?? messageData?.pages[0]?.groupAvatarUrl;
   const { data: members = [] } = useGroupMembers(conversationId, isGroup);
 
   // Danh sách người đang gõ trong cuộc trò chuyện này
@@ -104,16 +106,16 @@ function UnlockedChatWindow({
             </Button>
           )}
 
-          {isGroup && !conversation?.displayAvatarUrl ? (
+          {isGroup && !displayAvatar ? (
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-academic-soft text-academic"><Users aria-hidden="true" className="size-5" /></span>
           ) : (
-            <UserAvatar name={conversation?.displayName} avatarUrl={conversation?.displayAvatarUrl} decorative />
+            <UserAvatar name={displayName} avatarUrl={displayAvatar} decorative />
           )}
 
           {/* Title & Subtitle */}
           <div className="flex flex-col min-w-0">
             <h3 className="text-sm sm:text-base font-bold text-foreground truncate">
-              {conversation?.displayName || (isGroup ? 'Nhóm trò chuyện' : 'Cuộc trò chuyện')}
+              {displayName || (isGroup ? 'Nhóm trò chuyện' : 'Cuộc trò chuyện')}
             </h3>
 
             <div className="truncate text-xs text-muted-foreground">

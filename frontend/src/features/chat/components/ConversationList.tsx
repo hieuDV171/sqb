@@ -19,6 +19,7 @@ import {
   Users,
   Lock,
   MessageSquarePlus,
+  Mail,
   FolderLock,
   LockOpen,
   Loader2,
@@ -30,6 +31,8 @@ interface ConversationListProps {
   onOpenCreateGroupModal: () => void;
   onCloseConversation: () => void;
   onOpenPinModal: () => void;
+  onOpenGroupInvitations: () => void;
+  hasGroupInvitations: boolean;
 }
 
 type TabType = 'ALL' | 'GROUPS' | 'HIDDEN';
@@ -40,6 +43,8 @@ export function ConversationList({
   onOpenCreateGroupModal,
   onOpenPinModal,
   onCloseConversation,
+  onOpenGroupInvitations,
+  hasGroupInvitations,
 }: ConversationListProps) {
   const { activeConversationId, isPinUnlocked, lockPin } = useChatStore();
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
@@ -151,6 +156,15 @@ export function ConversationList({
             </Button>
           ))}
         </div>
+        <Button variant="outline" className="min-h-11 w-full justify-start" onClick={onOpenGroupInvitations}>
+          <Mail aria-hidden="true" /> Lời mời vào nhóm
+          {hasGroupInvitations && (
+            <>
+              <span aria-hidden="true" className="ml-auto size-2 rounded-full bg-academic" />
+              <span className="sr-only">Có lời mời đang chờ</span>
+            </>
+          )}
+        </Button>
       </header>
 
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2">

@@ -52,12 +52,12 @@ public class ConversationController {
                 return ResponseEntity.status(HttpStatus.CREATED).body(GlobalResponse.success(response));
         }
 
-        @Operation(summary = "Tạo nhóm chat mới", description = "Khởi tạo nhóm trò chuyện mới với số lượng từ 3 đến 200 thành viên (bao gồm người tạo). Người tạo sẽ mặc định mang vai trò Tù trưởng (CHIEF).")
+        @Operation(summary = "Tạo nhóm chat mới", description = "Chọn 2 đến 199 người. Bạn bè được thêm trực tiếp. Người theo dõi hoặc đang được theo dõi nhận lời mời. Người tạo là Tù trưởng (CHIEF).")
         @ApiResponses({
                         @ApiResponse(responseCode = "201", description = "Tạo nhóm chat thành công"),
-                        @ApiResponse(responseCode = "400", description = "Quy mô nhóm không hợp lệ (phải từ 3 đến 200 thành viên - CONSTRAINTS_UNSATISFIED)"),
+                        @ApiResponse(responseCode = "400", description = "Số người được chọn không hợp lệ (CONSTRAINTS_UNSATISFIED)"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-                        @ApiResponse(responseCode = "403", description = "Chứa thành viên đang có quan hệ chặn với người tạo (USER_IS_BLOCKED)"),
+                        @ApiResponse(responseCode = "403", description = "Có người bị chặn hoặc không đủ điều kiện để thêm hay mời"),
                         @ApiResponse(responseCode = "404", description = "Có thành viên không tồn tại trong hệ thống (USER_NOT_FOUND)")
         })
         @PostMapping("/conversations/group")
@@ -179,7 +179,7 @@ public class ConversationController {
                 return ResponseEntity.ok(GlobalResponse.success(response));
         }
 
-        @Operation(summary = "Thêm thành viên vào nhóm chat", description = "Thêm một hoặc nhiều người dùng vào nhóm (tối đa 200 người). Trả về danh sách thành viên thêm thành công và danh sách thất bại kèm lý do.")
+        @Operation(summary = "Thêm hoặc mời vào nhóm chat", description = "Thêm trực tiếp bạn bè và gửi lời mời cho người theo dõi hoặc đang được theo dõi. Trả về thành viên đã thêm, số lời mời đã gửi và lý do của từng mục thất bại.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Thêm thành viên hoàn tất"),
                         @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),

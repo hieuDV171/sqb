@@ -46,4 +46,6 @@ public interface UserParticipantRepository extends JpaRepository<UserParticipant
     List<UserParticipant> findActiveParticipantsForConversations(@Param("conversationIds") Collection<Long> conversationIds);
 
     boolean existsByUserIdAndConversationIdAndLeftAtIsNull(Long userId, Long conversationId);
+
+    long countByConversationIdAndLeftAtIsNull(Long conversationId);
 }

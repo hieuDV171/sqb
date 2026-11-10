@@ -62,6 +62,24 @@ export interface ConversationDetailDto {
   avatarUrl?: string | null;
   members: ConversationMemberDto[];
   createdAt: string;
+  invitedMemberCount: number;
+}
+
+export interface GroupCandidateDto {
+  userId: number;
+  fullName: string;
+  avatarUrl: string | null;
+  friend: boolean;
+  following: boolean;
+  follower: boolean;
+}
+
+export interface GroupInvitationDto {
+  invitationId: number;
+  groupName: string;
+  groupAvatarUrl: string | null;
+  inviterName: string;
+  expiresAt: string;
 }
 
 export interface ReplyMessagePreviewDto {
@@ -88,6 +106,8 @@ export interface MessageDto {
 }
 
 export interface MessageListResponseDto {
+  groupName?: string | null;
+  groupAvatarUrl?: string | null;
   hiddenAt?: string | null;
   conversationId: number;
   conversationType: ConversationType;
@@ -126,6 +146,7 @@ export interface FailedMemberDto {
 export interface AddGroupMembersResponseDto {
   addedMembers: ConversationMemberDto[];
   failedMembers: FailedMemberDto[];
+  invitedMemberCount: number;
 }
 
 export interface UpdateMemberRoleRequestDto {

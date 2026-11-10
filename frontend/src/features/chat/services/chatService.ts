@@ -1,10 +1,12 @@
 import { axiosClient } from '@/api/axiosClient';
-import type { GlobalResponse } from '@/types/response.types';
+import type { CursorResponse, GlobalResponse } from '@/types/response.types';
 import type {
   ConversationListResponseDto,
   ConversationDetailDto,
   CreateDirectConversationDto,
   CreateGroupConversationDto,
+  GroupCandidateDto,
+  GroupInvitationDto,
   UpdateGroupInfoDto,
   ConversationMemberDto,
   AddGroupMembersRequestDto,
@@ -20,6 +22,27 @@ import type {
 } from '../types/chat.types';
 
 export const chatService = {
+  getGroupCandidates(conversationId: number | undefined, search: string, after?: number) {
+    return axiosClient.get<unknown, GlobalResponse<CursorResponse<GroupCandidateDto>>>('/conversations/group/candidates', {
+      params: { conversationId, search, after },
+    });
+  },
+
+  getGroupInvitations(after?: number) {
+    return axiosClient.get<unknown, GlobalResponse<CursorResponse<GroupInvitationDto>>>('/conversations/group/invitations', {
+      params: { after },
+      skipToast: true,
+    });
+  },
+
+  acceptGroupInvitation(invitationId: number) {
+    return axiosClient.post<unknown, GlobalResponse<number>>(`/conversations/group/invitations/${invitationId}/accept`);
+  },
+
+  declineGroupInvitation(invitationId: number) {
+    return axiosClient.delete<unknown, GlobalResponse<void>>(`/conversations/group/invitations/${invitationId}`);
+  },
+
   /**
    * 10.1 Lấy danh sách cuộc hội thoại đang hoạt động
    * GET /api/v1/conversations

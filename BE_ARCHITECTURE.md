@@ -392,3 +392,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - API thu hồi cho mọi người phát `MESSAGE_REVOKED` sau khi giao dịch lưu hoàn tất. Event chỉ có ID hội thoại và ID tin nhắn. Dùng cùng bộ phát hàng đợi cá nhân và kiểm tra quyền kho ẩn như tin mới.
 - Giữ thứ tự xử lý các frame đến và đi trong mỗi kết nối. STOMP dùng chung cấu hình JSON `snake_case` với REST. Hai chiều của trạng thái đang nhập dùng `typing`, còn trạng thái thu hồi trong lịch sử và danh sách hội thoại dùng `revoked`. Frontend dùng sự kiện thu hồi để cập nhật tin nhắn, trích dẫn và bản xem trước hội thoại ngay trong cache.
+
+### [ADR-037] Yêu cầu đồng ý trước khi tham gia nhóm chat qua quan hệ theo dõi
+
+- Tạo nhóm và thêm thành viên kiểm tra quan hệ theo lô. Bạn bè tham gia trực tiếp. Người theo dõi hoặc đang được theo dõi nhận bản ghi trong `group_invitations`. Chỉ tài khoản nhận lời mời có thể chấp nhận hoặc từ chối.
+- Lời mời giữ chỗ tối đa 7 ngày trong giới hạn 200 chỗ. Khi người gửi rời nhóm hoặc bị xóa, hệ thống hủy các lời mời họ đã gửi. API chấp nhận kiểm tra lại quyền, hạn và quan hệ chặn, rồi cập nhật thành viên và xóa lời mời trong một giao dịch.
+- Khóa bản ghi hội thoại khi thay đổi thành viên hoặc xử lý lời mời để tuần tự hóa việc giữ chỗ, chấp nhận và rời nhóm. Lịch sử chat yêu cầu tư cách thành viên đang hoạt động.

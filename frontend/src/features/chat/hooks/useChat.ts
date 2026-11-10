@@ -28,8 +28,49 @@ export const CHAT_QUERY_KEYS = {
   conversations: ['conversations'] as const,
   hiddenConversations: ['conversations', 'hidden'] as const,
   groupMembers: (conversationId: number) => ['conversations', conversationId, 'members'] as const,
+  groupCandidates: ['group-candidates'] as const,
+  groupInvitations: ['group-invitations'] as const,
   messages: (conversationId: number) => ['messages', conversationId] as const,
 };
+
+export function useGroupCandidates(conversationId: number | undefined, search: string) {
+  return useInfiniteQuery({
+    queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId, search],
+    queryFn: async ({ pageParam }) => (await chatService.getGroupCandidates(conversationId, search, pageParam)).data,
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: ({ pagination }) => pagination.after ?? undefined,
+  });
+}
+
+export function useGroupInvitations() {
+  return useInfiniteQuery({
+    queryKey: CHAT_QUERY_KEYS.groupInvitations,
+    queryFn: async ({ pageParam }) => (await chatService.getGroupInvitations(pageParam)).data,
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: ({ pagination }) => pagination.after ?? undefined,
+    refetchInterval: 20_000,
+  });
+}
+
+export function useRespondGroupInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ invitationId, accept }: { invitationId: number; accept: boolean }) => {
+      if (accept) return (await chatService.acceptGroupInvitation(invitationId)).data;
+      await chatService.declineGroupInvitation(invitationId);
+      return null;
+    },
+    onSuccess: (conversationId) => {
+      if (conversationId !== null) {
+        void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+        toast.success('Đã tham gia nhóm');
+      } else {
+        toast.success('Đã từ chối lời mời');
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupInvitations }),
+  });
+}
 
 /**
  * Hook lấy danh sách cuộc trò chuyện phân trang con trỏ
@@ -148,9 +189,11 @@ export function useCreateGroupConversation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateGroupConversationDto) => chatService.createGroupConversation(data),
-    onSuccess: () => {
+    onSuccess: ({ data }) => {
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
-      toast.success('Tạo nhóm trò chuyện thành công!');
+      toast.success(data.invitedMemberCount > 0
+        ? `Đã tạo nhóm và gửi ${data.invitedMemberCount} lời mời`
+        : 'Đã tạo nhóm trò chuyện');
     },
   });
 }
@@ -247,12 +290,19 @@ export function useAddGroupMembers() {
     onSuccess: (res, variables) => {
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId) });
+      queryClient.invalidateQueries({ queryKey: [...CHAT_QUERY_KEYS.groupCandidates, variables.conversationId] });
       const added = res.data?.addedMembers?.length || 0;
+      const invited = res.data?.invitedMemberCount || 0;
       const failed = res.data?.failedMembers?.length || 0;
+      const summary = [
+        added > 0 ? `Đã thêm ${added} thành viên` : null,
+        invited > 0 ? `Đã gửi ${invited} lời mời` : null,
+      ].filter(Boolean).join('. ');
       if (failed > 0) {
-        toast.warning(`Đã thêm ${added} thành viên. Có ${failed} người không thể thêm.`);
-      } else {
-        toast.success(`Đã thêm thành công ${added} thành viên vào nhóm`);
+        const reason = failed === 1 ? res.data.failedMembers[0].reason : `Có ${failed} người không thể thêm hoặc mời`;
+        toast.warning([summary, reason].filter(Boolean).join('. '));
+      } else if (summary) {
+        toast.success(summary);
       }
     },
   });

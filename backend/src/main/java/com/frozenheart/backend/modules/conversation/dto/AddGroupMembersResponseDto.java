@@ -14,4 +14,6 @@ public class AddGroupMembersResponseDto {
     private List<ConversationMemberDto> addedMembers;
 
     private List<FailedMemberDto> failedMembers;
+
+    private int invitedMemberCount;
 }

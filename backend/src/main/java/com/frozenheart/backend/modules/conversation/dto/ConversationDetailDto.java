@@ -24,4 +24,6 @@ public class ConversationDetailDto {
     private List<ConversationMemberDto> members;
 
     private Instant createdAt;
+
+    private int invitedMemberCount;
 }

@@ -17,6 +17,8 @@ public class MessageListResponseDto {
     private Long conversationId;
 
     private ConversationType conversationType;
+    private String groupName;
+    private String groupAvatarUrl;
 
     private Instant hiddenAt;
 

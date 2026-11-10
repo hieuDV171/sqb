@@ -8,6 +8,8 @@ import { HiddenChatPinModal } from '../components/HiddenChatPinModal';
 import { CreateGroupModal } from '../components/CreateGroupModal';
 import { NewDirectChatModal } from '../components/NewDirectChatModal';
 import { GroupMembersModal } from '../components/GroupMembersModal';
+import { GroupInvitationsModal } from '../components/GroupInvitationsModal';
+import { useGroupInvitations } from '../hooks/useChat';
 import { DeleteMessageModal } from '../components/DeleteMessageModal';
 import type { MessageDto } from '../types/chat.types';
 import { MessageSquare, Users, MessageSquarePlus } from 'lucide-react';
@@ -27,6 +29,8 @@ export function MessagesPage() {
   const [isNewDirectModalOpen, setIsNewDirectModalOpen] = useState(false);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [isGroupMembersModalOpen, setIsGroupMembersModalOpen] = useState(false);
+  const [isGroupInvitationsOpen, setIsGroupInvitationsOpen] = useState(false);
+  const groupInvitations = useGroupInvitations();
   const [deleteModalState, setDeleteModalState] = useState<{
     isOpen: boolean;
     message: MessageDto | null;
@@ -62,6 +66,11 @@ export function MessagesPage() {
           onOpenCreateGroupModal={() => setIsCreateGroupModalOpen(true)}
           onOpenPinModal={() => setIsPinModalOpen(true)}
           onCloseConversation={handleBackToList}
+          onOpenGroupInvitations={() => {
+            setIsGroupInvitationsOpen(true);
+            void groupInvitations.refetch();
+          }}
+          hasGroupInvitations={Boolean(groupInvitations.data?.pages[0]?.items.length)}
         />
       </div>
 
@@ -117,6 +126,13 @@ export function MessagesPage() {
       </div>
 
       {/* Modals */}
+      {isGroupInvitationsOpen && (
+        <GroupInvitationsModal
+          invitations={groupInvitations}
+          onClose={() => setIsGroupInvitationsOpen(false)}
+          onJoined={handleSelectConversation}
+        />
+      )}
       <HiddenChatPinModal
         isOpen={isPinModalOpen}
         onClose={() => setIsPinModalOpen(false)}

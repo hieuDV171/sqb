@@ -54,6 +54,7 @@ public class MessageServiceImpl implements MessageService {
 
         UserParticipant participant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, conversationId)
+                .filter(member -> member.getLeftAt() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                         "Bạn không tham gia cuộc hội thoại này"));
         hiddenChatAccess.requireIfHidden(participant);
@@ -152,6 +153,8 @@ public class MessageServiceImpl implements MessageService {
         return MessageListResponseDto.builder()
                 .conversationId(conversationId)
                 .conversationType(conversation.getType())
+                .groupName(conversation.getType() == ConversationType.GROUP ? conversation.getName() : null)
+                .groupAvatarUrl(conversation.getType() == ConversationType.GROUP ? conversation.getAvatarUrl() : null)
                 .hiddenAt(participant.getHiddenAt())
                 .messages(messageDtos)
                 .pagination(pagination)

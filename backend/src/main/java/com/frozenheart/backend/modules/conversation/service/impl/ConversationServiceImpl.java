@@ -10,9 +10,11 @@ import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.conversation.dto.*;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
+import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.ConversationService;
+import com.frozenheart.backend.modules.conversation.service.GroupInvitationService;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
@@ -45,6 +47,8 @@ public class ConversationServiceImpl implements ConversationService {
         private final MediaService mediaService;
         private final ApplicationEventPublisher eventPublisher;
         private final HiddenChatAccess hiddenChatAccess;
+        private final GroupInvitationRepository groupInvitationRepository;
+        private final GroupInvitationService groupInvitationService;
 
         @Override
         @Transactional(readOnly = true)
@@ -257,9 +261,9 @@ public class ConversationServiceImpl implements ConversationService {
                                 .distinct()
                                 .toList();
 
-                if (memberIds.size() < 2 || memberIds.size() > 199) {
+                if (memberIds.size() < 2 || memberIds.size() >= GroupInvitationService.GROUP_CAPACITY) {
                         throw new AppException(ResponseCode.CONSTRAINTS_UNSATISFIED,
-                                        "Nhóm phải có từ 3 đến 200 người (bao gồm người tạo và từ 2 đến 199 thành viên khác)");
+                                        "Hãy chọn từ 2 đến 199 người để thêm hoặc mời vào nhóm");
                 }
 
                 List<User> targetMembers = userRepository.findAllById(memberIds);
@@ -272,6 +276,12 @@ public class ConversationServiceImpl implements ConversationService {
                 if (!blockedUserIds.isEmpty()) {
                         throw new AppException(ResponseCode.USER_IS_BLOCKED,
                                         "Không thể tạo nhóm với người dùng bị chặn");
+                }
+
+                var connections = groupInvitationService.connections(currentUserId, memberIds);
+                if (targetMembers.stream().anyMatch(member -> !member.isActive() || !connections.eligible(member.getId()))) {
+                        throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                                        "Chỉ có thể chọn bạn bè, người theo dõi hoặc người bạn đang theo dõi");
                 }
 
                 if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
@@ -299,7 +309,13 @@ public class ConversationServiceImpl implements ConversationService {
                                 .joinedAt(now)
                                 .build());
 
+                List<GroupInvitation> invitations = new ArrayList<>();
                 for (User member : targetMembers) {
+                        if (!connections.friends().contains(member.getId())) {
+                                invitations.add(new GroupInvitation(savedConv, currentUser, member,
+                                                now.plus(GroupInvitationService.INVITATION_LIFETIME)));
+                                continue;
+                        }
                         participants.add(UserParticipant.builder()
                                         .id(new UserParticipantId(member.getId(), savedConv.getId()))
                                         .user(member)
@@ -310,8 +326,11 @@ public class ConversationServiceImpl implements ConversationService {
                 }
 
                 userParticipantRepository.saveAll(participants);
+                groupInvitationRepository.saveAll(invitations);
 
-                return mapToDetailDto(savedConv);
+                ConversationDetailDto result = mapToDetailDto(savedConv);
+                result.setInvitedMemberCount(invitations.size());
+                return result;
         }
 
         @Override
@@ -475,7 +494,7 @@ public class ConversationServiceImpl implements ConversationService {
         public AddGroupMembersResponseDto addGroupMembers(Long conversationId, AddGroupMembersRequestDto request) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-                Conversation conversation = conversationRepository.findById(conversationId)
+                Conversation conversation = conversationRepository.findForMembershipUpdate(conversationId)
                                 .orElseThrow(
                                                 () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
                                                                 "Không tìm thấy cuộc hội thoại"));
@@ -500,6 +519,9 @@ public class ConversationServiceImpl implements ConversationService {
                                 .filter(id -> !Objects.equals(id, currentUserId))
                                 .distinct()
                                 .toList();
+                if (targetUserIds.isEmpty()) {
+                        return AddGroupMembersResponseDto.builder().addedMembers(List.of()).failedMembers(List.of()).build();
+                }
 
                 Map<Long, User> userMap = userRepository.findAllById(targetUserIds).stream()
                                 .collect(Collectors.toMap(User::getId, u -> u));
@@ -516,9 +538,13 @@ public class ConversationServiceImpl implements ConversationService {
 
                 List<ConversationMemberDto> addedMembers = new ArrayList<>();
                 List<FailedMemberDto> failedMembers = new ArrayList<>();
+                List<UserParticipant> membersToSave = new ArrayList<>();
+                List<GroupInvitation> invitations = new ArrayList<>();
 
                 Instant now = Instant.now();
-                int maxCapacity = 200;
+                var connections = groupInvitationService.connections(currentUserId, targetUserIds);
+                groupInvitationRepository.deleteExpiredForGroup(conversationId, now);
+                Set<Long> pendingIds = groupInvitationRepository.findPendingInviteeIds(conversationId, now);
 
                 for (Long targetUserId : targetUserIds) {
                         User targetUser = userMap.get(targetUserId);
@@ -529,10 +555,10 @@ public class ConversationServiceImpl implements ConversationService {
                         String avatarUrl = targetProfile != null ? targetProfile.getAvatarUrl() : null;
                         String frameUrl = targetProfile != null ? targetProfile.getAvatarFrameUrl() : null;
 
-                        if (targetUser == null) {
+                        if (targetUser == null || !targetUser.isActive()) {
                                 failedMembers.add(
                                                 new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
-                                                                "Người dùng không tồn tại"));
+                                                                "Tài khoản không khả dụng"));
                                 continue;
                         }
 
@@ -549,9 +575,28 @@ public class ConversationServiceImpl implements ConversationService {
                                 continue;
                         }
 
-                        if (currentMemberIds.size() + addedMembers.size() >= maxCapacity) {
+                        if (!connections.eligible(targetUserId)) {
                                 failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
-                                                "Nhóm đã đạt số lượng tối đa 200 thành viên"));
+                                                "Chỉ có thể chọn bạn bè, người theo dõi hoặc người bạn đang theo dõi"));
+                                continue;
+                        }
+
+                        if (pendingIds.contains(targetUserId)) {
+                                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
+                                                "Người này đã có lời mời đang chờ"));
+                                continue;
+                        }
+
+                        if (currentMemberIds.size() + pendingIds.size() + addedMembers.size() + invitations.size()
+                                        >= GroupInvitationService.GROUP_CAPACITY) {
+                                failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
+                                                "Nhóm đã hết chỗ, tính cả lời mời đang chờ"));
+                                continue;
+                        }
+
+                        if (!connections.friends().contains(targetUserId)) {
+                                invitations.add(new GroupInvitation(conversation, caller.getUser(), targetUser,
+                                                now.plus(GroupInvitationService.INVITATION_LIFETIME)));
                                 continue;
                         }
 
@@ -570,7 +615,7 @@ public class ConversationServiceImpl implements ConversationService {
                                                 .build();
                         }
 
-                        userParticipantRepository.save(participant);
+                        membersToSave.add(participant);
 
                         addedMembers.add(ConversationMemberDto.builder()
                                         .userId(targetUserId)
@@ -582,9 +627,12 @@ public class ConversationServiceImpl implements ConversationService {
                                         .build());
                 }
 
+                userParticipantRepository.saveAll(membersToSave);
+                groupInvitationRepository.saveAll(invitations);
                 return AddGroupMembersResponseDto.builder()
                                 .addedMembers(addedMembers)
                                 .failedMembers(failedMembers)
+                                .invitedMemberCount(invitations.size())
                                 .build();
         }
 
@@ -598,7 +646,7 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Để rời nhóm vui lòng sử dụng chức năng rời nhóm");
                 }
 
-                conversationRepository.findById(conversationId)
+                conversationRepository.findForMembershipUpdate(conversationId)
                                 .orElseThrow(
                                                 () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
                                                                 "Không tìm thấy cuộc hội thoại"));
@@ -639,6 +687,7 @@ public class ConversationServiceImpl implements ConversationService {
 
                 targetParticipant.setLeftAt(Instant.now());
                 userParticipantRepository.save(targetParticipant);
+                groupInvitationRepository.deleteForInviter(conversationId, targetUserId);
         }
 
         @Override
@@ -692,6 +741,8 @@ public class ConversationServiceImpl implements ConversationService {
         @Transactional
         public LeaveGroupResponseDto leaveGroup(Long conversationId, LeaveGroupRequestDto request) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+                conversationRepository.findForMembershipUpdate(conversationId)
+                                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND));
 
                 UserParticipant callerParticipant = userParticipantRepository
                                 .findByUserIdAndConversationId(currentUserId, conversationId)
@@ -758,6 +809,7 @@ public class ConversationServiceImpl implements ConversationService {
 
                 callerParticipant.setLeftAt(Instant.now());
                 userParticipantRepository.save(callerParticipant);
+                groupInvitationRepository.deleteForInviter(conversationId, currentUserId);
 
                 return LeaveGroupResponseDto.builder()
                                 .conversationId(conversationId)

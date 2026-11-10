@@ -6,10 +6,9 @@ import {
   useRemoveGroupMember,
   useUpdateMemberRole,
 } from '../hooks/useChat';
-import { userService } from '@/services/userService';
+import { GroupCandidatePicker } from './GroupCandidatePicker';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { ConversationRole } from '../types/chat.types';
-import type { FriendDto } from '@/types/user.types';
+import type { ConversationRole, GroupCandidateDto } from '../types/chat.types';
 import {
   Users,
   Crown,
@@ -28,19 +27,17 @@ interface GroupMembersModalProps {
   onClose: () => void;
 }
 
-export function GroupMembersModal({
-  conversationId,
-  isOpen,
-  onClose,
-}: GroupMembersModalProps) {
+export function GroupMembersModal({ isOpen, ...props }: GroupMembersModalProps) {
+  return isOpen ? <GroupMembersDialog key={props.conversationId} {...props} /> : null;
+}
+
+function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalProps, 'isOpen'>) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddMode, setIsAddMode] = useState(false);
-  const [friends, setFriends] = useState<FriendDto[]>([]);
-  const [selectedFriendIds, setSelectedFriendIds] = useState<number[]>([]);
-  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+  const [selectedPeople, setSelectedPeople] = useState<GroupCandidateDto[]>([]);
 
-  const { data: members = [], isLoading: isLoadingMembers } = useGroupMembers(conversationId, isOpen);
+  const { data: members = [], isLoading: isLoadingMembers } = useGroupMembers(conversationId);
   const addMembersMutation = useAddGroupMembers();
   const removeMemberMutation = useRemoveGroupMember();
   const updateRoleMutation = useUpdateMemberRole();
@@ -55,35 +52,22 @@ export function GroupMembersModal({
   const isVillageElder = myRole === 'VILLAGE_ELDER';
   const canManage = isChief || isVillageElder;
 
-  if (!isOpen) return null;
-
   const handleOpenAddMode = () => {
+    setSelectedPeople([]);
     setIsAddMode(true);
-    setIsLoadingFriends(true);
-    setSelectedFriendIds([]);
-    userService
-      .getMyFriends(undefined, 50)
-      .then((res) => {
-        if (res?.data?.items) {
-          // Lọc ra những người bạn chưa có trong nhóm
-          const existingIds = new Set(members.map((m) => m.userId));
-          setFriends(res.data.items.filter((f) => !existingIds.has(f.userId)));
-        }
-      })
-      .finally(() => setIsLoadingFriends(false));
   };
 
-  const handleAddSelectedFriends = () => {
-    if (selectedFriendIds.length === 0) return;
+  const handleAddSelectedPeople = () => {
+    if (selectedPeople.length === 0) return;
     addMembersMutation.mutate(
       {
         conversationId,
-        data: { userIds: selectedFriendIds },
+        data: { userIds: selectedPeople.map((person) => person.userId) },
       },
       {
         onSuccess: () => {
           setIsAddMode(false);
-          setSelectedFriendIds([]);
+          setSelectedPeople([]);
         },
       }
     );
@@ -170,7 +154,7 @@ export function GroupMembersModal({
           <div className="flex-1 flex flex-col overflow-hidden py-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Chọn bạn bè để thêm vào nhóm
+                Thêm hoặc mời vào nhóm
               </span>
               <button
                 type="button"
@@ -181,61 +165,18 @@ export function GroupMembersModal({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1 pr-1 border border-slate-100 dark:border-slate-800 rounded-xl p-2">
-              {isLoadingFriends ? (
-                <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Đang tải danh sách bạn bè...
-                </div>
-              ) : friends.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400">
-                  Tất cả bạn bè của bạn đều đã có mặt trong nhóm này.
-                </div>
-              ) : (
-                friends.map((f) => {
-                  const isChecked = selectedFriendIds.includes(f.userId);
-                  return (
-                    <div
-                      key={f.userId}
-                      onClick={() =>
-                        setSelectedFriendIds((prev) =>
-                          isChecked ? prev.filter((id) => id !== f.userId) : [...prev, f.userId]
-                        )
-                      }
-                      className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold shrink-0">
-                          {f.avatarUrl ? (
-                            <img src={f.avatarUrl} alt={f.fullName} className="w-full h-full object-cover" />
-                          ) : (
-                            getAvatarInitial(f.fullName)
-                          )}
-                        </div>
-                        <span className="text-xs font-medium truncate">{f.fullName}</span>
-                      </div>
-
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      />
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            <GroupCandidatePicker conversationId={conversationId} selected={selectedPeople}
+              onSelectionChange={setSelectedPeople} disabled={addMembersMutation.isPending} />
 
             <div className="pt-2">
               <button
                 type="button"
-                onClick={handleAddSelectedFriends}
-                disabled={selectedFriendIds.length === 0 || addMembersMutation.isPending}
+                onClick={handleAddSelectedPeople}
+                disabled={selectedPeople.length === 0 || addMembersMutation.isPending}
                 className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {addMembersMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                Thêm {selectedFriendIds.length} thành viên vào nhóm
+                Xác nhận ({selectedPeople.length} người)
               </button>
             </div>
           </div>
