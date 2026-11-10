@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { sessionService } from '@/features/session/services/sessionService';
 import { mediaService } from '@/services/mediaService';
@@ -242,13 +243,10 @@ export const CreatePostBox: React.FC = () => {
         <h2 id="create-post-heading" className="mb-4 text-base font-semibold text-foreground">Chia sẻ với cộng đồng</h2>
         <div className="flex gap-3.5 items-start">
           <div className="relative shrink-0">
-            <img
-              src={
-                user?.avatarUrl ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-              }
-              alt={user?.username || 'Avatar'}
-              className="w-10 h-10 md:w-11 md:h-11 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800"
+            <UserAvatar
+              avatarUrl={user?.avatarUrl}
+              name={user?.username}
+              className="md:size-11 ring-2 ring-slate-100 dark:ring-slate-800"
             />
             {user?.role && (
               <span

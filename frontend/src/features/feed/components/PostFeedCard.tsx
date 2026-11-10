@@ -3,6 +3,7 @@ import { Menu } from '@base-ui/react/menu';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
@@ -161,14 +162,11 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="relative shrink-0">
-            <img
-              src={
-                actor.avatarUrl ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120'
-              }
-              alt={actor.fullName}
-              className="size-11 rounded-full object-cover ring-2 ring-muted"
-              loading="lazy"
+            <UserAvatar
+              avatarUrl={actor.avatarUrl}
+              name={actor.fullName}
+              className="size-11 ring-2 ring-muted"
+              decorative
             />
             {actor.role && (
               <span

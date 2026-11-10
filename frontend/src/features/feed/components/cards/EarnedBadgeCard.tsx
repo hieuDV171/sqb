@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import type { CursorResponse } from '@/types/user.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { reactService } from '../../services/reactService';
@@ -42,13 +43,11 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-3">
-          <img
-            src={
-              actor.avatarUrl ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-            }
-            alt={actor.fullName}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-amber-500/40"
+          <UserAvatar
+            avatarUrl={actor.avatarUrl}
+            name={actor.fullName}
+            className="ring-2 ring-amber-500/40"
+            decorative
           />
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">

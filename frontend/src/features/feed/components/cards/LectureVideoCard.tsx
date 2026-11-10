@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { Video, BookOpen, Play, MessageSquare, Heart } from 'lucide-react';
 import { CommentSection } from '../CommentSection';
 
@@ -24,13 +25,11 @@ export const LectureVideoCard: React.FC<LectureVideoCardProps> = ({ item }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-3">
-          <img
-            src={
-              actor.avatarUrl ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-            }
-            alt={actor.fullName}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/40"
+          <UserAvatar
+            avatarUrl={actor.avatarUrl}
+            name={actor.fullName}
+            className="ring-2 ring-purple-500/40"
+            decorative
           />
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">

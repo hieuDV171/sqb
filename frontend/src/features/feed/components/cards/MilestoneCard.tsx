@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { Flame, Trophy } from 'lucide-react';
 
 interface MilestoneCardProps {
@@ -13,13 +14,11 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ item }) => {
     <div className="bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent dark:from-orange-950/30 dark:via-slate-900 dark:to-slate-900 rounded-3xl border border-orange-500/30 dark:border-orange-800/50 p-5 shadow-xs transition-all hover:shadow-md mb-4">
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-3">
-          <img
-            src={
-              actor.avatarUrl ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-            }
-            alt={actor.fullName}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-orange-500/40"
+          <UserAvatar
+            avatarUrl={actor.avatarUrl}
+            name={actor.fullName}
+            className="ring-2 ring-orange-500/40"
+            decorative
           />
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">

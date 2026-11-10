@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useComments } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
 import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import {
   Send,
   Loader2,
@@ -92,13 +93,10 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
               onSubmit={handleSubmitComment}
               className="flex gap-2.5 items-start mb-4"
           >
-              <img
-                  src={
-                      user?.avatarUrl ||
-                      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-                  }
-                  alt={user?.username || "User"}
-                  className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
+              <UserAvatar
+                  avatarUrl={user?.avatarUrl}
+                  name={user?.username}
+                  className="mt-0.5 size-8 text-xs"
               />
 
               <div className="flex-1 rounded-2xl border border-border bg-surface-subtle p-2 transition-[border-color,box-shadow] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
@@ -177,13 +175,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                   {comments.map((comment) => (
                       <div key={comment.commentId} className="group/item">
                           <div className="flex gap-2.5 items-start">
-                              <img
-                                  src={
-                                      comment.author?.avatarUrl ||
-                                      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-                                  }
-                                  alt={comment.author?.fullName || "Author"}
-                                  className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
+                              <UserAvatar
+                                  avatarUrl={comment.author?.avatarUrl}
+                                  name={comment.author?.fullName}
+                                  className="mt-0.5 size-7 text-xs"
+                                  decorative
                               />
 
                               <div className="flex-1">
@@ -310,18 +306,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                                       key={reply.commentId}
                                                       className="flex gap-2 items-start"
                                                   >
-                                                      <img
-                                                          src={
-                                                              reply.author
-                                                                  ?.avatarUrl ||
-                                                              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-                                                          }
-                                                          alt={
-                                                              reply.author
-                                                                  ?.fullName ||
-                                                              "User"
-                                                          }
-                                                          className="w-5 h-5 rounded-full object-cover shrink-0 mt-0.5"
+                                                      <UserAvatar
+                                                          avatarUrl={reply.author?.avatarUrl}
+                                                          name={reply.author?.fullName}
+                                                          className="mt-0.5 size-5 text-[10px]"
+                                                          decorative
                                                       />
                                                       <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200">
                                                           <span className="font-semibold text-slate-900 dark:text-white mr-1.5">
