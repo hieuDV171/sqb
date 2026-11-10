@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -34,16 +36,14 @@ public class CurrentSemesterHolder {
         return s;
     }
 
-    public void setCurrentSemester(Semester semester) {
-        cachedSemester.set(semester);
-        log.info("[CurrentSemesterHolder] Updated active semester cache to id={}, name={}",
-                semester != null ? semester.getId() : "null",
-                semester != null ? semester.getName() : "null");
-    }
-
-    public void clearCache() {
-        cachedSemester.set(null);
-        log.info("[CurrentSemesterHolder] Cleared active semester cache");
+    public void clearAfterCommit() {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                cachedSemester.set(null);
+                log.debug("[CurrentSemesterHolder] Cleared active semester cache");
+            }
+        });
     }
 
     public void refreshCache() {

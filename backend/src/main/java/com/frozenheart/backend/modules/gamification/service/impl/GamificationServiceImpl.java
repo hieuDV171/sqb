@@ -947,7 +947,7 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     @Transactional
     public void finalizeSemester() {
-        Semester current = currentSemesterHolder.getCurrentSemester();
+        Semester current = semesterRepository.findByActiveTrue().orElse(null);
         if (current == null) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Không thể chốt sổ! Hiện tại không có học kỳ nào đang được kích hoạt trong hệ thống.");
         }
@@ -1063,9 +1063,9 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         current.setFinalized(true);
-        semesterRepository.save(current);
+        currentSemesterHolder.clearAfterCommit();
 
-        leaderboardService.scheduleOldSemesterCleanup(currentSemesterHolder.getCurrentSemester().getId());
+        leaderboardService.scheduleOldSemesterCleanup(current.getId());
 
         log.info("[GamificationService] Finalized semester successfully.");
     }

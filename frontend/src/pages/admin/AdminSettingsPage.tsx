@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
+import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, CalendarDays, Loader2, Plus, Search, Settings } from 'lucide-react';
+import { BookOpen, CalendarDays, CheckCircle2, Circle, Lock, Loader2, Pencil, Plus, Search, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,61 @@ const semesterActions = {
 function errorMessage(error: unknown, fallback: string) {
   return error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
     ? error.message : fallback;
+}
+
+function EditSemesterStartDate({ semester, disabled }: { semester: SemesterResponse; disabled: boolean }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState('');
+  const fieldId = `semester-${semester.semesterId}-start-date`;
+  const update = useMutation({
+    mutationFn: (value: string) => adminService.updateSemesterStartDate(semester.semesterId, value),
+    onSuccess: async () => {
+      toast.success(`Đã cập nhật ngày khai giảng học kỳ ${semester.name}`);
+      await queryClient.invalidateQueries({ queryKey: semesterKey });
+      setOpen(false);
+    },
+  });
+
+  return (
+    <Dialog.Root open={open} onOpenChange={(next) => {
+      if (update.isPending) return;
+      if (next) {
+        setDate(semester.startDate ?? '');
+        update.reset();
+      }
+      setOpen(next);
+    }}>
+      <Dialog.Trigger render={<Button type="button" variant="outline" size="sm" disabled={disabled}
+        aria-label={`Sửa ngày khai giảng học kỳ ${semester.name}`}
+        className="min-h-11 border-academic/30 bg-academic-soft px-2 text-academic hover:bg-academic/15 hover:text-academic sm:px-3" />}>
+        <Pencil aria-hidden="true" className="hidden sm:block" /> Sửa ngày
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xl">
+          <Dialog.Title className="text-lg font-bold">Sửa ngày khai giảng</Dialog.Title>
+          <Dialog.Description className="text-sm text-muted-foreground">Học kỳ {semester.name}</Dialog.Description>
+          <form className="space-y-4" onSubmit={(event) => {
+            event.preventDefault();
+            if (date && date !== semester.startDate && !update.isPending) update.mutate(date);
+          }}>
+            <div className="space-y-1.5">
+              <Label htmlFor={fieldId}>Ngày khai giảng mới</Label>
+              <DatePicker id={fieldId} value={date} onChange={setDate} disabled={update.isPending} />
+            </div>
+            {update.isError && <p role="alert" className="text-sm text-destructive">{errorMessage(update.error, 'Không thể cập nhật ngày khai giảng.')}</p>}
+            <div className="flex justify-end gap-2">
+              <Dialog.Close render={<Button type="button" variant="outline" disabled={update.isPending} />}>Hủy</Dialog.Close>
+              <Button type="submit" disabled={!date || date === semester.startDate || update.isPending}>
+                {update.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
 }
 
 function SemesterSettings() {
@@ -105,8 +162,7 @@ function SemesterSettings() {
           </div>
           <div className="w-full space-y-1.5 sm:w-52">
             <Label htmlFor="semester-start-date">Ngày khai giảng (tùy chọn)</Label>
-            <Input id="semester-start-date" type="date" value={startDate} disabled={create.isPending}
-              onChange={(event) => setStartDate(event.target.value)} />
+            <DatePicker id="semester-start-date" value={startDate} onChange={setStartDate} disabled={create.isPending} allowClear />
           </div>
           <Button type="submit" className="min-h-11" disabled={busy || !name.trim()}>
             {create.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <Plus aria-hidden="true" />}
@@ -126,11 +182,12 @@ function SemesterSettings() {
               <p className="text-sm text-muted-foreground">{active ? `Đang hoạt động · ${active.name}` : 'Chưa có học kỳ đang hoạt động'}</p>
             </div>
             <table aria-labelledby="admin-semester-list" className="w-full table-fixed text-left">
-              <thead className="border-b border-border text-sm text-muted-foreground">
+              <thead className="border-b border-border bg-surface-subtle text-xs text-muted-foreground sm:text-sm">
                 <tr>
                   <th scope="col" className="px-2 py-2.5 font-medium sm:px-4">Học kỳ</th>
+                  <th scope="col" className="px-2 py-2.5 font-medium sm:px-4">Ngày khai giảng</th>
                   <th scope="col" className="px-2 py-2.5 font-medium sm:px-4">Trạng thái</th>
-                  <th scope="col" className="w-[38%] px-2 py-2.5 text-right font-medium sm:w-1/3 sm:px-4">Thao tác</th>
+                  <th scope="col" className="w-[30%] px-2 py-2.5 text-right font-medium sm:w-[36%] sm:px-4">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -141,33 +198,37 @@ function SemesterSettings() {
                         <span className="min-w-0 wrap-break-word">{semester.name}</span>
                         <span className="font-mono text-xs font-normal text-muted-foreground">#{semester.semesterId}</span>
                       </div>
-                      {semester.startDate && (
-                        <p className="mt-1 text-xs font-normal text-muted-foreground">
-                          Khai giảng <time dateTime={semester.startDate}>{semester.startDate.split('-').reverse().join('/')}</time>
-                        </p>
-                      )}
                     </th>
+                    <td className="px-2 py-3 align-middle text-xs break-words tabular-nums sm:px-4 sm:text-sm">
+                      {semester.startDate
+                        ? <time dateTime={semester.startDate}>{semester.startDate.split('-').reverse().join('/')}</time>
+                        : <span className="text-muted-foreground">Chưa nhập</span>}
+                    </td>
                     <td className="px-2 py-3 align-middle sm:px-4">
                       <div className="flex flex-wrap gap-1.5">
-                        {semester.active && <Badge variant="outline" className="h-auto whitespace-normal">Đang hoạt động</Badge>}
-                        {semester.isFinalize && <Badge variant="outline" className="h-auto whitespace-normal">Đã chốt sổ</Badge>}
+                        {semester.active && <Badge className="h-auto border border-success/30 bg-success-soft px-1.5 whitespace-normal text-success hover:bg-success-soft sm:px-2.5"><Circle aria-hidden="true" className="hidden size-2 shrink-0 fill-current sm:block" />Đang hoạt động</Badge>}
+                        {semester.isFinalize && <Badge className="h-auto border border-gamification/30 bg-gamification-soft px-1.5 whitespace-normal text-gamification hover:bg-gamification-soft sm:px-2.5"><Lock aria-hidden="true" className="hidden size-3 shrink-0 sm:block" />Đã chốt sổ</Badge>}
                         {!semester.active && !semester.isFinalize && (
-                          <Badge variant="outline" className="h-auto whitespace-normal">Chưa kích hoạt</Badge>
+                          <Badge className="h-auto border border-warning/30 bg-warning-soft px-1.5 whitespace-normal text-warning hover:bg-warning-soft sm:px-2.5">Chưa kích hoạt</Badge>
                         )}
                       </div>
                     </td>
                     <td className="px-2 py-3 align-middle sm:px-4">
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <div className="flex flex-wrap justify-end gap-2 [&_button]:max-w-full [&_button]:whitespace-normal">
+                        <EditSemesterStartDate semester={semester} disabled={busy} />
                         {semester.active ? (
-                          <Button type="button" variant="outline" className="min-h-11" disabled={busy}
+                          <Button type="button" variant="outline" size="sm" disabled={busy}
+                            className="min-h-11 border-warning/30 bg-warning-soft px-2 text-warning hover:bg-warning/15 hover:text-warning sm:px-3"
                             onClick={() => start(semester.isFinalize ? 'deactivate' : 'finalize', semester)}>
+                            {semester.isFinalize ? <Lock aria-hidden="true" className="hidden sm:block" /> : <CheckCircle2 aria-hidden="true" className="hidden sm:block" />}
                             {semester.isFinalize ? 'Đóng học kỳ' : 'Chốt sổ'}
                           </Button>
                         ) : (
                           <>
-                            {!semester.isFinalize && <Button type="button" variant="outline" className="min-h-11"
+                            {!semester.isFinalize && <Button type="button" variant="outline" size="sm"
+                              className="min-h-11 border-success/30 bg-success-soft px-2 text-success hover:bg-success/15 hover:text-success sm:px-3"
                               disabled={busy || Boolean(active)} onClick={() => start('activate', semester)}>Kích hoạt</Button>}
-                            <Button type="button" variant="destructive" className="min-h-11" disabled={busy}
+                            <Button type="button" variant="destructive" size="sm" className="min-h-11 px-2 sm:px-3" disabled={busy}
                               aria-label={`Xóa học kỳ ${semester.name}`} onClick={() => start('delete', semester)}>Xóa</Button>
                           </>
                         )}
@@ -269,14 +330,24 @@ function SubjectSettings() {
             {results.length === 0 ? (
               <p role="status" className="p-4 text-sm text-muted-foreground">{keyword ? 'Không tìm thấy môn phù hợp.' : 'Chưa có môn học.'}</p>
             ) : (
-              <ul className="divide-y divide-border">
-                {results.map((subject) => (
-                  <li key={subject.subjectId} className="flex items-start gap-3 px-4 py-3 text-sm">
-                    <span className="shrink-0 rounded-md bg-academic-soft px-2 py-0.5 font-mono text-academic">{subject.code}</span>
-                    <span className="min-w-0 wrap-break-word font-medium">{subject.name}</span>
-                  </li>
-                ))}
-              </ul>
+              <table aria-label="Danh mục môn học" className="w-full table-fixed text-left text-sm">
+                <thead className="border-b border-border bg-surface-subtle text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="w-28 px-4 py-2.5 font-medium sm:w-40">Mã môn</th>
+                    <th scope="col" className="px-4 py-2.5 font-medium">Tên môn học</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {results.map((subject) => (
+                    <tr key={subject.subjectId}>
+                      <th scope="row" className="px-4 py-3 align-top font-medium">
+                        <span className="inline-block max-w-full wrap-anywhere rounded-md bg-academic-soft px-2 py-0.5 font-mono text-academic">{subject.code}</span>
+                      </th>
+                      <td className="px-4 py-3 align-top font-medium wrap-anywhere">{subject.name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         )}

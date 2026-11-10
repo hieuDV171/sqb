@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +54,16 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
 
     @Override
     @Transactional
+    public SemesterResponse updateSemesterStartDate(Long semesterId, LocalDate startDate) {
+        Semester semester = semesterRepository.findById(semesterId)
+                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ"));
+        semester.setStartDate(startDate);
+        currentSemesterHolder.clearAfterCommit();
+        return mapToResponse(semester);
+    }
+
+    @Override
+    @Transactional
     public SemesterResponse activateSemester(Long semesterId) {
         // Kiểm tra an toàn: Đảm bảo không có học kỳ nào đang hoạt động
         Optional<Semester> currentActiveOpt = semesterRepository.findByActiveTrue();
@@ -80,13 +91,10 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
 
         // Kích hoạt học kỳ được chọn
         semester.setActive(true);
-        Semester saved = semesterRepository.save(semester);
+        currentSemesterHolder.clearAfterCommit();
 
-        // Đồng bộ cache RAM ngay lập tức
-        currentSemesterHolder.setCurrentSemester(saved);
-
-        log.info("[SemesterManagement] Activated semester id={}, name={}", saved.getId(), saved.getName());
-        return mapToResponse(saved);
+        log.info("[SemesterManagement] Activated semester id={}, name={}", semester.getId(), semester.getName());
+        return mapToResponse(semester);
     }
 
     @Override
@@ -112,7 +120,7 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
         }
 
         semesterRepository.deactivateAllSemesters();
-        currentSemesterHolder.clearCache();
+        currentSemesterHolder.clearAfterCommit();
         log.info("[SemesterManagement] Deactivated all semesters");
     }
 

@@ -122,6 +122,13 @@ export const adminService = {
     )) as any;
   },
 
+  updateSemesterStartDate: async (semesterId: number, startDate: string): Promise<GlobalResponse<SemesterResponse>> => {
+    const response = await axiosClient.put<GlobalResponse<SemesterResponse>>(
+      `/admin/semesters/${semesterId}/start-date`, { startDate },
+    );
+    return response as unknown as GlobalResponse<SemesterResponse>;
+  },
+
   /**
    * Kích hoạt một học kỳ
    */

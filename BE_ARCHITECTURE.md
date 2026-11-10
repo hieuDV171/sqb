@@ -398,3 +398,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Tạo nhóm và thêm thành viên kiểm tra quan hệ theo lô. Bạn bè tham gia trực tiếp. Người theo dõi hoặc đang được theo dõi nhận bản ghi trong `group_invitations`. Chỉ tài khoản nhận lời mời có thể chấp nhận hoặc từ chối.
 - Lời mời giữ chỗ tối đa 7 ngày trong giới hạn 200 chỗ. Khi người gửi rời nhóm hoặc bị xóa, hệ thống hủy các lời mời họ đã gửi. API chấp nhận kiểm tra lại quyền, hạn và quan hệ chặn, rồi cập nhật thành viên và xóa lời mời trong một giao dịch.
 - Khóa bản ghi hội thoại khi thay đổi thành viên hoặc xử lý lời mời để tuần tự hóa việc giữ chỗ, chấp nhận và rời nhóm. Lịch sử chat yêu cầu tư cách thành viên đang hoạt động.
+
+### [ADR-038] Cập nhật ngày khai giảng độc lập với trạng thái học kỳ
+
+- Admin đặt hoặc sửa ngày khai giảng của học kỳ hiện có qua API riêng. Dữ liệu dùng cột `semesters.start_date` hiện có.
+- Hibernate chỉ ghi các thuộc tính thay đổi. Luồng kích hoạt, sửa ngày và chốt sổ cập nhật entity được đọc trong giao dịch để việc sửa ngày và đổi trạng thái không ghi đè lẫn nhau.
+- Hủy cache học kỳ hiện tại sau khi giao dịch đổi ngày hoặc trạng thái commit. Lần đọc sau lấy lại trạng thái và ngày khai giảng đã lưu.

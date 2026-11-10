@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.session.controller;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.modules.session.dto.CreateSemesterRequest;
 import com.frozenheart.backend.modules.session.dto.SemesterResponse;
+import com.frozenheart.backend.modules.session.dto.UpdateSemesterStartDateRequest;
 import com.frozenheart.backend.modules.session.service.SemesterManagementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,6 +49,23 @@ public class AdminSemesterController {
     public ResponseEntity<GlobalResponse<List<SemesterResponse>>> getAllSemesters() {
         List<SemesterResponse> response = semesterManagementService.getAllSemesters();
         return ResponseEntity.ok(GlobalResponse.success(response));
+    }
+
+    @Operation(summary = "Cập nhật ngày khai giảng", description = "Đặt hoặc sửa ngày khai giảng của một học kỳ hiện có, kể cả học kỳ đã chốt sổ.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Đã cập nhật ngày khai giảng"),
+            @ApiResponse(responseCode = "400", description = "Thiếu ngày khai giảng hoặc ngày sai định dạng yyyy-MM-dd"),
+            @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền quản trị viên (ADMIN)"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy học kỳ (RESOURCE_NOT_FOUND)")
+    })
+    @PutMapping("/{semesterId}/start-date")
+    public ResponseEntity<GlobalResponse<SemesterResponse>> updateSemesterStartDate(
+            @Parameter(description = "ID học kỳ cần cập nhật", example = "1", required = true)
+            @PathVariable Long semesterId,
+            @Valid @RequestBody UpdateSemesterStartDateRequest request) {
+        return ResponseEntity.ok(GlobalResponse.success(
+                semesterManagementService.updateSemesterStartDate(semesterId, request.startDate())));
     }
 
     @Operation(summary = "Kích hoạt học kỳ", description = "Kích hoạt học kỳ được chọn để phục vụ dạy học và đề xuất câu hỏi. Rào chắn: Chỉ cho phép kích hoạt nếu không có học kỳ nào khác đang mở và học kỳ này chưa từng bị chốt sổ.")
