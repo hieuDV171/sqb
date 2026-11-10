@@ -11,12 +11,6 @@ interface GamificationState {
   isCheckInModalOpen: boolean;
   setCheckInModalOpen: (open: boolean) => void;
 
-  // Fitting Room (Live Preview for Cosmetics)
-  previewCosmeticId: number | null;
-  previewAssetUrl: string | null;
-  previewCosmeticName: string | null;
-  setPreviewCosmetic: (id: number | null, assetUrl: string | null, name: string | null) => void;
-  clearPreview: () => void;
 }
 
 export const useGamificationStore = create<GamificationState>((set) => ({
@@ -26,19 +20,4 @@ export const useGamificationStore = create<GamificationState>((set) => ({
   isCheckInModalOpen: false,
   setCheckInModalOpen: (open) => set({ isCheckInModalOpen: open }),
 
-  previewCosmeticId: null,
-  previewAssetUrl: null,
-  previewCosmeticName: null,
-  setPreviewCosmetic: (id, assetUrl, name) =>
-    set({
-      previewCosmeticId: id,
-      previewAssetUrl: assetUrl,
-      previewCosmeticName: name,
-    }),
-  clearPreview: () =>
-    set({
-      previewCosmeticId: null,
-      previewAssetUrl: null,
-      previewCosmeticName: null,
-    }),
 }));

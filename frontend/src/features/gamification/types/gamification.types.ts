@@ -9,7 +9,7 @@ export type LeaderboardPeriod = 'SEMESTER' | 'SUBJECT';
 export interface LeaderboardEntryDto {
   rank: number;
   userId: number;
-  userCode: string;
+  userCode: string | null;
   fullName: string;
   avatarUrl?: string;
   frameUrl?: string;
@@ -29,7 +29,7 @@ export interface MyRankDto {
 
 export interface LeaderboardResponse {
   entries: LeaderboardEntryDto[];
-  myRank: MyRankDto;
+  myRank: MyRankDto | null;
   pagination?: CursorPagination;
 }
 

@@ -182,9 +182,10 @@ export const gamificationService = {
     after?: number;
     limit?: number;
   }): Promise<GlobalResponse<MyInventoryResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<MyInventoryResponseDto>>('/cosmetics/my-inventory', {
+    return axiosClient.get<unknown, GlobalResponse<MyInventoryResponseDto>>('/cosmetics/my-inventory', {
       params,
-    })) as any;
+      preserveEnumKeys: true,
+    });
   },
 
   /**

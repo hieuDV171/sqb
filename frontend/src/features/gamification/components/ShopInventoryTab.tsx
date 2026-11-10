@@ -1,425 +1,197 @@
-import { useState } from 'react';
-import {
-  ShoppingBag,
-  Package,
-  Check,
-  Shirt,
-} from 'lucide-react';
-import {
-  useShop,
-  useMyInventory,
-  useBuyCosmetic,
-  useEquipCosmetic,
-  useUnequipCosmetic,
-} from '../hooks/useGamification';
-import { useGamificationStore } from '../stores/useGamificationStore';
+import { useRef, useState } from 'react';
+import { AlertDialog } from '@base-ui/react/alert-dialog';
+import { Check, Eye, Loader2, Package, ShoppingBag } from 'lucide-react';
 import { SqbCoin } from '@/components/common/SqbCoin';
-import { FittingRoomPreview } from './FittingRoomPreview';
-import type {
-  CosmeticType,
-  CosmeticRarity,
-  CosmeticSortBy,
-} from '../types/gamification.types';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useBuyCosmetic, useEquipCosmetic, useMyInventory, useShop, useUnequipCosmetic } from '../hooks/useGamification';
+import type { CosmeticType, CosmeticRarity, CosmeticSortBy, InventoryItemDto, ShopItemDto } from '../types/gamification.types';
 import { getRarityColor } from '../types/gamification.types';
+import { FittingRoomPreview } from './FittingRoomPreview';
+import { GamificationSelect } from './GamificationSelect';
+
+const typeLabels: Record<CosmeticType, string> = {
+  AVATAR_FRAME: 'Khung ảnh đại diện',
+  CHAT_BUBBLE: 'Bong bóng chat',
+  PROFILE_PIN: 'Huy hiệu cài',
+  BADGE_EFFECT: 'Hiệu ứng huy hiệu',
+};
+const rarityLabels: Record<CosmeticRarity, string> = {
+  COMMON: 'Thường', RARE: 'Hiếm', EPIC: 'Sử thi', LEGENDARY: 'Huyền thoại',
+};
+const types = [
+  { value: '', label: 'Tất cả loại' },
+  { value: 'AVATAR_FRAME', label: typeLabels.AVATAR_FRAME },
+  { value: 'CHAT_BUBBLE', label: typeLabels.CHAT_BUBBLE },
+];
+const rarities = [
+  { value: '', label: 'Tất cả độ hiếm' },
+  ...Object.entries(rarityLabels).map(([value, label]) => ({ value, label })),
+];
+const sorts = [
+  { value: 'NEWEST', label: 'Mới nhất' },
+  { value: 'PRICE_ASC', label: 'Giá thấp đến cao' },
+  { value: 'PRICE_DESC', label: 'Giá cao đến thấp' },
+  { value: 'RARITY', label: 'Độ hiếm' },
+];
+
+type CosmeticItem = ShopItemDto | InventoryItemDto;
 
 export function ShopInventoryTab() {
-  const [subTab, setSubTab] = useState<'shop' | 'inventory'>('shop');
-  const [selectedType, setSelectedType] = useState<CosmeticType | undefined>(undefined);
-  const [selectedRarity, setSelectedRarity] = useState<CosmeticRarity | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<CosmeticSortBy>('NEWEST');
+  const [view, setView] = useState<'shop' | 'inventory'>('shop');
+  const [type, setType] = useState<CosmeticType>();
+  const [rarity, setRarity] = useState<CosmeticRarity>();
+  const [sort, setSort] = useState<CosmeticSortBy>('NEWEST');
+  const [previewId, setPreviewId] = useState<number>();
+  const [purchase, setPurchase] = useState<ShopItemDto | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const shop = useShop({ type, sortBy: sort, limit: 30 });
+  const inventory = useMyInventory({ type, rarity, limit: 30 });
+  const buy = useBuyCosmetic();
+  const equip = useEquipCosmetic();
+  const unequip = useUnequipCosmetic();
 
-  const { data: shopData, isLoading: isShopLoading } = useShop({
-    type: selectedType,
-    sortBy,
-    limit: 30,
-  });
+  const isShop = view === 'shop';
+  const query = isShop ? shop : inventory;
+  const items = (isShop ? shop.data?.items : inventory.data?.inventory) ?? [];
+  const equipped = inventory.data?.currentlyEquipped;
+  const coins = shop.data?.userPoints;
+  const preview = items.find((item) => item.cosmeticId === previewId);
+  const busy = buy.isPending || equip.isPending || unequip.isPending;
+  const canConfirm = purchase !== null && !shop.isError && coins !== undefined && coins >= purchase.price;
 
-  const { data: inventoryData, isLoading: isInventoryLoading } = useMyInventory({
-    type: selectedType,
-    rarity: selectedRarity,
-    limit: 30,
-  });
-
-  const buyMutation = useBuyCosmetic();
-  const equipMutation = useEquipCosmetic();
-  const unequipMutation = useUnequipCosmetic();
-
-  const { setPreviewCosmetic, previewCosmeticId } = useGamificationStore();
-
-  const userCoins = shopData?.userPoints ?? 0;
-  const currentlyEquipped = inventoryData?.currentlyEquipped;
-
-  // Selected item being previewed
-  const shopItems = shopData?.items || [];
-  const inventoryItems = inventoryData?.inventory || [];
-
-  const previewedShopItem = shopItems.find((i) => i.cosmeticId === previewCosmeticId);
-  const previewedInventoryItem = inventoryItems.find((i) => i.cosmeticId === previewCosmeticId);
-  const isPreviewedOwned = previewedShopItem?.isOwned || !!previewedInventoryItem;
-  const previewedPrice = previewedShopItem?.price;
-
-  const handleBuy = (cosmeticId: number) => {
-    buyMutation.mutate(cosmeticId);
-  };
-
-  const handleEquip = (cosmeticId: number) => {
-    equipMutation.mutate({ cosmeticId });
-  };
-
-  const handleUnequip = (cosmeticId: number) => {
-    unequipMutation.mutate({ cosmeticId });
-  };
+  function itemAction(item: CosmeticItem) {
+    if ('price' in item) {
+      if (item.isOwned) return <span className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-success-soft px-3 text-sm font-medium text-success">
+        <Check aria-hidden="true" className="size-4" /> Đã sở hữu
+      </span>;
+      const affordable = coins !== undefined && coins >= item.price;
+      return <Button type="button" className="min-h-11" disabled={busy || !affordable} onClick={() => { buy.reset(); setPurchase(item); }}>
+        {affordable ? 'Mua' : 'Chưa đủ xu'}
+      </Button>;
+    }
+    const isEquipped = equipped?.[item.type]?.cosmeticId === item.cosmeticId;
+    const changing = (equip.isPending && equip.variables?.cosmeticId === item.cosmeticId)
+      || (unequip.isPending && unequip.variables?.cosmeticId === item.cosmeticId);
+    return <Button type="button" variant={isEquipped ? 'outline' : 'default'} className="min-h-11" disabled={busy}
+      onClick={() => {
+        if (isEquipped) unequip.mutate({ cosmeticId: item.cosmeticId });
+        else equip.mutate({ cosmeticId: item.cosmeticId });
+      }}>
+      {changing && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
+      {isEquipped ? 'Tháo' : 'Trang bị'}
+    </Button>;
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Fitting Room Live Preview Box */}
-      <FittingRoomPreview
-        currentlyEquipped={currentlyEquipped}
-        onBuy={handleBuy}
-        onEquip={handleEquip}
-        isItemOwned={isPreviewedOwned}
-        itemPrice={previewedPrice}
-        userCoins={userCoins}
-      />
-
-      {/* Sub-tab Navigation (Shop vs My Inventory) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-3 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-xs">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setSubTab('shop')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              subTab === 'shop'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Cửa Hàng Vật Phẩm</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab('inventory')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              subTab === 'inventory'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Tủ Đồ Cá Nhân</span>
-            {inventoryItems.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400">
-                {inventoryItems.length}
-              </span>
-            )}
-          </button>
+    <section aria-labelledby="cosmetic-title" className="space-y-4">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <h2 id="cosmetic-title" className="text-xl font-bold">Cửa hàng & tủ đồ</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Xem trước, mua bằng xu SQB và trang bị vật phẩm của bạn.</p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div role="group" aria-label="Danh sách vật phẩm" className="flex flex-wrap gap-1 rounded-xl bg-surface-subtle p-1">
+            <Button type="button" aria-pressed={isShop} variant={isShop ? 'secondary' : 'ghost'} className="min-h-11"
+              onClick={() => { setView('shop'); setPreviewId(undefined); }}>
+              <ShoppingBag aria-hidden="true" /> Cửa hàng
+            </Button>
+            <Button type="button" aria-pressed={!isShop} variant={isShop ? 'ghost' : 'secondary'} className="min-h-11"
+              onClick={() => { setView('inventory'); setPreviewId(undefined); }}>
+              <Package aria-hidden="true" /> Tủ đồ
+            </Button>
+          </div>
+          <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
+            <GamificationSelect label="Loại vật phẩm" value={type ?? ''} options={types}
+              onChange={(value) => { setType(value ? value as CosmeticType : undefined); setPreviewId(undefined); }} />
+            {isShop
+              ? <GamificationSelect label="Sắp xếp" value={sort} options={sorts}
+                  onChange={(value) => { setSort(value as CosmeticSortBy); setPreviewId(undefined); }} />
+              : <GamificationSelect label="Độ hiếm" value={rarity ?? ''} options={rarities}
+                  onChange={(value) => { setRarity(value ? value as CosmeticRarity : undefined); setPreviewId(undefined); }} />}
+          </div>
         </div>
+      </div>
 
-        {/* Filters & Sorting */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Filter by Type */}
-          <select
-            value={selectedType || ''}
-            onChange={(e) => setSelectedType((e.target.value as CosmeticType) || undefined)}
-            className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden"
-          >
-            <option value="">Tất cả phân loại</option>
-            <option value="AVATAR_FRAME">Khung Avatar</option>
-            <option value="PROFILE_PIN">Huy hiệu cài áo</option>
-            <option value="CHAT_BUBBLE">Bong bóng chat</option>
-          </select>
-
-          {/* Filter by Rarity (Inventory only) */}
-          {subTab === 'inventory' && (
-            <select
-              value={selectedRarity || ''}
-              onChange={(e) => setSelectedRarity((e.target.value as CosmeticRarity) || undefined)}
-              className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden"
-            >
-              <option value="">Tất cả độ hiếm</option>
-              <option value="COMMON">Phổ thông</option>
-              <option value="RARE">Hiếm</option>
-              <option value="EPIC">Sử thi</option>
-              <option value="LEGENDARY">Thần thoại</option>
-            </select>
-          )}
-
-          {/* Sort By (Shop only) */}
-          {subTab === 'shop' && (
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as CosmeticSortBy)}
-              className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden"
-            >
-              <option value="NEWEST">Mới nhất</option>
-              <option value="PRICE_ASC">Giá: Thấp đến cao</option>
-              <option value="PRICE_DESC">Giá: Cao đến thấp</option>
-              <option value="RARITY">Độ hiếm</option>
-            </select>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+        <div ref={previewRef} tabIndex={-1} className="min-w-0 self-start rounded-2xl focus-visible:outline-2 focus-visible:outline-ring xl:order-2">
+          <FittingRoomPreview equippedFrame={equipped?.AVATAR_FRAME} item={preview}
+            onClear={() => setPreviewId(undefined)} action={preview && itemAction(preview)} />
+        </div>
+        <div className="min-w-0 xl:order-1">
+          {query.isPending ? (
+            <Skeleton aria-label="Đang tải vật phẩm" className="h-52 rounded-2xl" />
+          ) : query.isError ? (
+            <ErrorState title={isShop ? 'Không thể tải cửa hàng' : 'Không thể tải tủ đồ'} onRetry={() => void query.refetch()} />
+          ) : items.length === 0 ? (
+            <EmptyState icon={Package} title={isShop ? 'Không có vật phẩm phù hợp' : 'Không có vật phẩm trong tủ đồ này'}
+              description={isShop ? 'Hãy thử chọn loại vật phẩm khác.' : 'Bạn có thể đổi bộ lọc hoặc xem vật phẩm tại cửa hàng.'}
+              actionLabel={isShop ? undefined : 'Đến cửa hàng'} onAction={isShop ? undefined : () => { setView('shop'); setType(undefined); }} />
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+              {items.map((item) => {
+                const isEquipped = equipped?.[item.type]?.cosmeticId === item.cosmeticId;
+                const rarityStyle = item.rarity === 'LEGENDARY' ? 'bg-reward-soft text-reward' : getRarityColor(item.rarity).badge;
+                return (
+                  <li key={item.cosmeticId} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${rarityStyle}`}>{rarityLabels[item.rarity]}</span>
+                      {isEquipped && <span className="text-xs font-semibold text-success">Đang trang bị</span>}
+                    </div>
+                    <div className="grid h-32 place-items-center rounded-xl bg-surface-subtle">
+                      {item.assetUrl ? <img src={item.assetUrl} alt="" loading="lazy" className="h-24 max-w-[85%] object-contain" />
+                        : <Package aria-hidden="true" className="size-9 text-muted-foreground" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground">{typeLabels[item.type]}</p>
+                      <h3 className="wrap-break-word font-semibold">{item.name}</h3>
+                      <p className="mt-1 wrap-break-word text-sm text-muted-foreground">{item.description}</p>
+                    </div>
+                    {'price' in item && <p className="flex items-center gap-1.5 text-sm font-semibold text-reward">
+                      <SqbCoin className="size-4" /> {item.price.toLocaleString('vi-VN')} xu
+                    </p>}
+                    <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                      <Button type="button" variant="outline" aria-pressed={previewId === item.cosmeticId} className="min-h-11"
+                        onClick={() => {
+                          setPreviewId(item.cosmeticId);
+                          previewRef.current?.focus({ preventScroll: true });
+                          previewRef.current?.scrollIntoView({ block: 'nearest' });
+                        }}>
+                        <Eye aria-hidden="true" /> Xem trước
+                      </Button>
+                      {itemAction(item)}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      {subTab === 'shop' ? (
-        /* SHOP ITEMS GRID */
-        <div>
-          {isShopLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="p-5 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 animate-pulse space-y-4"
-                >
-                  <div className="w-24 h-24 rounded-2xl bg-slate-200 dark:bg-slate-700 mx-auto" />
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-sm w-3/4 mx-auto" />
-                  <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-xl" />
-                </div>
-              ))}
-            </div>
-          ) : shopItems.length === 0 ? (
-            <div className="py-16 text-center text-slate-400 bg-white dark:bg-slate-800/50 rounded-3xl border border-slate-200 dark:border-slate-800">
-              <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="font-bold text-base text-slate-700 dark:text-slate-300">
-                Không tìm thấy vật phẩm nào
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Các sự kiện mở bán vật phẩm mới sẽ sớm được cập nhật!
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-              {shopItems.map((item) => {
-                const rarityStyle = getRarityColor(item.rarity);
-                const isAffordable = userCoins >= item.price;
-                const isCurrentlyPreviewed = previewCosmeticId === item.cosmeticId;
-
-                return (
-                  <div
-                    key={item.cosmeticId}
-                    className={`group relative flex flex-col justify-between p-5 rounded-3xl bg-white dark:bg-slate-800/90 border transition-all duration-300 hover:shadow-lg ${rarityStyle.border} ${rarityStyle.glow} ${
-                      isCurrentlyPreviewed ? 'ring-2 ring-indigo-500 ring-offset-2' : ''
-                    }`}
-                  >
-                    {/* Item Top: Rarity Badge & Type */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${rarityStyle.badge}`}
-                      >
-                        {item.rarity}
-                      </span>
-                      <span className="text-[11px] font-medium text-slate-400">
-                        {item.type === 'AVATAR_FRAME'
-                          ? 'Khung Avatar'
-                          : item.type === 'PROFILE_PIN'
-                          ? 'Huy hiệu cài'
-                          : 'Bong bóng chat'}
-                      </span>
-                    </div>
-
-                    {/* Thumbnail Display */}
-                    <div className="relative w-28 h-28 mx-auto my-3 flex items-center justify-center">
-                      {item.assetUrl ? (
-                        <img
-                          src={item.assetUrl}
-                          alt={item.name}
-                          className="w-full h-full object-contain drop-shadow-md group-hover:scale-110 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 rounded-2xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-3xl">
-                          🎁
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Name & Description */}
-                    <div className="text-center space-y-1 mb-4">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
-                        {item.name}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    {/* Price & Action Buttons */}
-                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Giá bán:</span>
-                        <span className="font-mono font-black text-amber-500 text-sm flex items-center gap-1.5">
-                          <SqbCoin className="w-4 h-4" />
-                          <span>{item.price.toLocaleString()}</span>
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Preview button */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewCosmetic(item.cosmeticId, item.assetUrl || null, item.name)
-                          }
-                          className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                            isCurrentlyPreviewed
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200'
-                          }`}
-                        >
-                          <Shirt className="w-3.5 h-3.5" />
-                          <span>{isCurrentlyPreviewed ? 'Đang thử' : 'Ướm thử'}</span>
-                        </button>
-
-                        {/* Buy or Owned button */}
-                        {item.isOwned ? (
-                          <div className="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-1">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Đã có</span>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={!isAffordable || buyMutation.isPending}
-                            onClick={() => handleBuy(item.cosmeticId)}
-                            className="py-2 px-3 rounded-xl bg-linear-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-indigo-950 font-black text-xs flex items-center justify-center gap-1 shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Mua ngay</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        /* MY INVENTORY GRID */
-        <div>
-          {isInventoryLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="p-5 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 animate-pulse space-y-4"
-                >
-                  <div className="w-24 h-24 rounded-2xl bg-slate-200 dark:bg-slate-700 mx-auto" />
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-sm w-3/4 mx-auto" />
-                </div>
-              ))}
-            </div>
-          ) : inventoryItems.length === 0 ? (
-            <div className="py-16 text-center text-slate-400 bg-white dark:bg-slate-800/50 rounded-3xl border border-slate-200 dark:border-slate-800">
-              <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="font-bold text-base text-slate-700 dark:text-slate-300">
-                Tủ đồ của bạn đang trống
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Hãy ghé qua Cửa Hàng Vật Phẩm để chọn cho mình những khung avatar thật ngầu nhé!
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-              {inventoryItems.map((item) => {
-                const rarityStyle = getRarityColor(item.rarity);
-                const isEquipped =
-                  currentlyEquipped?.[item.type]?.cosmeticId === item.cosmeticId;
-                const isCurrentlyPreviewed = previewCosmeticId === item.cosmeticId;
-
-                return (
-                  <div
-                    key={item.cosmeticId}
-                    className={`group relative flex flex-col justify-between p-5 rounded-3xl bg-white dark:bg-slate-800/90 border transition-all duration-300 hover:shadow-lg ${rarityStyle.border} ${rarityStyle.glow} ${
-                      isEquipped ? 'ring-2 ring-emerald-500 ring-offset-2' : ''
-                    }`}
-                  >
-                    {/* Top Status */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${rarityStyle.badge}`}
-                      >
-                        {item.rarity}
-                      </span>
-                      {isEquipped && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Đang dùng
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Thumbnail */}
-                    <div className="relative w-28 h-28 mx-auto my-3 flex items-center justify-center">
-                      {item.assetUrl ? (
-                        <img
-                          src={item.assetUrl}
-                          alt={item.name}
-                          className="w-full h-full object-contain drop-shadow-md group-hover:scale-110 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 rounded-2xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-3xl">
-                          🎁
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="text-center space-y-1 mb-4">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
-                        {item.name}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPreviewCosmetic(item.cosmeticId, item.assetUrl || null, item.name)
-                        }
-                        className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                          isCurrentlyPreviewed
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <Shirt className="w-3.5 h-3.5" />
-                        <span>Thử đồ</span>
-                      </button>
-
-                      {isEquipped ? (
-                        <button
-                          type="button"
-                          disabled={unequipMutation.isPending}
-                          onClick={() => handleUnequip(item.cosmeticId)}
-                          className="py-2 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <span>Tháo gỡ</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={equipMutation.isPending}
-                          onClick={() => handleEquip(item.cosmeticId)}
-                          className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Trang bị</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      <AlertDialog.Root open={purchase !== null} onOpenChange={(open) => { if (!open && !buy.isPending) setPurchase(null); }}>
+        {purchase && (
+          <AlertDialog.Portal>
+            <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+            <AlertDialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
+              <AlertDialog.Title className="text-xl font-semibold">Xác nhận mua vật phẩm</AlertDialog.Title>
+              <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
+                Bạn sẽ dùng {purchase.price.toLocaleString('vi-VN')} xu SQB để mua <strong className="text-foreground">{purchase.name}</strong>.
+                {canConfirm && coins !== undefined && ` Số dư sau khi mua là ${(coins - purchase.price).toLocaleString('vi-VN')} xu.`}
+              </AlertDialog.Description>
+              {buy.isError && <p role="alert" className="text-sm text-destructive">Không thể mua vật phẩm. Vui lòng thử lại.</p>}
+              <div className="flex flex-wrap justify-end gap-2">
+                <AlertDialog.Close render={<Button type="button" variant="outline" className="min-h-11" disabled={buy.isPending} />}>Hủy</AlertDialog.Close>
+                <Button type="button" className="min-h-11" disabled={buy.isPending || !canConfirm}
+                  onClick={() => buy.mutate(purchase.cosmeticId, { onSuccess: () => setPurchase(null) })}>
+                  {buy.isPending && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
+                  {buy.isPending ? 'Đang mua…' : 'Xác nhận mua'}
+                </Button>
+              </div>
+            </AlertDialog.Popup>
+          </AlertDialog.Portal>
+        )}
+      </AlertDialog.Root>
+    </section>
   );
 }

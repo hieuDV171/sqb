@@ -40,8 +40,10 @@ export const GAMIFICATION_KEYS = {
       ? root
       : [...root, { type, sortBy, after, limit }] as const;
   },
-  inventory: (type?: CosmeticType, rarity?: CosmeticRarity) =>
-    [...GAMIFICATION_KEYS.all, 'inventory', type, rarity] as const,
+  inventory: (filters?: { type?: CosmeticType; rarity?: CosmeticRarity; onlyUnlocked?: boolean; after?: number; limit?: number }) => {
+    const root = [...GAMIFICATION_KEYS.all, 'inventory'] as const;
+    return filters ? [...root, filters] as const : root;
+  },
   game1Classes: () => [...GAMIFICATION_KEYS.all, 'game1', 'classes'] as const,
   activeGame6: () => [...GAMIFICATION_KEYS.all, 'game6', 'active'] as const,
   myPredictions: () => [...GAMIFICATION_KEYS.all, 'my-predictions'] as const,
@@ -175,7 +177,7 @@ export function useMyInventory(params?: {
   limit?: number;
 }) {
   return useQuery({
-    queryKey: GAMIFICATION_KEYS.inventory(params?.type, params?.rarity),
+    queryKey: GAMIFICATION_KEYS.inventory(params ?? {}),
     queryFn: async () => {
       const res = await gamificationService.getMyInventory(params);
       return res.data;
@@ -189,10 +191,12 @@ export function useBuyCosmetic() {
 
   return useMutation({
     mutationFn: (cosmeticId: number) => gamificationService.buyCosmetic(cosmeticId),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success(res.message || 'Mua vật phẩm thành công!');
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.shop() });
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.shop() }),
+        queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() }),
+      ]);
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Không thể mua vật phẩm. Vui lòng kiểm tra số dư xu!');
@@ -261,9 +265,12 @@ export function useEquipCosmetic() {
     onSuccess: (res) => {
       toast.success(res.message || 'Trang bị thành công!');
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['gamification', 'inventory'] });
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() }),
+        queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() }),
+        queryClient.invalidateQueries({ queryKey: ['userProfile', 'me'] }),
+      ]);
     },
   });
 }
@@ -314,9 +321,12 @@ export function useUnequipCosmetic() {
     onSuccess: (res) => {
       toast.success(res.message || 'Đã tháo trang bị!');
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['gamification', 'inventory'] });
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() }),
+        queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() }),
+        queryClient.invalidateQueries({ queryKey: ['userProfile', 'me'] }),
+      ]);
     },
   });
 }

@@ -8,7 +8,7 @@ import { PredictionArenaTab } from '../components/PredictionArenaTab';
 import { BadgesTab } from '../components/BadgesTab';
 import { ErrorHunterTab } from '../components/ErrorHunterTab';
 import { useGamificationStore, type GamificationTab } from '../stores/useGamificationStore';
-import { useShop, useLeaderboard, useCheckInStatus } from '../hooks/useGamification';
+import { useShop, useCheckInStatus } from '../hooks/useGamification';
 
 interface GamificationHubPageProps {
   initialTab?: GamificationTab;
@@ -35,33 +35,34 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
       setActiveTab(currentTab);
     }
     if (searchParams.get('tab') !== currentTab) {
-      setSearchParams({ tab: currentTab }, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', currentTab);
+      setSearchParams(next, { replace: true });
     }
   }, [currentTab, activeTab, setActiveTab, searchParams, setSearchParams]);
 
   const handleTabChange = (tab: GamificationTab) => {
-    setActiveTab(tab);
-    setSearchParams({ tab }, { replace: true });
+    if (tab === currentTab) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    setSearchParams(next);
   };
 
-  // Fetch quick user gamification data (coins from shop endpoint, myRank from leaderboard, check-in status from DB)
   const { data: shopData } = useShop({ limit: 1 });
-  const { data: leaderboardData } = useLeaderboard({ limit: 1 });
-  const { data: checkInStatus } = useCheckInStatus();
-
-  const userCoins = shopData?.userPoints ?? leaderboardData?.myRank?.totalPoints ?? 0;
-  const currentStreak = checkInStatus?.currentStreak ?? 0;
-  const hasCheckedInToday = checkInStatus?.hasCheckedInToday ?? false;
+  const checkIn = useCheckInStatus();
+  const currentStreak = checkIn.data?.currentStreak;
+  const hasCheckedInToday = checkIn.data?.hasCheckedInToday;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-16">
+    <div className="mx-auto max-w-7xl space-y-4 pb-8 sm:space-y-5">
       {/* Top Banner & Tab Navigation */}
       <GamificationHeader
-        userCoins={userCoins}
+        userCoins={shopData?.userPoints}
         streakCount={currentStreak}
         hasCheckedInToday={hasCheckedInToday}
         currentTab={currentTab}
         onTabChange={handleTabChange}
+        onRetryCheckIn={checkIn.isError ? () => void checkIn.refetch() : undefined}
       />
 
       {/* Daily Check-in Modal */}
