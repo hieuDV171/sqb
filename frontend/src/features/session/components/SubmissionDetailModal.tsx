@@ -16,7 +16,6 @@ import {
   Calendar,
   MessageSquare,
   Heart,
-  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type {
@@ -24,6 +23,7 @@ import type {
   SessionStatus,
 } from '../types/session.types';
 import { QuestionReviewResult } from './QuestionReviewResult';
+import { SubmissionReviewNotice } from './SubmissionReviewNotice';
 import { ErrorState } from '@/components/ui/error-state';
 import { Button } from '@/components/ui/button';
 
@@ -60,8 +60,7 @@ export const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const effectiveStatus: SessionStatus =
-    detail?.status || (detail?.reviewedAt ? 'RESOLVED' : 'PENDING');
+  const effectiveStatus: SessionStatus = detail?.status ?? 'PENDING';
 
   const getStatusBadge = (status: SessionStatus) => {
     switch (status) {
@@ -178,28 +177,7 @@ export const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Reviewer Note Banner if reviewed */}
-              {detail.reviewedByLecturer && (
-                <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 p-4 rounded-2xl flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-0.5 text-xs">
-                    <span className="font-bold text-emerald-900 dark:text-emerald-300">
-                      Phiên đã được Giảng viên xét duyệt
-                    </span>
-                    <p className="text-emerald-800 dark:text-emerald-400">
-                      Giảng viên phụ trách: <strong>{detail.reviewedByLecturer}</strong>
-                    </p>
-                    {detail.reviewedAt && (
-                      <p className="text-muted-foreground text-[11px]">
-                        Thời gian duyệt:{' '}
-                        {new Date(detail.reviewedAt).toLocaleString('vi-VN')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+              <SubmissionReviewNotice status={effectiveStatus} reviewedByLecturer={detail.reviewedByLecturer} reviewedAt={detail.reviewedAt} />
 
               {/* Questions List */}
               <div className="space-y-4">

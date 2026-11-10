@@ -16,12 +16,12 @@ import {
   Calendar,
   MessageSquare,
   Heart,
-  ShieldCheck,
   AlertCircle,
   RefreshCw,
   PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import {
   useSubmissionDetail,
   useSessionMutations,
@@ -30,6 +30,7 @@ import {
   type SessionStatus,
 } from '@/features/session';
 import { QuestionReviewResult } from '@/features/session/components/QuestionReviewResult';
+import { SubmissionReviewNotice } from '@/features/session/components/SubmissionReviewNotice';
 
 export function SubmissionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -58,8 +59,15 @@ export function SubmissionDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const effectiveStatus: SessionStatus =
-    detail?.status || (detail?.reviewedAt ? 'RESOLVED' : 'PENDING');
+  const effectiveStatus: SessionStatus = detail?.status ?? 'PENDING';
+
+  const handleBack = () => {
+    if (window.history.state?.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/questions', { replace: true });
+    }
+  };
 
   const getStatusBadge = (status: SessionStatus) => {
     switch (status) {
@@ -120,13 +128,9 @@ export function SubmissionDetailPage() {
           {error?.message || 'Phiên đề xuất này không tồn tại hoặc bạn không có quyền truy cập.'}
         </p>
         <div className="flex justify-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => navigate('/sessions')}
-            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold"
-          >
-            Về danh sách
-          </button>
+          <Button variant="outline" className="min-h-11" onClick={handleBack}>
+            <ArrowLeft aria-hidden="true" /> Quay lại
+          </Button>
           <button
             type="button"
             onClick={() => refetch()}
@@ -144,14 +148,9 @@ export function SubmissionDetailPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate('/sessions')}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-border text-xs sm:text-sm font-semibold text-foreground hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Về danh sách phiên</span>
-        </button>
+        <Button variant="outline" className="min-h-11" onClick={handleBack}>
+          <ArrowLeft aria-hidden="true" /> Quay lại
+        </Button>
 
         <div className="flex items-center gap-2">
           {isEditable && (
@@ -235,27 +234,7 @@ export function SubmissionDetailPage() {
           </div>
         )}
 
-        {/* Lecturer Review Banner */}
-        {detail.reviewedByLecturer && (
-          <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 p-4 rounded-2xl flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div className="space-y-0.5 text-xs">
-              <span className="font-bold text-emerald-900 dark:text-emerald-300">
-                Phiên đã được Giảng viên xét duyệt
-              </span>
-              <p className="text-emerald-800 dark:text-emerald-400">
-                Giảng viên phụ trách: <strong>{detail.reviewedByLecturer}</strong>
-              </p>
-              {detail.reviewedAt && (
-                <p className="text-muted-foreground text-[11px]">
-                  Thời gian duyệt: {new Date(detail.reviewedAt).toLocaleString('vi-VN')}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        <SubmissionReviewNotice status={effectiveStatus} reviewedByLecturer={detail.reviewedByLecturer} reviewedAt={detail.reviewedAt} />
 
         {/* Practice Launch CTA */}
         {effectiveStatus === 'RESOLVED' && (

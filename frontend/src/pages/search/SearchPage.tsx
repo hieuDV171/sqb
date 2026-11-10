@@ -1,4 +1,3 @@
-import { getAvatarInitial } from '@/lib/avatar';
 import { Component, type ReactNode } from 'react';
 import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import {
@@ -17,6 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { cn } from '@/lib/utils';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import {
   useInfiniteGlobalSearch,
@@ -38,6 +40,11 @@ function getUserDisplayName(user: UserSearchResultDto) {
 function getUserIdentifier(user: UserSearchResultDto) {
   return user.studentLecturerCode?.trim() || user.email?.trim();
 }
+
+const resultMetaClass = 'flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground';
+const resultFooterClass = 'mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm text-muted-foreground';
+const resultTitleClass = 'break-words text-lg font-semibold text-foreground sm:text-xl';
+const resultActionClass = 'min-h-11 text-primary';
 
 function SearchPageContent() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,48 +94,51 @@ function SearchPageContent() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <h1 className="sr-only">Kết quả tìm kiếm</h1>
+    <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Kết quả tìm kiếm</h1>
 
       {/* Tabs Toolbar */}
       {queryParam && (
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-3">
+          <div role="group" aria-label="Loại kết quả tìm kiếm" className="flex flex-wrap items-center gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
-                <button
+                <Button
                   key={tab.key}
                   type="button"
+                  variant="ghost"
                   aria-pressed={selectedType === tab.key}
                   onClick={() => handleTabChange(tab.key)}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-                    selectedType === tab.key
-                      ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-500/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
+                  className={cn('min-h-11 px-3', selectedType === tab.key
+                    ? 'bg-academic-soft text-academic hover:bg-academic-soft hover:text-academic'
+                    : 'text-muted-foreground')}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon aria-hidden="true" />
                   {tab.label}
-                </button>
+                </Button>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
-            <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-              Tìm thấy: <strong>{totalHits}</strong> kết quả
-            </span>
-            <button
+          <div className="ml-auto flex items-center gap-2">
+            {!isLoading && !isLoadingError && (
+              <span role="status" className="text-sm text-muted-foreground">
+                <strong className="text-foreground">{totalHits}</strong> kết quả
+              </span>
+            )}
+            <Button
               type="button"
-              onClick={() => refetch()}
+              variant="ghost"
+              size="icon"
+              onClick={() => void refetch()}
               disabled={isFetching}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="size-11 text-muted-foreground"
               title="Làm mới"
               aria-label="Làm mới kết quả tìm kiếm"
             >
-              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-            </button>
+              <RefreshCw aria-hidden="true" className={cn(isFetching && 'motion-safe:animate-spin')} />
+            </Button>
           </div>
         </div>
       )}
@@ -141,17 +151,15 @@ function SearchPageContent() {
           description="Nhập từ khóa vào ô tìm kiếm ở thanh trên cùng."
         />
       ) : isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-4" aria-busy="true" aria-label="Đang tải kết quả tìm kiếm">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-pulse flex items-start gap-4"
+              className="space-y-3 rounded-2xl border border-border bg-card p-5"
             >
-              <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/4" />
-                <div className="h-4 bg-slate-100 dark:bg-slate-800/60 rounded w-3/4" />
-              </div>
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-6 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
             </div>
           ))}
         </div>
@@ -168,127 +176,106 @@ function SearchPageContent() {
           description={hasNextPage ? 'Bạn có thể tải thêm để xem các kết quả tiếp theo.' : 'Hãy thử thay đổi loại bộ lọc danh mục hoặc sử dụng các từ khóa học phần khác.'}
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {items.map((item, index) => (
-            <div
+            <article
               key={index}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700/60 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              className="rounded-2xl border border-border bg-card p-4 sm:p-5"
             >
               {/* Type Badge & Info */}
               {item.type === 'USER' && item.user && (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0">
-                      {item.user.avatarUrl ? (
-                        <img
-                          src={item.user.avatarUrl}
-                          alt={getUserDisplayName(item.user)}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center font-bold text-slate-500">
-                          {getAvatarInitial(getUserDisplayName(item.user))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAvatar name={getUserDisplayName(item.user)} avatarUrl={item.user.avatarUrl} className="size-12" decorative />
+                    <div className="min-w-0">
+                      <div className={resultMetaClass}>
+                        <h2 className={resultTitleClass}>
                           {getUserDisplayName(item.user)}
-                        </h3>
+                        </h2>
                         <Badge variant="role">
                           {item.user.role === 'LECTURER' ? 'Giảng viên' : 'Sinh viên'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="mt-1 break-words text-sm text-muted-foreground">
                         {getUserIdentifier(item.user) || 'Thành viên SQB'} • {item.user.schoolFaculty || item.user.major || 'Đại học Bách Khoa Hà Nội'}
                       </p>
                     </div>
                   </div>
 
-                  <Link
-                    to={`/users/${item.user.userId}`}
+                  <Button variant="ghost" nativeButton={false}
+                    render={<Link to={`/users/${item.user.userId}`} />}
                     onClick={recordCurrentQuery}
-                    className="px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-colors inline-flex items-center gap-1"
+                    className={resultActionClass}
                   >
-                    Trang cá nhân <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                    Trang cá nhân <ArrowRight aria-hidden="true" />
+                  </Button>
                 </div>
               )}
 
               {item.type === 'POST' && item.post && (
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                        Bài viết
-                      </span>
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <div className={cn(resultMetaClass, 'mb-3 justify-between')}>
+                    <div className={resultMetaClass}>
+                      <Badge variant="outline">Bài viết</Badge>
+                      <span className="font-semibold text-foreground">
                         {item.post.authorName}
                       </span>
                     </div>
                     {item.post.createdAt && (
-                      <span className="text-xs text-slate-400">
+                      <time dateTime={item.post.createdAt}>
                         {new Date(item.post.createdAt).toLocaleDateString('vi-VN')}
-                      </span>
+                      </time>
                     )}
                   </div>
 
-                  <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed line-clamp-3">
+                  <p className="line-clamp-3 break-words text-base leading-relaxed text-foreground">
                     {item.post.content}
                   </p>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                  <div className={resultFooterClass}>
+                    <div className={resultMetaClass}>
                       {item.post.reactCount != null && <span>{item.post.reactCount} cảm xúc</span>}
                       {item.post.commentCount != null && <span>{item.post.commentCount} bình luận</span>}
                     </div>
-                    <Link
-                      to={`/posts/${item.post.postId}`}
+                    <Button variant="ghost" nativeButton={false}
+                      render={<Link to={`/posts/${item.post.postId}`} />}
                       onClick={recordCurrentQuery}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
+                      className={resultActionClass}
                     >
-                      Xem chi tiết bài viết <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                      Xem chi tiết bài viết <ArrowRight aria-hidden="true" />
+                    </Button>
                   </div>
                 </div>
               )}
 
               {item.type === 'QUESTION' && item.question && (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                      Câu hỏi trắc nghiệm
-                    </span>
+                  <div className={cn(resultMetaClass, 'mb-3')}>
+                    <Badge className="bg-academic-soft text-academic hover:bg-academic-soft">Câu hỏi trắc nghiệm</Badge>
                     {item.question.subjectName && (
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        {item.question.subjectName}
-                      </span>
+                      <span>{item.question.subjectName}</span>
                     )}
                     {item.question.difficulty && (
-                      <Badge variant="outline" className="text-[10px]">
-                        {item.question.difficulty}
-                      </Badge>
+                      <Badge variant="outline">{item.question.difficulty}</Badge>
                     )}
                   </div>
 
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 line-clamp-3">
+                  <p className="line-clamp-3 break-words text-base font-medium leading-relaxed text-foreground">
                     {item.question.content}
                   </p>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">
-                      {item.question.ratingCount ? `${item.question.ratingCount} lượt đánh giá` : 'Câu hỏi đã kiểm duyệt'}
+                  <div className={resultFooterClass}>
+                    <span>
+                      {item.question.ratingCount ? `${item.question.ratingCount} lượt đánh giá` : 'Chưa có đánh giá'}
                     </span>
                     {item.question.sessionId && (
-                      <Link
-                        to={`/sessions/${item.question.sessionId}/practice?questionId=${item.question.questionId}`}
+                      <Button variant="ghost" nativeButton={false}
+                        render={<Link to={`/sessions/${item.question.sessionId}/practice?questionId=${item.question.questionId}`} />}
                         onClick={recordCurrentQuery}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
+                        className={resultActionClass}
                       >
-                        Luyện tập câu này <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                        Luyện tập câu này <ArrowRight aria-hidden="true" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -296,75 +283,70 @@ function SearchPageContent() {
 
               {item.type === 'SESSION' && item.session && (
                 <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                      Phiên đề xuất
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      Môn: {item.session.subjectName || 'Đang cập nhật'}
-                    </span>
+                  <div className={cn(resultMetaClass, 'mb-3')}>
+                    <Badge className="bg-academic-soft text-academic hover:bg-academic-soft">Phiên đề xuất</Badge>
+                    {item.session.subjectName && <span>{item.session.subjectName}</span>}
+                    {item.session.status === 'REVIEWING' && <Badge variant="info">Đang xem xét</Badge>}
+                    {item.session.status === 'PENDING' && <Badge variant="warning">Chờ duyệt</Badge>}
                   </div>
 
-                  <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                  <h2 className={resultTitleClass}>
                     {item.session.title}
-                  </h3>
+                  </h2>
                   {item.session.sessionCode && (
-                    <p className="mt-1 wrap-break-word font-mono text-xs text-muted-foreground">#{item.session.sessionCode}</p>
+                    <p className="mt-1 wrap-break-word font-mono text-sm text-muted-foreground">#{item.session.sessionCode}</p>
                   )}
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">
-                      {item.session.questionCount || 0} câu hỏi trong phiên
-                    </span>
-                    <Link
-                      to={item.session.sessionCode && item.session.status !== 'RESOLVED'
+                  <div className={resultFooterClass}>
+                    <span>{item.session.questionCount ?? 0} câu hỏi trong phiên</span>
+                    <Button variant="ghost" nativeButton={false}
+                      render={<Link to={item.session.sessionCode && item.session.status !== 'RESOLVED'
                         ? `/sessions/${item.session.sessionId}`
-                        : `/sessions/${item.session.sessionId}/practice`}
+                        : `/sessions/${item.session.sessionId}/practice`} />}
                       onClick={recordCurrentQuery}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
+                      className={resultActionClass}
                     >
                       {item.session.sessionCode && item.session.status !== 'RESOLVED' ? 'Xem chi tiết phiên' : 'Luyện tập phiên này'}
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                      <ArrowRight aria-hidden="true" />
+                    </Button>
                   </div>
                 </div>
               )}
 
               {item.type === 'SUBJECT' && item.subject && (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5" />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-academic-soft text-academic">
+                      <GraduationCap aria-hidden="true" className="size-5" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                          {item.subject.subjectCode}
-                        </span>
-                        <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100">
+                    <div className="min-w-0">
+                      <div className={resultMetaClass}>
+                        <Badge variant="outline">{item.subject.subjectCode}</Badge>
+                        <h2 className={resultTitleClass}>
                           {item.subject.subjectName}
-                        </h3>
+                        </h2>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         Môn học trong ngân hàng câu hỏi SQB
                       </p>
                     </div>
                   </div>
 
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => {
                       const subjectName = item.subject?.subjectName || '';
                       recordCurrentQuery();
                       setSearchParams({ q: subjectName, type: 'QUESTION' });
                     }}
-                    className="px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-colors inline-flex items-center gap-1 cursor-pointer"
+                    className={resultActionClass}
                   >
-                    Xem câu hỏi môn này <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                    Xem câu hỏi môn này <ArrowRight aria-hidden="true" />
+                  </Button>
                 </div>
               )}
-            </div>
+            </article>
           ))}
         </div>
       )}
