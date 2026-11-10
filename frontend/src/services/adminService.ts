@@ -4,6 +4,7 @@ import type {
   AdminSubjectResponse,
   BulkImportRequest,
   BulkImportResult,
+  CreateSemesterRequest,
   ExcelImportClassResult,
   LecturerSummary,
   SemesterResponse,
@@ -105,7 +106,7 @@ export const adminService = {
   /**
    * Tạo học kỳ mới
    */
-  createSemester: async (data: { name: string }): Promise<GlobalResponse<SemesterResponse>> => {
+  createSemester: async (data: CreateSemesterRequest): Promise<GlobalResponse<SemesterResponse>> => {
     return (await axiosClient.post<GlobalResponse<SemesterResponse>>(
       '/admin/semesters',
       data

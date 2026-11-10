@@ -124,7 +124,7 @@ export const ROLE_NAV_SECTIONS: Record<UserRole, NavSection[]> = {
       label: 'Hệ thống',
       items: [
         { label: 'Đồng bộ bảng xếp hạng', path: '/admin/leaderboards', icon: Database },
-        { label: 'Cấu hình hệ thống', shortLabel: 'Cấu hình', path: '/admin/settings', icon: Settings },
+        { label: 'Cấu hình học vụ', shortLabel: 'Cấu hình', path: '/admin/settings', icon: Settings },
         { label: 'Quản lý thiết bị', path: '/devices', icon: Monitor },
       ],
     },
@@ -170,7 +170,7 @@ export const MOBILE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Quản lý tài khoản', shortLabel: 'Tài khoản', path: '/admin/users', icon: Users },
     { label: 'Báo cáo vi phạm', shortLabel: 'Báo cáo', path: '/admin/reports', icon: ShieldAlert },
     { label: 'Lớp học phần', shortLabel: 'Lớp học', path: '/lecturer/course-classes', icon: School },
-    { label: 'Cấu hình hệ thống', shortLabel: 'Cấu hình', path: '/admin/settings', icon: Settings },
+    { label: 'Cấu hình học vụ', shortLabel: 'Cấu hình', path: '/admin/settings', icon: Settings },
   ],
 };
 

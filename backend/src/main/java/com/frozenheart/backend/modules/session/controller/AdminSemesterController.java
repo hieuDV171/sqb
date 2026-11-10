@@ -27,7 +27,7 @@ public class AdminSemesterController {
     @Operation(summary = "Tạo học kỳ mới", description = "Tạo một học kỳ mới ở trạng thái chưa kích hoạt (is_active = false, is_finalized = false).")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Tạo học kỳ mới thành công"),
-            @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ (tên học kỳ trống hoặc vượt quá 100 ký tự)"),
+            @ApiResponse(responseCode = "400", description = "Tên học kỳ không hợp lệ hoặc ngày khai giảng sai định dạng yyyy-MM-dd"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
             @ApiResponse(responseCode = "403", description = "Không có quyền quản trị viên (ADMIN)")
     })

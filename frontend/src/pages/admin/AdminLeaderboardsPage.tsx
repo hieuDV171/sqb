@@ -5,13 +5,12 @@ import {
   BookOpen,
   CheckCircle2,
   Database,
-  ExternalLink,
   Info,
   RefreshCcw,
   ShieldCheck,
   Trophy,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { AdminPageHeader } from './AdminPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -81,35 +80,17 @@ export function AdminLeaderboardsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-indigo-200/70 bg-linear-to-br from-indigo-700 via-indigo-700 to-violet-700 p-5 text-white shadow-sm dark:border-indigo-900/70 sm:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20">
-              <Database className="size-6" aria-hidden="true" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Đồng bộ bảng xếp hạng</h1>
-                <Badge variant="role" className="border-white/20 bg-white/15 text-white">Admin Workspace</Badge>
-              </div>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-indigo-100 sm:text-base">
-                Tính lại điểm từ PostgreSQL và thay dữ liệu Redis khi bảng xếp hạng bị lệch hoặc sau một đợt bảo trì.
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/leaderboard"
-            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-          >
-            <Trophy className="size-4" aria-hidden="true" />
-            Xem bảng xếp hạng
-            <ExternalLink className="size-4" aria-hidden="true" />
+      <AdminPageHeader icon={Database} title="Đồng bộ bảng xếp hạng"
+        description="Tính lại điểm từ PostgreSQL và thay dữ liệu Redis khi bảng xếp hạng bị lệch hoặc sau một đợt bảo trì."
+        action={
+          <Link to="/leaderboard"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+            <Trophy className="size-4" aria-hidden="true" /> Xem bảng xếp hạng
           </Link>
-        </div>
-      </section>
+        } />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card className="rounded-2xl border border-border bg-card">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="flex items-center gap-2 text-lg text-slate-950 dark:text-white">
               <RefreshCcw className="size-5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
@@ -274,7 +255,7 @@ export function AdminLeaderboardsPage() {
         </Card>
 
         <aside className="space-y-4">
-          <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card className="rounded-2xl border border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base text-slate-950 dark:text-white">
                 <ShieldCheck className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />

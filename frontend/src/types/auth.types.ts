@@ -102,9 +102,15 @@ export interface LecturerSummary {
     schoolFaculty?: string;
 }
 
+export interface CreateSemesterRequest {
+    name: string;
+    startDate?: string;
+}
+
 export interface SemesterResponse {
     semesterId: number;
     name: string;
+    startDate?: string | null;
     active: boolean;
     isFinalize: boolean;
     createdAt?: string;

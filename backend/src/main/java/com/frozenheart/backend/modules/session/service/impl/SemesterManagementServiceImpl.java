@@ -33,6 +33,7 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
     public SemesterResponse createSemester(CreateSemesterRequest request) {
         Semester semester = Semester.builder()
                 .name(request.name().trim())
+                .startDate(request.startDate())
                 .active(false)
                 .isFinalized(false)
                 .build();
@@ -137,6 +138,7 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
         return SemesterResponse.builder()
                 .semesterId(s.getId())
                 .name(s.getName())
+                .startDate(s.getStartDate())
                 .active(s.isActive())
                 .isFinalize(s.isFinalized())
                 .createdAt(s.getCreatedAt())
