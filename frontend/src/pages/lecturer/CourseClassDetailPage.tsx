@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CalendarDays, Search, School, UserPlus, Users } from 'lucide-react';
@@ -174,7 +175,7 @@ export function CourseClassDetailPage() {
               {filteredStudents.map((student) => (
                 <Link key={student.userId} to={`/users/${student.userId}`} className="flex min-h-20 items-center gap-3 rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 font-bold text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
-                    {student.fullName?.charAt(0) || 'S'}
+                    {getAvatarInitial(student.fullName)}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{student.fullName || 'Chưa cập nhật'}</p>

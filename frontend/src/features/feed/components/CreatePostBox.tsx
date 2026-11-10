@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { sessionService } from '@/features/session/services/sessionService';
 import { mediaService } from '@/services/mediaService';
@@ -24,6 +25,7 @@ import { SubjectSelectDropdown } from './SubjectSelectDropdown';
 
 export const CreatePostBox: React.FC = () => {
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
   const { createPost, isCreating } = usePostMutations();
 
   const isLecturerOrAdmin = user?.role === 'LECTURER' || user?.role === 'ADMIN';
@@ -245,7 +247,7 @@ export const CreatePostBox: React.FC = () => {
           <div className="relative shrink-0">
             <UserAvatar
               avatarUrl={user?.avatarUrl}
-              name={user?.username}
+              name={avatarName}
               className="md:size-11 ring-2 ring-slate-100 dark:ring-slate-800"
             />
             {user?.role && (

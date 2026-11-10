@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
 import { Target, Zap, Trophy, Sparkles } from 'lucide-react';
@@ -24,7 +25,7 @@ export function ReachedMilestoneCard({ item }: ReachedMilestoneCardProps) {
             {item.actor.avatarUrl ? (
               <img src={item.actor.avatarUrl} alt={item.actor.fullName} className="w-full h-full object-cover" />
             ) : (
-              item.actor.fullName.charAt(0)
+              getAvatarInitial(item.actor.fullName)
             )}
           </div>
 

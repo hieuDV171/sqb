@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getAvatarInitial } from '@/lib/avatar';
 import { cn } from '@/lib/utils';
 
 interface UserAvatarProps {
@@ -11,7 +12,6 @@ interface UserAvatarProps {
 export function UserAvatar({ name, avatarUrl, className, decorative }: UserAvatarProps) {
   const [failedUrl, setFailedUrl] = useState<string>();
   const displayName = name?.trim() || 'Người dùng';
-  const [initial] = displayName.normalize();
   const src = avatarUrl?.trim();
 
   return (
@@ -24,7 +24,7 @@ export function UserAvatar({ name, avatarUrl, className, decorative }: UserAvata
       {src && src !== failedUrl ? (
         <img src={src} alt="" className="size-full object-cover" loading="lazy" onError={() => setFailedUrl(src)} />
       ) : (
-        initial.toLocaleUpperCase('vi-VN')
+        getAvatarInitial(name)
       )}
     </span>
   );

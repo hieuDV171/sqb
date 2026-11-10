@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState, useMemo } from 'react';
 import {
   useGroupMembers,
@@ -208,7 +209,7 @@ export function GroupMembersModal({
                           {f.avatarUrl ? (
                             <img src={f.avatarUrl} alt={f.fullName} className="w-full h-full object-cover" />
                           ) : (
-                            f.fullName.charAt(0).toUpperCase()
+                            getAvatarInitial(f.fullName)
                           )}
                         </div>
                         <span className="text-xs font-medium truncate">{f.fullName}</span>
@@ -296,7 +297,7 @@ export function GroupMembersModal({
                           {member.avatarUrl ? (
                             <img src={member.avatarUrl} alt={member.fullName} className="w-full h-full object-cover" />
                           ) : (
-                            member.fullName.charAt(0).toUpperCase()
+                            getAvatarInitial(member.fullName)
                           )}
                         </div>
                         <div className="truncate">

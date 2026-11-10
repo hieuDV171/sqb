@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { Component, type ReactNode } from 'react';
 import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import {
@@ -186,7 +187,7 @@ function SearchPageContent() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-slate-500">
-                          {getUserDisplayName(item.user).charAt(0).toUpperCase()}
+                          {getAvatarInitial(getUserDisplayName(item.user))}
                         </div>
                       )}
                     </div>

@@ -1,3 +1,5 @@
+import { getAvatarInitial } from '@/lib/avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import React, { useState, useRef } from 'react';
 import type { SubjectItem, PostVisibility, PostType } from '@/types/post.types';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -33,6 +35,7 @@ interface CreatePostCardProps {
 
 export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) {
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
   const currentRole: UserRole = user?.role || 'STUDENT';
   const isLecturerOrAdmin = currentRole === 'LECTURER' || currentRole === 'ADMIN';
 
@@ -189,7 +192,7 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
               ) : (
-                user?.username?.charAt(0).toUpperCase() || 'S'
+                getAvatarInitial(avatarName)
               )}
             </div>
             {user?.frameUrl && (

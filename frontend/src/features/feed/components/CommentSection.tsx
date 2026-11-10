@@ -4,6 +4,7 @@ import { useComments } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import {
   Send,
   Loader2,
@@ -20,6 +21,7 @@ interface CommentSectionProps {
 
 export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targetId }) => {
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
   const {
     comments,
     isLoading,
@@ -95,7 +97,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
           >
               <UserAvatar
                   avatarUrl={user?.avatarUrl}
-                  name={user?.username}
+                  name={avatarName}
                   className="mt-0.5 size-8 text-xs"
               />
 

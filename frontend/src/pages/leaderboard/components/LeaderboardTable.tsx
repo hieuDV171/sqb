@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { LeaderboardEntryDto, MyRankDto } from '@/types/gamification.types';
 import { Search, Zap, Trophy, Users } from 'lucide-react';
@@ -111,7 +112,7 @@ export function LeaderboardTable({ entries, myRank, scopeTitle }: LeaderboardTab
                     {user.avatarUrl ? (
                       <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
                     ) : (
-                      user.fullName.charAt(0)
+                      getAvatarInitial(user.fullName)
                     )}
                   </div>
                   {user.frameUrl && (

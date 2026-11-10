@@ -1,3 +1,5 @@
+import { getAvatarInitial } from '@/lib/avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { X, Check, ShoppingBag, Shirt } from 'lucide-react';
 import { useGamificationStore } from '../stores/useGamificationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -24,6 +26,7 @@ export function FittingRoomPreview({
   const { previewCosmeticId, previewAssetUrl, previewCosmeticName, clearPreview } =
     useGamificationStore();
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
 
   const currentFrameUrl =
     previewAssetUrl || currentlyEquipped?.['AVATAR_FRAME']?.assetUrl;
@@ -45,7 +48,7 @@ export function FittingRoomPreview({
               />
             ) : (
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-linear-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-black shadow-md">
-                {user?.username?.charAt(0) || 'U'}
+                {getAvatarInitial(avatarName)}
               </div>
             )}
 

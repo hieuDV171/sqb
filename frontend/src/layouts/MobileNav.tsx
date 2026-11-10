@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, Menu, UserRound, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { useAuthStore, type UserRole } from '@/stores/useAuthStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useModalFocusTrap } from '@/hooks/useModalFocusTrap';
@@ -14,6 +16,7 @@ interface MobileNavProps {
 
 export function MobileNav({ isOpen, onOpen, onClose }: MobileNavProps) {
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
   const { logout } = useAuth();
   const location = useLocation();
   const currentRole: UserRole = user?.role || 'STUDENT';
@@ -102,9 +105,7 @@ export function MobileNav({ isOpen, onOpen, onClose }: MobileNavProps) {
                 onClick={onClose}
                 className="mb-6 flex min-h-14 items-center gap-3 rounded-2xl border border-border bg-surface-subtle px-4 py-3 text-sm font-semibold text-foreground"
               >
-                <span className="grid size-10 place-items-center overflow-hidden rounded-full bg-primary text-primary-foreground">
-                  {user?.avatarUrl ? <img src={user.avatarUrl} alt="" className="size-full object-cover" /> : <UserRound className="size-5" />}
-                </span>
+                <UserAvatar name={avatarName} avatarUrl={user?.avatarUrl} decorative />
                 <span className="min-w-0 flex-1 truncate">Xem trang cá nhân</span>
               </Link>
 

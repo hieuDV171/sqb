@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../stores/useChatStore';
 import { useConversations } from '../hooks/useChat';
@@ -52,7 +53,7 @@ export function FloatingChatWidget() {
                 ) : isGroup ? (
                   <Users className="w-4 h-4" />
                 ) : (
-                  conv?.displayName?.charAt(0) || 'U'
+                  getAvatarInitial(conv?.displayName)
                 )}
               </div>
 

@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState, useEffect } from 'react';
 import { useCreateGroupConversation } from '../hooks/useChat';
 import { userService } from '@/services/userService';
@@ -239,7 +240,7 @@ export function CreateGroupModal({
                           {friend.avatarUrl ? (
                             <img src={friend.avatarUrl} alt={friend.fullName} className="w-full h-full object-cover" />
                           ) : (
-                            friend.fullName.charAt(0).toUpperCase()
+                            getAvatarInitial(friend.fullName)
                           )}
                         </div>
                         <span className="text-xs font-medium truncate">{friend.fullName}</span>

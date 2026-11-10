@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { getAvatarInitial } from '@/lib/avatar';
 
 export interface AvatarWithFrameProps {
   avatarUrl?: string | null;
@@ -52,14 +53,13 @@ const SIZE_MAP = {
 export function AvatarWithFrame({
   avatarUrl,
   frameUrl,
-  name = 'Người dùng',
+  name,
   size = 'md',
   showOnlineStatus = false,
   isOnline = true,
   className,
 }: AvatarWithFrameProps) {
   const currentSize = SIZE_MAP[size] || SIZE_MAP.md;
-  const initial = name.trim().charAt(0).toUpperCase() || 'U';
 
   return (
     <div className={cn('relative inline-flex shrink-0 select-none items-center justify-center', className)}>
@@ -73,7 +73,7 @@ export function AvatarWithFrame({
         {avatarUrl ? (
           <img
             src={avatarUrl}
-            alt={name}
+            alt={name || 'Người dùng'}
             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
             onError={(e) => {
               // Fallback to initial on broken image
@@ -81,7 +81,7 @@ export function AvatarWithFrame({
             }}
           />
         ) : (
-          <span>{initial}</span>
+          <span>{getAvatarInitial(name)}</span>
         )}
       </div>
 

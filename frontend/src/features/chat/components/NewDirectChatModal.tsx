@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState, useEffect } from 'react';
 import { useCreateDirectConversation } from '../hooks/useChat';
 import { userService } from '@/services/userService';
@@ -128,7 +129,7 @@ export function NewDirectChatModal({
                     {friend.avatarUrl ? (
                       <img src={friend.avatarUrl} alt={friend.fullName} className="w-full h-full object-cover" />
                     ) : (
-                      friend.fullName.charAt(0).toUpperCase()
+                      getAvatarInitial(friend.fullName)
                     )}
                   </div>
                   <div className="truncate">

@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
 import { CheckCircle2, BookOpen, Zap, Coins, Sparkles, ExternalLink, Award } from 'lucide-react';
 
@@ -17,7 +18,7 @@ export function ApprovedSessionCard({ item }: ApprovedSessionCardProps) {
               {item.actor.avatarUrl ? (
                 <img src={item.actor.avatarUrl} alt={item.actor.fullName} className="w-full h-full object-cover" />
               ) : (
-                item.actor.fullName.charAt(0)
+                getAvatarInitial(item.actor.fullName)
               )}
             </div>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-xs">

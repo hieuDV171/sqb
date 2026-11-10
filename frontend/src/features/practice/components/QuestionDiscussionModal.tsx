@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, MessageSquare, Send, Loader2, User } from 'lucide-react';
+import { X, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { commentService } from '@/features/feed/services/commentService';
 import type { CommentResponseDto } from '@/types/post.types';
 import { updatePracticeQuestion } from '../hooks/updatePracticeQuestion';
@@ -134,17 +135,12 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
           ) : (
             comments.map((c) => (
               <div key={c.commentId} className="flex gap-3 text-xs">
-                {c.author?.avatarUrl ? (
-                  <img
-                    src={c.author.avatarUrl}
-                    alt={c.author.fullName || 'User'}
-                    className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-slate-200 dark:ring-slate-700"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 shrink-0">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
+                <UserAvatar
+                  name={c.author?.fullName}
+                  avatarUrl={c.author?.avatarUrl}
+                  className="size-8 text-xs ring-1 ring-slate-200 dark:ring-slate-700"
+                  decorative
+                />
                 <div className="flex-1 space-y-1">
                   <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 space-y-1">
                     <div className="flex items-center justify-between">

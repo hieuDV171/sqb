@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
 import { Award, Sparkles, Heart, Crown } from 'lucide-react';
@@ -24,7 +25,7 @@ export function EarnedBadgeCard({ item }: EarnedBadgeCardProps) {
             {item.actor.avatarUrl ? (
               <img src={item.actor.avatarUrl} alt={item.actor.fullName} className="w-full h-full object-cover" />
             ) : (
-              item.actor.fullName.charAt(0)
+              getAvatarInitial(item.actor.fullName)
             )}
           </div>
 

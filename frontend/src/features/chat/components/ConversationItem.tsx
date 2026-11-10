@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { ConversationDto } from '../types/chat.types';
 import { formatChatTime, truncate } from '../utils/chatUtils';
@@ -110,7 +111,7 @@ export function ConversationItem({
           ) : isGroup ? (
             <Users className="w-6 h-6 text-white/90" />
           ) : (
-            conversation.displayName?.charAt(0).toUpperCase() || 'U'
+            getAvatarInitial(conversation.displayName)
           )}
         </div>
 

@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { PostResponseDto, CommentResponseDto } from '@/types/post.types';
 import { CommentSection } from './CommentSection';
@@ -90,7 +91,7 @@ export function PostCard({ post, onToggleLike, onAddComment }: PostCardProps) {
                 ) : post.author.avatarUrl ? (
                   <img src={post.author.avatarUrl} alt={post.author.fullName} className="w-full h-full object-cover" />
                 ) : (
-                  post.author.fullName.charAt(0)
+                  getAvatarInitial(post.author.fullName)
                 )}
               </div>
 

@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import type { LeaderboardEntryDto, LeaderboardScope } from '@/types/gamification.types';
 import { getRewardCoins } from '@/types/gamification.types';
 import { Trophy, Medal, Award, Crown, Coins, Zap, Sparkles } from 'lucide-react';
@@ -34,7 +35,7 @@ export function Podium({ topUsers, scope }: PodiumProps) {
                     <img src={rank2.avatarUrl} alt={rank2.fullName} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-200 text-lg sm:text-xl">
-                      {rank2.fullName.charAt(0)}
+                      {getAvatarInitial(rank2.fullName)}
                     </div>
                   )}
                 </div>
@@ -88,7 +89,7 @@ export function Podium({ topUsers, scope }: PodiumProps) {
                     <img src={rank1.avatarUrl} alt={rank1.fullName} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center font-bold text-amber-700 dark:text-amber-300 text-2xl sm:text-3xl">
-                      {rank1.fullName.charAt(0)}
+                      {getAvatarInitial(rank1.fullName)}
                     </div>
                   )}
                 </div>
@@ -144,7 +145,7 @@ export function Podium({ topUsers, scope }: PodiumProps) {
                     <img src={rank3.avatarUrl} alt={rank3.fullName} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center font-bold text-orange-700 dark:text-orange-300 text-lg sm:text-xl">
-                      {rank3.fullName.charAt(0)}
+                      {getAvatarInitial(rank3.fullName)}
                     </div>
                   )}
                 </div>

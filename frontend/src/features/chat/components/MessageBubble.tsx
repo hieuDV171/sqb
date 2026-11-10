@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import type { MessageDto } from '../types/chat.types';
 import { Reply, Trash2, Check, Ban, CornerDownRight } from 'lucide-react';
 
@@ -52,7 +53,7 @@ export function MessageBubble({
               {message.avatarUrl ? (
                 <img src={message.avatarUrl} alt={message.senderName} className="w-full h-full object-cover" />
               ) : (
-                message.senderName?.charAt(0).toUpperCase() || 'U'
+                getAvatarInitial(message.senderName)
               )}
             </div>
           ) : (

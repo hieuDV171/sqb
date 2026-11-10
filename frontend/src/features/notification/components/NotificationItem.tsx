@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import {
   UserPlus,
   MessageSquare,
@@ -138,14 +139,12 @@ export function NotificationItem({ notification, onItemClick }: NotificationItem
     >
       {/* Icon or Actor Avatar */}
       <div className="relative shrink-0 mt-0.5">
-        {notification.actor?.avatarUrl ? (
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100">
-            <img
-              src={notification.actor.avatarUrl}
-              alt={notification.actor.username}
-              className="w-full h-full object-cover"
-            />
-          </div>
+        {notification.actor ? (
+          <UserAvatar
+            name={notification.actor.fullName || notification.actor.username}
+            avatarUrl={notification.actor.avatarUrl}
+            className="border border-slate-200 dark:border-slate-700"
+          />
         ) : (
           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${iconBg}`}>
             <TypeIcon className="w-5 h-5" />
@@ -153,7 +152,7 @@ export function NotificationItem({ notification, onItemClick }: NotificationItem
         )}
 
         {/* Mini badge icon on avatar */}
-        {notification.actor?.avatarUrl && (
+        {notification.actor && (
           <div
             className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full ring-2 ring-white dark:ring-slate-900 flex items-center justify-center ${iconBg}`}
           >

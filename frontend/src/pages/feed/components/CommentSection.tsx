@@ -1,3 +1,5 @@
+import { getAvatarInitial } from '@/lib/avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import React, { useState } from 'react';
 import type { CommentResponseDto } from '@/types/post.types';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -11,6 +13,7 @@ interface CommentSectionProps {
 
 export function CommentSection({ postId, comments, onAddComment }: CommentSectionProps) {
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
   const [commentText, setCommentText] = useState('');
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -38,7 +41,7 @@ export function CommentSection({ postId, comments, onAddComment }: CommentSectio
           {user?.avatarUrl ? (
             <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
           ) : (
-            user?.username?.charAt(0).toUpperCase() || 'S'
+            getAvatarInitial(avatarName)
           )}
         </div>
 
@@ -70,7 +73,7 @@ export function CommentSection({ postId, comments, onAddComment }: CommentSectio
                 {comment.author.avatarUrl ? (
                   <img src={comment.author.avatarUrl} alt={comment.author.fullName} className="w-full h-full object-cover" />
                 ) : (
-                  comment.author.fullName.charAt(0)
+                  getAvatarInitial(comment.author.fullName)
                 )}
               </div>
 
@@ -140,7 +143,7 @@ export function CommentSection({ postId, comments, onAddComment }: CommentSectio
                           {reply.author.avatarUrl ? (
                             <img src={reply.author.avatarUrl} alt={reply.author.fullName} className="w-full h-full object-cover" />
                           ) : (
-                            reply.author.fullName.charAt(0)
+                            getAvatarInitial(reply.author.fullName)
                           )}
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex-1">

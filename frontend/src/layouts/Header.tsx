@@ -17,6 +17,8 @@ import {
   X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { BrandMark } from '@/components/common/BrandMark';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { NotificationDropdown } from '@/features/notification';
@@ -41,6 +43,7 @@ const ROLE_LABELS = {
 
 export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const { user } = useAuthStore();
+  const avatarName = useCurrentUserAvatarName(user);
   const { unreadNotifications } = useGamificationStore();
   const { theme, toggleTheme } = useThemeStore();
   const { logout } = useAuth();
@@ -204,12 +207,8 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
                 aria-expanded={isProfileOpen}
                 aria-controls={isProfileOpen ? 'header-account-menu' : undefined}
               >
-                <span className="relative grid size-9 shrink-0 place-items-center overflow-visible rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="" className="size-full rounded-full object-cover" />
-                  ) : (
-                    user?.username?.charAt(0).toUpperCase() || 'S'
-                  )}
+                <span className="relative size-9 shrink-0">
+                  <UserAvatar name={avatarName} avatarUrl={user?.avatarUrl} className="size-9" decorative />
                   {user?.frameUrl && <img src={user.frameUrl} alt="" className="pointer-events-none absolute -inset-1 size-[calc(100%+0.5rem)] object-contain" />}
                 </span>
                 <span className="hidden min-w-0 text-left lg:block">

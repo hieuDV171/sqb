@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState, useMemo } from 'react';
 import { useConversations, useGroupMembers, useHideConversation } from '../hooks/useChat';
 import { useConversationTypingListener } from '../hooks/useChatRealtime';
@@ -91,7 +92,7 @@ export function ChatWindow({
               ) : isGroup ? (
                 <Users className="w-5 h-5 text-white/90" />
               ) : (
-                conversation?.displayName?.charAt(0).toUpperCase() || 'U'
+                getAvatarInitial(conversation?.displayName)
               )}
             </div>
             {/* Online Indicator */}

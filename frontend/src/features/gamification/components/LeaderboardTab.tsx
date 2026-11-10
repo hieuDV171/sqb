@@ -1,3 +1,4 @@
+import { getAvatarInitial } from '@/lib/avatar';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Search, ChevronDown, Check } from 'lucide-react';
@@ -185,7 +186,7 @@ export function LeaderboardTab() {
                         <img src={top2.avatarUrl} alt={top2.fullName} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
-                          {top2.fullName.charAt(0)}
+                          {getAvatarInitial(top2.fullName)}
                         </div>
                       )}
                     </div>
@@ -227,7 +228,7 @@ export function LeaderboardTab() {
                         <img src={top1.avatarUrl} alt={top1.fullName} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-amber-700 dark:text-amber-300 text-xl">
-                          {top1.fullName.charAt(0)}
+                          {getAvatarInitial(top1.fullName)}
                         </div>
                       )}
                     </div>
@@ -268,7 +269,7 @@ export function LeaderboardTab() {
                         <img src={top3.avatarUrl} alt={top3.fullName} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center font-bold text-amber-800 dark:text-amber-400">
-                          {top3.fullName.charAt(0)}
+                          {getAvatarInitial(top3.fullName)}
                         </div>
                       )}
                     </div>
@@ -444,7 +445,7 @@ export function LeaderboardTab() {
                                 />
                               ) : (
                                 <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">
-                                  {entry.fullName.charAt(0)}
+                                  {getAvatarInitial(entry.fullName)}
                                 </span>
                               )}
                             </div>
