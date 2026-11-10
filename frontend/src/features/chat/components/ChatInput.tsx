@@ -12,10 +12,11 @@ import {
 } from 'lucide-react';
 import { toast } from '@/stores/useToastStore';
 
-const TYPING_IDLE_MS = 5000;
+const TYPING_IDLE_MS = 2500;
 
 interface ChatInputProps {
   conversationId: number;
+  typingUsers: string[];
   replyTo: MessageDto | null;
   canSend: boolean;
   onCancelReply: () => void;
@@ -23,6 +24,7 @@ interface ChatInputProps {
 
 export function ChatInput({
   conversationId,
+  typingUsers,
   replyTo,
   canSend,
   onCancelReply,
@@ -217,6 +219,16 @@ export function ChatInput({
         </div>
       )}
 
+      <div role="status" aria-atomic="true" className="flex min-h-4 min-w-0 items-center gap-1.5 px-1 text-xs leading-4 text-academic">
+        {typingUsers.length > 0 && (
+          <>
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-academic" />
+            <span className="min-w-0 truncate font-medium">{typingUsers.join(', ')}</span>
+            <span className="shrink-0">{' đang soạn tin…'}</span>
+          </>
+        )}
+      </div>
+
       {/* Input Action Row */}
       <div className="flex items-end gap-2">
         {/* Hidden File Input */}
@@ -251,6 +263,7 @@ export function ChatInput({
               setContent(e.target.value);
               handleTypingEvent(e.target.value);
             }}
+            onBlur={stopTyping}
             onKeyDown={handleKeyDown}
             aria-label="Nội dung tin nhắn"
             placeholder="Nhập tin nhắn…"

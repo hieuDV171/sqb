@@ -173,7 +173,7 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
         }
         const timer = setTimeout(() => {
           get().setTypingUser(conversationId, user, false);
-        }, 6500);
+        }, 3000);
 
         convTyping[user.userId] = {
           fullName: user.fullName,

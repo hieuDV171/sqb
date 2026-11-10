@@ -116,19 +116,8 @@ function UnlockedChatWindow({
               {conversation?.displayName || (isGroup ? 'Nhóm trò chuyện' : 'Cuộc trò chuyện')}
             </h3>
 
-            {/* Subtitle / Typing notification */}
-          <div className="text-xs text-muted-foreground truncate" aria-live="polite">
-              {typingUsers.length > 0 ? (
-                <span className="text-academic font-medium animate-pulse">
-                  {typingUsers.join(', ')} đang soạn tin...
-                </span>
-              ) : isGroup ? (
-                <span>
-                  {members.length > 0 ? `${members.length} thành viên` : `${conversation?.memberCount || 0} thành viên`}
-                </span>
-              ) : (
-                <span>Trò chuyện trực tiếp</span>
-              )}
+            <div className="truncate text-xs text-muted-foreground">
+              {isGroup ? `${members.length || conversation?.memberCount || 0} thành viên` : 'Trò chuyện trực tiếp'}
             </div>
           </div>
         </div>
@@ -175,6 +164,7 @@ function UnlockedChatWindow({
       {/* Chat Input */}
       <ChatInput
         conversationId={conversationId}
+        typingUsers={typingUsers}
         replyTo={replyTo}
         canSend={realtime === 'CONNECTED'}
         onCancelReply={() => setReplyToId(null)}
