@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { toast } from '@/stores/useToastStore';
 
+const TYPING_IDLE_MS = 5000;
+
 interface ChatInputProps {
   conversationId: number;
   replyTo: MessageDto | null;
@@ -79,7 +81,7 @@ export function ChatInput({
       lastTypingSignal.current = now;
     }
     if (typingTimerRef.current !== null) clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(stopTyping, 2500);
+    typingTimerRef.current = setTimeout(stopTyping, TYPING_IDLE_MS);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,7 +251,6 @@ export function ChatInput({
               setContent(e.target.value);
               handleTypingEvent(e.target.value);
             }}
-            onBlur={stopTyping}
             onKeyDown={handleKeyDown}
             aria-label="Nội dung tin nhắn"
             placeholder="Nhập tin nhắn…"
