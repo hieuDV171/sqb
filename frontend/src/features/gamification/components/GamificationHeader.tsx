@@ -1,7 +1,7 @@
 import { Award, CheckCircle, Flame, ShieldAlert, ShoppingBag, Target, Trophy } from 'lucide-react';
 import { SqbCoin } from '@/components/common/SqbCoin';
 import { Button } from '@/components/ui/button';
-import { useGamificationStore, type GamificationTab } from '../stores/useGamificationStore';
+import { useGamificationStore, type GamificationTab } from '@/features/gamification';
 
 const sections = [
   { id: 'leaderboard', label: 'Bảng xếp hạng', icon: Trophy },
@@ -31,7 +31,7 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -left-16 size-96 rounded-full bg-indigo-400/25 blur-3xl" />
         <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 space-y-2">
-            <span className="inline-flex items-center gap-2 rounded-full border-2 border-amber-300/65 bg-amber-300/15 px-3 py-1 text-sm font-semibold text-amber-200">
+            <span className="inline-flex items-center gap-2 rounded-full border-2 border-amber-500 bg-amber-300/15 px-3 py-1 text-sm font-semibold text-amber-300">
               <Trophy aria-hidden="true" className="size-4" /> Thành tích
             </span>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Trung tâm thành tích</h1>
@@ -40,27 +40,27 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-300/55 bg-white/10 px-3 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-500 bg-white/10 px-3 py-2.5">
               <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-300/15">
                 <SqbCoin className="size-6" />
               </span>
               <div>
                 <p className="text-xs text-indigo-100">Số dư xu SQB</p>
-                <p className="text-lg font-bold text-amber-200 tabular-nums">{userCoins?.toLocaleString('vi-VN') ?? '—'}</p>
+                <p className="text-lg font-bold text-amber-300 tabular-nums">{userCoins?.toLocaleString('vi-VN') ?? '—'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border-2 border-orange-300/55 bg-white/10 px-3 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl border-2 border-orange-500 bg-white/10 px-3 py-2.5">
               <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-orange-300/15">
-                <Flame className="size-5 text-orange-200" />
+                <Flame className="size-5 text-orange-400" />
               </span>
               <div>
                 <p className="text-xs text-indigo-100">Chuỗi điểm danh</p>
-                <p className="text-lg font-bold text-orange-200 tabular-nums">{streakCount === undefined ? '—' : `${streakCount} ngày`}</p>
+                <p className="text-lg font-bold text-orange-300 tabular-nums">{streakCount === undefined ? '—' : `${streakCount} ngày`}</p>
               </div>
             </div>
             <Button type="button" variant="ghost"
-              className={`min-h-11 rounded-full border-2 focus-visible:border-white focus-visible:ring-white/60 ${hasCheckedInToday
-                ? 'border-emerald-200/65 bg-emerald-200/10 text-emerald-100 hover:bg-emerald-200/20 hover:text-emerald-50'
+              className={`min-h-11 rounded-full border-3 focus-visible:border-white focus-visible:ring-white/60 ${hasCheckedInToday
+                ? 'border-emerald-600 bg-emerald-200/10 text-emerald-300 hover:bg-emerald-200/20 hover:text-emerald-50'
                 : 'border-emerald-300/80 bg-linear-to-r from-emerald-600 via-emerald-700 to-teal-700 font-bold text-white shadow-lg shadow-emerald-500/35 hover:border-emerald-200 hover:text-white hover:shadow-emerald-400/50'}`}
               disabled={hasCheckedInToday === undefined && !onRetryCheckIn}
               onClick={onRetryCheckIn ?? (() => setCheckInModalOpen(true))}>
