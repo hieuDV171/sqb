@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Menu } from '@base-ui/react/menu';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,8 @@ const REACTIONS = [
   },
 ];
 
+const postMenuItemClass = 'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+
 interface PostFeedCardProps {
   item: ActivityFeedItemDto;
   initiallyShowComments?: boolean;
@@ -83,7 +86,6 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const currentReactionConfig = REACTIONS.find((r) => r.type === myReaction);
 
   const [showComments, setShowComments] = useState<boolean>(initiallyShowComments);
-  const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showReactionPicker, setShowReactionPicker] = useState<boolean>(false);
   const pickerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -242,75 +244,44 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
             </div>
           )}
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMenu(!showMenu)}
-              className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          <Menu.Root modal={false}>
+            <Menu.Trigger
+              render={<Button variant="ghost" size="icon" className="size-11 text-muted-foreground" />}
               aria-label="Mở tùy chọn bài viết"
-              aria-expanded={showMenu}
             >
-              <MoreHorizontal className="w-5 h-5" />
-            </button>
+              <MoreHorizontal aria-hidden="true" />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner align="end" sideOffset={6} className="z-50 max-w-(--available-width)">
+                <Menu.Popup className="w-56 max-w-(--available-width) overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                  {canEditLecturerNote && (
+                    <Menu.Item className={`${postMenuItemClass} font-semibold text-warning`} onClick={() => setIsLecturerModalOpen(true)}>
+                      <Award aria-hidden="true" className="size-4 shrink-0" /> Nhận xét của Giảng viên
+                    </Menu.Item>
+                  )}
 
-            {showMenu && (
-              <div className="absolute right-0 top-8 z-30 w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                {canEditLecturerNote && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMenu(false);
-                      setIsLecturerModalOpen(true);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 cursor-pointer"
-                  >
-                    <Award className="w-3.5 h-3.5" />
-                    <span>Nhận xét của Giảng viên</span>
-                  </button>
-                )}
+                  {(isAuthor || user?.role === 'ADMIN') && (
+                    <Menu.Item className={`${postMenuItemClass} font-semibold text-destructive`} onClick={() => void handleDelete()}>
+                      <Trash2 aria-hidden="true" className="size-4 shrink-0" /> Xóa bài viết
+                    </Menu.Item>
+                  )}
 
-                {(isAuthor || user?.role === 'ADMIN') && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMenu(false);
-                      handleDelete();
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Xóa bài viết</span>
-                  </button>
-                )}
+                  <Menu.Item className={postMenuItemClass} onClick={handleShare}>
+                    <Share2 aria-hidden="true" className="size-4 shrink-0" /> Chia sẻ liên kết
+                  </Menu.Item>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMenu(false);
-                    handleShare();
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>Chia sẻ liên kết</span>
-                </button>
-
-                {!isAuthor && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMenu(false);
-                      setIsReportModalOpen(true);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-t border-slate-100 dark:border-slate-700 cursor-pointer"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>Báo cáo bài viết</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                  {!isAuthor && (
+                    <>
+                      <Menu.Separator className="my-1 h-px bg-border" />
+                      <Menu.Item className={`${postMenuItemClass} font-semibold text-destructive`} onClick={() => setIsReportModalOpen(true)}>
+                        <ShieldAlert aria-hidden="true" className="size-4 shrink-0" /> Báo cáo bài viết
+                      </Menu.Item>
+                    </>
+                  )}
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
         </div>
       </div>
 
