@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import type { FC } from 'react';
 import { RefreshCw, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
@@ -32,7 +32,7 @@ interface SubmissionListProps {
   onProposeNew?: () => void;
 }
 
-export const SubmissionList: React.FC<SubmissionListProps> = ({
+export const SubmissionList: FC<SubmissionListProps> = ({
   submissions,
   isLoading,
   isError,
@@ -52,21 +52,7 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
   onDelete,
   onProposeNew,
 }) => {
-  // Filter submissions by search query
-  const filteredSubmissions = useMemo(() => {
-    if (!searchQuery.trim()) return submissions;
-    const q = searchQuery.toLowerCase().trim();
-    return submissions.filter(
-      (s) =>
-        (s.title && s.title.toLowerCase().includes(q)) ||
-        (s.sessionCode && s.sessionCode.toLowerCase().includes(q)) ||
-        (s.subjectName && s.subjectName.toLowerCase().includes(q)) ||
-        (s.subjectCode && s.subjectCode.toLowerCase().includes(q)) ||
-        (s.content && s.content.toLowerCase().includes(q))
-    );
-  }, [submissions, searchQuery]);
-
-  const hasVisibleSubmissions = filteredSubmissions.length > 0;
+  const hasVisibleSubmissions = submissions.length > 0;
   const { sentinel, supportsAutoLoad } = useInfiniteScroll(
     hasNextPage && !isFetching && !isError && !isFetchNextPageError && hasVisibleSubmissions,
     onFetchNextPage,
@@ -93,7 +79,7 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
 
   return (
     <div className="space-y-4">
-      {filteredSubmissions.length === 0 ? (
+      {!hasVisibleSubmissions ? (
         <EmptySubmissions
           filtered={Boolean(searchQuery.trim() || currentStatusFilter || selectedSubjectId)}
           hasNextPage={hasNextPage}
@@ -101,7 +87,7 @@ export const SubmissionList: React.FC<SubmissionListProps> = ({
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {filteredSubmissions.map((sub) => (
+          {submissions.map((sub) => (
             <SubmissionCard
               key={sub.sessionId}
               submission={sub}

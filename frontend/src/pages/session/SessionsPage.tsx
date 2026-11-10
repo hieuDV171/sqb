@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,11 @@ export function SessionsPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
   const [selectedStatus, setSelectedStatus] = useState<SessionStatus | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
+  const [keyword, setKeyword] = useState('');
+  useEffect(() => {
+    const timeout = setTimeout(() => setKeyword(searchQuery.trim()), 250);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   // Modals & Active Session States
   const [detailSessionId, setDetailSessionId] = useState<number | null>(null);
@@ -60,6 +65,7 @@ export function SessionsPage() {
   } = useMySubmissions({
     subjectId: selectedSubjectId,
     status: selectedStatus,
+    keyword,
     enabled: !isProposing,
   });
 
@@ -158,7 +164,7 @@ export function SessionsPage() {
             selectedSubjectId={selectedSubjectId}
             onFetchNextPage={fetchNextPage}
             currentStatusFilter={selectedStatus}
-            searchQuery={searchQuery}
+            searchQuery={keyword}
             onViewDetail={handleOpenDetail}
             onEdit={handleOpenEditFromCard}
             onDelete={handleDeletePrompt}

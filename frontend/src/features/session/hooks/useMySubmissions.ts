@@ -5,6 +5,7 @@ import type { SessionStatus } from '../types/session.types';
 interface UseMySubmissionsOptions {
   subjectId?: number;
   status?: SessionStatus;
+  keyword?: string;
   limit?: number;
   enabled?: boolean;
 }
@@ -12,18 +13,20 @@ interface UseMySubmissionsOptions {
 export function useMySubmissions({
   subjectId,
   status,
+  keyword,
   limit = 10,
   enabled = true,
 }: UseMySubmissionsOptions = {}) {
   return useInfiniteQuery({
     enabled,
-    queryKey: ['my-submissions', { subjectId, status, limit }],
+    queryKey: ['my-submissions', { subjectId, status, keyword, limit }],
     queryFn: async ({ pageParam }) => {
       const response = await sessionService.getMySubmissions({
         after: pageParam,
         limit,
         subject_id: subjectId,
         status,
+        q: keyword || undefined,
       });
       return response.data;
     },

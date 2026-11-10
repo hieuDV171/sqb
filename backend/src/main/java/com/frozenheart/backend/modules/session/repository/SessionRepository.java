@@ -47,6 +47,11 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                           AND (:subjectId IS NULL OR subject.id = :subjectId)
                           AND (:status IS NULL OR s.status = :status)
                           AND (:after IS NULL OR s.id < :after)
+                          AND (:keyword = '' OR LOCATE(LOWER(:keyword), LOWER(s.sessionCode)) > 0
+                               OR LOCATE(LOWER(:keyword), LOWER(s.title)) > 0
+                               OR LOCATE(LOWER(:keyword), LOWER(s.content)) > 0
+                               OR LOCATE(LOWER(:keyword), LOWER(subject.name)) > 0
+                               OR LOCATE(LOWER(:keyword), LOWER(subject.code)) > 0)
                         GROUP BY
                             s.id,
                             s.sessionCode,
@@ -70,7 +75,24 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         @Param("subjectId") Long subjectId,
                         @Param("status") SessionStatus status,
                         @Param("after") Long after,
+                        @Param("keyword") String keyword,
                         Pageable pageable);
+
+        @Query("""
+                        SELECT s.id AS sessionId, s.sessionCode AS sessionCode, s.title AS title,
+                               s.content AS content, subject.id AS subjectId, subject.name AS subjectName,
+                               s.status AS status, (SELECT COUNT(q) FROM Question q WHERE q.session = s) AS questionCount,
+                               s.createdAt AS createdAt, s.reactCount AS reactCount, s.commentCount AS commentCount
+                        FROM Session s
+                        JOIN s.courseClass cc
+                        JOIN cc.subject subject
+                        LEFT JOIN s.proposer proposer
+                        WHERE s.id = :sessionId AND LOWER(s.sessionCode) = LOWER(:code)
+                          AND (s.status = com.frozenheart.backend.core.entity.session.SessionStatus.RESOLVED
+                               OR proposer.id = :viewerId)
+                        """)
+        Optional<SubmissionProjection> findVisibleSessionByCode(@Param("sessionId") Long sessionId,
+                        @Param("code") String code, @Param("viewerId") Long viewerId);
 
         @Query("""
                         SELECT s.id AS sessionId, s.sessionCode AS sessionCode, s.title AS title,

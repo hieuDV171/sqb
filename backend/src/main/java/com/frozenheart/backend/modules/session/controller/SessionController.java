@@ -105,9 +105,11 @@ public class SessionController {
             @RequestParam(required = false, name = "subject_id") Long subjectId,
 
             @Parameter(description = "Lọc theo trạng thái phiên đề xuất (PENDING: Chờ duyệt, REVIEWING: Đang duyệt, RESOLVED: Đã xử lý)", example = "PENDING")
-            @RequestParam(required = false) SessionStatus status) {
+            @RequestParam(required = false) SessionStatus status,
+            @Parameter(description = "Tìm theo mã phiên, tiêu đề, nội dung hoặc môn học", example = "IT4409")
+            @RequestParam(required = false, name = "q") @Size(max = 200) String keyword) {
 
-        SubmissionsResponse response = sessionService.getMySubmissions(after, limit, subjectId, status);
+        SubmissionsResponse response = sessionService.getMySubmissions(after, limit, subjectId, status, keyword);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

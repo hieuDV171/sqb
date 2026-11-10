@@ -65,6 +65,7 @@ export interface QuestionSearchResultDto {
 
 export interface SessionSearchResultDto {
   sessionId: number;
+  sessionCode?: string;
   title: string;
   content?: string;
   subjectId?: number;

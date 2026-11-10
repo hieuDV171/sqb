@@ -219,7 +219,10 @@ export function GlobalSearchModal({
         }
         break;
       case 'SESSION':
-        if (item.session) navigate(`/sessions/${item.session.sessionId}/practice`);
+        if (item.session) {
+          const { sessionId, sessionCode, status } = item.session;
+          navigate(sessionCode && status !== 'RESOLVED' ? `/sessions/${sessionId}` : `/sessions/${sessionId}/practice`);
+        }
         break;
       case 'SUBJECT':
         if (item.subject) {
@@ -457,6 +460,9 @@ export function GlobalSearchModal({
                             <span className="line-clamp-2 text-sm font-bold text-slate-900 dark:text-slate-100">
                               {item.session.title}
                             </span>
+                            {item.session.sessionCode && (
+                              <span className="block truncate font-mono text-xs text-muted-foreground">#{item.session.sessionCode}</span>
+                            )}
                           </span>
                         )}
 

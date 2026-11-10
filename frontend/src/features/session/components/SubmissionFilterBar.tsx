@@ -42,10 +42,11 @@ export function SubmissionFilterBar({
       <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <StudySubjectSelect subjects={subjects} value={selectedSubjectId} onChange={onSelectSubject} />
         <label className="min-w-0 space-y-1.5 text-sm font-medium">
-          <span className="block">Tìm trong các phiên đã tải</span>
+          <span className="block">Tìm phiên nộp</span>
           <input
             className={fieldClass}
             type="search"
+            maxLength={200}
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Tiêu đề, mã phiên hoặc môn học"

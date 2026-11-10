@@ -58,6 +58,7 @@ import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
 import com.frozenheart.backend.modules.session.service.SessionService;
+import com.frozenheart.backend.modules.session.service.SessionCodeSearch;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
@@ -303,9 +304,9 @@ public class SessionServiceImpl implements SessionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionsResponse getMySubmissions(
-            Long after, Integer limit, Long subjectId, SessionStatus status) {
+            Long after, Integer limit, Long subjectId, SessionStatus status, String keyword) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-        return getUserSubmissions(currentUserId, after, limit, subjectId, status);
+        return listOwnSubmissions(currentUserId, after, limit, subjectId, status, SessionCodeSearch.normalize(keyword));
     }
 
     @Override
@@ -313,15 +314,18 @@ public class SessionServiceImpl implements SessionService {
     public SubmissionsResponse getUserSubmissions(
             Long userId, Long after, Integer limit, Long subjectId, SessionStatus status) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-
         if (currentUserId == null || !currentUserId.equals(userId)) {
             throw new AppException(ResponseCode.ACCESS_DENIED);
         }
+        return listOwnSubmissions(currentUserId, after, limit, subjectId, status, "");
+    }
 
+    private SubmissionsResponse listOwnSubmissions(
+            Long userId, Long after, Integer limit, Long subjectId, SessionStatus status, String keyword) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
 
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-        List<SubmissionProjection> mySubmissions = sessionRepository.findSubmissions(userId, subjectId, status, after, pageable);
+        List<SubmissionProjection> mySubmissions = sessionRepository.findSubmissions(userId, subjectId, status, after, keyword, pageable);
 
         boolean hasNext = false;
         if (mySubmissions.size() > pageSize) {
@@ -334,7 +338,7 @@ public class SessionServiceImpl implements SessionService {
             nextAfter = mySubmissions.getLast().getSessionId();
         }
 
-        Map<Long, ReactionType> reactionsBySession = findViewerSessionReactions(currentUserId, mySubmissions);
+        Map<Long, ReactionType> reactionsBySession = findViewerSessionReactions(userId, mySubmissions);
         List<SubmissionsResponse.SubmissionSessionSummaryDto> contents = mySubmissions.stream()
                 .map(s -> SubmissionsResponse.SubmissionSessionSummaryDto.builder()
                         .sessionId(s.getSessionId())
@@ -374,7 +378,7 @@ public class SessionServiceImpl implements SessionService {
         Long viewerId = JwtPayload.getCurrentUserPayload().getUserId();
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         List<SubmissionProjection> rows = sessionRepository.findPracticeCatalog(subjectId,
-                keyword == null ? "" : keyword.strip(), after, PageRequest.of(0, pageSize + 1));
+                SessionCodeSearch.normalize(keyword), after, PageRequest.of(0, pageSize + 1));
         boolean hasNext = rows.size() > pageSize;
         List<SubmissionProjection> page = hasNext ? rows.subList(0, pageSize) : rows;
         Map<Long, ReactionType> reactionsBySession = findViewerSessionReactions(viewerId, page);

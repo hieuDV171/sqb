@@ -15,7 +15,7 @@ public interface SessionService {
 
     ProposeSessionResponse proposeSession(ProposeSessionRequest request);
 
-    SubmissionsResponse getMySubmissions(Long after, Integer limit, Long subjectId, SessionStatus status);
+    SubmissionsResponse getMySubmissions(Long after, Integer limit, Long subjectId, SessionStatus status, String keyword);
 
     SubmissionsResponse getUserSubmissions(Long userId, Long after, Integer limit, Long subjectId, SessionStatus status);
     PracticeCatalogResponse getPracticeCatalog(Long after, Integer limit, Long subjectId, String keyword);

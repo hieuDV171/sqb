@@ -283,10 +283,11 @@ class SessionServiceImplTest {
                 org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq("IT4788"),
                 any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(List.of(projection));
 
-        SubmissionsResponse response = sessionService.getMySubmissions(null, 10, null, null);
+        SubmissionsResponse response = sessionService.getMySubmissions(null, 10, null, null, " #IT4788 ");
 
         assertEquals(1, response.contents().size());
         assertEquals(SessionStatus.REVIEWING, response.contents().getFirst().status());

@@ -308,17 +308,23 @@ function SearchPageContent() {
                   <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
                     {item.session.title}
                   </h3>
+                  {item.session.sessionCode && (
+                    <p className="mt-1 wrap-break-word font-mono text-xs text-muted-foreground">#{item.session.sessionCode}</p>
+                  )}
 
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <span className="text-xs text-slate-500">
                       {item.session.questionCount || 0} câu hỏi trong phiên
                     </span>
                     <Link
-                      to={`/sessions/${item.session.sessionId}/practice`}
+                      to={item.session.sessionCode && item.session.status !== 'RESOLVED'
+                        ? `/sessions/${item.session.sessionId}`
+                        : `/sessions/${item.session.sessionId}/practice`}
                       onClick={recordCurrentQuery}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 inline-flex items-center gap-1"
                     >
-                      Luyện tập phiên này <ArrowRight className="w-3.5 h-3.5" />
+                      {item.session.sessionCode && item.session.status !== 'RESOLVED' ? 'Xem chi tiết phiên' : 'Luyện tập phiên này'}
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>

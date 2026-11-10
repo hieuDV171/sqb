@@ -161,6 +161,7 @@ export interface GetMySubmissionsParams {
   limit?: number;
   subject_id?: number;
   status?: SessionStatus;
+  q?: string;
 }
 
 // Game 2 Gamification types

@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.util.ObjectBuilder;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.socialinteraction.Search;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserRole;
@@ -18,6 +19,8 @@ import com.frozenheart.backend.modules.search.dto.SearchType;
 import com.frozenheart.backend.modules.search.repository.SearchRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository.SearchPracticeTarget;
+import com.frozenheart.backend.modules.session.repository.SessionRepository;
+import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +44,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -79,6 +83,8 @@ class SearchServiceImplTest {
     private PostRepository postRepository;
     @Mock
     private QuestionRepository questionRepository;
+    @Mock
+    private SessionRepository sessionRepository;
 
     @InjectMocks
     private SearchServiceImpl searchService;
@@ -96,6 +102,33 @@ class SearchServiceImplTest {
         assertNotNull(response);
         assertEquals(0, response.getItems().size());
         verifyNoInteractions(searchRepository, userRepository, redisTemplate, transactionTemplate);
+    }
+
+    @Test
+    void exactCodeSearchReturnsPrivateSessionOnlyWhenRepositoryAuthorizesViewer() {
+        String code = "IT4409_4E7Xer_1794274070936_452";
+        SubmissionProjection row = mock(SubmissionProjection.class);
+        when(row.getSessionId()).thenReturn(452L);
+        when(row.getSessionCode()).thenReturn(code);
+        when(row.getStatus()).thenReturn(SessionStatus.REVIEWING);
+        when(sessionRepository.findVisibleSessionByCode(452L, code, 7L)).thenReturn(Optional.of(row));
+        when(sessionRepository.findVisibleSessionByCode(452L, code, 8L)).thenReturn(Optional.empty());
+
+        setCurrentUser(7L);
+        var ownerResult = searchService.search(" #" + code + " ", SearchType.ALL, null, 10);
+        assertEquals(code, ownerResult.getItems().getFirst().getSession().getSessionCode());
+        assertEquals(SessionStatus.REVIEWING, ownerResult.getItems().getFirst().getSession().getStatus());
+
+        setCurrentUser(8L);
+        assertEquals(List.of(), searchService.search(code, SearchType.SESSION, null, 10).getItems());
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void confirmedSessionCodeSearchDoesNotPublishTheCodeAsTrending() {
+        setCurrentUser(7L);
+        searchService.recordSearchQuery("#IT4409_4E7Xer_1794274070936_452");
+        verifyNoInteractions(redisTemplate, searchRepository, transactionTemplate);
     }
 
     @Test

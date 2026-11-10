@@ -66,7 +66,7 @@ export const sessionService = {
   /**
    * 15.3 Lấy danh sách các phiên nộp câu hỏi của tôi
    * GET /api/v1/sessions/my-submissions
-   * Query params: after, limit, subject_id, status
+   * Query params: after, limit, subject_id, status, q
    */
   getMySubmissions: async (
     params?: GetMySubmissionsParams
@@ -79,6 +79,7 @@ export const sessionService = {
           limit: params?.limit || 10,
           subject_id: params?.subject_id,
           status: params?.status,
+          q: params?.q,
         },
       }
     )) as never;

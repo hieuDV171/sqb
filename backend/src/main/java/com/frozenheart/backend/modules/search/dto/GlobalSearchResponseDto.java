@@ -237,6 +237,9 @@ public class GlobalSearchResponseDto {
         @Schema(description = "ID phiên đóng góp", example = "14")
         private Long sessionId;
 
+        @Schema(description = "Mã phiên khi tìm chính xác bằng mã", example = "IT4409_4E7Xer_1794274070936_452")
+        private String sessionCode;
+
         @Schema(description = "Tiêu đề phiên đóng góp", example = "Đóng góp câu hỏi ôn thi giữa kỳ PRN211")
         private String title;
 

@@ -366,3 +366,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - `GET /sessions/practice-catalog` trả phiên đã chốt theo môn, từ khóa và con trỏ. DTO chỉ chứa dữ liệu cần để luyện tập, không gồm danh tính người nộp, lớp học phần hoặc kết quả duyệt. Cảm xúc được tải theo lô trên trang trả về.
 - `GET /users/{userId}/sessions` chỉ dành cho tài khoản trùng `userId`. Luồng chính chủ dùng `/sessions/my-submissions`, còn giảng viên dùng API duyệt có phân quyền theo lớp. Liên kết web theo hồ sơ cũ dẫn về kho chung.
 - Bài vinh danh giữ mã sinh viên cố định và liên kết luyện tập. Thay đổi chặn đối chiếu qua danh sách phiên gắn với tên thật trong hồ sơ.
+
+### [ADR-032] Tra phiên bằng mã đầy đủ
+
+- Tìm kiếm chung tra mã phiên đầy đủ từ PostgreSQL theo ID và đối chiếu toàn bộ mã. Điều kiện đọc là phiên đã chốt hoặc tài khoản gọi chính là người nộp. Phiên chưa chốt không cần được lập chỉ mục tìm kiếm.
+- API phiên của chính mình áp dụng từ khóa trước khi phân trang. Cả ba màn tìm phiên chấp nhận dấu `#` ở đầu mã. Lượt tra mã đầy đủ không được ghi vào lịch sử mới hoặc gợi ý thịnh hành.

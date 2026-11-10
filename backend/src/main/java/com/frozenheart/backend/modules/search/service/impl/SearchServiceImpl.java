@@ -18,6 +18,8 @@ import com.frozenheart.backend.modules.search.repository.SearchRepository;
 import com.frozenheart.backend.modules.search.service.SearchService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository.SearchPracticeTarget;
+import com.frozenheart.backend.modules.session.repository.SessionRepository;
+import com.frozenheart.backend.modules.session.service.SessionCodeSearch;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ public class SearchServiceImpl implements SearchService {
     private final TransactionTemplate transactionTemplate;
     private final PostRepository postRepository;
     private final QuestionRepository questionRepository;
+    private final SessionRepository sessionRepository;
 
     private static final String TRENDING_SEARCHES_KEY_PREFIX = "trending_searches:v2:";
     private static final String TRENDING_SEARCHES_SEEN_KEY_PREFIX = "trending_searches:v2:seen:";
@@ -66,6 +69,12 @@ public class SearchServiceImpl implements SearchService {
             Integer limit) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
         int fromOffset = (after != null && after >= 0) ? after.intValue() : 0;
+
+        if (type == null || type == SearchType.ALL || type == SearchType.SESSION) {
+            String code = SessionCodeSearch.normalize(query);
+            Long sessionId = SessionCodeSearch.sessionId(code);
+            if (sessionId != null) return searchSessionByCode(sessionId, code, fromOffset);
+        }
 
         // Xác định danh sách Index cần truy vấn
         List<String> indices = resolveTargetIndices(type);
@@ -116,6 +125,36 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
+    private GlobalSearchResponseDto searchSessionByCode(Long sessionId, String code, int offset) {
+        List<GlobalSearchResponseDto.SearchResultItemDto> items = List.of();
+        if (offset == 0) {
+            Long viewerId = JwtPayload.getCurrentUserPayload().getUserId();
+            items = sessionRepository.findVisibleSessionByCode(sessionId, code, viewerId)
+                    .map(row -> GlobalSearchResponseDto.SearchResultItemDto.builder()
+                            .type(SearchType.SESSION)
+                            .session(GlobalSearchResponseDto.SessionSearchResultDto.builder()
+                                    .sessionId(row.getSessionId())
+                                    .sessionCode(row.getSessionCode())
+                                    .title(row.getTitle())
+                                    .content(row.getContent())
+                                    .subjectId(row.getSubjectId())
+                                    .subjectName(row.getSubjectName())
+                                    .status(row.getStatus())
+                                    .questionCount(row.getQuestionCount())
+                                    .reactCount(row.getReactCount())
+                                    .commentCount(row.getCommentCount())
+                                    .createdAt(row.getCreatedAt())
+                                    .build())
+                            .build())
+                    .stream().toList();
+        }
+        return GlobalSearchResponseDto.builder()
+                .items(items)
+                .totalHits((long) items.size())
+                .pagination(CursorPaginationDto.builder().hasNext(false).build())
+                .build();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public SavedAndTrendingSearchesResponseDto getSavedAndTrendingSearches() {
@@ -150,7 +189,8 @@ public class SearchServiceImpl implements SearchService {
                     continue;
                 }
                 for (org.springframework.data.redis.core.ZSetOperations.TypedTuple<String> tuple : dailyScores) {
-                    if (tuple.getValue() != null && tuple.getScore() != null) {
+                    if (tuple.getValue() != null && tuple.getScore() != null
+                            && SessionCodeSearch.sessionId(SessionCodeSearch.normalize(tuple.getValue())) == null) {
                         scoresByQuery.merge(tuple.getValue(), tuple.getScore(), Double::sum);
                     }
                 }
@@ -190,7 +230,8 @@ public class SearchServiceImpl implements SearchService {
         if (query == null || query.isBlank())
             return;
         String cleanQuery = query.trim().replaceAll("\\s+", " ");
-        if (cleanQuery.length() < 2 || cleanQuery.length() > 200) {
+        if (cleanQuery.length() < 2 || cleanQuery.length() > 200
+                || SessionCodeSearch.sessionId(SessionCodeSearch.normalize(cleanQuery)) != null) {
             return;
         }
 
