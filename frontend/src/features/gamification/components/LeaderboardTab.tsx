@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Target, Trophy } from 'lucide-react';
+import { Award, Crown, Medal, Search, Target, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -16,6 +16,24 @@ import { GamificationSelect } from './GamificationSelect';
 const scopes = [
   { value: 'SEMESTER', label: 'Toàn học kỳ' },
   { value: 'SUBJECT', label: 'Theo môn học' },
+] as const;
+
+const podiumPlaces = [
+  {
+    rank: 1, title: 'Quán quân', icon: Crown, position: 'sm:col-start-2',
+    height: 'sm:min-h-32', avatarRing: 'ring-amber-400',
+    finish: 'border-amber-400/70 from-amber-200 to-yellow-50 text-amber-950 dark:border-amber-400/50 dark:from-amber-800/75 dark:to-amber-950 dark:text-amber-100',
+  },
+  {
+    rank: 2, title: 'Á quân', icon: Medal, position: 'sm:col-start-1',
+    height: 'sm:min-h-24', avatarRing: 'ring-slate-400',
+    finish: 'border-slate-300 from-slate-200 to-slate-50 text-slate-900 dark:border-slate-500 dark:from-slate-700 dark:to-slate-900 dark:text-slate-100',
+  },
+  {
+    rank: 3, title: 'Quý quân', icon: Award, position: 'sm:col-start-3',
+    height: 'sm:min-h-20', avatarRing: 'ring-orange-500/70',
+    finish: 'border-orange-300 from-orange-200 to-orange-50 text-orange-950 dark:border-orange-500/60 dark:from-orange-800/75 dark:to-orange-950 dark:text-orange-100',
+  },
 ] as const;
 
 function RankedAvatar({ entry, large = false }: { entry: LeaderboardEntryDto; large?: boolean }) {
@@ -41,7 +59,10 @@ export function LeaderboardTab() {
   const leaderboard = useLeaderboard({ period, subjectId: period === 'SUBJECT' ? subject?.subjectId : undefined, limit: 50 });
   const entries = leaderboard.data?.entries ?? [];
   const myRank = leaderboard.data?.myRank;
-  const leaders = entries.filter((entry) => entry.rank <= 3).slice(0, 3);
+  const leaders = podiumPlaces.flatMap((place) => {
+    const entry = entries.find((candidate) => candidate.rank === place.rank);
+    return entry ? [{ ...place, entry }] : [];
+  });
   const keyword = search.trim().toLocaleLowerCase('vi-VN');
   const results = entries.filter((entry) =>
     entry.fullName.toLocaleLowerCase('vi-VN').includes(keyword) || entry.userCode?.toLowerCase().includes(keyword),
@@ -82,30 +103,48 @@ export function LeaderboardTab() {
       ) : (
         <>
           {myRank && myRank.rank > 0 && (
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-academic-soft p-4">
-              <Target aria-hidden="true" className="size-5 shrink-0 text-academic" />
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-200 bg-linear-to-r from-indigo-100 via-violet-50 to-card p-4 dark:border-indigo-500/35 dark:from-indigo-950 dark:via-violet-950/65">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-700 text-white dark:bg-indigo-400 dark:text-indigo-950">
+                <Target aria-hidden="true" className="size-5" />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">Vị trí của bạn · Hạng {myRank.rank}</p>
                 <p className="text-sm text-muted-foreground">Top {myRank.topPercent}% trong {myRank.totalParticipants.toLocaleString('vi-VN')} người</p>
               </div>
-              <strong className="text-lg tabular-nums">{myRank.totalPoints.toLocaleString('vi-VN')} điểm</strong>
+              <strong className="text-lg text-indigo-800 tabular-nums dark:text-indigo-200">{myRank.totalPoints.toLocaleString('vi-VN')} điểm</strong>
             </div>
           )}
 
           {leaders.length > 0 && (
-            <div className="grid gap-2 sm:grid-cols-3">
-              {leaders.map((entry) => (
-                <Link key={entry.userId} to={`/users/${entry.userId}`}
-                  className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card p-4 hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-ring sm:flex-col sm:items-start">
-                  <RankedAvatar entry={entry} large />
-                  <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${entry.rank === 1 ? 'text-reward' : 'text-muted-foreground'}`}>Hạng {entry.rank}</p>
-                    <p className="wrap-break-word font-semibold">{entry.fullName}</p>
-                    <p className="text-sm tabular-nums text-muted-foreground">{entry.totalPoints.toLocaleString('vi-VN')} điểm</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <section aria-labelledby="podium-title"
+              className="space-y-4 rounded-2xl border border-border bg-linear-to-b from-indigo-50 via-card to-card p-4 dark:from-indigo-950/55 sm:p-6">
+              <h3 id="podium-title" className="flex items-center justify-center gap-2 text-lg font-bold">
+                <Trophy aria-hidden="true" className="size-5 text-reward" /> Bục vinh danh
+              </h3>
+              <ol className="mx-auto grid max-w-3xl gap-3 sm:grid-cols-3 sm:items-end sm:gap-4">
+                {leaders.map(({ entry, rank, title, icon: Icon, position, height, avatarRing, finish }) => (
+                  <li key={entry.userId} className={`min-w-0 ${position} sm:row-start-1`}>
+                    <Link to={`/users/${entry.userId}`}
+                      className="group flex min-w-0 flex-col items-stretch gap-2 rounded-2xl border border-border bg-card p-3 transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring sm:border-transparent sm:bg-transparent sm:p-0">
+                      <div className="flex min-w-0 items-center gap-3 sm:flex-col sm:gap-2 sm:px-2 sm:text-center">
+                        <div className={`shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-card ${avatarRing}`}>
+                          <RankedAvatar entry={entry} large />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="wrap-break-word font-semibold group-hover:underline">{entry.fullName}</p>
+                          <p className="text-sm font-medium text-muted-foreground tabular-nums">{entry.totalPoints.toLocaleString('vi-VN')} điểm</p>
+                        </div>
+                      </div>
+                      <div className={`flex items-center justify-center gap-2 rounded-xl border bg-linear-to-b px-2 py-2 text-center sm:flex-col sm:gap-1 sm:rounded-t-2xl sm:rounded-b-lg sm:border-t-2 ${height} ${finish}`}>
+                        <Icon aria-hidden="true" className="size-4 sm:size-5" />
+                        <span className="font-bold sm:text-2xl">Hạng {rank}</span>
+                        <span className="text-sm font-medium">{title}</span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </section>
           )}
 
           {entries.length === 0 ? (

@@ -26,33 +26,42 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
 
   return (
     <header className="space-y-4">
-      <div className="rounded-3xl border border-border bg-card p-5 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+      <div className="relative isolate overflow-hidden rounded-3xl border border-indigo-400/30 bg-indigo-950 bg-linear-to-r from-indigo-950 via-indigo-800 to-purple-950 p-5 text-white shadow-lg shadow-indigo-950/20 sm:p-7">
+        <div aria-hidden="true" className="pointer-events-none absolute -top-28 -right-20 size-80 rounded-full bg-fuchsia-400/20 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -left-16 size-96 rounded-full bg-indigo-400/25 blur-3xl" />
+        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 space-y-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-reward-soft px-3 py-1 text-sm font-semibold text-reward">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-300/15 px-3 py-1 text-sm font-semibold text-amber-200">
               <Trophy aria-hidden="true" className="size-4" /> Thành tích
             </span>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Trung tâm thành tích</h1>
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+            <p className="max-w-xl text-sm leading-relaxed text-indigo-100">
               Theo dõi thứ hạng, sưu tập huy hiệu và dùng xu SQB để cá nhân hóa trang cá nhân.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle px-3 py-2">
-              <SqbCoin className="size-6" />
+            <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-3 py-2.5">
+              <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-300/15">
+                <SqbCoin className="size-6" />
+              </span>
               <div>
-                <p className="text-xs text-muted-foreground">Số dư xu SQB</p>
-                <p className="font-semibold tabular-nums">{userCoins?.toLocaleString('vi-VN') ?? '—'}</p>
+                <p className="text-xs text-indigo-100">Số dư xu SQB</p>
+                <p className="text-lg font-bold text-amber-200 tabular-nums">{userCoins?.toLocaleString('vi-VN') ?? '—'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle px-3 py-2">
-              <Flame aria-hidden="true" className="size-5 text-reward" />
+            <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-3 py-2.5">
+              <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-orange-300/15">
+                <Flame className="size-5 text-orange-200" />
+              </span>
               <div>
-                <p className="text-xs text-muted-foreground">Chuỗi điểm danh</p>
-                <p className="font-semibold tabular-nums">{streakCount === undefined ? '—' : `${streakCount} ngày`}</p>
+                <p className="text-xs text-indigo-100">Chuỗi điểm danh</p>
+                <p className="text-lg font-bold text-orange-200 tabular-nums">{streakCount === undefined ? '—' : `${streakCount} ngày`}</p>
               </div>
             </div>
-            <Button type="button" variant={hasCheckedInToday ? 'outline' : 'default'} className="min-h-11"
+            <Button type="button" variant="ghost"
+              className={`min-h-11 focus-visible:border-white focus-visible:ring-white/60 ${hasCheckedInToday
+                ? 'border-emerald-200/40 bg-emerald-200/10 text-emerald-100 hover:bg-emerald-200/20 hover:text-emerald-50'
+                : 'border-emerald-100/40 bg-emerald-300 text-emerald-950 hover:bg-emerald-200 hover:text-emerald-950'}`}
               disabled={hasCheckedInToday === undefined && !onRetryCheckIn}
               onClick={onRetryCheckIn ?? (() => setCheckInModalOpen(true))}>
               {hasCheckedInToday ? <CheckCircle aria-hidden="true" /> : <Flame aria-hidden="true" />}
