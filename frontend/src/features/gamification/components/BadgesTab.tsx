@@ -81,19 +81,24 @@ export function BadgesTab() {
             return (
               <li key={badge.badgeId}>
                 <button type="button" onClick={() => setSelectedBadge(badge)}
-                  className="flex h-full w-full cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-ring">
-                  <BadgeIcon badge={badge} />
-                  <span className="min-w-0 space-y-1">
-                    <span className="block text-xs font-medium text-muted-foreground">{tierLabels[badge.badgeTier]}</span>
-                    <span className="block wrap-break-word font-semibold">{badge.name}</span>
-                    <span className="line-clamp-2 text-sm text-muted-foreground">{badge.description}</span>
+                  className="flex h-full w-full cursor-pointer flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-ring">
+                  <span className="flex items-start gap-3">
+                    <BadgeIcon badge={badge} />
+                    <span className="min-w-0 space-y-1">
+                      <span className="block text-xs font-medium text-muted-foreground">{tierLabels[badge.badgeTier]}</span>
+                      <span className="block wrap-break-word font-semibold">{badge.name}</span>
+                      <span className="line-clamp-2 text-sm text-muted-foreground">{badge.description}</span>
+                    </span>
+                  </span>
+                  <span className="mt-auto flex items-center justify-between gap-2">
                     <span className={`flex items-center gap-1.5 text-xs font-medium ${userBadge ? 'text-success' : 'text-muted-foreground'}`}>
-                      {userBadge ? <Award aria-hidden="true" className="size-4" /> : <Lock aria-hidden="true" className="size-4" />}
+                      {userBadge ? <Award aria-hidden="true" className="size-4 shrink-0" /> : <Lock aria-hidden="true" className="size-4 shrink-0" />}
                       {userBadge ? `Đã đạt ${new Date(userBadge.earnedAt).toLocaleDateString('vi-VN')}` : 'Chưa đạt'}
                     </span>
                     {earnedCount != null && (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Users aria-hidden="true" className="size-4 shrink-0" /> {earnedCount.toLocaleString('vi-VN')} người đã đạt
+                      <span title="Số người đã đạt" className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+                        <Users aria-hidden="true" className="size-4" />
+                        <span>{earnedCount.toLocaleString('vi-VN')}<span className="sr-only"> người đã đạt</span></span>
                       </span>
                     )}
                   </span>
