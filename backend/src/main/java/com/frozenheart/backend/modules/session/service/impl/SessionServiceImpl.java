@@ -63,6 +63,7 @@ import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 import com.frozenheart.backend.core.entity.user.UserCourseClass;
 import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
+import com.frozenheart.backend.modules.session.dto.PracticeCatalogResponse;
 import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 
@@ -313,16 +314,14 @@ public class SessionServiceImpl implements SessionService {
             Long userId, Long after, Integer limit, Long subjectId, SessionStatus status) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        // Business Rule:
-        // - Nếu xem chính mình (userId == currentUserId): cho phép xem theo status yêu cầu (hoặc tất cả nếu status null)
-        // - Nếu xem người khác (userId != currentUserId): bắt buộc chỉ xem các phiên đã được duyệt (RESOLVED)
-        boolean isOwner = currentUserId != null && currentUserId.equals(userId);
-        SessionStatus effectiveStatus = isOwner ? status : SessionStatus.RESOLVED;
+        if (currentUserId == null || !currentUserId.equals(userId)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED);
+        }
 
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
 
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-        List<SubmissionProjection> mySubmissions = sessionRepository.findSubmissions(userId, subjectId, effectiveStatus, after, pageable);
+        List<SubmissionProjection> mySubmissions = sessionRepository.findSubmissions(userId, subjectId, status, after, pageable);
 
         boolean hasNext = false;
         if (mySubmissions.size() > pageSize) {
@@ -335,11 +334,7 @@ public class SessionServiceImpl implements SessionService {
             nextAfter = mySubmissions.getLast().getSessionId();
         }
 
-        List<Long> sessionIds = mySubmissions.stream().map(SubmissionProjection::getSessionId).toList();
-        Map<Long, ReactionType> reactionsBySession = sessionIds.isEmpty() || currentUserId == null ? Map.of()
-                : reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.SESSION, sessionIds)
-                        .stream().filter(react -> react.getReactionType() != null)
-                        .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (first, _) -> first));
+        Map<Long, ReactionType> reactionsBySession = findViewerSessionReactions(currentUserId, mySubmissions);
         List<SubmissionsResponse.SubmissionSessionSummaryDto> contents = mySubmissions.stream()
                 .map(s -> SubmissionsResponse.SubmissionSessionSummaryDto.builder()
                         .sessionId(s.getSessionId())
@@ -355,7 +350,7 @@ public class SessionServiceImpl implements SessionService {
                         .semesterName(s.getSemesterName())
                         .status(s.getStatus())
                         .questionCounts(s.getQuestionCount())
-                        .approvedQuestionCount(isOwner && s.getStatus() == SessionStatus.RESOLVED
+                        .approvedQuestionCount(s.getStatus() == SessionStatus.RESOLVED
                                 ? s.getApprovedQuestionCount() : null)
                         .createdAt(s.getCreatedAt())
                         .reactCount(s.getReactCount())
@@ -371,6 +366,34 @@ public class SessionServiceImpl implements SessionService {
                         .hasNext(hasNext)
                         .build())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PracticeCatalogResponse getPracticeCatalog(Long after, Integer limit, Long subjectId, String keyword) {
+        Long viewerId = JwtPayload.getCurrentUserPayload().getUserId();
+        int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
+        List<SubmissionProjection> rows = sessionRepository.findPracticeCatalog(subjectId,
+                keyword == null ? "" : keyword.strip(), after, PageRequest.of(0, pageSize + 1));
+        boolean hasNext = rows.size() > pageSize;
+        List<SubmissionProjection> page = hasNext ? rows.subList(0, pageSize) : rows;
+        Map<Long, ReactionType> reactionsBySession = findViewerSessionReactions(viewerId, page);
+        var contents = page.stream()
+                .map(row -> new PracticeCatalogResponse.PracticeSetDto(row.getSessionId(), row.getSessionCode(),
+                        row.getTitle(), row.getContent(), row.getSubjectName(), row.getSubjectCode(),
+                        row.getQuestionCount(), row.getCreatedAt(), row.getReactCount(),
+                        reactionsBySession.get(row.getSessionId()), row.getCommentCount()))
+                .toList();
+        return new PracticeCatalogResponse(contents, CursorPaginationDto.builder()
+                .after(page.isEmpty() ? null : page.getLast().getSessionId()).hasNext(hasNext).build());
+    }
+
+    private Map<Long, ReactionType> findViewerSessionReactions(Long viewerId, List<SubmissionProjection> page) {
+        if (page.isEmpty()) return Map.of();
+        List<Long> sessionIds = page.stream().map(SubmissionProjection::getSessionId).toList();
+        return reactRepository.findUserReactsByTargetIds(viewerId, InteractionTargetType.SESSION, sessionIds)
+                .stream().filter(react -> react.getReactionType() != null)
+                .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (first, _) -> first));
     }
 
     @Override

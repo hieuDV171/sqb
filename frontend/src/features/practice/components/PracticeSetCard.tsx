@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { Check, Copy, MessageSquare, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/stores/useToastStore';
-import type { SubmissionSessionSummaryDto } from '@/features/session/types/session.types';
+import type { PracticeSetDto } from '../types/practice.types';
 import { SessionReactionButton } from './SessionReactionButton';
 
-export function UserSessionCard({ session, userId }: { session: SubmissionSessionSummaryDto; userId: number }) {
+export function PracticeSetCard({ session, catalogSearch }: { session: PracticeSetDto; catalogSearch: string }) {
   const practicePath = `/sessions/${session.sessionId}/practice`;
+  const linkState = { practiceCatalogSearch: catalogSearch };
   const [copied, setCopied] = useState(false);
 
   async function copyCode(code: string) {
@@ -42,7 +43,7 @@ export function UserSessionCard({ session, userId }: { session: SubmissionSessio
           <SessionReactionButton sessionId={session.sessionId} reactCount={session.reactCount} myReaction={session.myReaction} />
           <Link
             to={`${practicePath}?discussion=session`}
-            state={{ fromMemberSessions: userId }}
+            state={linkState}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-medium text-academic hover:bg-academic-soft focus-visible:outline-2 focus-visible:outline-ring"
             aria-label={`Thảo luận bộ ${session.title}, ${session.commentCount ?? 0} bình luận`}
           >
@@ -50,7 +51,7 @@ export function UserSessionCard({ session, userId }: { session: SubmissionSessio
           </Link>
           {session.createdAt && <time dateTime={session.createdAt}>{new Date(session.createdAt).toLocaleDateString('vi-VN')}</time>}
         </div>
-        <Button variant="outline" className="min-h-11" render={<Link to={practicePath} state={{ fromMemberSessions: userId }} />} nativeButton={false}>
+        <Button variant="outline" className="min-h-11" render={<Link to={practicePath} state={linkState} />} nativeButton={false}>
           <PlayCircle aria-hidden="true" /> Luyện tập
         </Button>
       </footer>

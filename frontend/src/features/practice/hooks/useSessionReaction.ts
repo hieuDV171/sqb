@@ -1,15 +1,15 @@
 import { useIsMutating, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { reactService, type ReactionType } from '@/features/feed/services/reactService';
-import type { SubmissionsResponse } from '@/features/session/types/session.types';
 import { toast } from '@/stores/useToastStore';
-import type { SessionQuestionsResponse } from '../types/practice.types';
+import type { PracticeCatalogResponse, SessionQuestionsResponse } from '../types/practice.types';
+import { practiceCatalogQueryKey } from './usePracticeCatalog';
 
 export interface SessionReactionState {
   reactCount: number;
   myReaction: ReactionType | null;
 }
 
-const sessionListKeys = [['userProposedSessions'], ['my-submissions']] as const;
+const sessionListKeys = [practiceCatalogQueryKey, ['my-submissions']] as const;
 
 export function useSessionReaction(sessionId: number) {
   const queryClient = useQueryClient();
@@ -22,7 +22,7 @@ export function useSessionReaction(sessionId: number) {
       current ? { ...current, ...reaction } : current,
     );
     for (const queryKey of sessionListKeys) {
-      queryClient.setQueriesData<InfiniteData<SubmissionsResponse>>({ queryKey }, (current) => current && ({
+      queryClient.setQueriesData<InfiniteData<PracticeCatalogResponse>>({ queryKey }, (current) => current && ({
         ...current,
         pages: current.pages.map((page) => ({
           ...page,

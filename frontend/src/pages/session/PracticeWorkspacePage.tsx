@@ -32,8 +32,8 @@ export function PracticeWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { state } = useLocation();
   const questionId = Number(searchParams.get('questionId'));
-  const memberId = state?.fromMemberSessions as number | undefined;
-  const fromMember = memberId !== undefined && Number.isSafeInteger(memberId) && memberId > 0;
+  const catalogSearch = state?.practiceCatalogSearch;
+  const fromCatalog = typeof catalogSearch === 'string';
   return (
     <PracticeWorkspace
       key={`${sessionId}:${questionId}`}
@@ -46,8 +46,8 @@ export function PracticeWorkspacePage() {
         else params.delete('discussion');
         setSearchParams(params, { replace: true, state, preventScrollReset: true });
       }}
-      returnTo={fromMember ? `/users/${memberId}/sessions` : '/questions'}
-      returnLabel={fromMember ? 'Phiên đề xuất của thành viên' : 'Ngân hàng câu hỏi'}
+      returnTo={fromCatalog ? `/questions/practice${catalogSearch ? `?${catalogSearch}` : ''}` : '/questions'}
+      returnLabel={fromCatalog ? 'Kho luyện tập' : 'Ngân hàng câu hỏi'}
     />
   );
 }

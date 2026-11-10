@@ -51,7 +51,7 @@ export function ProfilePage() {
           <ProfileHeader key={profile.data.userId} profile={profile.data} isOwnProfile={isOwnProfile} />
           <div className="grid items-start gap-5 lg:grid-cols-2">
             <ProfileAcademicInfo profile={profile.data} />
-            <ProfileGamificationStats profile={profile.data} />
+            <ProfileGamificationStats profile={profile.data} isOwnProfile={isOwnProfile} />
           </div>
           <ProfilePosts key={profile.data.userId} userId={profile.data.userId} isOwnProfile={isOwnProfile} />
         </>

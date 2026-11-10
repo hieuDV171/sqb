@@ -49,7 +49,7 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
       queryClient.invalidateQueries({ queryKey });
 
       if (targetType === 'SESSION') {
-        void queryClient.invalidateQueries({ queryKey: ['userProposedSessions'] });
+        void queryClient.invalidateQueries({ queryKey: ['practice-catalog'] });
         void queryClient.invalidateQueries({ queryKey: ['my-submissions'] });
       }
       if (targetType === 'POST') {
@@ -167,7 +167,7 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
     },
     onSuccess: () => {
       if (targetType === 'SESSION') {
-        void queryClient.invalidateQueries({ queryKey: ['userProposedSessions'] });
+        void queryClient.invalidateQueries({ queryKey: ['practice-catalog'] });
         void queryClient.invalidateQueries({ queryKey: ['my-submissions'] });
       }
       addToast({

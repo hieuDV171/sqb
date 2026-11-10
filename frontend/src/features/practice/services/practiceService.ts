@@ -8,29 +8,14 @@ import type {
   RateQuestionRequest,
   RateQuestionResponse,
   QuestionRatingsResponse,
-  GetUserSessionsParams,
-  UserSubmissionsResponse,
+  PracticeCatalogParams,
+  PracticeCatalogResponse,
 } from '../types/practice.types';
 
 export const practiceService = {
-  /**
-   * 17.1 Lấy danh sách các phiên đề xuất của người dùng
-   * GET /api/v1/users/{userId}/sessions
-   */
-  getUserProposedSessions: async (
-    userId: number,
-    params?: GetUserSessionsParams
-  ): Promise<GlobalResponse<UserSubmissionsResponse>> => {
-    return axiosClient.get<GlobalResponse<UserSubmissionsResponse>, GlobalResponse<UserSubmissionsResponse>>(
-      `/users/${userId}/sessions`,
-      {
-        params: {
-          after: params?.after,
-          limit: params?.limit || 10,
-          subject_id: params?.subject_id,
-          status: params?.status,
-        },
-      }
+  getPracticeCatalog(params: PracticeCatalogParams) {
+    return axiosClient.get<GlobalResponse<PracticeCatalogResponse>, GlobalResponse<PracticeCatalogResponse>>(
+      '/sessions/practice-catalog', { params },
     );
   },
 

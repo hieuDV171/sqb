@@ -59,9 +59,11 @@ public class QuestionInteractionController {
         return ResponseEntity.ok(GlobalResponse.success(null));
     }
 
-    @Operation(summary = "Lấy danh sách phiên đề xuất của một người dùng", description = "Truy vấn danh sách các phiên do một người dùng đề xuất. Nếu xem trang cá nhân của người khác, chỉ các phiên đã được phê duyệt (RESOLVED) mới được hiển thị.")
+    @Operation(summary = "Lấy danh sách phiên đề xuất của chính mình theo ID người dùng",
+            description = "Chỉ người có ID trùng với userId được truy cập. Dùng /sessions/practice-catalog để tìm bộ câu hỏi luyện tập theo môn.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên thành công")
+            @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên thành công"),
+            @ApiResponse(responseCode = "403", description = "Không được xem danh sách phiên của tài khoản khác")
     })
     @GetMapping("/users/{userId}/sessions")
     public ResponseEntity<GlobalResponse<SubmissionsResponse>> getUserProposedSessions(
@@ -77,7 +79,7 @@ public class QuestionInteractionController {
             @Parameter(description = "Lọc theo ID môn học", example = "1")
             @RequestParam(required = false, name = "subject_id") Long subjectId,
 
-            @Parameter(description = "Lọc theo trạng thái phiên (chỉ có tác dụng khi xem chính mình)", example = "RESOLVED")
+            @Parameter(description = "Lọc theo trạng thái phiên", example = "RESOLVED")
             @RequestParam(required = false) SessionStatus status) {
 
         SubmissionsResponse response = sessionService.getUserSubmissions(userId, after, limit, subjectId, status);

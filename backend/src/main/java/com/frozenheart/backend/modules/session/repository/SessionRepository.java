@@ -72,6 +72,24 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         @Param("after") Long after,
                         Pageable pageable);
 
+        @Query("""
+                        SELECT s.id AS sessionId, s.sessionCode AS sessionCode, s.title AS title,
+                               s.content AS content, subject.name AS subjectName, subject.code AS subjectCode,
+                               (SELECT COUNT(q) FROM Question q WHERE q.session = s) AS questionCount,
+                               s.createdAt AS createdAt, s.reactCount AS reactCount, s.commentCount AS commentCount
+                        FROM Session s
+                        JOIN s.courseClass cc
+                        JOIN cc.subject subject
+                        WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.RESOLVED
+                          AND (:subjectId IS NULL OR subject.id = :subjectId)
+                          AND (:after IS NULL OR s.id < :after)
+                          AND (:keyword = '' OR LOCATE(LOWER(:keyword), LOWER(s.title)) > 0
+                               OR LOCATE(LOWER(:keyword), LOWER(s.sessionCode)) > 0)
+                        ORDER BY s.id DESC
+                        """)
+        List<SubmissionProjection> findPracticeCatalog(@Param("subjectId") Long subjectId,
+                        @Param("keyword") String keyword, @Param("after") Long after, Pageable pageable);
+
         @Query("SELECT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer WHERE s.id = :sessionId")
         Optional<Session> findByIdFetchCourseClass(@Param("sessionId") Long sessionId);
 

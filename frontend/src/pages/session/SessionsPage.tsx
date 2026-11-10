@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { ClipboardList, Plus } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import {
   useEnrolledSubjects,
   useMySubmissions,
@@ -20,6 +18,7 @@ import {
   type UpdateSubmissionSessionRequest,
 } from '@/features/session';
 import { StudyHeader } from './StudyHeader';
+import { StudyNavigation } from './StudyNavigation';
 
 export function SessionsPage() {
   const [searchParams] = useSearchParams();
@@ -123,26 +122,7 @@ export function SessionsPage() {
           : 'Theo dõi các phiên bạn đã nộp, xem kết quả duyệt và luyện tập với bộ câu hỏi của mình.'}
       />
 
-      <nav aria-label="Ngân hàng câu hỏi" className="flex flex-wrap gap-2">
-        <Button
-          variant={isProposing ? 'ghost' : 'secondary'}
-          render={<Link to="/questions" />}
-          nativeButton={false}
-          aria-current={isProposing ? undefined : 'page'}
-          className={cn('min-h-11', !isProposing && 'bg-academic-soft text-academic')}
-        >
-          <ClipboardList aria-hidden="true" /> Phiên nộp của tôi
-        </Button>
-        <Button
-          variant={isProposing ? 'secondary' : 'outline'}
-          render={<Link to="/sessions/propose" />}
-          nativeButton={false}
-          aria-current={isProposing ? 'page' : undefined}
-          className={cn('min-h-11', isProposing && 'bg-academic-soft text-academic')}
-        >
-          <Plus aria-hidden="true" /> Đề xuất phiên mới
-        </Button>
-      </nav>
+      <StudyNavigation current={isProposing ? '/sessions/propose' : '/questions'} />
 
       {!isProposing && (
         <div className="space-y-6">

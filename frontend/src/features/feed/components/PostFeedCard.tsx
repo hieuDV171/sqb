@@ -318,7 +318,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           </button>
         )}
         {isApprovalPost && content.sessionId != null && (
-          <Button nativeButton={false} render={<Link to={`/sessions/${content.sessionId}/practice`} />} className="min-h-11">
+          <Button nativeButton={false} render={<Link to={`/sessions/${content.sessionId}/practice`} state={{ practiceCatalogSearch: '' }} />} className="min-h-11">
             Luyện tập ngay <ArrowRight aria-hidden="true" />
           </Button>
         )}

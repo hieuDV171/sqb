@@ -5,6 +5,7 @@ import java.util.List;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.modules.session.dto.CourseClassOptionResponse;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
+import com.frozenheart.backend.modules.session.dto.PracticeCatalogResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
@@ -17,6 +18,7 @@ public interface SessionService {
     SubmissionsResponse getMySubmissions(Long after, Integer limit, Long subjectId, SessionStatus status);
 
     SubmissionsResponse getUserSubmissions(Long userId, Long after, Integer limit, Long subjectId, SessionStatus status);
+    PracticeCatalogResponse getPracticeCatalog(Long after, Integer limit, Long subjectId, String keyword);
 
     MySubmissionDetailResponse getMySubmissionDetail(Long sessionId);
 

@@ -360,3 +360,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - `SESSION_RESOLVED_APPROVED` và `QUESTION_APPROVED_NOTIFICATION` chỉ dùng mã từ `AnonymizerUtil` làm tên hiển thị trong `actor` và `author`. Hai phản hồi không chứa ID tài khoản, ảnh hoặc khung ảnh của sinh viên. Bài viết thường và tên người ghi chú giữ quy tắc cũ.
 - Chuyển đổi ở tầng phản hồi nên áp dụng cho bài đã tạo, không cần đổi schema. ID phiên tiếp tục dùng để luyện tập; mã và ID phiên có thể đối chiếu với danh sách bộ câu hỏi công khai trên hồ sơ thành viên.
+
+### [ADR-031] Kho luyện tập chung theo môn học
+
+- `GET /sessions/practice-catalog` trả phiên đã chốt theo môn, từ khóa và con trỏ. DTO chỉ chứa dữ liệu cần để luyện tập, không gồm danh tính người nộp, lớp học phần hoặc kết quả duyệt. Cảm xúc được tải theo lô trên trang trả về.
+- `GET /users/{userId}/sessions` chỉ dành cho tài khoản trùng `userId`. Luồng chính chủ dùng `/sessions/my-submissions`, còn giảng viên dùng API duyệt có phân quyền theo lớp. Liên kết web theo hồ sơ cũ dẫn về kho chung.
+- Bài vinh danh giữ mã sinh viên cố định và liên kết luyện tập. Thay đổi chặn đối chiếu qua danh sách phiên gắn với tên thật trong hồ sơ.

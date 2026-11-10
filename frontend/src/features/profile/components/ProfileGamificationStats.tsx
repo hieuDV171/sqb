@@ -4,7 +4,7 @@ import type { ProfileResponse } from '@/types/user.types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
-export function ProfileGamificationStats({ profile }: { profile: ProfileResponse }) {
+export function ProfileGamificationStats({ profile, isOwnProfile }: { profile: ProfileResponse; isOwnProfile: boolean }) {
   const stats = [
     { label: 'Điểm đóng góp', value: profile.gamificationPoints },
     { label: 'Câu hỏi đóng góp', value: profile.totalProposedQuestions },
@@ -33,9 +33,11 @@ export function ProfileGamificationStats({ profile }: { profile: ProfileResponse
           ))}
         </dl>
         <div className="flex flex-wrap gap-2">
-          <Button nativeButton={false} variant="outline" render={<Link to={`/users/${profile.userId}/sessions`} />}>
-            <BookOpen aria-hidden="true" /> Xem phiên đóng góp
-          </Button>
+          {isOwnProfile && (
+            <Button nativeButton={false} variant="outline" render={<Link to="/questions" />}>
+              <BookOpen aria-hidden="true" /> Phiên nộp của tôi
+            </Button>
+          )}
           <Button nativeButton={false} variant="ghost" render={<Link to="/leaderboard" />}>
             Bảng xếp hạng <ArrowRight aria-hidden="true" />
           </Button>

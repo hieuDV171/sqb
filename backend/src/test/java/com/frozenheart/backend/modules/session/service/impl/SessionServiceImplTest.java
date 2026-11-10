@@ -293,7 +293,18 @@ class SessionServiceImplTest {
     }
 
     @Test
-    void getUserSubmissionsLoadsViewerReactionsForVisiblePageInOneBatch() {
+    void getUserSubmissionsRejectsAnotherAccountBeforeQueryingItsSessions() {
+        setCurrentUser(7L);
+
+        AppException error = assertThrows(AppException.class,
+                () -> sessionService.getUserSubmissions(8L, null, 10, null, null));
+
+        assertEquals(ResponseCode.ACCESS_DENIED, error.getResponseCode());
+        verifyNoInteractions(sessionRepository, reactRepository);
+    }
+
+    @Test
+    void getPracticeCatalogLoadsViewerReactionsOnlyForTheReturnedPage() {
         setCurrentUser(7L);
         SubmissionProjection first = mock(SubmissionProjection.class);
         SubmissionProjection second = mock(SubmissionProjection.class);
@@ -301,9 +312,9 @@ class SessionServiceImplTest {
         when(first.getSessionId()).thenReturn(103L);
         when(first.getReactCount()).thenReturn(6);
         when(second.getSessionId()).thenReturn(102L);
-        when(sessionRepository.findSubmissions(
-                org.mockito.ArgumentMatchers.eq(8L), org.mockito.ArgumentMatchers.isNull(),
-                org.mockito.ArgumentMatchers.eq(SessionStatus.RESOLVED), org.mockito.ArgumentMatchers.isNull(),
+        when(sessionRepository.findPracticeCatalog(
+                org.mockito.ArgumentMatchers.eq(8L), org.mockito.ArgumentMatchers.eq("IT4409"),
+                org.mockito.ArgumentMatchers.eq(104L),
                 any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(List.of(first, second, nextPage));
         var reaction = new React();
@@ -312,9 +323,10 @@ class SessionServiceImplTest {
         when(reactRepository.findUserReactsByTargetIds(7L, InteractionTargetType.SESSION, List.of(103L, 102L)))
                 .thenReturn(List.of(reaction));
 
-        SubmissionsResponse response = sessionService.getUserSubmissions(8L, null, 2, null, null);
+        var response = sessionService.getPracticeCatalog(104L, 2, 8L, " IT4409 ");
 
         assertTrue(response.pagination().hasNext());
+        assertEquals(102L, response.pagination().after());
         assertEquals(6, response.contents().getFirst().reactCount());
         assertEquals(ReactionType.LOVE, response.contents().getFirst().myReaction());
         assertNull(response.contents().getLast().myReaction());

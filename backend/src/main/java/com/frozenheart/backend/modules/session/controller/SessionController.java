@@ -18,6 +18,7 @@ import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.modules.session.dto.MySubmissionDetailResponse;
 import com.frozenheart.backend.modules.session.dto.CourseClassOptionResponse;
+import com.frozenheart.backend.modules.session.dto.PracticeCatalogResponse;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
@@ -31,6 +32,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "17. Phiên Đề xuất Câu hỏi (Sessions)", description = "Quản lý tạo mới, tra cứu, chỉnh sửa và xóa phiên đề xuất câu hỏi trắc nghiệm của sinh viên/người dùng")
@@ -41,6 +43,26 @@ import lombok.RequiredArgsConstructor;
 public class SessionController {
 
     private final SessionService sessionService;
+
+    @Operation(summary = "Tìm bộ câu hỏi trong kho luyện tập",
+            description = "Liệt kê các phiên đã chốt theo môn học. Tìm theo tiêu đề hoặc mã phiên, không trả danh tính người nộp hay kết quả duyệt.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lấy danh sách bộ câu hỏi thành công"),
+            @ApiResponse(responseCode = "400", description = "Tham số không hợp lệ"),
+            @ApiResponse(responseCode = "401", description = "Phiên đăng nhập thiếu hoặc hết hạn")
+    })
+    @GetMapping("/practice-catalog")
+    public ResponseEntity<GlobalResponse<PracticeCatalogResponse>> getPracticeCatalog(
+            @Parameter(description = "ID của phiên cuối trang trước", example = "45")
+            @RequestParam(required = false) Long after,
+            @Parameter(description = "Số bộ mỗi trang (mặc định 10, tối đa 50)", example = "10")
+            @RequestParam(required = false) Integer limit,
+            @Parameter(description = "ID môn học", example = "1")
+            @RequestParam(required = false, name = "subject_id") Long subjectId,
+            @Parameter(description = "Một phần tiêu đề hoặc mã phiên, tối đa 120 ký tự", example = "IT4409")
+            @RequestParam(required = false, name = "q") @Size(max = 120) String keyword) {
+        return ResponseEntity.ok(GlobalResponse.success(sessionService.getPracticeCatalog(after, limit, subjectId, keyword)));
+    }
 
     @Operation(summary = "Đề xuất phiên câu hỏi mới", description = "Sinh viên/người dùng đề xuất danh sách câu hỏi trắc nghiệm kèm đáp án và hình ảnh cho một lớp học phần trong học kỳ hiện tại.")
     @ApiResponses({

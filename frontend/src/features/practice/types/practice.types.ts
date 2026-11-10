@@ -98,14 +98,18 @@ export interface QuestionRatingsResponse {
   pagination: CursorPaginationDto;
 }
 
-export interface GetUserSessionsParams {
+export interface PracticeCatalogParams {
   after?: number;
   limit?: number;
   subject_id?: number;
-  status?: string;
+  q?: string;
 }
 
-export interface UserSubmissionsResponse {
-  contents: SubmissionSessionSummaryDto[];
+export type PracticeSetDto = Pick<SubmissionSessionSummaryDto,
+  'sessionId' | 'sessionCode' | 'title' | 'content' | 'subjectName' | 'subjectCode'
+  | 'questionCounts' | 'createdAt' | 'reactCount' | 'myReaction' | 'commentCount'>;
+
+export interface PracticeCatalogResponse {
+  contents: PracticeSetDto[];
   pagination: CursorPaginationDto;
 }

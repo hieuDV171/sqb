@@ -10,7 +10,7 @@ export * from './hooks/usePracticeAnswer';
 export * from './hooks/useQuestionStatistics';
 export * from './hooks/useQuestionRatings';
 export * from './hooks/useQuestionRatingMutation';
-export * from './hooks/useUserProposedSessions';
+export * from './hooks/usePracticeCatalog';
 
 // Components
 export * from './components/PracticeSkeleton';
@@ -21,4 +21,4 @@ export * from './components/QuestionRateModal';
 export * from './components/QuestionDiscussionModal';
 export * from './components/PracticeQuestionCard';
 export * from './components/PracticeSummaryModal';
-export * from './components/UserSessionCard';
+export * from './components/PracticeSetCard';

@@ -7,7 +7,7 @@ import { PostDetailPage } from "./pages/feed/PostDetailPage";
 import { SessionsPage } from "./pages/session/SessionsPage";
 import { SubmissionDetailPage } from "./pages/session/SubmissionDetailPage";
 import { PracticeWorkspacePage } from "./pages/session/PracticeWorkspacePage";
-import { UserSessionsPage } from "./pages/session/UserSessionsPage";
+import { PracticeCatalogPage } from "./pages/session/PracticeCatalogPage";
 import { MessagesPage } from "@/features/chat";
 import { ShopPage } from "./pages/shop/ShopPage";
 import { ProfilePage } from "./pages/profile/ProfilePage";
@@ -75,12 +75,13 @@ export default function App() {
           <Route path="/devices" element={<DeviceManagementPage />} />
           <Route path="/settings" element={<AccountSettingsPage />} />
           <Route path="/questions" element={<SessionsPage />} />
+          <Route path="/questions/practice" element={<PracticeCatalogPage />} />
           <Route path="/sessions" element={<SessionsPage />} />
           <Route path="/sessions/propose" element={<SessionsPage />} />
           <Route path="/sessions/:sessionId" element={<SubmissionDetailPage />} />
           <Route path="/sessions/:sessionId/practice" element={<PracticeWorkspacePage />} />
           <Route path="/sessions/:sessionId/questions" element={<PracticeWorkspacePage />} />
-          <Route path="/users/:userId/sessions" element={<UserSessionsPage />} />
+          <Route path="/users/:userId/sessions" element={<Navigate to="/questions/practice" replace />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/messages/:conversationId" element={<MessagesPage />} />
           <Route path="/shop" element={<ShopPage />} />

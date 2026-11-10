@@ -81,6 +81,7 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
       <div className="flex flex-wrap items-center justify-between gap-3">
         {typeof sessionId === 'number' && Number.isSafeInteger(sessionId) && sessionId > 0 && <Link
           to={`/sessions/${sessionId}/practice`}
+          state={{ practiceCatalogSearch: '' }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
         >
           <span>Luyện tập ngay</span>
