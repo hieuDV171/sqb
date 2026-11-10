@@ -355,3 +355,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Tài khoản `LECTURER` có thể ghi chú trên bài `QUESTION_APPROVED_NOTIFICATION` của sinh viên khi giảng viên phụ trách lớp học phần của phiên `RESOLVED` gắn với bài (`post.session.courseClass.lecturer`). Điều kiện áp dụng cho cả phiên do AI chốt.
 - Bảng tin và API bài viết tra quyền theo lô. API lưu kiểm tra lại cùng điều kiện trước khi cập nhật. Mỗi bài có một ghi chú chung, hiển thị tên giảng viên cập nhật gần nhất.
+
+### [ADR-030] Dùng mã sinh viên trên bài vinh danh đóng góp
+
+- `SESSION_RESOLVED_APPROVED` và `QUESTION_APPROVED_NOTIFICATION` chỉ dùng mã từ `AnonymizerUtil` làm tên hiển thị trong `actor` và `author`. Hai phản hồi không chứa ID tài khoản, ảnh hoặc khung ảnh của sinh viên. Bài viết thường và tên người ghi chú giữ quy tắc cũ.
+- Chuyển đổi ở tầng phản hồi nên áp dụng cho bài đã tạo, không cần đổi schema. ID phiên tiếp tục dùng để luyện tập; mã và ID phiên có thể đối chiếu với danh sách bộ câu hỏi công khai trên hồ sơ thành viên.

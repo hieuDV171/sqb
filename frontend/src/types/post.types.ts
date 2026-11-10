@@ -8,7 +8,7 @@ export type PostVisibility = "PUBLIC" | "FRIENDS" | "ONLY_ME";
 
 // Author/User DTO - tuân thủ quy ước tên ID tường minh (userId)
 export interface AuthorDto {
-    userId: number;
+    userId: number | null;
     fullName: string;
     avatarUrl?: string;
     frameUrl?: string;

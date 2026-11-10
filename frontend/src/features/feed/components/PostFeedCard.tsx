@@ -94,7 +94,8 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isContentExpanded, setIsContentExpanded] = useState<boolean>(false);
 
-  const isApprovalPost = content.postType === 'QUESTION_APPROVED_NOTIFICATION';
+  const isApprovalPost = content.postType === 'QUESTION_APPROVED_NOTIFICATION' || item.actionType === 'SESSION_RESOLVED_APPROVED';
+  const displayName = isApprovalPost && actor.userId != null ? 'Sinh viên ẩn danh' : actor.fullName;
   const isAuthor = !isApprovalPost && user?.id != null && user.id === actor.userId;
   const canEditLecturerNote = isApprovalPost && content.canEditLecturerNote === true;
 
@@ -162,13 +163,14 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="relative shrink-0">
-            <UserAvatar
-              avatarUrl={actor.avatarUrl}
-              name={actor.fullName}
-              className="size-11 ring-2 ring-muted"
-              decorative
-            />
-            {actor.role && (
+            {isApprovalPost ? (
+              <span aria-hidden="true" className="grid size-11 place-items-center rounded-full bg-academic-soft text-academic ring-2 ring-muted">
+                <Award className="size-5" />
+              </span>
+            ) : (
+              <UserAvatar avatarUrl={actor.avatarUrl} name={displayName} className="size-11 ring-2 ring-muted" decorative />
+            )}
+            {!isApprovalPost && actor.role && (
               <span
                 className={`absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 ${
                   actor.role === 'LECTURER'
@@ -185,10 +187,10 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
           <div className="min-w-0">
             <div className="flex items-baseline gap-1.5">
-              <span className="truncate text-sm font-bold text-foreground md:text-base" title={actor.fullName}>
-                {actor.fullName}
+              <span className="truncate text-sm font-bold text-foreground md:text-base" title={displayName}>
+                {displayName}
               </span>
-              {actor.schoolFaculty && (
+              {!isApprovalPost && actor.schoolFaculty && (
                 <span className="hidden max-w-[35%] truncate text-[11px] text-muted-foreground sm:inline" title={actor.schoolFaculty}>
                   • {actor.schoolFaculty}
                 </span>
@@ -220,7 +222,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
                   <Lock className="w-3 h-3 text-slate-400" />
                 </span>
               )}
-              {item.actionType === 'SESSION_RESOLVED_APPROVED' && (
+              {isApprovalPost && (
                 <>
                   <span aria-hidden="true">•</span>
                   <span className="truncate" title="vừa đóng góp thành công">vừa đóng góp thành công</span>

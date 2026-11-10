@@ -22,6 +22,7 @@ import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.dto.AuthorDto;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -53,6 +54,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
     private final ReactRepository reactRepository;
+    private final ApprovalPostAuthor approvalPostAuthor;
 
     @Override
     @Transactional(readOnly = true)
@@ -98,12 +100,6 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             nextCursor = feeds.getLast().getId();
         }
 
-        Set<Long> profileIds = feeds.stream()
-                .map(ActivityFeed::getUser)
-                .filter(Objects::nonNull)
-                .map(User::getId)
-                .collect(Collectors.toSet());
-
         // Batch Enrichment: Gom các targetIds theo từng loại để query 1 lần (Tuyệt đối chống N+1)
         List<Long> postIds = feeds.stream()
                 .filter(f -> f.getTargetType() == ActivityFeedTargetType.POST && f.getTargetId() != null)
@@ -134,6 +130,12 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                         .collect(Collectors.toMap(Post::getId, p -> p));
         approvalPosts.values().forEach(post -> postMap.put(post.getId(), post));
         Set<Long> editableNotePostIds = lecturerNoteAccess.findEditablePostIds(payloadOpt.orElse(null), postMap.values());
+        Set<Long> profileIds = feeds.stream()
+                .filter(feed -> !isApprovalActivity(feed, postMap))
+                .map(ActivityFeed::getUser)
+                .filter(Objects::nonNull)
+                .map(User::getId)
+                .collect(Collectors.toSet());
         postMap.values().stream().filter(p -> p.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION)
                 .map(Post::getNotedLecturer).filter(Objects::nonNull)
                 .map(User::getId).forEach(profileIds::add);
@@ -245,6 +247,12 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
         activityFeedRepository.save(feed);
     }
 
+    private boolean isApprovalActivity(ActivityFeed feed, Map<Long, Post> postMap) {
+        if (feed.getActionType() == ActionType.SESSION_RESOLVED_APPROVED) return true;
+        Post post = feed.getTargetType() == ActivityFeedTargetType.POST ? postMap.get(feed.getTargetId()) : null;
+        return post != null && post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION;
+    }
+
     private ActivityFeedItemDto mapToItemDto(
             ActivityFeed feed,
             Map<Long, UserProfile> profileMap,
@@ -259,7 +267,19 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             Set<Long> editableNotePostIds) {
 
         AuthorDto actorDto;
-        if (feed.getUser() != null) {
+        if (isApprovalActivity(feed, postMap)) {
+            Long targetId = feed.getTargetId();
+            Post post = targetId == null ? null : switch (feed.getTargetType()) {
+                case POST -> postMap.get(targetId);
+                case SESSION -> approvalPosts.get(targetId);
+                case null, default -> null;
+            };
+            User student = post != null && post.getSession() != null ? post.getSession().getProposer() : null;
+            if (student == null && feed.getActionType() == ActionType.SESSION_RESOLVED_APPROVED) {
+                student = feed.getUser();
+            }
+            actorDto = approvalPostAuthor.fromStudent(student);
+        } else if (feed.getUser() != null) {
             UserProfile profile = profileMap.get(feed.getUser().getId());
             actorDto = AuthorDto.builder()
                     .userId(feed.getUser().getId())

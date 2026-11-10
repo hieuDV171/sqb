@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
-import { UserAvatar } from '@/components/ui/user-avatar';
-import { CheckCircle2, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { Award, CheckCircle2, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
 import { PostFeedCard } from '../PostFeedCard';
 
 interface ApprovedSessionCardProps {
@@ -13,6 +12,7 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
   if (item.targetType === 'POST') return <PostFeedCard item={item} />;
 
   const { actor, content, createdAt } = item;
+  const displayName = actor.userId == null ? actor.fullName : 'Sinh viên ẩn danh';
   const sessionId = item.targetType === 'SESSION' ? item.targetId ?? content.sessionId : content.sessionId;
 
   return (
@@ -20,16 +20,13 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-3">
-          <UserAvatar
-            avatarUrl={actor.avatarUrl}
-            name={actor.fullName}
-            className="ring-2 ring-emerald-500/40"
-            decorative
-          />
+          <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-academic-soft text-academic ring-2 ring-emerald-500/40">
+            <Award className="size-5" />
+          </span>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-slate-900 dark:text-white text-sm">
-                {actor.fullName}
+                {displayName}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 vừa đóng góp thành công

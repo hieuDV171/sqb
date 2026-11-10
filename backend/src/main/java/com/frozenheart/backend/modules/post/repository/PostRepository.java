@@ -24,14 +24,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + :delta WHERE p.id = :postId")
     void incrementCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
     Optional<Post> findByIdAndDeletedAtIsNull(Long id);
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
     List<Post> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
 
     @Query("""
             SELECT p FROM Post p JOIN FETCH p.session s
+            LEFT JOIN FETCH s.proposer
             LEFT JOIN FETCH p.notedLecturer
             WHERE s.id IN :sessionIds AND p.deletedAt IS NULL AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
               AND p.visibility = 'PUBLIC' AND s.status = 'RESOLVED'
@@ -98,14 +99,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
     List<Post> findByPosterIdAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Long after,
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session"})
+    @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
     List<Post> findByPosterIdAndVisibilityInAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Collection<PostVisibility> visibilities,

@@ -15,6 +15,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
@@ -22,6 +23,7 @@ import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.PostResponseDto;
 import com.frozenheart.backend.modules.post.dto.UpdateLecturerNoteRequest;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
@@ -74,13 +76,14 @@ class PostServiceImplTest {
     @Mock ReactRepository reactRepository;
     @Mock MetricService metricService;
 
+    private final AnonymizerUtil anonymizer = new AnonymizerUtil("unit-test");
     private PostServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new PostServiceImpl(postRepository, userRepository, userProfileRepository, subjectRepository,
                 mediaService, activityFeedService, eventPublisher, blockRepository, friendshipRepository,
-                reactRepository, metricService, new LecturerNoteAccess(postRepository));
+                reactRepository, metricService, new LecturerNoteAccess(postRepository), new ApprovalPostAuthor(anonymizer));
     }
 
     @AfterEach
@@ -108,6 +111,7 @@ class PostServiceImplTest {
 
         assertEquals(reactionType, response.getMyReaction());
         assertEquals(reactionType != null, response.isReactedByMe());
+        assertEquals(userId, response.getAuthor().getUserId());
     }
 
     @ParameterizedTest
@@ -121,7 +125,12 @@ class PostServiceImplTest {
         when(postRepository.save(post)).thenReturn(post);
         when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).role(UserRole.LECTURER).build());
 
-        assertTrue(service.getPostById(42L).isCanEditLecturerNote());
+        var response = service.getPostById(42L);
+        assertTrue(response.isCanEditLecturerNote());
+        assertEquals(anonymizer.encodeUserId(5L), response.getAuthor().getFullName());
+        assertNull(response.getAuthor().getUserId());
+        assertNull(response.getAuthor().getAvatarUrl());
+        assertNull(response.getAuthor().getFrameUrl());
         service.updateLecturerNote(42L, UpdateLecturerNoteRequest.builder().content("Ghi chú").build());
 
         assertEquals("Ghi chú", post.getLecturerNote());

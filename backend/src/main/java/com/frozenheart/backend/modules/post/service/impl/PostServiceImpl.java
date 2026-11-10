@@ -29,6 +29,7 @@ import com.frozenheart.backend.modules.friendship.repository.FriendshipRepositor
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.post.dto.*;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
+import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.post.service.PostService;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
@@ -69,6 +70,7 @@ public class PostServiceImpl implements PostService {
     private final ReactRepository reactRepository;
     private final MetricService metricService;
     private final LecturerNoteAccess lecturerNoteAccess;
+    private final ApprovalPostAuthor approvalPostAuthor;
 
     @Override
     @Transactional
@@ -474,8 +476,10 @@ public class PostServiceImpl implements PostService {
             ReactionType myReaction,
             Map<Long, UserProfile> profileByUserId,
             boolean canEditLecturerNote) {
-        AuthorDto authorDto = mapUserToAuthorDto(post.getPoster(), profileByUserId);
         boolean approvalPost = post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION;
+        AuthorDto authorDto = approvalPost
+                ? approvalPostAuthor.fromStudent(post.getSession() != null ? post.getSession().getProposer() : null)
+                : mapUserToAuthorDto(post.getPoster(), profileByUserId);
         AuthorDto notedLecturerDto = approvalPost && post.getLecturerNote() != null && post.getNotedLecturer() != null
                 ? mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId) : null;
 
@@ -506,7 +510,7 @@ public class PostServiceImpl implements PostService {
     private Map<Long, UserProfile> loadProfilesForPosts(List<Post> posts) {
         Set<Long> userIds = new HashSet<>();
         for (Post post : posts) {
-            if (post.getPoster() != null) {
+            if (post.getPostType() != PostType.QUESTION_APPROVED_NOTIFICATION && post.getPoster() != null) {
                 userIds.add(post.getPoster().getId());
             }
             if (post.getNotedLecturer() != null) {
