@@ -276,7 +276,10 @@ export function GlobalSearchModal({
           <Search aria-hidden="true" className="size-4 shrink-0 text-primary" />
           <input
             ref={inputRef}
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
+            enterKeyHint="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             onKeyDown={handleKeyDown}
@@ -309,10 +312,10 @@ export function GlobalSearchModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="inline-flex min-h-9 cursor-pointer items-center justify-center rounded-xl px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Đóng tìm kiếm"
               >
-                <X aria-hidden="true" className="h-5 w-5" />
+                Đóng
               </button>
             )}
           </div>
