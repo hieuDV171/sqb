@@ -381,3 +381,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - STOMP xác thực bằng access token và dùng ID trong JWT làm tên principal. ID này trùng với khóa mà dịch vụ chat dùng khi gửi tin mới và biên nhận đã đọc qua `convertAndSendToUser`. JWT và quyền của người dùng vẫn được giữ trong đối tượng xác thực.
 - Client đăng ký `/user/queue/messages` cho phiên của mình. Interceptor từ chối đích gửi hoặc đăng ký ngoài danh sách của chat, bao gồm hàng đợi vật lý và đăng ký theo ký tự đại diện. Các URL STOMP của client không đổi.
+
+### [ADR-035] Xác thực PIN kho ẩn theo phiên đăng nhập
+
+- Cặp access token và refresh token có cùng `sessionId`. Mỗi lần đăng nhập cấp ID mới. Khi xoay refresh token, Redis chỉ ghi đè nếu token được trình vẫn là token hiện tại. Token cũ chưa có ID nhận ID ở lần refresh tiếp theo.
+- Redis giữ quyền mở kho tối đa 15 phút. Máy chủ kiểm tra quyền theo tài khoản và `sessionId`, đồng thời đối chiếu phiên với refresh token còn hiệu lực. Khóa thủ công xóa quyền của phiên gọi. Đăng xuất hoặc đăng nhập lại làm quyền của phiên trước mất hiệu lực.
+- REST kiểm tra quyền trước khi đọc danh sách, lịch sử và thao tác trên hội thoại ẩn. STOMP đưa cả sự kiện đang gõ vào hàng đợi cá nhân. Broker kiểm tra quyền mở kho cho từng socket nhận dữ liệu ẩn. Việc trích dẫn tin nhắn chỉ áp dụng trong cùng hội thoại.

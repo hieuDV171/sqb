@@ -5,17 +5,23 @@ import java.util.Optional;
 import java.util.Collection;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.user.UserProfile;
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
 
     Optional<UserProfile> findByUserId(Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT up FROM UserProfile up WHERE up.userId = :userId")
+    Optional<UserProfile> findByUserIdForPinUpdate(@Param("userId") Long userId);
 
     @Query("SELECT up FROM UserProfile up JOIN FETCH up.user WHERE up.userId = :userId")
     Optional<UserProfile> findByUserIdWithUser(@Param("userId") Long userid);

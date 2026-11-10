@@ -18,7 +18,9 @@ public interface ConversationService {
 
     void setHiddenChatPin(SetHiddenChatPinDto request);
 
-    void unlockHiddenChat(UnlockHiddenChatDto request);
+    HiddenChatUnlockDto unlockHiddenChat(UnlockHiddenChatDto request);
+
+    void lockHiddenChat();
 
     ConversationListResponseDto getHiddenConversations(Long after, Integer limit);
 

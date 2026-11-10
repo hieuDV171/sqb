@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { useStompStatus } from '@/lib/stompClient';
 import { useState, useMemo } from 'react';
 import { useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '../hooks/useChat';
-import { useConversationTypingListener } from '../hooks/useChatRealtime';
 import { useChatStore } from '../stores/useChatStore';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
@@ -12,25 +11,41 @@ import {
   Users,
   ChevronLeft,
   EyeOff,
+  Lock,
   X,
 } from 'lucide-react';
 
 interface ChatWindowProps {
   conversationId: number;
   onBack?: () => void;
+  onUnlock?: () => void;
   onOpenGroupMembers?: () => void;
   onOpenDeleteModal?: (message: MessageDto) => void;
 }
 
-export function ChatWindow({
+export function ChatWindow(props: ChatWindowProps) {
+  const locked = useChatStore((state) =>
+    !state.isPinUnlocked && state.hiddenConversationIds.includes(props.conversationId));
+
+  if (locked) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <Lock aria-hidden="true" className="size-6 text-warning" />
+        <p className="font-semibold">Hội thoại này nằm trong kho ẩn</p>
+        {props.onUnlock && <Button onClick={props.onUnlock}>Mở kho ẩn</Button>}
+        {props.onBack && <Button variant="ghost" onClick={props.onBack}>Quay lại</Button>}
+      </div>
+    );
+  }
+  return <UnlockedChatWindow {...props} />;
+}
+
+function UnlockedChatWindow({
   conversationId,
   onBack,
   onOpenGroupMembers,
   onOpenDeleteModal,
 }: ChatWindowProps) {
-  // Đăng ký nhận sự kiện typing thời gian thực trên topic /topic/conv.{conversationId}.typing
-  useConversationTypingListener(conversationId);
-
   const { typingMap, isPinUnlocked } = useChatStore();
   const realtime = useStompStatus();
   const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
@@ -38,7 +53,7 @@ export function ChatWindow({
 
   // Lấy thông tin hội thoại từ cache của danh sách
   const { data: conversationsData } = useConversations();
-  const { data: hiddenData } = useHiddenConversations();
+  const { data: hiddenData } = useHiddenConversations(isPinUnlocked);
   const { data: messageData } = useMessages(conversationId);
   const hideMutation = useHideConversation();
 

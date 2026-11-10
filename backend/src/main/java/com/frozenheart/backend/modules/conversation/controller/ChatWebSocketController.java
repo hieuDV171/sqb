@@ -24,28 +24,25 @@ public class ChatWebSocketController {
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload SendWsMessageRequestDto request, Principal principal) {
-        Long userId = requireUserId(principal);
-        chatWebSocketService.handleSendMessage(userId, request);
+        chatWebSocketService.handleSendMessage(requireSession(principal), request);
     }
 
     @MessageMapping("/chat.read")
     public void readMessage(@Payload ReadWsMessageRequestDto request, Principal principal) {
-        Long userId = requireUserId(principal);
-        chatWebSocketService.handleReadMessage(userId, request);
+        chatWebSocketService.handleReadMessage(requireSession(principal), request);
     }
 
     @MessageMapping("/chat.typing")
     public void typing(@Payload TypingWsRequestDto request, Principal principal) {
-        Long userId = requireUserId(principal);
-        chatWebSocketService.handleTyping(userId, request);
+        chatWebSocketService.handleTyping(requireSession(principal), request);
     }
 
-    private Long requireUserId(Principal principal) {
-        Long userId = JwtPayload.getUserId(principal);
-        if (userId == null) {
+    private JwtPayload requireSession(Principal principal) {
+        JwtPayload session = JwtPayload.fromPrincipal(principal);
+        if (session == null || session.getUserId() == null) {
             log.error("[ChatWebSocketController] Unauthorized WebSocket invocation rejected");
             throw new AppException(ResponseCode.ACCESS_DENIED, "Chưa xác thực người dùng");
         }
-        return userId;
+        return session;
     }
 }

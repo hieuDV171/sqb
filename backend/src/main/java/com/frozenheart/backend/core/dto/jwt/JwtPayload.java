@@ -22,6 +22,7 @@ public class JwtPayload {
     private Long userId;
     private String role;
     private String deviceId;
+    private String sessionId;
     private TokenType tokenType;
     private AccountState accountState;
 
@@ -37,8 +38,13 @@ public class JwtPayload {
     }
 
     public static Long getUserId(java.security.Principal principal) {
+        JwtPayload payload = fromPrincipal(principal);
+        return payload == null ? null : payload.getUserId();
+    }
+
+    public static JwtPayload fromPrincipal(java.security.Principal principal) {
         if (principal instanceof Authentication auth && auth.getDetails() instanceof JwtPayload payload) {
-            return payload.getUserId();
+            return payload;
         }
         return null;
     }

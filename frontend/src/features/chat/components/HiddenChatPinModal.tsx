@@ -49,10 +49,21 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
   const busy = unlock.isPending || save.isPending;
   const Icon = unlocking ? Lock : KeyRound;
 
-  const openVault = () => {
-    unlockPin();
-    onClose();
+  const [pinError, setPinError] = useState('');
+  const showPinError = (error: unknown) => {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '2412') {
+      setPinError('Bạn đã thử PIN quá nhiều lần. Vui lòng thử lại sau 15 phút.');
+    }
   };
+
+  const openVault = () => unlock.mutate({ pin }, {
+    onSuccess: ({ data }) => {
+      unlockPin(data.expiresAt);
+      toast.success('Đã mở khóa kho trò chuyện ẩn');
+      onClose();
+    },
+    onError: showPinError,
+  });
 
   return (
     <>
@@ -70,20 +81,17 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
       <form className="mt-5 space-y-4" onSubmit={(event) => {
         event.preventDefault();
         if (busy || pin.length !== 6 || (changing && oldPin.length !== 6)) return;
+        setPinError('');
         if (unlocking) {
-          unlock.mutate({ pin }, {
-            onSuccess: () => {
-              toast.success('Đã mở khóa kho trò chuyện ẩn');
-              openVault();
-            },
-          });
+          openVault();
         } else {
-          save.mutate({ pin, ...(changing ? { oldPin } : {}) }, { onSuccess: openVault });
+          save.mutate({ pin, ...(changing ? { oldPin } : {}) }, { onSuccess: openVault, onError: showPinError });
         }
       }}>
         {changing && <PinField label="Mã PIN cũ" value={oldPin} onChange={setOldPin} disabled={busy} autoFocus />}
         <PinField key={unlocking ? 'unlock' : 'new'} label={unlocking ? 'Mã PIN' : 'Mã PIN mới'} value={pin}
           onChange={setPin} disabled={busy} autoFocus={!changing} />
+        {pinError && <p role="alert" className="text-sm text-destructive">{pinError}</p>}
         <Button type="submit" className="min-h-11 w-full" disabled={busy || pin.length !== 6 || (changing && oldPin.length !== 6)}>
           {busy && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
           {unlocking ? 'Mở khóa' : 'Lưu mã PIN mới'}
@@ -93,6 +101,7 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
             setChanging(!changing);
             setPin('');
             setOldPin('');
+            setPinError('');
           }}>
             {changing ? 'Quay lại mở khóa' : 'Đổi mã PIN'}
           </Button>

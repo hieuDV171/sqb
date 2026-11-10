@@ -5,6 +5,7 @@ import com.frozenheart.backend.core.entity.conversation.ConversationType;
 import lombok.*;
 
 import java.util.List;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -16,6 +17,8 @@ public class MessageListResponseDto {
     private Long conversationId;
 
     private ConversationType conversationType;
+
+    private Instant hiddenAt;
 
     private List<MessageDto> messages;
 

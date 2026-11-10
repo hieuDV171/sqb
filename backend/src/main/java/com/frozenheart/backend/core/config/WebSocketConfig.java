@@ -1,6 +1,7 @@
 package com.frozenheart.backend.core.config;
 
 import com.frozenheart.backend.core.security.WebSocketAuthInterceptor;
+import com.frozenheart.backend.modules.conversation.service.HiddenChatOutboundGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -15,6 +16,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final HiddenChatOutboundGuard hiddenChatOutboundGuard;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -33,5 +35,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(webSocketAuthInterceptor);
+    }
+
+    @Override
+    public void configureClientOutboundChannel(ChannelRegistration registration) {
+        registration.interceptors(hiddenChatOutboundGuard);
     }
 }

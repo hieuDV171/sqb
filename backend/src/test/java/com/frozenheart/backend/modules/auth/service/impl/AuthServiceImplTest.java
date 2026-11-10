@@ -120,7 +120,8 @@ class AuthServiceImplTest {
         assertEquals(AccountState.EMAIL_VERIFICATION_REQUIRED, response.accountState());
         assertEquals("onboarding-token", response.accessToken());
         assertEquals(null, response.refreshToken());
-        verify(jwtService, never()).generateRefreshToken(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        verify(jwtService, never()).generateRefreshToken(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
         verify(cookieUtils).clearCookie("refreshToken");
         verify(userDeviceRepository, never()).lockFidForTransaction("untrusted-fid");
     }
@@ -140,7 +141,8 @@ class AuthServiceImplTest {
         when(userDeviceRepository.findByUserIdAndDeviceId(26L, deviceId)).thenReturn(Optional.of(device));
         when(userDeviceRepository.isFidBoundToAnotherDevice(fid, 26L, deviceId)).thenReturn(true);
         when(jwtService.generateAccessToken(anyMap(), eq(email))).thenReturn("access");
-        when(jwtService.generateRefreshToken(email, deviceId)).thenReturn("refresh");
+        when(jwtService.generateRefreshToken(org.mockito.ArgumentMatchers.eq(email), org.mockito.ArgumentMatchers.eq(deviceId),
+                org.mockito.ArgumentMatchers.anyString())).thenReturn("refresh");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         AuthResponse response = service.login(new LoginRequest(

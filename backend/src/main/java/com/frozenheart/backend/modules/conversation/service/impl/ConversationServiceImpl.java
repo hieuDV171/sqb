@@ -13,6 +13,7 @@ import com.frozenheart.backend.modules.conversation.repository.ConversationRepos
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.ConversationService;
+import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -43,6 +44,7 @@ public class ConversationServiceImpl implements ConversationService {
         private final PasswordEncoder passwordEncoder;
         private final MediaService mediaService;
         private final ApplicationEventPublisher eventPublisher;
+        private final HiddenChatAccess hiddenChatAccess;
 
         @Override
         @Transactional(readOnly = true)
@@ -54,6 +56,7 @@ public class ConversationServiceImpl implements ConversationService {
         @Override
         @Transactional(readOnly = true)
         public ConversationListResponseDto getHiddenConversations(Long after, Integer limit) {
+                hiddenChatAccess.requireUnlocked(JwtPayload.getCurrentUserPayload());
                 final boolean isHidden = true;
                 return fetchConversationsInternal(after, limit, isHidden);
         }
@@ -205,6 +208,8 @@ public class ConversationServiceImpl implements ConversationService {
                                 targetUserId);
                 if (existingOpt.isPresent()) {
                         Conversation existing = existingOpt.get();
+                        userParticipantRepository.findByUserIdAndConversationId(currentUserId, existing.getId())
+                                        .ifPresent(hiddenChatAccess::requireIfHidden);
                         return mapToDetailDto(existing);
                 }
 
@@ -331,6 +336,7 @@ public class ConversationServiceImpl implements ConversationService {
                                 .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
                                                 "Cuộc hội thoại không tồn tại hoặc bạn không tham gia cuộc hội thoại này"));
 
+                hiddenChatAccess.requireIfHidden(participant);
                 participant.setMuted(false);
                 participant.setHiddenAt(null);
                 userParticipantRepository.save(participant);
@@ -339,11 +345,13 @@ public class ConversationServiceImpl implements ConversationService {
         @Override
         @Transactional
         public void setHiddenChatPin(SetHiddenChatPinDto request) {
-                Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-                UserProfile profile = userProfileRepository.findByUserId(currentUserId)
+                JwtPayload session = JwtPayload.getCurrentUserPayload();
+                hiddenChatAccess.requireActiveSession(session);
+                UserProfile profile = userProfileRepository.findByUserIdForPinUpdate(session.getUserId())
                                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
                 if (profile.getHiddenChatPin() != null && !profile.getHiddenChatPin().isBlank()) {
+                        hiddenChatAccess.countPinAttempt(session);
                         if (request.getOldPin() == null
                                         || !passwordEncoder.matches(request.getOldPin(), profile.getHiddenChatPin())) {
                                 throw new AppException(ResponseCode.INVALID_PIN, "Mã PIN cũ không chính xác");
@@ -352,12 +360,16 @@ public class ConversationServiceImpl implements ConversationService {
 
                 profile.setHiddenChatPin(passwordEncoder.encode(request.getPin()));
                 userProfileRepository.save(profile);
+                hiddenChatAccess.clearPinAttempts(session);
+                hiddenChatAccess.lock(session);
         }
 
         @Override
         @Transactional(readOnly = true)
-        public void unlockHiddenChat(UnlockHiddenChatDto request) {
-                Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+        public HiddenChatUnlockDto unlockHiddenChat(UnlockHiddenChatDto request) {
+                JwtPayload session = JwtPayload.getCurrentUserPayload();
+                hiddenChatAccess.requireActiveSession(session);
+                Long currentUserId = session.getUserId();
                 UserProfile profile = userProfileRepository.findByUserId(currentUserId)
                                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
@@ -365,9 +377,16 @@ public class ConversationServiceImpl implements ConversationService {
                         throw new AppException(ResponseCode.PIN_NOT_SET, "Chưa thiết lập mã PIN cho kho ẩn trò chuyện");
                 }
 
+                hiddenChatAccess.countPinAttempt(session);
                 if (!passwordEncoder.matches(request.getPin(), profile.getHiddenChatPin())) {
                         throw new AppException(ResponseCode.INVALID_PIN, "Mã PIN không chính xác");
                 }
+                return new HiddenChatUnlockDto(hiddenChatAccess.unlock(session));
+        }
+
+        @Override
+        public void lockHiddenChat() {
+                hiddenChatAccess.lock(JwtPayload.getCurrentUserPayload());
         }
 
         // --- Group Management (5.5.3) ---
@@ -399,6 +418,7 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Chỉ Tù trưởng hoặc Già làng mới có quyền cập nhật thông tin nhóm");
                 }
 
+                hiddenChatAccess.requireIfHidden(participant);
                 if (request.getName() != null && !request.getName().isBlank()) {
                         conversation.setName(request.getName());
                 }
@@ -423,13 +443,12 @@ public class ConversationServiceImpl implements ConversationService {
         public List<ConversationMemberDto> getGroupMembers(Long conversationId) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-                boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(
-                                currentUserId,
-                                conversationId);
-                if (!isParticipant) {
-                        throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
-                                        "Bạn không tham gia cuộc hội thoại này");
-                }
+                UserParticipant participant = userParticipantRepository
+                                .findByUserIdAndConversationId(currentUserId, conversationId)
+                                .filter(member -> member.getLeftAt() == null)
+                                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                                                "Bạn không tham gia cuộc hội thoại này"));
+                hiddenChatAccess.requireIfHidden(participant);
 
                 List<UserParticipant> participants = userParticipantRepository
                                 .findByConversationIdAndLeftAtIsNull(conversationId);
@@ -465,12 +484,11 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Chỉ có thể thêm thành viên vào nhóm chat");
                 }
 
-                boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(
-                                currentUserId,
-                                conversationId);
-                if (!isParticipant) {
-                        throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này");
-                }
+                UserParticipant caller = userParticipantRepository
+                                .findByUserIdAndConversationId(currentUserId, conversationId)
+                                .filter(member -> member.getLeftAt() == null)
+                                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không tham gia nhóm chat này"));
+                hiddenChatAccess.requireIfHidden(caller);
 
                 List<UserParticipant> currentActiveParticipants = userParticipantRepository
                                 .findByConversationIdAndLeftAtIsNull(conversationId);
@@ -594,6 +612,7 @@ public class ConversationServiceImpl implements ConversationService {
                         throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn không còn trong nhóm chat này");
                 }
 
+                hiddenChatAccess.requireIfHidden(callerParticipant);
                 UserParticipant targetParticipant = userParticipantRepository
                                 .findByUserIdAndConversationId(targetUserId, conversationId)
                                 .orElseThrow(
@@ -642,6 +661,7 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Chỉ Tù trưởng mới có quyền thay đổi vai trò thành viên");
                 }
 
+                hiddenChatAccess.requireIfHidden(callerParticipant);
                 UserParticipant targetParticipant = userParticipantRepository
                                 .findByUserIdAndConversationId(targetUserId, conversationId)
                                 .orElseThrow(
@@ -681,6 +701,7 @@ public class ConversationServiceImpl implements ConversationService {
                 if (callerParticipant.getLeftAt() != null) {
                         throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Bạn đã rời khỏi nhóm chat này rồi");
                 }
+                hiddenChatAccess.requireIfHidden(callerParticipant);
 
                 List<UserParticipant> otherActiveParticipants = userParticipantRepository
                                 .findByConversationIdAndLeftAtIsNull(conversationId)

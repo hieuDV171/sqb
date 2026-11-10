@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import type { InfiniteData } from '@tanstack/react-query';
+import { readAccessSessionId } from '@/api/accessSession';
 import { stompClient } from '@/lib/stompClient';
 import { queryClient } from '@/lib/queryClient';
 import { CHAT_QUERY_KEYS } from '../hooks/useChat';
@@ -9,6 +11,8 @@ import type {
   WsReadReceiptBroadcastDto,
   WsTypingBroadcastDto,
   MessageDto,
+  MessageListResponseDto,
+  ConversationListResponseDto,
 } from '../types/chat.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -26,11 +30,13 @@ interface ChatStoreState {
 
   // Trạng thái mở khóa kho ẩn (Lưu trong RAM, tự khóa sau 15 phút hoặc khi reload)
   isPinUnlocked: boolean;
-  unlockPin: () => void;
+  hiddenConversationIds: number[];
+  rememberHidden: (id: number, hidden: boolean) => void;
+  unlockPin: (expiresAt: string) => void;
   lockPin: () => void;
 
   // Danh sách người dùng đang gõ theo từng cuộc hội thoại: conversationId -> userId -> fullName
-  typingMap: Record<number, Record<number, { fullName: string; timer?: any }>>;
+  typingMap: Record<number, Record<number, { fullName: string; timer?: ReturnType<typeof setTimeout> }>>;
   setTypingUser: (conversationId: number, user: UserSummaryDto, isTyping: boolean) => void;
 
   // Các hành động gửi tin nhắn / STOMP
@@ -45,12 +51,12 @@ interface ChatStoreState {
   sendTyping: (conversationId: number, isTyping: boolean) => boolean;
 
   // Xử lý các gói tin WS nhận từ server
-  handleIncomingWsMessage: (dto: WsMessageBroadcastDto) => void;
+  handleIncomingWsMessage: (dto: WsMessageBroadcastDto, hidden?: boolean) => void;
   handleIncomingReadReceipt: (dto: WsReadReceiptBroadcastDto) => void;
   handleIncomingTyping: (dto: WsTypingBroadcastDto) => void;
 }
 
-let pinLockTimeout: any = null;
+let pinLockTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export const useChatStore = create<ChatStoreState>()((set, get) => ({
   activeConversationId: null,
@@ -98,15 +104,31 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
   },
 
   isPinUnlocked: false,
+  hiddenConversationIds: [],
+  rememberHidden: (id, hidden) => {
+    const ids = get().hiddenConversationIds;
+    if (ids.includes(id) !== hidden) {
+      set({ hiddenConversationIds: hidden ? [...ids, id] : ids.filter((value) => value !== id) });
+      if (hidden) {
+        queryClient.setQueryData<InfiniteData<ConversationListResponseDto>>(CHAT_QUERY_KEYS.conversations, (current) =>
+          current && {
+            ...current,
+            pages: current.pages.map((page) => ({ ...page, items: page.items.filter((item) => item.conversationId !== id) })),
+          });
+      }
+    }
+  },
 
-  unlockPin: () => {
+  unlockPin: (expiresAt) => {
     if (pinLockTimeout) {
       clearTimeout(pinLockTimeout);
     }
-    // Tự động khóa lại sau 15 phút
-    pinLockTimeout = setTimeout(() => {
-      set({ isPinUnlocked: false });
-    }, 15 * 60 * 1000);
+    const remaining = Date.parse(expiresAt) - Date.now();
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+      get().lockPin();
+      return;
+    }
+    pinLockTimeout = setTimeout(() => get().lockPin(), Math.min(remaining, 15 * 60 * 1000));
 
     set({ isPinUnlocked: true });
   },
@@ -116,7 +138,19 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
       clearTimeout(pinLockTimeout);
       pinLockTimeout = null;
     }
-    set({ isPinUnlocked: false });
+    const { hiddenConversationIds, openFloatingChats, minimizedFloatingChats, typingMap } = get();
+    const hidden = new Set(hiddenConversationIds);
+    set({
+      isPinUnlocked: false,
+      openFloatingChats: openFloatingChats.filter((id) => !hidden.has(id)),
+      minimizedFloatingChats: minimizedFloatingChats.filter((id) => !hidden.has(id)),
+      typingMap: Object.fromEntries(Object.entries(typingMap).filter(([id]) => !hidden.has(Number(id)))),
+    });
+    queryClient.removeQueries({ queryKey: CHAT_QUERY_KEYS.hiddenConversations, exact: true });
+    for (const id of hidden) {
+      queryClient.removeQueries({ queryKey: CHAT_QUERY_KEYS.messages(id), exact: true });
+      queryClient.removeQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(id), exact: true });
+    }
   },
 
   typingMap: {},
@@ -180,7 +214,7 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
     });
   },
 
-  handleIncomingWsMessage: (dto) => {
+  handleIncomingWsMessage: (dto, hidden = false) => {
     const currentUserId = useAuthStore.getState().user?.id;
     const { activeConversationId, openFloatingChats } = get();
 
@@ -201,9 +235,9 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
     };
 
     // 2. Cập nhật cache của danh sách tin nhắn nếu cuộc hội thoại đang mở
-    queryClient.setQueryData(
+    queryClient.setQueryData<InfiniteData<MessageListResponseDto>>(
       CHAT_QUERY_KEYS.messages(dto.conversationId),
-      (oldData: any) => {
+      (oldData) => {
         if (!oldData || !oldData.pages || oldData.pages.length === 0) return oldData;
         const firstPage = oldData.pages[0];
         // Tránh trùng tin nhắn
@@ -223,7 +257,8 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
     );
 
     // 3. Cập nhật danh sách hội thoại ['conversations']
-    queryClient.setQueryData(CHAT_QUERY_KEYS.conversations, (oldData: any) => {
+    const listKey = hidden ? CHAT_QUERY_KEYS.hiddenConversations : CHAT_QUERY_KEYS.conversations;
+    queryClient.setQueryData<InfiniteData<ConversationListResponseDto>>(listKey, (oldData) => {
       if (!oldData || !oldData.pages) return oldData;
 
       const isCurrentActive =
@@ -231,8 +266,8 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
         openFloatingChats.includes(dto.conversationId);
 
       let found = false;
-      const updatedPages = oldData.pages.map((page: any) => {
-        const items = page.items.map((conv: any) => {
+      const updatedPages = oldData.pages.map((page) => {
+        const items = page.items.map((conv) => {
           if (conv.conversationId === dto.conversationId) {
             found = true;
             return {
@@ -259,7 +294,7 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
 
       // Nếu hội thoại mới chưa có trong cache thì invalidate để tải lại
       if (!found) {
-        queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+        queryClient.invalidateQueries({ queryKey: listKey });
       }
 
       return {
@@ -289,3 +324,11 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
     get().setTypingUser(dto.conversationId, dto.user, dto.isTyping);
   },
 }));
+
+useAuthStore.subscribe((state, previous) => {
+  if (previous.tokenType === 'ACCESS' && (state.tokenType !== 'ACCESS' || state.user?.id !== previous.user?.id
+      || readAccessSessionId(state.accessToken) !== readAccessSessionId(previous.accessToken))) {
+    useChatStore.getState().lockPin();
+    useChatStore.setState({ hiddenConversationIds: [], openFloatingChats: [], minimizedFloatingChats: [], activeConversationId: null });
+  }
+});

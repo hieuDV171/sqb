@@ -16,7 +16,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -24,7 +23,6 @@ import java.util.regex.Pattern;
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private static final Set<String> CHAT_COMMANDS = Set.of("/app/chat.send", "/app/chat.read", "/app/chat.typing");
-    private static final Pattern TYPING_TOPIC = Pattern.compile("/topic/conv\\.[1-9][0-9]*\\.typing");
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -104,7 +102,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         // Clients must not subscribe to physical broker queues or publish directly to them.
         boolean allowed = command == StompCommand.SEND
                 ? CHAT_COMMANDS.contains(destination)
-                : "/user/queue/messages".equals(destination) || TYPING_TOPIC.matcher(destination).matches();
+                : "/user/queue/messages".equals(destination);
         if (!allowed) {
             throw new MessageDeliveryException("Forbidden: Invalid STOMP destination");
         }

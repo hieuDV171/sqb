@@ -3,7 +3,7 @@ import SockJS from 'sockjs-client';
 import humps from 'humps';
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { API_BASE_URL, isAccessTokenExpiring, refreshAccessToken } from '@/api/accessSession';
+import { API_BASE_URL, isAccessTokenExpiring, readAccessSessionId, refreshAccessToken } from '@/api/accessSession';
 
 export type StompConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'ERROR';
 
@@ -136,7 +136,7 @@ class StompManager {
 
     return this.client.subscribe(destination, (message: IMessage) => {
       try {
-        let parsedData: any = null;
+        let parsedData: unknown = null;
         if (message.body) {
           try {
             const rawJson = JSON.parse(message.body);
@@ -152,7 +152,7 @@ class StompManager {
     });
   }
 
-  public send(destination: string, body: any = {}, headers: Record<string, string> = {}): boolean {
+  public send(destination: string, body: unknown = {}, headers: Record<string, string> = {}): boolean {
     if (!this.client || !this.client.connected) {
       console.warn(`[StompManager] Cannot send message to ${destination}: client not connected`);
       return false;
@@ -172,8 +172,12 @@ export const stompClient = new StompManager();
 
 // Ngắt STOMP khi phiên ACCESS kết thúc, kể cả khi đang chờ reconnect.
 useAuthStore.subscribe((state, previousState) => {
-  if (previousState.tokenType === 'ACCESS' && state.tokenType !== 'ACCESS') {
+  if (previousState.tokenType !== 'ACCESS') return;
+  if (state.tokenType !== 'ACCESS') return stompClient.disconnect();
+  if (state.user?.id !== previousState.user?.id
+      || readAccessSessionId(state.accessToken) !== readAccessSessionId(previousState.accessToken)) {
     stompClient.disconnect();
+    stompClient.connect();
   }
 });
 
@@ -203,7 +207,9 @@ export function useStompSubscription<T = unknown>(
 ): void {
   const status = useStompStatus();
   const callbackRef = useRef(onMessage);
-  callbackRef.current = onMessage;
+  useEffect(() => {
+    callbackRef.current = onMessage;
+  }, [onMessage]);
 
   useEffect(() => {
     if (!enabled || !destination || status !== 'CONNECTED') {

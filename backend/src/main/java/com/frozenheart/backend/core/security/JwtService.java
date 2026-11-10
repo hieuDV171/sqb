@@ -15,6 +15,7 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -56,6 +57,7 @@ public class JwtService {
                 .role(claims.get("role", String.class))
                 .userId(claims.get("userId", Long.class))
                 .deviceId(claims.get("deviceId", String.class))
+                .sessionId(claims.get("sessionId", String.class))
                 .tokenType(readEnumClaim(claims, "tokenType", TokenType.class))
                 .accountState(readEnumClaim(claims, "accountState", AccountState.class))
                 .build();
@@ -69,6 +71,7 @@ public class JwtService {
     private String generateToken(Map<String, Object> extraClaims, String subject, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
+                .id(UUID.randomUUID().toString())
                 .subject(subject)
                 .issuer(jwtProperties.getIssuer())
                 .issuedAt(new Date())
@@ -85,10 +88,11 @@ public class JwtService {
         return generateToken(extraClaims, subject, jwtProperties.getOnboardingTokenExpiration());
     }
 
-    public String generateRefreshToken(String subject, String deviceId) {
+    public String generateRefreshToken(String subject, String deviceId, String sessionId) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("tokenType", TokenType.REFRESH.name());
         extraClaims.put("deviceId", deviceId);
+        extraClaims.put("sessionId", sessionId);
         return generateToken(extraClaims, subject, jwtProperties.getRefreshTokenExpiration());
     }
 

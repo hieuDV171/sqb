@@ -31,6 +31,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
         JOIN FETCH m.sender s
         LEFT JOIN FETCH m.replyToMessage r
         LEFT JOIN FETCH r.sender rs
+        LEFT JOIN FETCH r.conversation
         WHERE m.conversation.id = :conversationId
           AND m.id < :cursor
           AND NOT EXISTS (

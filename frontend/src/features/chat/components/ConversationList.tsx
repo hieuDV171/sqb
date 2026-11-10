@@ -12,6 +12,7 @@ import {
   useLeaveGroup,
 } from '../hooks/useChat';
 import { useChatStore } from '../stores/useChatStore';
+import { chatService } from '../services/chatService';
 import { ConversationItem } from './ConversationItem';
 import {
   Search,
@@ -118,6 +119,9 @@ export function ConversationList({
                 onClick={() => {
                   if (hiddenConversations.some((item) => item.conversationId === activeConversationId)) onCloseConversation();
                   lockPin();
+                  void chatService.lockHiddenChat().catch(() => {
+                    // The API client reports the error. The local view stays locked.
+                  });
                   setActiveTab('ALL');
                 }}>
                 <Lock aria-hidden="true" />

@@ -98,6 +98,7 @@ public class ConversationController {
                         @ApiResponse(responseCode = "200", description = "Cài đặt mã PIN thành công"),
                         @ApiResponse(responseCode = "400", description = "Mã PIN cũ không chính xác hoặc dữ liệu không hợp lệ (INVALID_PIN)"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
+                        @ApiResponse(responseCode = "429", description = "Đã vượt giới hạn số lần thử PIN"),
                         @ApiResponse(responseCode = "404", description = "Không tìm thấy hồ sơ người dùng (USER_NOT_FOUND)")
         })
         @PostMapping({ "/users/me/hidden-chat-pin" })
@@ -112,18 +113,31 @@ public class ConversationController {
                         @ApiResponse(responseCode = "200", description = "Mở khóa kho ẩn thành công"),
                         @ApiResponse(responseCode = "400", description = "Chưa cài mã PIN hoặc mã PIN không đúng (PIN_NOT_SET / INVALID_PIN)"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-                        @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng (USER_NOT_FOUND)")
+                        @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng (USER_NOT_FOUND)"),
+                        @ApiResponse(responseCode = "429", description = "Đã vượt giới hạn số lần thử PIN")
         })
         @PostMapping("/conversations/hidden/unlock")
-        public ResponseEntity<GlobalResponse<Void>> unlockHiddenChat(
+        public ResponseEntity<GlobalResponse<HiddenChatUnlockDto>> unlockHiddenChat(
                         @Valid @RequestBody UnlockHiddenChatDto request) {
-                conversationService.unlockHiddenChat(request);
-                return ResponseEntity.ok(GlobalResponse.success("Mở khóa kho ẩn trò chuyện thành công", null));
+                return ResponseEntity.ok(GlobalResponse.success("Mở khóa kho ẩn trò chuyện thành công",
+                                conversationService.unlockHiddenChat(request)));
+        }
+
+        @Operation(summary = "Khóa kho trò chuyện ẩn của phiên hiện tại")
+        @ApiResponses({
+                        @ApiResponse(responseCode = "200", description = "Đã khóa kho ẩn"),
+                        @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
+        })
+        @PostMapping("/conversations/hidden/lock")
+        public ResponseEntity<GlobalResponse<Void>> lockHiddenChat() {
+                conversationService.lockHiddenChat();
+                return ResponseEntity.ok(GlobalResponse.success("Đã khóa kho ẩn", null));
         }
 
         @Operation(summary = "Lấy danh sách cuộc hội thoại ẩn", description = "Trả về danh sách các cuộc hội thoại nằm trong kho bí mật sau khi đã mở khóa PIN thành công.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Lấy danh sách hội thoại ẩn thành công"),
+                        @ApiResponse(responseCode = "403", description = "Phiên hiện tại chưa mở kho ẩn hoặc quyền đã hết hạn (HIDDEN_CHAT_LOCKED)"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
         })
         @GetMapping("/conversations/hidden")

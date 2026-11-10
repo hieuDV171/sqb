@@ -15,6 +15,7 @@ import com.frozenheart.backend.modules.conversation.repository.MessageRepository
 import com.frozenheart.backend.modules.conversation.repository.UserDeletedMessageOnlyMeRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.MessageService;
+import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class MessageServiceImpl implements MessageService {
     private final UserDeletedMessageOnlyMeRepository userDeletedMessageOnlyMeRepository;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final HiddenChatAccess hiddenChatAccess;
 
     @Override
     @Transactional
@@ -51,6 +53,7 @@ public class MessageServiceImpl implements MessageService {
                 .findByUserIdAndConversationId(currentUserId, conversationId)
                 .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                         "Bạn không tham gia cuộc hội thoại này"));
+        hiddenChatAccess.requireIfHidden(participant);
 
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 100) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
@@ -74,7 +77,8 @@ public class MessageServiceImpl implements MessageService {
             if (m.getSender() != null) {
                 senderUserIds.add(m.getSender().getId());
             }
-            if (m.getReplyToMessage() != null && m.getReplyToMessage().getSender() != null) {
+            if (m.getReplyToMessage() != null && Objects.equals(m.getReplyToMessage().getConversation().getId(), conversationId)
+                    && m.getReplyToMessage().getSender() != null) {
                 senderUserIds.add(m.getReplyToMessage().getSender().getId());
             }
         }
@@ -93,7 +97,7 @@ public class MessageServiceImpl implements MessageService {
                     : m.getMediaUrls().stream().map(MediaItem::url).collect(Collectors.toList());
 
             ReplyMessagePreviewDto replyPreview = null;
-            if (m.getReplyToMessage() != null) {
+            if (m.getReplyToMessage() != null && Objects.equals(m.getReplyToMessage().getConversation().getId(), conversationId)) {
                 Message replyMsg = m.getReplyToMessage();
                 User replySender = replyMsg.getSender();
                 UserProfile replyProfile = profileMap.get(replySender.getId());
@@ -152,6 +156,7 @@ public class MessageServiceImpl implements MessageService {
         return MessageListResponseDto.builder()
                 .conversationId(conversationId)
                 .conversationType(conversation.getType())
+                .hiddenAt(participant.getHiddenAt())
                 .messages(messageDtos)
                 .pagination(pagination)
                 .build();
@@ -166,12 +171,11 @@ public class MessageServiceImpl implements MessageService {
                 .orElseThrow(() -> new AppException(ResponseCode.MESSAGE_NOT_FOUND, "Không tìm thấy tin nhắn"));
 
         Long conversationId = message.getConversation().getId();
-        boolean isParticipant = userParticipantRepository.existsByUserIdAndConversationIdAndLeftAtIsNull(currentUserId,
-                conversationId);
-        if (!isParticipant) {
-            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
-                    "Bạn không tham gia cuộc hội thoại chứa tin nhắn này");
-        }
+        UserParticipant participant = userParticipantRepository.findByUserIdAndConversationId(currentUserId, conversationId)
+                .filter(member -> member.getLeftAt() == null)
+                .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
+                        "Bạn không tham gia cuộc hội thoại chứa tin nhắn này"));
+        hiddenChatAccess.requireIfHidden(participant);
 
         if (request.getScope() == MessageDeleteScope.ME) {
             boolean alreadyDeleted = userDeletedMessageOnlyMeRepository.existsByUserIdAndMessageId(currentUserId,

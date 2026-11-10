@@ -103,8 +103,7 @@ public class OpenApiConfig {
 
                 | STOMP Topic / Queue | Mô tả sự kiện | Payload DTO nhận được (snake_case) |
                 | :--- | :--- | :--- |
-                | `/user/queue/messages` | Lắng nghe tin nhắn cá nhân 1-1, thông báo hệ thống và biên nhận đã đọc | `WsMessageBroadcastDto` / `WsReadReceiptBroadcastDto` |
-                | `/topic/conv.{conversation_id}.typing` | Lắng nghe sự kiện thành viên trong cuộc hội thoại đang soạn tin | `WsTypingBroadcastDto` |
+                | `/user/queue/messages` | Nhận tin nhắn, biên nhận đã đọc và trạng thái đang soạn. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` |
                 """;
 
         return new OpenAPI()

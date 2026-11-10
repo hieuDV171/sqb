@@ -86,6 +86,7 @@ export interface MessageDto {
 }
 
 export interface MessageListResponseDto {
+  hiddenAt?: string | null;
   conversationId: number;
   conversationType: ConversationType;
   messages: MessageDto[];
@@ -179,7 +180,7 @@ export interface TypingWsRequestDto {
 }
 
 export interface WsMessageBroadcastDto {
-  eventType: ChatWsEventType;
+  eventType: 'NEW_MESSAGE';
   messageId: number;
   conversationId: number;
   conversationType: ConversationType;
@@ -193,7 +194,7 @@ export interface WsMessageBroadcastDto {
 }
 
 export interface WsReadReceiptBroadcastDto {
-  eventType: ChatWsEventType;
+  eventType: 'MESSAGE_READ';
   conversationId: number;
   messageId: number;
   reader: UserSummaryDto;
@@ -201,7 +202,7 @@ export interface WsReadReceiptBroadcastDto {
 }
 
 export interface WsTypingBroadcastDto {
-  eventType: ChatWsEventType;
+  eventType: 'TYPING_STATUS';
   conversationId: number;
   user: UserSummaryDto;
   isTyping: boolean;

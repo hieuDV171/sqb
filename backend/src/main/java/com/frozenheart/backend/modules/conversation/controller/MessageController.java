@@ -27,7 +27,7 @@ public class MessageController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách tin nhắn thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "403", description = "Bạn không tham gia cuộc hội thoại này (ACTION_NOT_ALLOWED)"),
+            @ApiResponse(responseCode = "403", description = "Không tham gia cuộc hội thoại hoặc kho ẩn đang khóa (ACTION_NOT_ALLOWED / HIDDEN_CHAT_LOCKED)"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy cuộc hội thoại (CONVERSATION_NOT_FOUND)")
     })
     @GetMapping("/conversations/{id}/messages")
@@ -47,7 +47,7 @@ public class MessageController {
             @ApiResponse(responseCode = "200", description = "Xóa hoặc thu hồi tin nhắn thành công"),
             @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "403", description = "Không có quyền thu hồi tin nhắn của người khác hoặc không thuộc hội thoại (NOT_MESSAGE_OWNER / ACTION_NOT_ALLOWED)"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền với tin nhắn hoặc kho ẩn đang khóa (NOT_MESSAGE_OWNER / ACTION_NOT_ALLOWED / HIDDEN_CHAT_LOCKED)"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy tin nhắn (MESSAGE_NOT_FOUND)")
     })
     @DeleteMapping("/messages/{id}")

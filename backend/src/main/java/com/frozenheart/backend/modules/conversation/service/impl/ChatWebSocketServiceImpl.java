@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.conversation.service.impl;
 
+import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.user.UserSummaryDto;
 import com.frozenheart.backend.core.entity.conversation.*;
 import com.frozenheart.backend.core.entity.media.MediaItem;
@@ -11,6 +12,8 @@ import com.frozenheart.backend.modules.conversation.repository.ConversationRepos
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.ChatWebSocketService;
+import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
+import com.frozenheart.backend.modules.conversation.service.HiddenChatOutboundGuard;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -18,6 +21,8 @@ import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +45,12 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
     private final UserProfileRepository userProfileRepository;
     private final BlockRepository blockRepository;
     private final MediaService mediaService;
+    private final HiddenChatAccess hiddenChatAccess;
 
     @Override
     @Transactional
-    public void handleSendMessage(Long currentUserId, SendWsMessageRequestDto request) {
+    public void handleSendMessage(JwtPayload session, SendWsMessageRequestDto request) {
+        Long currentUserId = session.getUserId();
         if (request == null || request.getConversationId() == null) {
             return;
         }
@@ -56,7 +63,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
         UserParticipant senderParticipant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, conversation.getId()).orElse(null);
-        if (senderParticipant == null || senderParticipant.getLeftAt() != null) {
+        if (!canAccess(senderParticipant, session)) {
             log.warn("[ChatWebSocketServiceImpl] User {} không còn hoạt động trong cuộc hội thoại {}", currentUserId,
                     conversation.getId());
             return;
@@ -103,7 +110,9 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         // Xử lý reply
         Message replyToMessage = null;
         if (request.getReplyToMessageId() != null) {
-            replyToMessage = messageRepository.findById(request.getReplyToMessageId()).orElse(null);
+            replyToMessage = messageRepository.findById(request.getReplyToMessageId())
+                    .filter(message -> Objects.equals(message.getConversation().getId(), conversation.getId()))
+                    .orElse(null);
         }
 
         Instant now = Instant.now();
@@ -161,27 +170,25 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .build();
 
         // Broadcast tới queue cá nhân /user/queue/messages của từng thành viên
-        for (UserParticipant p : allParticipants) {
-            String recipientUserId = p.getUser().getId().toString();
-            messagingTemplate.convertAndSendToUser(recipientUserId, "/queue/messages", broadcastDto);
-        }
+        allParticipants.forEach(participant -> deliver(participant, broadcastDto));
     }
 
     @Override
     @Transactional
-    public void handleReadMessage(Long currentUserId, ReadWsMessageRequestDto request) {
+    public void handleReadMessage(JwtPayload session, ReadWsMessageRequestDto request) {
+        Long currentUserId = session.getUserId();
         if (request == null || request.getConversationId() == null || request.getMessageId() == null) {
             return;
         }
 
         UserParticipant participant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, request.getConversationId()).orElse(null);
-        if (participant == null || participant.getLeftAt() != null) {
+        if (!canAccess(participant, session)) {
             return;
         }
 
         Message message = messageRepository.findById(request.getMessageId()).orElse(null);
-        if (message == null) {
+        if (message == null || !Objects.equals(message.getConversation().getId(), request.getConversationId())) {
             return;
         }
 
@@ -214,16 +221,21 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .filter(p -> !Objects.equals(p.getUser().getId(), currentUserId))
                 .toList();
 
-        for (UserParticipant p : otherParticipants) {
-            String recipientUserId = p.getUser().getId().toString();
-            messagingTemplate.convertAndSendToUser(recipientUserId, "/queue/messages", broadcastDto);
-        }
+        otherParticipants.forEach(recipient -> deliver(recipient, broadcastDto));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public void handleTyping(Long currentUserId, TypingWsRequestDto request) {
+    public void handleTyping(JwtPayload session, TypingWsRequestDto request) {
         if (request == null || request.getConversationId() == null) {
+            return;
+        }
+        Long currentUserId = session.getUserId();
+        List<UserParticipant> participants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(request.getConversationId());
+        UserParticipant sender = participants.stream()
+                .filter(participant -> Objects.equals(participant.getUser().getId(), currentUserId))
+                .findFirst().orElse(null);
+        if (!canAccess(sender, session)) {
             return;
         }
 
@@ -246,8 +258,24 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .timestamp(Instant.now())
                 .build();
 
-        // Broadcast tới topic của cuộc hội thoại: /topic/conv.{id}.typing
-        String destination = "/topic/conv." + request.getConversationId() + ".typing";
-        messagingTemplate.convertAndSend(destination, broadcastDto);
+        participants.stream().filter(participant -> participant != sender)
+                .forEach(participant -> deliver(participant, broadcastDto));
+    }
+
+    private boolean canAccess(UserParticipant participant, JwtPayload session) {
+        return participant != null && participant.getLeftAt() == null
+                && (participant.getHiddenAt() == null || hiddenChatAccess.isUnlocked(session));
+    }
+
+    private void deliver(UserParticipant participant, Object event) {
+        String userId = participant.getUser().getId().toString();
+        if (participant.getHiddenAt() == null) {
+            messagingTemplate.convertAndSendToUser(userId, "/queue/messages", event);
+            return;
+        }
+        var headers = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+        headers.setNativeHeader(HiddenChatOutboundGuard.HIDDEN_CHAT_HEADER, "true");
+        headers.setLeaveMutable(true);
+        messagingTemplate.convertAndSendToUser(userId, "/queue/messages", event, headers.getMessageHeaders());
     }
 }

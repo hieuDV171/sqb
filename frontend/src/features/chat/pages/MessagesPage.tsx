@@ -19,6 +19,8 @@ export function MessagesPage() {
   const setActiveConversationId = useChatStore((state) => state.setActiveConversationId);
   const parsedId = Number(paramConvId);
   const activeConversationId = Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : null;
+  const selectedChatLocked = useChatStore((state) => activeConversationId !== null
+    && !state.isPinUnlocked && state.hiddenConversationIds.includes(activeConversationId));
 
   // Modals state
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -74,6 +76,7 @@ export function MessagesPage() {
             key={activeConversationId}
             conversationId={activeConversationId}
             onBack={handleBackToList}
+            onUnlock={() => setIsPinModalOpen(true)}
             onOpenGroupMembers={() => setIsGroupMembersModalOpen(true)}
             onOpenDeleteModal={(msg) => setDeleteModalState({ isOpen: true, message: msg })}
           />
@@ -131,7 +134,7 @@ export function MessagesPage() {
         onCreated={(id) => handleSelectConversation(id)}
       />
 
-      {activeConversationId && (
+      {activeConversationId && !selectedChatLocked && (
         <GroupMembersModal
           conversationId={activeConversationId}
           isOpen={isGroupMembersModalOpen}
@@ -139,7 +142,7 @@ export function MessagesPage() {
         />
       )}
 
-      {activeConversationId && (
+      {activeConversationId && !selectedChatLocked && (
         <DeleteMessageModal
           conversationId={activeConversationId}
           isOpen={deleteModalState.isOpen}

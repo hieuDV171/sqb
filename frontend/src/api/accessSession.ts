@@ -9,6 +9,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localho
 interface AccessClaims {
     userId?: number;
     deviceId?: string;
+    sessionId?: string;
     exp?: number;
 }
 
@@ -26,6 +27,10 @@ function readSessionIdentity(token: string): string | null {
     return typeof claims?.userId === 'number' && typeof claims.deviceId === 'string' && claims.deviceId
         ? JSON.stringify([claims.userId, claims.deviceId])
         : null;
+}
+
+export function readAccessSessionId(token: string | null): string | undefined {
+    return token ? readClaims(token)?.sessionId : undefined;
 }
 
 export function isAccessTokenExpiring(token: string): boolean {
@@ -68,6 +73,13 @@ function expireSession(token: string): void {
 }
 
 async function requestRefresh(token: string): Promise<string | null> {
+    const run = () => fetchRotatedToken(token);
+    return typeof navigator !== 'undefined' && navigator.locks
+        ? navigator.locks.request('sqb-refresh-token', run)
+        : run();
+}
+
+async function fetchRotatedToken(token: string): Promise<string | null> {
     // Use the HttpOnly cookie with a plain Axios request to avoid the interceptors.
     const response = await axios.post<GlobalResponse<{ access_token: string }>>(
         `${API_BASE_URL.replace(/\/$/, '')}/auth/refresh`,
@@ -77,7 +89,9 @@ async function requestRefresh(token: string): Promise<string | null> {
     const refreshData = humps.camelizeKeys(response.data) as GlobalResponse<{ accessToken: string }>;
     const newToken = refreshData?.data?.accessToken;
     const identity = readSessionIdentity(token);
-    return typeof newToken === 'string' && identity && readSessionIdentity(newToken) === identity ? newToken : null;
+    const sessionId = readAccessSessionId(token);
+    return typeof newToken === 'string' && identity && readSessionIdentity(newToken) === identity
+        && (!sessionId || readAccessSessionId(newToken) === sessionId) ? newToken : null;
 }
 
 async function applyRefresh(token: string, request: Promise<string | null>): Promise<string> {

@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.frozenheart.backend.modules.auth.dto.admin.AdminResetPasswordRequest;
@@ -37,6 +38,7 @@ import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -313,7 +315,8 @@ public class AuthServiceImpl implements AuthService {
             UserRole role,
             String email,
             String deviceId,
-            AccountState accountState
+            AccountState accountState,
+            String sessionId
     ) {
 
         Map<String, Object> extraClaims = new HashMap<>();
@@ -323,11 +326,12 @@ public class AuthServiceImpl implements AuthService {
         String accessToken;
         String refreshToken = null;
         if (accountState == AccountState.ACTIVE) {
+            extraClaims.put("sessionId", sessionId);
             extraClaims.put("role", role.name());
             extraClaims.put("tokenType", TokenType.ACCESS.name());
             extraClaims.put("accountState", AccountState.ACTIVE.name());
             accessToken = jwtService.generateAccessToken(extraClaims, email);
-            refreshToken = jwtService.generateRefreshToken(email, deviceId);
+            refreshToken = jwtService.generateRefreshToken(email, deviceId, sessionId);
         } else {
             extraClaims.put("tokenType", TokenType.ONBOARDING.name());
             extraClaims.put("accountState", accountState.name());
@@ -348,7 +352,8 @@ public class AuthServiceImpl implements AuthService {
         String email = user.getEmail();
 
         AccountState accountState = AccountState.from(user.isVerified(), userProfile.isProfileCompleted());
-        Map<String, String> rtAtResult = generateAtAndRt(userId, role, email, deviceId, accountState);
+        Map<String, String> rtAtResult = generateAtAndRt(userId, role, email, deviceId, accountState,
+                UUID.randomUUID().toString());
 
         String accessToken = rtAtResult.get("accessToken");
         String refreshToken = rtAtResult.get("refreshToken");
@@ -792,16 +797,21 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Sinh cặp Token mới (Refresh Token Rotation - RTR)
+        String sessionId = payload.getSessionId() != null ? payload.getSessionId() : UUID.randomUUID().toString();
         Map<String, String> rtAtResult = generateAtAndRt(
-                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE);
+                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE, sessionId);
         String newAccessToken = rtAtResult.get("accessToken");
         String newRefreshToken = rtAtResult.get("refreshToken");
 
-        // Cập nhật RT mới vào Redis
-        redisTemplate.opsForValue().set(
-                redisKey,
-                newRefreshToken,
-                Duration.ofMillis(jwtService.getRefreshTokenExpiration()));
+        // Rotate only while the presented token is still current.
+        RedisScript<Long> rotation = RedisScript.of("""
+                if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+                redis.call('PSETEX', KEYS[1], %d, ARGV[2])
+                return 1
+                """.formatted(jwtService.getRefreshTokenExpiration()), Long.class);
+        if (!Long.valueOf(1L).equals(redisTemplate.execute(rotation, List.of(redisKey), incomingRt, newRefreshToken))) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
 
         // Xử lý trả về tương ứng cho WEB hoặc MOBILE
         if (isWebClient) {

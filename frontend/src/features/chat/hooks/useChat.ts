@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { chatService } from '../services/chatService';
+import { useChatStore } from '../stores/useChatStore';
 import type {
   CreateDirectConversationDto,
   CreateGroupConversationDto,
@@ -18,6 +19,10 @@ import type {
 } from '../types/chat.types';
 import { toast } from '@/stores/useToastStore';
 import type { ProfileResponse } from '@/types/user.types';
+
+function isHiddenChatLocked(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '2411';
+}
 
 export const CHAT_QUERY_KEYS = {
   conversations: ['conversations'] as const,
@@ -52,8 +57,14 @@ export function useHiddenConversations(enabled: boolean = false, limit: number =
   return useInfiniteQuery({
     queryKey: CHAT_QUERY_KEYS.hiddenConversations,
     queryFn: async ({ pageParam }) => {
-      const res = await chatService.getHiddenConversations(pageParam as number | undefined, limit);
-      return res.data;
+      try {
+        const res = await chatService.getHiddenConversations(pageParam as number | undefined, limit);
+        res.data.items.forEach(({ conversationId }) => useChatStore.getState().rememberHidden(conversationId, true));
+        return res.data;
+      } catch (error) {
+        if (isHiddenChatLocked(error)) useChatStore.getState().lockPin();
+        throw error;
+      }
     },
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => {
@@ -62,6 +73,7 @@ export function useHiddenConversations(enabled: boolean = false, limit: number =
         : undefined;
     },
     enabled,
+    retry: (attempt, error) => !isHiddenChatLocked(error) && attempt < 1,
   });
 }
 
@@ -84,14 +96,26 @@ export function useGroupMembers(conversationId: number | null, enabled: boolean 
  * Hook lấy lịch sử tin nhắn trong cuộc hội thoại (cuộn ngược vô tận)
  */
 export function useMessages(conversationId: number | null, limit: number = 30) {
+  const allowed = useChatStore((state) =>
+    conversationId === null || state.isPinUnlocked || !state.hiddenConversationIds.includes(conversationId));
   return useInfiniteQuery({
     queryKey: conversationId ? CHAT_QUERY_KEYS.messages(conversationId) : ['messages', 'null'],
     queryFn: async ({ pageParam }) => {
       if (!conversationId) {
         return { conversationId: 0, conversationType: 'DIRECT' as const, messages: [], pagination: {} };
       }
-      const res = await chatService.getMessages(conversationId, pageParam as number | undefined, limit);
-      return res.data;
+      try {
+        const res = await chatService.getMessages(conversationId, pageParam as number | undefined, limit);
+        useChatStore.getState().rememberHidden(conversationId, Boolean(res.data.hiddenAt));
+        return res.data;
+      } catch (error) {
+        if (isHiddenChatLocked(error)) {
+          const chat = useChatStore.getState();
+          chat.rememberHidden(conversationId, true);
+          chat.lockPin();
+        }
+        throw error;
+      }
     },
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => {
@@ -99,7 +123,8 @@ export function useMessages(conversationId: number | null, limit: number = 30) {
         ? lastPage.pagination.after
         : undefined;
     },
-    enabled: !!conversationId,
+    enabled: !!conversationId && allowed,
+    retry: (attempt, error) => !isHiddenChatLocked(error) && attempt < 1,
   });
 }
 
@@ -137,7 +162,11 @@ export function useHideConversation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (conversationId: number) => chatService.hideConversation(conversationId),
-    onSuccess: () => {
+    onSuccess: (_, conversationId) => {
+      useChatStore.getState().rememberHidden(conversationId, true);
+      useChatStore.getState().closeFloatingChat(conversationId);
+      queryClient.removeQueries({ queryKey: CHAT_QUERY_KEYS.messages(conversationId) });
+      queryClient.removeQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(conversationId) });
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.hiddenConversations });
       toast.success('Đã chuyển cuộc hội thoại vào kho bí mật');
@@ -152,7 +181,9 @@ export function useUnhideConversation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (conversationId: number) => chatService.unhideConversation(conversationId),
-    onSuccess: () => {
+    onSuccess: (_, conversationId) => {
+      useChatStore.getState().rememberHidden(conversationId, false);
+      void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.messages(conversationId) });
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.hiddenConversations });
       toast.success('Đã khôi phục cuộc trò chuyện ra danh sách chính');

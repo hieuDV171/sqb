@@ -28,9 +28,9 @@ export const chatService = {
     after?: number,
     limit: number = 20
   ): Promise<GlobalResponse<ConversationListResponseDto>> => {
-    return await axiosClient.get<GlobalResponse<ConversationListResponseDto>>('/conversations', {
+    return await axiosClient.get<GlobalResponse<ConversationListResponseDto>, GlobalResponse<ConversationListResponseDto>>('/conversations', {
       params: { after, limit },
-    }) as any;
+    });
   },
 
   /**
@@ -40,7 +40,7 @@ export const chatService = {
   createDirectConversation: async (
     data: CreateDirectConversationDto
   ): Promise<GlobalResponse<ConversationDetailDto>> => {
-    return await axiosClient.post<GlobalResponse<ConversationDetailDto>>('/conversations/direct', data) as any;
+    return await axiosClient.post<GlobalResponse<ConversationDetailDto>, GlobalResponse<ConversationDetailDto>>('/conversations/direct', data);
   },
 
   /**
@@ -50,7 +50,7 @@ export const chatService = {
   createGroupConversation: async (
     data: CreateGroupConversationDto
   ): Promise<GlobalResponse<ConversationDetailDto>> => {
-    return await axiosClient.post<GlobalResponse<ConversationDetailDto>>('/conversations/group', data) as any;
+    return await axiosClient.post<GlobalResponse<ConversationDetailDto>, GlobalResponse<ConversationDetailDto>>('/conversations/group', data);
   },
 
   /**
@@ -58,7 +58,7 @@ export const chatService = {
    * PATCH /api/v1/conversations/{id}/hide
    */
   hideConversation: async (conversationId: number): Promise<GlobalResponse<void>> => {
-    return await axiosClient.patch<GlobalResponse<void>>(`/conversations/${conversationId}/hide`) as any;
+    return await axiosClient.patch<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/hide`);
   },
 
   /**
@@ -66,7 +66,7 @@ export const chatService = {
    * PATCH /api/v1/conversations/{id}/unhide
    */
   unhideConversation: async (conversationId: number): Promise<GlobalResponse<void>> => {
-    return await axiosClient.patch<GlobalResponse<void>>(`/conversations/${conversationId}/unhide`) as any;
+    return await axiosClient.patch<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/unhide`);
   },
 
   /**
@@ -74,15 +74,20 @@ export const chatService = {
    * POST /api/v1/users/me/hidden-chat-pin
    */
   setHiddenChatPin: async (data: SetHiddenChatPinDto): Promise<GlobalResponse<void>> => {
-    return await axiosClient.post<GlobalResponse<void>>('/users/me/hidden-chat-pin', data) as any;
+    return await axiosClient.post<GlobalResponse<void>, GlobalResponse<void>>('/users/me/hidden-chat-pin', data);
   },
 
   /**
    * 10.7 Mở khóa kho trò chuyện ẩn bằng mã PIN
    * POST /api/v1/conversations/hidden/unlock
    */
-  unlockHiddenChat: async (data: UnlockHiddenChatDto): Promise<GlobalResponse<void>> => {
-    return await axiosClient.post<GlobalResponse<void>>('/conversations/hidden/unlock', data) as any;
+  unlockHiddenChat: async (data: UnlockHiddenChatDto) => {
+    type Response = GlobalResponse<{ expiresAt: string }>;
+    return axiosClient.post<Response, Response>('/conversations/hidden/unlock', data);
+  },
+
+  lockHiddenChat: async () => {
+    return axiosClient.post<GlobalResponse<void>, GlobalResponse<void>>('/conversations/hidden/lock');
   },
 
   /**
@@ -93,9 +98,9 @@ export const chatService = {
     after?: number,
     limit: number = 20
   ): Promise<GlobalResponse<ConversationListResponseDto>> => {
-    return await axiosClient.get<GlobalResponse<ConversationListResponseDto>>('/conversations/hidden', {
+    return await axiosClient.get<GlobalResponse<ConversationListResponseDto>, GlobalResponse<ConversationListResponseDto>>('/conversations/hidden', {
       params: { after, limit },
-    }) as any;
+    });
   },
 
   /**
@@ -106,7 +111,7 @@ export const chatService = {
     conversationId: number,
     data: UpdateGroupInfoDto
   ): Promise<GlobalResponse<ConversationDetailDto>> => {
-    return await axiosClient.put<GlobalResponse<ConversationDetailDto>>(`/conversations/${conversationId}`, data) as any;
+    return await axiosClient.put<GlobalResponse<ConversationDetailDto>, GlobalResponse<ConversationDetailDto>>(`/conversations/${conversationId}`, data);
   },
 
   /**
@@ -116,7 +121,7 @@ export const chatService = {
   getGroupMembers: async (
     conversationId: number
   ): Promise<GlobalResponse<ConversationMemberDto[]>> => {
-    return await axiosClient.get<GlobalResponse<ConversationMemberDto[]>>(`/conversations/${conversationId}/members`) as any;
+    return await axiosClient.get<GlobalResponse<ConversationMemberDto[]>, GlobalResponse<ConversationMemberDto[]>>(`/conversations/${conversationId}/members`);
   },
 
   /**
@@ -127,7 +132,7 @@ export const chatService = {
     conversationId: number,
     data: AddGroupMembersRequestDto
   ): Promise<GlobalResponse<AddGroupMembersResponseDto>> => {
-    return await axiosClient.post<GlobalResponse<AddGroupMembersResponseDto>>(`/conversations/${conversationId}/members`, data) as any;
+    return await axiosClient.post<GlobalResponse<AddGroupMembersResponseDto>, GlobalResponse<AddGroupMembersResponseDto>>(`/conversations/${conversationId}/members`, data);
   },
 
   /**
@@ -138,7 +143,7 @@ export const chatService = {
     conversationId: number,
     userId: number
   ): Promise<GlobalResponse<void>> => {
-    return await axiosClient.delete<GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}`) as any;
+    return await axiosClient.delete<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}`);
   },
 
   /**
@@ -150,7 +155,7 @@ export const chatService = {
     userId: number,
     data: UpdateMemberRoleRequestDto
   ): Promise<GlobalResponse<void>> => {
-    return await axiosClient.put<GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}/role`, data) as any;
+    return await axiosClient.put<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}/role`, data);
   },
 
   /**
@@ -161,7 +166,7 @@ export const chatService = {
     conversationId: number,
     data?: LeaveGroupRequestDto
   ): Promise<GlobalResponse<LeaveGroupResponseDto>> => {
-    return await axiosClient.post<GlobalResponse<LeaveGroupResponseDto>>(`/conversations/${conversationId}/leave`, data || {}) as any;
+    return await axiosClient.post<GlobalResponse<LeaveGroupResponseDto>, GlobalResponse<LeaveGroupResponseDto>>(`/conversations/${conversationId}/leave`, data || {});
   },
 
   /**
@@ -173,9 +178,9 @@ export const chatService = {
     after?: number,
     limit: number = 20
   ): Promise<GlobalResponse<MessageListResponseDto>> => {
-    return await axiosClient.get<GlobalResponse<MessageListResponseDto>>(`/conversations/${conversationId}/messages`, {
+    return await axiosClient.get<GlobalResponse<MessageListResponseDto>, GlobalResponse<MessageListResponseDto>>(`/conversations/${conversationId}/messages`, {
       params: { after, limit },
-    }) as any;
+    });
   },
 
   /**
@@ -186,8 +191,8 @@ export const chatService = {
     messageId: number,
     data: DeleteMessageRequestDto
   ): Promise<GlobalResponse<DeleteMessageResponseDto>> => {
-    return await axiosClient.delete<GlobalResponse<DeleteMessageResponseDto>>(`/messages/${messageId}`, {
+    return await axiosClient.delete<GlobalResponse<DeleteMessageResponseDto>, GlobalResponse<DeleteMessageResponseDto>>(`/messages/${messageId}`, {
       data,
-    }) as any;
+    });
   },
 };
