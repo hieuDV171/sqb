@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Award, Crown, Medal, Search, Target, Trophy } from 'lucide-react';
+import { Crown, Search, Target, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -20,18 +20,21 @@ const scopes = [
 
 const podiumPlaces = [
   {
-    rank: 1, title: 'Quán quân', icon: Crown, position: 'sm:col-start-2',
-    height: 'sm:min-h-32', avatarRing: 'ring-amber-400',
+    rank: 1, title: 'Quán quân', position: 'sm:col-start-2',
+    height: 'sm:h-36', avatarRing: 'ring-amber-400',
+    crown: 'size-7 fill-amber-300 text-amber-600 motion-safe:animate-bounce dark:text-amber-300',
     finish: 'border-amber-400/70 from-amber-200 to-yellow-50 text-amber-950 dark:border-amber-400/50 dark:from-amber-800/75 dark:to-amber-950 dark:text-amber-100',
   },
   {
-    rank: 2, title: 'Á quân', icon: Medal, position: 'sm:col-start-1',
-    height: 'sm:min-h-24', avatarRing: 'ring-slate-400',
+    rank: 2, title: 'Á quân', position: 'sm:col-start-1',
+    height: 'sm:h-28', avatarRing: 'ring-slate-400',
+    crown: 'size-6 fill-slate-300 text-slate-600 dark:text-slate-300',
     finish: 'border-slate-300 from-slate-200 to-slate-50 text-slate-900 dark:border-slate-500 dark:from-slate-700 dark:to-slate-900 dark:text-slate-100',
   },
   {
-    rank: 3, title: 'Quý quân', icon: Award, position: 'sm:col-start-3',
-    height: 'sm:min-h-20', avatarRing: 'ring-orange-500/70',
+    rank: 3, title: 'Quý quân', position: 'sm:col-start-3',
+    height: 'sm:h-22', avatarRing: 'ring-orange-500/70',
+    crown: 'size-6 fill-orange-300 text-orange-700 dark:text-orange-300',
     finish: 'border-orange-300 from-orange-200 to-orange-50 text-orange-950 dark:border-orange-500/60 dark:from-orange-800/75 dark:to-orange-950 dark:text-orange-100',
   },
 ] as const;
@@ -122,13 +125,18 @@ export function LeaderboardTab() {
                 <Trophy aria-hidden="true" className="size-5 text-reward" /> Bục vinh danh
               </h3>
               <ol className="mx-auto grid max-w-3xl gap-3 sm:grid-cols-3 sm:items-end sm:gap-4">
-                {leaders.map(({ entry, rank, title, icon: Icon, position, height, avatarRing, finish }) => (
+                {leaders.map(({ entry, rank, title, position, height, avatarRing, crown, finish }) => (
                   <li key={entry.userId} className={`min-w-0 ${position} sm:row-start-1`}>
                     <Link to={`/users/${entry.userId}`}
                       className="group flex min-w-0 flex-col items-stretch gap-2 rounded-2xl border border-border bg-card p-3 transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring sm:border-transparent sm:bg-transparent sm:p-0">
                       <div className="flex min-w-0 items-center gap-3 sm:flex-col sm:gap-2 sm:px-2 sm:text-center">
-                        <div className={`shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-card ${avatarRing}`}>
-                          <RankedAvatar entry={entry} large />
+                        <div className="flex shrink-0 flex-col items-center gap-1.5">
+                          <span className="grid h-7 place-items-center">
+                            <Crown aria-hidden="true" className={crown} />
+                          </span>
+                          <div className={`rounded-full ring-2 ring-offset-2 ring-offset-card ${avatarRing}`}>
+                            <RankedAvatar entry={entry} large />
+                          </div>
                         </div>
                         <div className="min-w-0">
                           <p className="wrap-break-word font-semibold group-hover:underline">{entry.fullName}</p>
@@ -136,7 +144,6 @@ export function LeaderboardTab() {
                         </div>
                       </div>
                       <div className={`flex items-center justify-center gap-2 rounded-xl border bg-linear-to-b px-2 py-2 text-center sm:flex-col sm:gap-1 sm:rounded-t-2xl sm:rounded-b-lg sm:border-t-2 ${height} ${finish}`}>
-                        <Icon aria-hidden="true" className="size-4 sm:size-5" />
                         <span className="font-bold sm:text-2xl">Hạng {rank}</span>
                         <span className="text-sm font-medium">{title}</span>
                       </div>

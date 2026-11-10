@@ -31,7 +31,7 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -left-16 size-96 rounded-full bg-indigo-400/25 blur-3xl" />
         <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 space-y-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-300/15 px-3 py-1 text-sm font-semibold text-amber-200">
+            <span className="inline-flex items-center gap-2 rounded-full border-2 border-amber-300/65 bg-amber-300/15 px-3 py-1 text-sm font-semibold text-amber-200">
               <Trophy aria-hidden="true" className="size-4" /> Thành tích
             </span>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Trung tâm thành tích</h1>
@@ -40,7 +40,7 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-3 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-300/55 bg-white/10 px-3 py-2.5">
               <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-300/15">
                 <SqbCoin className="size-6" />
               </span>
@@ -49,7 +49,7 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
                 <p className="text-lg font-bold text-amber-200 tabular-nums">{userCoins?.toLocaleString('vi-VN') ?? '—'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-3 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl border-2 border-orange-300/55 bg-white/10 px-3 py-2.5">
               <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-orange-300/15">
                 <Flame className="size-5 text-orange-200" />
               </span>
@@ -59,12 +59,12 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
               </div>
             </div>
             <Button type="button" variant="ghost"
-              className={`min-h-11 focus-visible:border-white focus-visible:ring-white/60 ${hasCheckedInToday
-                ? 'border-emerald-200/40 bg-emerald-200/10 text-emerald-100 hover:bg-emerald-200/20 hover:text-emerald-50'
-                : 'border-emerald-100/40 bg-emerald-300 text-emerald-950 hover:bg-emerald-200 hover:text-emerald-950'}`}
+              className={`min-h-11 rounded-full border-2 focus-visible:border-white focus-visible:ring-white/60 ${hasCheckedInToday
+                ? 'border-emerald-200/65 bg-emerald-200/10 text-emerald-100 hover:bg-emerald-200/20 hover:text-emerald-50'
+                : 'border-emerald-300/80 bg-linear-to-r from-emerald-600 via-emerald-700 to-teal-700 font-bold text-white shadow-lg shadow-emerald-500/35 hover:border-emerald-200 hover:text-white hover:shadow-emerald-400/50'}`}
               disabled={hasCheckedInToday === undefined && !onRetryCheckIn}
               onClick={onRetryCheckIn ?? (() => setCheckInModalOpen(true))}>
-              {hasCheckedInToday ? <CheckCircle aria-hidden="true" /> : <Flame aria-hidden="true" />}
+              {hasCheckedInToday ? <CheckCircle aria-hidden="true" /> : <Flame aria-hidden="true" className="fill-amber-300 text-amber-300" />}
               {onRetryCheckIn ? 'Thử tải điểm danh' : hasCheckedInToday ? 'Xem điểm danh' : 'Điểm danh'}
             </Button>
           </div>
