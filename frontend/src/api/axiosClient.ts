@@ -8,9 +8,13 @@ declare module "axios" {
     export interface AxiosRequestConfig {
         skipToast?: boolean;
         skipAuthRefresh?: boolean;
+        preserveEnumKeys?: boolean;
         _retry?: boolean;
     }
 }
+
+const preserveEnumKeys: humps.HumpsProcessor = (key, convert, options) =>
+    /^[A-Z][A-Z0-9_]*$/.test(key) ? key : convert(key, options);
 
 export const axiosClient = axios.create({
     baseURL: API_BASE_URL,
@@ -37,7 +41,7 @@ axiosClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) 
         config.headers.Authorization = `Bearer ${token}`;
     }
     if (config.data && !(config.data instanceof FormData)) {
-        config.data = humps.decamelizeKeys(config.data);
+        config.data = humps.decamelizeKeys(config.data, config.preserveEnumKeys ? preserveEnumKeys : undefined);
     }
     if (config.params) {
         config.params = humps.decamelizeKeys(config.params);
@@ -47,7 +51,9 @@ axiosClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) 
 
 // Response Interceptor: Tự động Refresh Token khi 401 và chuyển snake_case -> camelCase bằng humps
 axiosClient.interceptors.response.use(
-    (response) => humps.camelizeKeys(response.data) as unknown as typeof response, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
+    (response) => humps.camelizeKeys(
+        response.data, response.config.preserveEnumKeys ? preserveEnumKeys : undefined
+    ) as unknown as typeof response, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
     async (error) => {
         if (axios.isCancel(error)) return Promise.reject(error);
 

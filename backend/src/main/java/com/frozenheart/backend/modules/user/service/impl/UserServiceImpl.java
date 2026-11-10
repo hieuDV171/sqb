@@ -220,6 +220,7 @@ public class UserServiceImpl implements UserService {
                 .timezone(userProfile.getTimezone())
                 .profileCompleted(profileCompleted)
                 .verified(userProfile.getUser().isVerified())
+                .hiddenChatPinConfigured(userProfile.getHiddenChatPin() != null && !userProfile.getHiddenChatPin().isBlank())
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
                 .gamificationPoints(getPublicPoints(userProfile.getUser().getId()))
                 .badgesCount(userProfile.getBadgesCount())

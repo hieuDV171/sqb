@@ -376,3 +376,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Trang thông báo và menu xem nhanh dùng cùng API con trỏ. Trang nối kết quả theo `pagination.after`, còn menu hiển thị trang đầu với giới hạn riêng.
 - Đánh dấu đã đọc cập nhật các trang đã lưu trong cả hai chế độ và làm mới dữ liệu sau khi API phản hồi. Thông báo đẩy khi đang mở ứng dụng yêu cầu tải lại danh sách.
+
+### [ADR-034] Định tuyến hàng đợi STOMP theo ID tài khoản
+
+- STOMP xác thực bằng access token và dùng ID trong JWT làm tên principal. ID này trùng với khóa mà dịch vụ chat dùng khi gửi tin mới và biên nhận đã đọc qua `convertAndSendToUser`. JWT và quyền của người dùng vẫn được giữ trong đối tượng xác thực.
+- Client đăng ký `/user/queue/messages` cho phiên của mình. Interceptor từ chối đích gửi hoặc đăng ký ngoài danh sách của chat, bao gồm hàng đợi vật lý và đăng ký theo ký tự đại diện. Các URL STOMP của client không đổi.

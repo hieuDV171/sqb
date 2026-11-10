@@ -41,6 +41,7 @@ export interface ProfileResponse {
   timezone?: string | null;
   profileCompleted: boolean;
   verified: boolean;
+  hiddenChatPinConfigured?: boolean;
 
   // Counters & Gamification
   totalProposedQuestions: number;

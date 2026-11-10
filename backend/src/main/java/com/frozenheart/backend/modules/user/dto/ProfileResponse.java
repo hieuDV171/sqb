@@ -65,6 +65,9 @@ public record ProfileResponse(
         @Schema(description = "Đã xác minh tài khoản", example = "true")
         boolean verified,
 
+        @Schema(description = "Đã thiết lập mã PIN kho trò chuyện ẩn (chỉ trả khi xem chính mình)", example = "false")
+        Boolean hiddenChatPinConfigured,
+
         // Counters & Gamification
         @Schema(description = "Tổng số câu hỏi đã đề xuất vào ngân hàng đề", example = "12")
         int totalProposedQuestions,

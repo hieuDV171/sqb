@@ -44,7 +44,7 @@ export interface NotificationDto {
   createdAt: string;
   target?: NotificationTargetDto;
   actor?: NotificationActorDto;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface NotificationListResponseDto {
@@ -71,26 +71,24 @@ export type PushNotificationType =
 
 export interface PushCategorySettingDto {
   enabled: boolean;
-  emailEnabled?: boolean;
+  description?: string;
 }
 
 export interface QuietHoursDto {
   enabled: boolean;
-  startHour: number; // 0-23
-  startMinute: number; // 0-59
-  endHour: number; // 0-23
-  endMinute: number; // 0-59
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
 }
 
 export interface PushSettingsResponseDto {
+  pushEnabled: boolean;
   categories: Record<PushNotificationType, PushCategorySettingDto>;
   quietHours: QuietHoursDto;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
 }
 
-export interface UpdatePushSettingsRequestDto {
-  categories?: Record<PushNotificationType, PushCategorySettingDto>;
-  quietHours?: QuietHoursDto;
-}
+export type UpdatePushSettingsRequestDto = PushSettingsResponseDto;
 
 // ==========================================
 // 3. ACTIVITY FEED (MODULE 14)

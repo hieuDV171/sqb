@@ -18,6 +18,7 @@ public class SetHiddenChatPinDto {
     @Schema(description = "Mã PIN mới gồm đúng 6 chữ số", example = "123456", requiredMode = Schema.RequiredMode.REQUIRED)
     private String pin;
 
-    @Schema(description = "Mã PIN cũ (bắt buộc nếu đã từng cài mã PIN trước đó)", example = "000000")
+    @Pattern(regexp = "^[0-9]{6}$", message = "Mã PIN cũ phải có đúng 6 chữ số")
+    @Schema(description = "Mã PIN cũ gồm đúng 6 chữ số (bắt buộc khi đổi PIN)", example = "000000")
     private String oldPin;
 }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { usePushSettings, useUpdatePushSettings } from '../hooks/useNotification';
 import type { PushSettingsResponseDto } from '../types/notification.types';
+import { QuietHoursTimePicker } from './QuietHoursTimePicker';
 
 const categoryOptions = [
   { key: 'ACADEMIC', label: 'Học thuật', description: 'Kết quả xét duyệt và phản hồi về câu hỏi.', icon: BookOpen },
@@ -13,23 +14,17 @@ const categoryOptions = [
   { key: 'SYSTEM', label: 'Hệ thống', description: 'Cập nhật về tài khoản và hệ thống.', icon: Shield },
 ] as const;
 
-function formatTime(hour: number, minute: number) {
-  return String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-}
-
 function PushSettingsForm({ settings, onClose }: { settings: PushSettingsResponseDto; onClose: () => void }) {
   const [categories, setCategories] = useState(settings.categories);
   const [quietEnabled, setQuietEnabled] = useState(settings.quietHours.enabled);
-  const [start, setStart] = useState(formatTime(settings.quietHours.startHour, settings.quietHours.startMinute));
-  const [end, setEnd] = useState(formatTime(settings.quietHours.endHour, settings.quietHours.endMinute));
+  const [start, setStart] = useState(settings.quietHours.startTime);
+  const [end, setEnd] = useState(settings.quietHours.endTime);
   const update = useUpdatePushSettings();
 
   return (
     <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => {
       event.preventDefault();
-      const [startHour, startMinute] = (start || formatTime(settings.quietHours.startHour, settings.quietHours.startMinute)).split(':').map(Number);
-      const [endHour, endMinute] = (end || formatTime(settings.quietHours.endHour, settings.quietHours.endMinute)).split(':').map(Number);
-      update.mutate({ categories, quietHours: { enabled: quietEnabled, startHour, startMinute, endHour, endMinute } },
+      update.mutate({ ...settings, categories, quietHours: { enabled: quietEnabled, startTime: start, endTime: end } },
         { onSuccess: onClose });
     }}>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
@@ -61,14 +56,8 @@ function PushSettingsForm({ settings, onClose }: { settings: PushSettingsRespons
           </label>
           {quietEnabled && (
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="space-y-1 text-sm">Từ
-                <input type="time" required value={start} onChange={(event) => setStart(event.target.value)}
-                  className="block min-h-11 w-full rounded-lg border border-input bg-background px-2" />
-              </label>
-              <label className="space-y-1 text-sm">Đến
-                <input type="time" required value={end} onChange={(event) => setEnd(event.target.value)}
-                  className="block min-h-11 w-full rounded-lg border border-input bg-background px-2" />
-              </label>
+              <QuietHoursTimePicker label="Từ" value={start} onChange={setStart} />
+              <QuietHoursTimePicker label="Đến" value={end} onChange={setEnd} />
             </div>
           )}
         </fieldset>

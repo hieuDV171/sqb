@@ -22,7 +22,6 @@ export function MessagesPage() {
 
   // Modals state
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-  const [pinModalMode, setPinModalMode] = useState<'UNLOCK' | 'SET_PIN'>('UNLOCK');
   const [isNewDirectModalOpen, setIsNewDirectModalOpen] = useState(false);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [isGroupMembersModalOpen, setIsGroupMembersModalOpen] = useState(false);
@@ -47,11 +46,6 @@ export function MessagesPage() {
     navigate('/messages');
   };
 
-  const handleOpenPinModal = (mode: 'UNLOCK' | 'SET_PIN') => {
-    setPinModalMode(mode);
-    setIsPinModalOpen(true);
-  };
-
   return (
     <div className="mx-auto flex h-[max(24rem,calc(100dvh-var(--app-header-height)-var(--app-mobile-nav-height)-4rem-env(safe-area-inset-bottom)))] max-w-7xl overflow-hidden rounded-2xl border border-border bg-card md:h-[max(24rem,calc(100dvh-var(--app-header-height)-3rem))] lg:h-[max(24rem,calc(100dvh-var(--app-header-height)-4rem))]">
       {/* Cột trái: Danh sách hội thoại (Ẩn trên màn hình nhỏ nếu đang mở chat) */}
@@ -64,7 +58,7 @@ export function MessagesPage() {
           onSelectConversation={handleSelectConversation}
           onOpenNewDirectModal={() => setIsNewDirectModalOpen(true)}
           onOpenCreateGroupModal={() => setIsCreateGroupModalOpen(true)}
-          onOpenPinModal={handleOpenPinModal}
+          onOpenPinModal={() => setIsPinModalOpen(true)}
           onCloseConversation={handleBackToList}
         />
       </div>
@@ -122,7 +116,6 @@ export function MessagesPage() {
       {/* Modals */}
       <HiddenChatPinModal
         isOpen={isPinModalOpen}
-        initialMode={pinModalMode}
         onClose={() => setIsPinModalOpen(false)}
       />
 

@@ -28,7 +28,7 @@ interface ConversationListProps {
   onOpenNewDirectModal: () => void;
   onOpenCreateGroupModal: () => void;
   onCloseConversation: () => void;
-  onOpenPinModal: (mode: 'UNLOCK' | 'SET_PIN') => void;
+  onOpenPinModal: () => void;
 }
 
 type TabType = 'ALL' | 'GROUPS' | 'HIDDEN';
@@ -84,7 +84,7 @@ export function ConversationList({
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    if (tab === 'HIDDEN' && !isPinUnlocked) onOpenPinModal('UNLOCK');
+    if (tab === 'HIDDEN' && !isPinUnlocked) onOpenPinModal();
   };
 
   const handleHide = (id: number) => {
@@ -154,7 +154,7 @@ export function ConversationList({
           <div className="space-y-3 p-6 text-center">
             <FolderLock aria-hidden="true" className="mx-auto size-7 text-warning" />
             <p className="font-semibold">Kho ẩn đang khóa</p>
-            <Button variant="outline" className="min-h-11" onClick={() => onOpenPinModal('UNLOCK')}>Mở khóa</Button>
+            <Button variant="outline" className="min-h-11" onClick={onOpenPinModal}>Mở kho ẩn</Button>
           </div>
         ) : current.isLoading ? (
           <div aria-busy="true" aria-label="Đang tải hội thoại" className="space-y-2">

@@ -17,6 +17,7 @@ import type {
   DeleteMessageRequestDto,
 } from '../types/chat.types';
 import { toast } from '@/stores/useToastStore';
+import type { ProfileResponse } from '@/types/user.types';
 
 export const CHAT_QUERY_KEYS = {
   conversations: ['conversations'] as const,
@@ -163,9 +164,13 @@ export function useUnhideConversation() {
  * Mutation cài đặt / đổi mã PIN kho ẩn
  */
 export function useSetHiddenPin() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: SetHiddenChatPinDto) => chatService.setHiddenChatPin(data),
     onSuccess: () => {
+      queryClient.setQueryData<ProfileResponse>(['userProfile', 'me'], (current) =>
+        current ? { ...current, hiddenChatPinConfigured: true } : current,
+      );
       toast.success('Cập nhật mã PIN kho ẩn thành công!');
     },
   });

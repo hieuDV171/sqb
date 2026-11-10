@@ -15,10 +15,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+import java.util.regex.Pattern;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
+
+    private static final Set<String> CHAT_COMMANDS = Set.of("/app/chat.send", "/app/chat.read", "/app/chat.typing");
+    private static final Pattern TYPING_TOPIC = Pattern.compile("/topic/conv\\.[1-9][0-9]*\\.typing");
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -26,6 +32,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+
+        if (accessor != null) {
+            checkClientDestination(accessor);
+        }
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authHeader = accessor.getFirstNativeHeader("Authorization");
@@ -45,17 +55,19 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             try {
                 JwtPayload jwtPayload = jwtService.decodeToken(authHeader);
                 String username = jwtPayload.getUsername();
+                Long userId = jwtPayload.getUserId();
 
                 if (jwtPayload.getTokenType() != TokenType.ACCESS
                         || jwtPayload.getAccountState() != AccountState.ACTIVE) {
                     throw new MessageDeliveryException("Unauthorized: Account setup is incomplete");
                 }
 
-                if (username != null) {
+                if (username != null && userId != null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                     if (jwtService.isTokenValid(jwtPayload, userDetails)) {
+                        // Spring routes /user destinations by Principal#getName. Chat addresses users by ID.
                         UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                                UsernamePasswordAuthenticationToken.authenticated(userId.toString(), null, userDetails.getAuthorities());
                         authentication.setDetails(jwtPayload);
                         accessor.setUser(authentication);
                         log.debug("[WebSocketAuthInterceptor] WebSocket authenticated user: {} (ID: {})", username, jwtPayload.getUserId());
@@ -64,8 +76,8 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                         throw new MessageDeliveryException("Unauthorized: Token is expired or invalid");
                     }
                 } else {
-                    log.error("[WebSocketAuthInterceptor] WebSocket CONNECT rejected: Username is null");
-                    throw new MessageDeliveryException("Unauthorized: Username is null");
+                    log.error("[WebSocketAuthInterceptor] WebSocket CONNECT rejected: Missing account identity");
+                    throw new MessageDeliveryException("Unauthorized: Missing account identity");
                 }
             } catch (MessageDeliveryException mde) {
                 throw mde;
@@ -76,5 +88,25 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         }
 
         return message;
+    }
+
+    private static void checkClientDestination(StompHeaderAccessor accessor) {
+        StompCommand command = accessor.getCommand();
+        if (command != StompCommand.SEND && command != StompCommand.SUBSCRIBE) {
+            return;
+        }
+
+        String destination = accessor.getDestination();
+        if (JwtPayload.getUserId(accessor.getUser()) == null || destination == null) {
+            throw new MessageDeliveryException("Unauthorized: Missing STOMP identity or destination");
+        }
+
+        // Clients must not subscribe to physical broker queues or publish directly to them.
+        boolean allowed = command == StompCommand.SEND
+                ? CHAT_COMMANDS.contains(destination)
+                : "/user/queue/messages".equals(destination) || TYPING_TOPIC.matcher(destination).matches();
+        if (!allowed) {
+            throw new MessageDeliveryException("Forbidden: Invalid STOMP destination");
+        }
     }
 }

@@ -58,7 +58,8 @@ export const notificationService = {
    */
   getPushSettings: async (): Promise<GlobalResponse<PushSettingsResponseDto>> => {
     return axiosClient.get<GlobalResponse<PushSettingsResponseDto>, GlobalResponse<PushSettingsResponseDto>>(
-      '/settings/push'
+      '/settings/push',
+      { preserveEnumKeys: true }
     );
   },
 
@@ -71,7 +72,8 @@ export const notificationService = {
   ): Promise<GlobalResponse<PushSettingsResponseDto>> => {
     return axiosClient.put<GlobalResponse<PushSettingsResponseDto>, GlobalResponse<PushSettingsResponseDto>>(
       '/settings/push',
-      data
+      data,
+      { preserveEnumKeys: true }
     );
   },
 
