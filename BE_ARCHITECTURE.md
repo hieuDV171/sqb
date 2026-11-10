@@ -387,3 +387,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Cặp access token và refresh token có cùng `sessionId`. Mỗi lần đăng nhập cấp ID mới. Khi xoay refresh token, Redis chỉ ghi đè nếu token được trình vẫn là token hiện tại. Token cũ chưa có ID nhận ID ở lần refresh tiếp theo.
 - Redis giữ quyền mở kho tối đa 15 phút. Máy chủ kiểm tra quyền theo tài khoản và `sessionId`, đồng thời đối chiếu phiên với refresh token còn hiệu lực. Khóa thủ công xóa quyền của phiên gọi. Đăng xuất hoặc đăng nhập lại làm quyền của phiên trước mất hiệu lực.
 - REST kiểm tra quyền trước khi đọc danh sách, lịch sử và thao tác trên hội thoại ẩn. STOMP đưa cả sự kiện đang gõ vào hàng đợi cá nhân. Broker kiểm tra quyền mở kho cho từng socket nhận dữ liệu ẩn. Việc trích dẫn tin nhắn chỉ áp dụng trong cùng hội thoại.
+
+### [ADR-036] Cập nhật thu hồi tin nhắn qua STOMP
+
+- API thu hồi cho mọi người phát `MESSAGE_REVOKED` sau khi giao dịch lưu hoàn tất. Event chỉ có ID hội thoại và ID tin nhắn. Dùng cùng bộ phát hàng đợi cá nhân và kiểm tra quyền kho ẩn như tin mới.
+- Giữ thứ tự xử lý các frame đến và đi trong mỗi kết nối. STOMP dùng chung cấu hình JSON `snake_case` với REST. Hai chiều của trạng thái đang nhập dùng `typing`, còn trạng thái thu hồi trong lịch sử và danh sách hội thoại dùng `revoked`. Frontend dùng sự kiện thu hồi để cập nhật tin nhắn, trích dẫn và bản xem trước hội thoại ngay trong cache.

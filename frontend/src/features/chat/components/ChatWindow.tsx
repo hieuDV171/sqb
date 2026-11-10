@@ -48,7 +48,7 @@ function UnlockedChatWindow({
 }: ChatWindowProps) {
   const { typingMap, isPinUnlocked } = useChatStore();
   const realtime = useStompStatus();
-  const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
+  const [replyToId, setReplyToId] = useState<number | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Lấy thông tin hội thoại từ cache của danh sách
@@ -56,6 +56,12 @@ function UnlockedChatWindow({
   const { data: hiddenData } = useHiddenConversations(isPinUnlocked);
   const { data: messageData } = useMessages(conversationId);
   const hideMutation = useHideConversation();
+  const replyTo = replyToId === null ? null : messageData?.pages
+    .flatMap((page) => page.messages)
+    .find((message) => message.messageId === replyToId && !message.revoked) ?? null;
+  const imageStillVisible = previewImageUrl && messageData?.pages.some((page) => page.messages.some(
+    (message) => !message.revoked && message.mediaUrls?.includes(previewImageUrl),
+  ));
 
   const conversation = useMemo(() => {
     const pages = [...(conversationsData?.pages ?? []), ...(isPinUnlocked ? hiddenData?.pages ?? [] : [])];
@@ -111,7 +117,7 @@ function UnlockedChatWindow({
             </h3>
 
             {/* Subtitle / Typing notification */}
-            <div className="text-xs text-muted-foreground truncate">
+          <div className="text-xs text-muted-foreground truncate" aria-live="polite">
               {typingUsers.length > 0 ? (
                 <span className="text-academic font-medium animate-pulse">
                   {typingUsers.join(', ')} đang soạn tin...
@@ -155,7 +161,7 @@ function UnlockedChatWindow({
       <MessageList
         conversationId={conversationId}
         isGroup={isGroup}
-        onReplyMessage={(msg) => setReplyTo(msg)}
+        onReplyMessage={(msg) => setReplyToId(msg.messageId)}
         onDeleteMessage={(msg) => onOpenDeleteModal?.(msg)}
         onImageClick={(url) => setPreviewImageUrl(url)}
       />
@@ -171,11 +177,11 @@ function UnlockedChatWindow({
         conversationId={conversationId}
         replyTo={replyTo}
         canSend={realtime === 'CONNECTED'}
-        onCancelReply={() => setReplyTo(null)}
+        onCancelReply={() => setReplyToId(null)}
       />
 
       {/* Image Lightbox Modal */}
-      {previewImageUrl && (
+      {previewImageUrl && imageStillVisible && (
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setPreviewImageUrl(null)}

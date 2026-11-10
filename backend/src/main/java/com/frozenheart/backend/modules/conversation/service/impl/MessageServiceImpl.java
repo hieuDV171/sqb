@@ -10,6 +10,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.conversation.constant.MessageDeleteScope;
 import com.frozenheart.backend.modules.conversation.dto.*;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserDeletedMessageOnlyMeRepository;
@@ -19,6 +20,7 @@ import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,7 @@ public class MessageServiceImpl implements MessageService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final HiddenChatAccess hiddenChatAccess;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -73,16 +76,20 @@ public class MessageServiceImpl implements MessageService {
 
         // Batch fetch sender profiles to eliminate N+1
         Set<Long> senderUserIds = new HashSet<>();
+        Set<Long> replyIds = new HashSet<>();
         for (Message m : messages) {
             if (m.getSender() != null) {
                 senderUserIds.add(m.getSender().getId());
             }
-            if (m.getReplyToMessage() != null && Objects.equals(m.getReplyToMessage().getConversation().getId(), conversationId)
-                    && m.getReplyToMessage().getSender() != null) {
-                senderUserIds.add(m.getReplyToMessage().getSender().getId());
+            Message reply = m.getReplyToMessage();
+            if (reply != null && Objects.equals(reply.getConversation().getId(), conversationId)) {
+                replyIds.add(reply.getId());
+                senderUserIds.add(reply.getSender().getId());
             }
         }
 
+        Set<Long> deletedReplyIds = replyIds.isEmpty() ? Set.of()
+                : userDeletedMessageOnlyMeRepository.findDeletedMessageIds(currentUserId, replyIds);
         Map<Long, UserProfile> profileMap = senderUserIds.isEmpty() ? Map.of()
                 : userProfileRepository.findAllById(senderUserIds).stream()
                         .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
@@ -91,37 +98,23 @@ public class MessageServiceImpl implements MessageService {
             User sender = m.getSender();
             UserProfile senderProfile = profileMap.get(sender.getId());
 
-            boolean isRevoked = m.getDeletedAt() != null;
-            String content = isRevoked ? "Tin nhắn đã bị thu hồi" : m.getContent();
-            List<String> mediaUrls = (isRevoked || m.getMediaUrls() == null) ? null
+            boolean revoked = m.getDeletedAt() != null;
+            String content = revoked ? "Tin nhắn đã bị thu hồi" : m.getContent();
+            List<String> mediaUrls = (revoked || m.getMediaUrls() == null) ? null
                     : m.getMediaUrls().stream().map(MediaItem::url).collect(Collectors.toList());
 
             ReplyMessagePreviewDto replyPreview = null;
-            if (m.getReplyToMessage() != null && Objects.equals(m.getReplyToMessage().getConversation().getId(), conversationId)) {
-                Message replyMsg = m.getReplyToMessage();
-                User replySender = replyMsg.getSender();
-                UserProfile replyProfile = profileMap.get(replySender.getId());
-                String replySenderName = (replyProfile != null && replyProfile.getFullName() != null)
-                        ? replyProfile.getFullName()
-                        : replySender.getEmail();
-
-                String previewContent;
-                if (replyMsg.getDeletedAt() != null) {
-                    previewContent = "Tin nhắn đã bị thu hồi";
-                } else if (replyMsg.getContent() != null && !replyMsg.getContent().isBlank()) {
-                    previewContent = replyMsg.getContent().length() > 60
-                            ? replyMsg.getContent().substring(0, 60) + "..."
-                            : replyMsg.getContent();
+            Message reply = m.getReplyToMessage();
+            if (reply != null && Objects.equals(reply.getConversation().getId(), conversationId)) {
+                if (deletedReplyIds.contains(reply.getId())) {
+                    replyPreview = ReplyMessagePreviewDto.unavailable(reply.getId());
                 } else {
-                    previewContent = "[Tệp đính kèm]";
+                    User replySender = reply.getSender();
+                    UserProfile replyProfile = profileMap.get(replySender.getId());
+                    String replySenderName = replyProfile != null && replyProfile.getFullName() != null
+                            ? replyProfile.getFullName() : replySender.getEmail();
+                    replyPreview = ReplyMessagePreviewDto.fromMessage(reply, replySenderName);
                 }
-
-                replyPreview = ReplyMessagePreviewDto.builder()
-                        .messageId(replyMsg.getId())
-                        .senderId(replySender.getId())
-                        .senderName(replySenderName)
-                        .contentPreview(previewContent)
-                        .build();
             }
 
             return MessageDto.builder()
@@ -136,16 +129,19 @@ public class MessageServiceImpl implements MessageService {
                     .replyToMessage(replyPreview)
                     .createdAt(m.getCreatedAt())
                     .isEdited(m.getEditedAt() != null)
-                    .isRevoked(isRevoked)
+                    .revoked(revoked)
                     .build();
         }).collect(Collectors.toList());
 
-        // Update read receipt for participant
-        if (!messages.isEmpty()) {
+        // Loading older history must not move the read receipt backwards.
+        if (cursor == Long.MAX_VALUE && !messages.isEmpty()) {
             Message newestMessage = messages.getFirst();
-            participant.setLastReadMessage(newestMessage);
-            participant.setLastMessageReadAt(Instant.now());
-            userParticipantRepository.save(participant);
+            Message lastRead = participant.getLastReadMessage();
+            if (lastRead == null || newestMessage.getId() > lastRead.getId()) {
+                participant.setLastReadMessage(newestMessage);
+                participant.setLastMessageReadAt(Instant.now());
+                userParticipantRepository.save(participant);
+            }
         }
 
         CursorPaginationDto pagination = CursorPaginationDto.builder()
@@ -206,8 +202,11 @@ public class MessageServiceImpl implements MessageService {
                         "Bạn chỉ có thể thu hồi tin nhắn do chính bạn gửi");
             }
 
-            message.setDeletedAt(Instant.now());
-            messageRepository.save(message);
+            if (message.getDeletedAt() == null) {
+                message.setDeletedAt(Instant.now());
+                messageRepository.save(message);
+                eventPublisher.publishEvent(new WsMessageRevokedDto(conversationId, messageId));
+            }
 
             return DeleteMessageResponseDto.builder()
                     .messageId(messageId)

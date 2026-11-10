@@ -323,9 +323,14 @@ export function useDeleteMessage() {
       data: DeleteMessageRequestDto;
     }) => chatService.deleteMessage(variables.messageId, variables.data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.messages(variables.conversationId) });
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
-      toast.success(variables.data.scope === 'EVERYONE' ? 'Đã thu hồi tin nhắn' : 'Đã xóa tin nhắn ở phía bạn');
+      if (variables.data.scope === 'EVERYONE') {
+        useChatStore.getState().markMessageRevoked(variables.conversationId, variables.messageId);
+        toast.success('Đã thu hồi tin nhắn');
+      } else {
+        void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.messages(variables.conversationId) });
+        void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+        toast.success('Đã xóa tin nhắn ở phía bạn');
+      }
     },
   });
 }

@@ -145,6 +145,7 @@ public class ConversationServiceImpl implements ConversationService {
                                                 .messageId(lastMsg.getId())
                                                 .content(content)
                                                 .messageType(lastMsg.getMessageType())
+                                                .revoked(lastMsg.getDeletedAt() != null)
                                                 .createdAt(lastMsg.getCreatedAt())
                                                 .build();
                         }

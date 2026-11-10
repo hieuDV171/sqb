@@ -7,22 +7,21 @@ import com.frozenheart.backend.core.entity.media.MediaItem;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.modules.conversation.constant.ChatWsEventType;
+import com.frozenheart.backend.modules.conversation.dto.ReplyMessagePreviewDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.*;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
+import com.frozenheart.backend.modules.conversation.repository.UserDeletedMessageOnlyMeRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.ChatWebSocketService;
+import com.frozenheart.backend.modules.conversation.service.ChatRealtimePublisher;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
-import com.frozenheart.backend.modules.conversation.service.HiddenChatOutboundGuard;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +29,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,9 +37,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ChatRealtimePublisher realtimePublisher;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final UserDeletedMessageOnlyMeRepository userDeletedMessageOnlyMeRepository;
     private final UserParticipantRepository userParticipantRepository;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
@@ -108,12 +109,8 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         }
 
         // Xử lý reply
-        Message replyToMessage = null;
-        if (request.getReplyToMessageId() != null) {
-            replyToMessage = messageRepository.findById(request.getReplyToMessageId())
-                    .filter(message -> Objects.equals(message.getConversation().getId(), conversation.getId()))
-                    .orElse(null);
-        }
+        Message replyToMessage = request.getReplyToMessageId() == null ? null
+                : messageRepository.findReplyTarget(request.getReplyToMessageId(), conversation.getId()).orElse(null);
 
         Instant now = Instant.now();
         MessageType msgType = request.getMessageType() != null ? request.getMessageType() : MessageType.TEXT;
@@ -155,6 +152,21 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 ? mediaItems.stream().map(MediaItem::url).toList()
                 : Collections.emptyList();
 
+        ReplyMessagePreviewDto replyPreview = null;
+        Set<Long> viewersWithoutOriginal = Set.of();
+        if (replyToMessage != null) {
+            User replySender = replyToMessage.getSender();
+            UserProfile replyProfile = Objects.equals(replySender.getId(), currentUserId) ? senderProfile
+                    : userProfileRepository.findByUserId(replySender.getId()).orElse(null);
+            String replySenderName = replyProfile != null && replyProfile.getFullName() != null
+                    ? replyProfile.getFullName() : replySender.getEmail();
+            replyPreview = ReplyMessagePreviewDto.fromMessage(replyToMessage, replySenderName);
+            List<Long> viewerIds = allParticipants.stream().map(participant -> participant.getUser().getId()).toList();
+            if (!viewerIds.isEmpty()) {
+                viewersWithoutOriginal = userDeletedMessageOnlyMeRepository.findViewersWhoDeleted(replyToMessage.getId(), viewerIds);
+            }
+        }
+
         WsMessageBroadcastDto broadcastDto = WsMessageBroadcastDto.builder()
                 .eventType(ChatWsEventType.NEW_MESSAGE)
                 .messageId(savedMessage.getId())
@@ -165,12 +177,17 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .messageType(savedMessage.getMessageType())
                 .mediaUrls(mediaUrlStrings)
                 .replyToMessageId(replyToMessage != null ? replyToMessage.getId() : null)
+                .replyToMessage(replyPreview)
                 .createdAt(savedMessage.getCreatedAt())
                 .isEdited(false)
                 .build();
 
         // Broadcast tới queue cá nhân /user/queue/messages của từng thành viên
-        allParticipants.forEach(participant -> deliver(participant, broadcastDto));
+        WsMessageBroadcastDto redacted = viewersWithoutOriginal.isEmpty() ? broadcastDto : broadcastDto.toBuilder()
+                .replyToMessage(ReplyMessagePreviewDto.unavailable(broadcastDto.getReplyToMessageId())).build();
+        for (UserParticipant participant : allParticipants) {
+            realtimePublisher.deliver(participant, viewersWithoutOriginal.contains(participant.getUser().getId()) ? redacted : broadcastDto);
+        }
     }
 
     @Override
@@ -221,17 +238,17 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .filter(p -> !Objects.equals(p.getUser().getId(), currentUserId))
                 .toList();
 
-        otherParticipants.forEach(recipient -> deliver(recipient, broadcastDto));
+        otherParticipants.forEach(recipient -> realtimePublisher.deliver(recipient, broadcastDto));
     }
 
     @Override
     @Transactional(readOnly = true)
     public void handleTyping(JwtPayload session, TypingWsRequestDto request) {
-        if (request == null || request.getConversationId() == null) {
+        if (request == null || request.conversationId() == null) {
             return;
         }
         Long currentUserId = session.getUserId();
-        List<UserParticipant> participants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(request.getConversationId());
+        List<UserParticipant> participants = userParticipantRepository.findByConversationIdAndLeftAtIsNull(request.conversationId());
         UserParticipant sender = participants.stream()
                 .filter(participant -> Objects.equals(participant.getUser().getId(), currentUserId))
                 .findFirst().orElse(null);
@@ -240,26 +257,21 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         }
 
         UserProfile userProfile = userProfileRepository.findByUserId(currentUserId).orElse(null);
-        User currentUser = userRepository.findById(currentUserId).orElse(null);
+        User currentUser = sender.getUser();
 
         UserSummaryDto userSummary = UserSummaryDto.builder()
                 .userId(currentUserId)
-                .fullName(userProfile != null ? userProfile.getFullName()
-                        : (currentUser != null ? currentUser.getEmail() : ""))
+                .fullName(userProfile != null && userProfile.getFullName() != null
+                        ? userProfile.getFullName() : currentUser.getEmail())
                 .avatarUrl(userProfile != null ? userProfile.getAvatarUrl() : null)
                 .frameUrl(userProfile != null ? userProfile.getAvatarFrameUrl() : null)
                 .build();
 
-        WsTypingBroadcastDto broadcastDto = WsTypingBroadcastDto.builder()
-                .eventType(ChatWsEventType.TYPING_STATUS)
-                .conversationId(request.getConversationId())
-                .user(userSummary)
-                .isTyping(request.isTyping())
-                .timestamp(Instant.now())
-                .build();
+        var broadcastDto = new WsTypingBroadcastDto(ChatWsEventType.TYPING_STATUS,
+                request.conversationId(), userSummary, request.typing(), Instant.now());
 
         participants.stream().filter(participant -> participant != sender)
-                .forEach(participant -> deliver(participant, broadcastDto));
+                .forEach(participant -> realtimePublisher.deliver(participant, broadcastDto));
     }
 
     private boolean canAccess(UserParticipant participant, JwtPayload session) {
@@ -267,15 +279,4 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 && (participant.getHiddenAt() == null || hiddenChatAccess.isUnlocked(session));
     }
 
-    private void deliver(UserParticipant participant, Object event) {
-        String userId = participant.getUser().getId().toString();
-        if (participant.getHiddenAt() == null) {
-            messagingTemplate.convertAndSendToUser(userId, "/queue/messages", event);
-            return;
-        }
-        var headers = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
-        headers.setNativeHeader(HiddenChatOutboundGuard.HIDDEN_CHAT_HEADER, "true");
-        headers.setLeaveMutable(true);
-        messagingTemplate.convertAndSendToUser(userId, "/queue/messages", event, headers.getMessageHeaders());
-    }
 }

@@ -50,7 +50,10 @@ export function ConversationItem({
       );
     }
 
-    const { senderId, senderName, content, messageType } = conversation.lastMessage;
+    const { senderId, senderName, content, messageType, revoked } = conversation.lastMessage;
+    if (revoked) {
+      return <span className="block truncate text-xs italic text-muted-foreground">{content}</span>;
+    }
     const isMe = senderId === currentUserId;
     const prefix = isMe ? 'Bạn: ' : isGroup ? `${senderName?.split(' ').pop() || 'Thành viên'}: ` : '';
 

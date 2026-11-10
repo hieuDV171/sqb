@@ -97,13 +97,17 @@ public class OpenApiConfig {
                 | :--- | :--- | :--- |
                 | `/app/chat.send` | Gửi tin nhắn mới trong hội thoại | `SendWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `content` (String)<br>• `message_type` (TEXT / IMAGE / FILE)<br>• `media_urls` (List&lt;String&gt;)<br>• `reply_to_message_id` (Long) |
                 | `/app/chat.read` | Báo đã đọc tin nhắn trong cuộc hội thoại | `ReadWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `message_id` (Long) |
-                | `/app/chat.typing` | Phát sự kiện đang soạn / dừng soạn tin nhắn | `TypingWsRequestDto`<br>• `conversation_id` (Long)<br>• `is_typing` (Boolean) |
+                | `/app/chat.typing` | Phát sự kiện đang soạn / dừng soạn tin nhắn | `TypingWsRequestDto`<br>• `conversation_id` (Long)<br>• `typing` (Boolean) |
 
                 #### 2. Kênh Client đăng ký lắng nghe (Subscribe Topics / Queues):
 
                 | STOMP Topic / Queue | Mô tả sự kiện | Payload DTO nhận được (snake_case) |
                 | :--- | :--- | :--- |
-                | `/user/queue/messages` | Nhận tin nhắn, biên nhận đã đọc và trạng thái đang soạn. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` |
+                | `/user/queue/messages` | Nhận tin nhắn mới, thu hồi tin nhắn, biên nhận đã đọc và trạng thái đang soạn. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsMessageRevokedDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` |
+
+                Với tin nhắn trả lời, `NEW_MESSAGE` chứa `reply_to_message` cùng cấu trúc với lịch sử REST, gồm ID tin gốc, người gửi và `content_preview`. Nếu người nhận đã xóa tin gốc ở phía mình, bản trích dẫn chỉ báo tin gốc không còn hiển thị.
+
+                Sau khi thu hồi với mọi người được lưu thành công, `MESSAGE_REVOKED` gửi `conversation_id` và `message_id` tới thành viên còn tham gia. Xóa tin ở phía mình không tạo sự kiện này.
                 """;
 
         return new OpenAPI()

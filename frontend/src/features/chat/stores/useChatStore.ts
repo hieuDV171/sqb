@@ -37,7 +37,7 @@ interface ChatStoreState {
 
   // Danh sách người dùng đang gõ theo từng cuộc hội thoại: conversationId -> userId -> fullName
   typingMap: Record<number, Record<number, { fullName: string; timer?: ReturnType<typeof setTimeout> }>>;
-  setTypingUser: (conversationId: number, user: UserSummaryDto, isTyping: boolean) => void;
+  setTypingUser: (conversationId: number, user: UserSummaryDto, typing: boolean) => void;
 
   // Các hành động gửi tin nhắn / STOMP
   sendMessage: (
@@ -48,10 +48,11 @@ interface ChatStoreState {
     replyToMessageId?: number
   ) => boolean;
   sendReadReceipt: (conversationId: number, messageId: number) => boolean;
-  sendTyping: (conversationId: number, isTyping: boolean) => boolean;
+  sendTyping: (conversationId: number, typing: boolean) => boolean;
 
   // Xử lý các gói tin WS nhận từ server
   handleIncomingWsMessage: (dto: WsMessageBroadcastDto, hidden?: boolean) => void;
+  markMessageRevoked: (conversationId: number, messageId: number) => void;
   handleIncomingReadReceipt: (dto: WsReadReceiptBroadcastDto) => void;
   handleIncomingTyping: (dto: WsTypingBroadcastDto) => void;
 }
@@ -155,11 +156,11 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
 
   typingMap: {},
 
-  setTypingUser: (conversationId, user, isTyping) => {
+  setTypingUser: (conversationId, user, typing) => {
     set((state) => {
       const convTyping = { ...(state.typingMap[conversationId] || {}) };
 
-      if (!isTyping) {
+      if (!typing) {
         if (convTyping[user.userId]) {
           if (convTyping[user.userId].timer) {
             clearTimeout(convTyping[user.userId].timer);
@@ -207,10 +208,10 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
     });
   },
 
-  sendTyping: (conversationId, isTyping) => {
+  sendTyping: (conversationId, typing) => {
     return stompClient.send('/app/chat.typing', {
       conversationId,
-      isTyping,
+      typing,
     });
   },
 
@@ -228,10 +229,13 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
       content: dto.content || '',
       messageType: dto.messageType,
       mediaUrls: dto.mediaUrls || [],
-      replyToMessage: null,
+      replyToMessage: dto.replyToMessage ?? (dto.replyToMessageId ? {
+        messageId: dto.replyToMessageId,
+        contentPreview: 'Xem tin nhắn gốc',
+      } : null),
       createdAt: dto.createdAt,
       isEdited: dto.isEdited,
-      isRevoked: false,
+      revoked: false,
     };
 
     // 2. Cập nhật cache của danh sách tin nhắn nếu cuộc hội thoại đang mở
@@ -313,6 +317,53 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
     }
   },
 
+  markMessageRevoked: (conversationId, messageId) => {
+    const content = 'Tin nhắn đã bị thu hồi';
+    const messagesKey = CHAT_QUERY_KEYS.messages(conversationId);
+    const conversationKeys = [CHAT_QUERY_KEYS.conversations, CHAT_QUERY_KEYS.hiddenConversations];
+    const fetchingKeys = [messagesKey, ...conversationKeys]
+      .filter((key) => queryClient.getQueryState(key)?.fetchStatus === 'fetching');
+
+    // A request started before the revocation may still contain the original message.
+    for (const queryKey of fetchingKeys) {
+      void queryClient.cancelQueries({ queryKey, exact: true }, { revert: false });
+    }
+
+    queryClient.setQueryData<InfiniteData<MessageListResponseDto>>(messagesKey, (current) => current && ({
+      ...current,
+      pages: current.pages.map((page) => ({
+        ...page,
+        messages: page.messages.map((message) => {
+          if (message.messageId === messageId) {
+            return { ...message, content, revoked: true, mediaUrls: [], replyToMessage: null };
+          }
+          const quote = message.replyToMessage;
+          return quote?.messageId === messageId && !quote.unavailable
+            ? { ...message, replyToMessage: { ...quote, contentPreview: content } }
+            : message;
+        }),
+      })),
+    }));
+
+    for (const key of conversationKeys) {
+      queryClient.setQueryData<InfiniteData<ConversationListResponseDto>>(key, (current) => current && ({
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          items: page.items.map((conversation) => {
+            const lastMessage = conversation.lastMessage;
+            return conversation.conversationId === conversationId && lastMessage?.messageId === messageId
+              ? { ...conversation, lastMessage: { ...lastMessage, content, revoked: true } }
+              : conversation;
+          }),
+        })),
+      }));
+    }
+    for (const queryKey of fetchingKeys) {
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    }
+  },
+
   handleIncomingReadReceipt: (dto) => {
     // Cập nhật trạng thái đã đọc nếu cần
     console.debug('[ChatStore] Message read receipt received:', dto);
@@ -321,7 +372,7 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
   handleIncomingTyping: (dto) => {
     const currentUserId = useAuthStore.getState().user?.id;
     if (dto.user.userId === currentUserId) return;
-    get().setTypingUser(dto.conversationId, dto.user, dto.isTyping);
+    get().setTypingUser(dto.conversationId, dto.user, dto.typing);
   },
 }));
 

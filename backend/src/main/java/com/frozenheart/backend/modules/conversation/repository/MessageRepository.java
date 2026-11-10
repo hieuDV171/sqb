@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
@@ -47,6 +48,13 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
         @Param("userId") Long userId,
         @Param("cursor") Long cursor,
         Pageable pageable);
+
+    @Query("""
+        SELECT m FROM Message m
+        JOIN FETCH m.sender
+        WHERE m.id = :id AND m.conversation.id = :conversationId
+        """)
+    Optional<Message> findReplyTarget(@Param("id") Long id, @Param("conversationId") Long conversationId);
 
     @Query("SELECT m FROM Message m JOIN FETCH m.sender s JOIN FETCH m.conversation c WHERE m.id = :id")
     java.util.Optional<Message> findByIdFetchSenderAndConversationForSearch(@Param("id") Long id);

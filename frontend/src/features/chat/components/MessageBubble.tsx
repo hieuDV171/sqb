@@ -8,6 +8,7 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   showSenderName?: boolean;
   onReply: (message: MessageDto) => void;
+  onJumpToOriginal: (messageId: number) => void;
   onDelete: (message: MessageDto) => void;
   onImageClick?: (url: string) => void;
 }
@@ -18,6 +19,7 @@ export function MessageBubble({
   showAvatar = true,
   showSenderName = false,
   onReply,
+  onJumpToOriginal,
   onDelete,
   onImageClick,
 }: MessageBubbleProps) {
@@ -26,8 +28,9 @@ export function MessageBubble({
     minute: '2-digit',
     hour12: false,
   });
+  const quote = message.replyToMessage;
 
-  if (message.isRevoked) {
+  if (message.revoked) {
     return (
       <div className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} my-1`}>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs italic select-none">
@@ -63,7 +66,7 @@ export function MessageBubble({
       )}
 
       {/* Bubble Container */}
-      <div className={`max-w-[78%] sm:max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+      <div className={`min-w-0 max-w-[78%] sm:max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
         {/* Sender Name in Group */}
         {!isMe && showSenderName && (
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 ml-1">
@@ -72,25 +75,24 @@ export function MessageBubble({
         )}
 
         {/* Quoted Message Preview */}
-        {message.replyToMessage && (
-          <div
-            className={`flex items-start gap-1.5 text-xs px-3 py-1.5 mb-1 rounded-xl border-l-2 bg-slate-100/80 dark:bg-slate-800/80 ${
-              isMe
-                ? 'border-indigo-400 text-slate-600 dark:text-slate-300'
-                : 'border-slate-400 text-slate-600 dark:text-slate-300'
-            }`}
-          >
-            <CornerDownRight className="w-3.5 h-3.5 mt-0.5 text-slate-400 shrink-0" />
-            <div className="truncate">
-              <span className="font-semibold">{message.replyToMessage.senderName}: </span>
-              <span>
-                {message.replyToMessage.messageType === 'IMAGE'
-                  ? '[Hình ảnh]'
-                  : message.replyToMessage.content}
-              </span>
-            </div>
+        {quote && (quote.unavailable ? (
+          <div className="mb-1 max-w-full rounded-xl border-l-2 border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+            {quote.contentPreview}
           </div>
-        )}
+        ) : (
+          <button
+            type="button"
+            onClick={() => onJumpToOriginal(quote.messageId)}
+            aria-label={`Đến tin nhắn gốc${quote.senderName ? ` của ${quote.senderName}` : ''}: ${quote.contentPreview}`}
+            className="mb-1 flex min-h-11 max-w-full cursor-pointer items-center gap-2 rounded-xl border-l-2 border-primary bg-muted px-3 py-1.5 text-left text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <CornerDownRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0">
+              {quote.senderName && <span className="block truncate font-semibold text-foreground">{quote.senderName}</span>}
+              <span className="block truncate text-muted-foreground">{quote.contentPreview}</span>
+            </span>
+          </button>
+        ))}
 
         {/* Message Main Bubble */}
         <div

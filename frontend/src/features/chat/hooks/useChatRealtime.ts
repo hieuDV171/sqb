@@ -1,7 +1,7 @@
 import { useStompSubscription } from '@/lib/stompClient';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useChatStore } from '../stores/useChatStore';
-import type { WsMessageBroadcastDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto } from '../types/chat.types';
+import type { WsMessageBroadcastDto, WsMessageRevokedDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto } from '../types/chat.types';
 
 /**
  * Hook lắng nghe tin nhắn và biên nhận đã đọc toàn cục của người dùng
@@ -12,8 +12,9 @@ export function useChatRealtimeListener() {
   const handleIncomingWsMessage = useChatStore((s) => s.handleIncomingWsMessage);
   const handleIncomingReadReceipt = useChatStore((s) => s.handleIncomingReadReceipt);
   const handleIncomingTyping = useChatStore((s) => s.handleIncomingTyping);
+  const markMessageRevoked = useChatStore((s) => s.markMessageRevoked);
 
-  useStompSubscription<WsMessageBroadcastDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto>(
+  useStompSubscription<WsMessageBroadcastDto | WsMessageRevokedDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto>(
     '/user/queue/messages',
     (data, frame) => {
       if (!data || !data.eventType) return;
@@ -25,6 +26,8 @@ export function useChatRealtimeListener() {
       }
       if (data.eventType === 'NEW_MESSAGE') {
         handleIncomingWsMessage(data, hidden);
+      } else if (data.eventType === 'MESSAGE_REVOKED') {
+        markMessageRevoked(data.conversationId, data.messageId);
       } else if (data.eventType === 'MESSAGE_READ') {
         handleIncomingReadReceipt(data);
       } else if (data.eventType === 'TYPING_STATUS') {

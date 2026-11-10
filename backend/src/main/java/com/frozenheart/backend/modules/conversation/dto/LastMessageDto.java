@@ -18,5 +18,7 @@ public class LastMessageDto {
 
     private MessageType messageType;
 
+    private boolean revoked;
+
     private Instant createdAt;
 }

@@ -4,6 +4,7 @@ import com.frozenheart.backend.core.dto.user.UserSummaryDto;
 import com.frozenheart.backend.core.entity.conversation.ConversationType;
 import com.frozenheart.backend.core.entity.conversation.MessageType;
 import com.frozenheart.backend.modules.conversation.constant.ChatWsEventType;
+import com.frozenheart.backend.modules.conversation.dto.ReplyMessagePreviewDto;
 import lombok.*;
 
 import java.time.Instant;
@@ -11,7 +12,7 @@ import java.util.List;
 
 @Getter
 @Setter
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class WsMessageBroadcastDto {
@@ -34,6 +35,8 @@ public class WsMessageBroadcastDto {
     private List<String> mediaUrls;
 
     private Long replyToMessageId;
+
+    private ReplyMessagePreviewDto replyToMessage;
 
     private Instant createdAt;
 

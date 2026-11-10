@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useChatStore } from '../stores/useChatStore';
 import { mediaService } from '@/services/mediaService';
@@ -33,13 +33,26 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingSignal = useRef<number | null>(null);
   const imagePreviewRef = useRef(selectedImages);
 
   useEffect(() => { imagePreviewRef.current = selectedImages; }, [selectedImages]);
   useEffect(() => () => {
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     imagePreviewRef.current.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
   }, []);
+
+  const stopTyping = useCallback(() => {
+    if (typingTimerRef.current !== null) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    if (lastTypingSignal.current !== null) {
+      lastTypingSignal.current = null;
+      sendTyping(conversationId, false);
+    }
+  }, [conversationId, sendTyping]);
+
+  useEffect(() => stopTyping, [stopTyping]);
 
   // Focus textarea when conversation or reply changes
   useEffect(() => {
@@ -55,15 +68,18 @@ export function ChatInput({
   }, [content]);
 
   // Xử lý gửi trạng thái Typing
-  const handleTypingEvent = () => {
-    if (!canSend) return;
-    sendTyping(conversationId, true);
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
+  const handleTypingEvent = (text: string) => {
+    if (!canSend || !text.trim()) {
+      stopTyping();
+      return;
     }
-    typingTimerRef.current = setTimeout(() => {
-      sendTyping(conversationId, false);
-    }, 2500);
+    const now = Date.now();
+    if (lastTypingSignal.current === null || now - lastTypingSignal.current >= 1200) {
+      if (!sendTyping(conversationId, true)) return;
+      lastTypingSignal.current = now;
+    }
+    if (typingTimerRef.current !== null) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(stopTyping, 2500);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,10 +149,7 @@ export function ChatInput({
         setSelectedImages([]);
         onCancelReply();
 
-        if (typingTimerRef.current) {
-          clearTimeout(typingTimerRef.current);
-        }
-        sendTyping(conversationId, false);
+        stopTyping();
 
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto';
@@ -234,8 +247,9 @@ export function ChatInput({
             value={content}
             onChange={(e) => {
               setContent(e.target.value);
-              handleTypingEvent();
+              handleTypingEvent(e.target.value);
             }}
+            onBlur={stopTyping}
             onKeyDown={handleKeyDown}
             aria-label="Nội dung tin nhắn"
             placeholder="Nhập tin nhắn…"

@@ -8,7 +8,7 @@ export type ConversationRole = 'CHIEF' | 'VILLAGE_ELDER' | 'VILLAGER';
 
 export type MessageDeleteScope = 'ME' | 'EVERYONE';
 
-export type ChatWsEventType = 'NEW_MESSAGE' | 'MESSAGE_READ' | 'TYPING_STATUS';
+export type ChatWsEventType = 'NEW_MESSAGE' | 'MESSAGE_REVOKED' | 'MESSAGE_READ' | 'TYPING_STATUS';
 
 export interface UserSummaryDto {
   userId: number;
@@ -23,6 +23,7 @@ export interface LastMessageDto {
   senderName: string;
   content: string;
   messageType: MessageType;
+  revoked?: boolean;
   createdAt: string;
 }
 
@@ -65,9 +66,10 @@ export interface ConversationDetailDto {
 
 export interface ReplyMessagePreviewDto {
   messageId: number;
-  senderName: string;
-  content: string;
-  messageType: MessageType;
+  senderId?: number | null;
+  senderName?: string | null;
+  contentPreview: string;
+  unavailable?: boolean;
 }
 
 export interface MessageDto {
@@ -82,7 +84,7 @@ export interface MessageDto {
   replyToMessage?: ReplyMessagePreviewDto | null;
   createdAt: string;
   isEdited: boolean;
-  isRevoked: boolean;
+  revoked: boolean;
 }
 
 export interface MessageListResponseDto {
@@ -176,7 +178,7 @@ export interface ReadWsMessageRequestDto {
 
 export interface TypingWsRequestDto {
   conversationId: number;
-  isTyping: boolean;
+  typing: boolean;
 }
 
 export interface WsMessageBroadcastDto {
@@ -189,6 +191,7 @@ export interface WsMessageBroadcastDto {
   messageType: MessageType;
   mediaUrls?: string[];
   replyToMessageId?: number | null;
+  replyToMessage?: ReplyMessagePreviewDto | null;
   createdAt: string;
   isEdited: boolean;
 }
@@ -201,10 +204,16 @@ export interface WsReadReceiptBroadcastDto {
   readAt: string;
 }
 
+export interface WsMessageRevokedDto {
+  eventType: 'MESSAGE_REVOKED';
+  conversationId: number;
+  messageId: number;
+}
+
 export interface WsTypingBroadcastDto {
   eventType: 'TYPING_STATUS';
   conversationId: number;
   user: UserSummaryDto;
-  isTyping: boolean;
+  typing: boolean;
   timestamp: string;
 }

@@ -35,5 +35,5 @@ public class MessageDto {
 
     private boolean isEdited;
 
-    private boolean isRevoked;
+    private boolean revoked;
 }
