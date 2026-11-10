@@ -90,7 +90,7 @@ export function ShopInventoryTab() {
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <h2 id="cosmetic-title" className="text-xl font-bold">Cửa hàng & tủ đồ</h2>
         <p className="mt-1 text-sm text-muted-foreground">Xem trước, mua bằng xu SQB và trang bị vật phẩm của bạn.</p>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <div role="group" aria-label="Danh sách vật phẩm" className="flex flex-wrap gap-1 rounded-xl bg-surface-subtle p-1">
             <Button type="button" aria-pressed={isShop} variant={isShop ? 'secondary' : 'ghost'} className="min-h-11"
               onClick={() => { setView('shop'); setPreviewId(undefined); }}>
@@ -101,13 +101,13 @@ export function ShopInventoryTab() {
               <Package aria-hidden="true" /> Tủ đồ
             </Button>
           </div>
-          <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
-            <GamificationSelect label="Loại vật phẩm" value={type ?? ''} options={types}
+          <div className="flex w-full flex-wrap gap-3 sm:w-auto">
+            <GamificationSelect label="Loại vật phẩm" inlineLabel value={type ?? ''} options={types}
               onChange={(value) => { setType(value ? value as CosmeticType : undefined); setPreviewId(undefined); }} />
             {isShop
-              ? <GamificationSelect label="Sắp xếp" value={sort} options={sorts}
+              ? <GamificationSelect label="Sắp xếp" inlineLabel value={sort} options={sorts}
                   onChange={(value) => { setSort(value as CosmeticSortBy); setPreviewId(undefined); }} />
-              : <GamificationSelect label="Độ hiếm" value={rarity ?? ''} options={rarities}
+              : <GamificationSelect label="Độ hiếm" inlineLabel value={rarity ?? ''} options={rarities}
                   onChange={(value) => { setRarity(value ? value as CosmeticRarity : undefined); setPreviewId(undefined); }} />}
           </div>
         </div>

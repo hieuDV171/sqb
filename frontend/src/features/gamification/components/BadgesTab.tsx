@@ -20,10 +20,13 @@ const tiers = [
 type BadgeItem = BadgeResponseDto | UserBadgeResponseDto;
 
 function BadgeIcon({ badge }: { badge: BadgeItem }) {
+  const [failedUrl, setFailedUrl] = useState<string>();
+  const iconUrl = badge.iconUrl?.trim();
   const { badgeBg, badgeBorder, textColor } = getTierColor(badge.badgeTier);
   return (
     <span className={`grid size-14 shrink-0 place-items-center rounded-2xl border p-2 ${badgeBg} ${badgeBorder} ${textColor}`}>
-      {badge.iconUrl ? <img src={badge.iconUrl} alt="" loading="lazy" className="size-10 object-contain" />
+      {iconUrl && iconUrl !== failedUrl
+        ? <img src={iconUrl} alt="" loading="lazy" className="size-10 object-contain" onError={() => setFailedUrl(iconUrl)} />
         : <Award aria-hidden="true" className="size-7" />}
     </span>
   );
@@ -48,14 +51,14 @@ export function BadgesTab() {
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <h2 id="badges-title" className="text-xl font-bold">Bộ sưu tập huy hiệu</h2>
         <p className="mt-1 text-sm text-muted-foreground">Xem thành tích đã đạt và khám phá các huy hiệu còn lại.</p>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <div role="group" aria-label="Danh sách huy hiệu" className="flex flex-wrap gap-1 rounded-xl bg-surface-subtle p-1">
             <Button type="button" aria-pressed={mode === 'my'} variant={mode === 'my' ? 'secondary' : 'ghost'} className="min-h-11"
               onClick={() => setMode('my')}>Của tôi{mine.data && ` (${mine.data.length})`}</Button>
             <Button type="button" aria-pressed={mode === 'all'} variant={mode === 'all' ? 'secondary' : 'ghost'} className="min-h-11"
               onClick={() => setMode('all')}>Danh mục{all.data && ` (${all.data.length})`}</Button>
           </div>
-          <div className="w-full sm:w-44"><GamificationSelect label="Cấp huy hiệu" value={tier} options={tiers} onChange={setTier} /></div>
+          <GamificationSelect label="Cấp huy hiệu" inlineLabel value={tier} options={tiers} onChange={setTier} />
         </div>
       </div>
 
@@ -74,6 +77,7 @@ export function BadgesTab() {
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((badge) => {
             const userBadge = owned.get(badge.badgeId);
+            const earnedCount = mode === 'all' ? catalog.get(badge.badgeId)?.totalEarnedUsers : undefined;
             return (
               <li key={badge.badgeId}>
                 <button type="button" onClick={() => setSelectedBadge(badge)}
@@ -87,6 +91,11 @@ export function BadgesTab() {
                       {userBadge ? <Award aria-hidden="true" className="size-4" /> : <Lock aria-hidden="true" className="size-4" />}
                       {userBadge ? `Đã đạt ${new Date(userBadge.earnedAt).toLocaleDateString('vi-VN')}` : 'Chưa đạt'}
                     </span>
+                    {earnedCount != null && (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Users aria-hidden="true" className="size-4 shrink-0" /> {earnedCount.toLocaleString('vi-VN')} người đã đạt
+                      </span>
+                    )}
                   </span>
                 </button>
               </li>

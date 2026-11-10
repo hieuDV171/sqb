@@ -8,19 +8,24 @@ interface GamificationSelectProps {
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  inlineLabel?: boolean;
 }
 
-export function GamificationSelect({ label, value, options, onChange, disabled }: GamificationSelectProps) {
+export function GamificationSelect({ label, value, options, onChange, disabled, inlineLabel }: GamificationSelectProps) {
   const labelId = useId();
+  const placeholder = options.find((option) => option.value === '')?.label ?? 'Chọn một mục';
+
   return (
-    <div className="min-w-0 space-y-1.5">
+    <div className={inlineLabel
+      ? 'grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:w-auto sm:grid-cols-[auto_minmax(9rem,11rem)]'
+      : 'min-w-0 space-y-1.5'}>
       <span id={labelId} className="block text-sm font-medium">{label}</span>
       <Select.Root items={options} value={value} disabled={disabled}
         onValueChange={(next) => { if (next !== null) onChange(next); }}>
         <Select.Trigger aria-labelledby={labelId}
-          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60">
-          <Select.Value className="min-w-0 truncate" placeholder="Chọn một mục" />
-          <Select.Icon><ChevronDown aria-hidden="true" className="size-4 text-muted-foreground" /></Select.Icon>
+          className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60">
+          <Select.Value className="min-w-0 truncate" placeholder={placeholder} />
+          <Select.Icon className="shrink-0"><ChevronDown aria-hidden="true" className="size-4 text-muted-foreground" /></Select.Icon>
         </Select.Trigger>
         <Select.Portal>
           <Select.Positioner sideOffset={6} alignItemWithTrigger={false} className="z-50 w-(--anchor-width) max-w-(--available-width)">
