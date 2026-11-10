@@ -156,9 +156,9 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       isApprovalPost ? 'border-academic/30' : 'border-border'
     }`}>
       {/* 1. Card Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="relative">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="relative shrink-0">
             <img
               src={
                 actor.avatarUrl ||
@@ -183,23 +183,20 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
             )}
           </div>
 
-          <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base">
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="truncate text-sm font-bold text-foreground md:text-base" title={actor.fullName}>
                 {actor.fullName}
               </span>
-              {item.actionType === 'SESSION_RESOLVED_APPROVED' && (
-                <span className="text-xs text-muted-foreground">vừa đóng góp thành công</span>
-              )}
               {actor.schoolFaculty && (
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                <span className="hidden max-w-[35%] truncate text-[11px] text-muted-foreground sm:inline" title={actor.schoolFaculty}>
                   • {actor.schoolFaculty}
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-              <span>
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="shrink-0">
                 {new Date(createdAt).toLocaleDateString('vi-VN', {
                   day: '2-digit',
                   month: '2-digit',
@@ -207,32 +204,38 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
                   minute: '2-digit',
                 })}
               </span>
-              <span>•</span>
+              {content.visibility && <span aria-hidden="true">•</span>}
               {content.visibility === 'PUBLIC' && (
-                <span className="flex items-center gap-1" title="Công khai">
+                <span className="flex shrink-0 items-center gap-1" title="Công khai">
                   <Globe className="w-3 h-3 text-slate-400" />
                 </span>
               )}
               {content.visibility === 'FRIENDS' && (
-                <span className="flex items-center gap-1" title="Bạn bè">
+                <span className="flex shrink-0 items-center gap-1" title="Bạn bè">
                   <Users className="w-3 h-3 text-slate-400" />
                 </span>
               )}
               {content.visibility === 'ONLY_ME' && (
-                <span className="flex items-center gap-1" title="Chỉ mình tôi">
+                <span className="flex shrink-0 items-center gap-1" title="Chỉ mình tôi">
                   <Lock className="w-3 h-3 text-slate-400" />
                 </span>
+              )}
+              {item.actionType === 'SESSION_RESOLVED_APPROVED' && (
+                <>
+                  <span aria-hidden="true">•</span>
+                  <span className="truncate" title="vừa đóng góp thành công">vừa đóng góp thành công</span>
+                </>
               )}
             </div>
           </div>
         </div>
 
         {/* Top-Right Menu & Subject Tag */}
-        <div className="flex items-center gap-2 relative">
+        <div className="relative flex shrink-0 items-center gap-2">
           {content.subjectName && (
-            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-blue-200 dark:border-blue-900">
-              <Tag className="w-3 h-3 text-blue-500" />
-              <span>
+            <div className="hidden max-w-44 items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 sm:flex lg:max-w-60 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300" title={content.subjectName}>
+              <Tag className="size-3 shrink-0 text-blue-500" />
+              <span className="truncate">
                 {content.subjectCode ? `[${content.subjectCode}] ` : ''}
                 {content.subjectName}
               </span>

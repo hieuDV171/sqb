@@ -40,6 +40,12 @@ public record SessionQuestionsResponse(
         @Schema(description = "Tổng số câu hỏi trong phiên", example = "10")
         int totalQuestions,
 
+        @Schema(description = "Tổng số lượt cảm xúc của bộ câu hỏi", example = "12")
+        int reactCount,
+
+        @Schema(description = "Cảm xúc của người gọi trên bộ câu hỏi, null nếu chưa thả cảm xúc", example = "LIKE")
+        ReactionType myReaction,
+
         @Schema(description = "Danh sách câu hỏi luyện tập")
         List<PracticeQuestionDto> questions
     ) {

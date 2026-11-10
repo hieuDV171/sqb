@@ -349,6 +349,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Khung thảo luận dùng bình luận `SESSION` và ID phiên. Màn luyện tập và API tương tác phiên dùng cùng quyền truy cập. Phiên `RESOLVED` mở cho người dùng đã xác thực. Phiên chưa chốt chỉ mở cho người đề xuất.
 - Phản hồi phải thuộc cùng đối tượng với bình luận cha. API đọc phản hồi trực tiếp kiểm tra quyền từ bình luận cha. Bản xem trước phản hồi, số phản hồi và hồ sơ tác giả được lấy theo lô cho mỗi trang.
+- Thẻ bộ câu hỏi và khung thảo luận dùng chung cảm xúc `SESSION`. Danh sách phiên trả `my_reaction` theo lô, màn luyện tập trả `react_count` và `my_reaction` ở cấp phiên. FE cập nhật cache theo ID phiên và đối soát với bộ đếm trả về từ `POST /react`.
 
 ### [ADR-029] Quyền ghi chú theo lớp học phần của phiên được vinh danh
 

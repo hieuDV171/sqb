@@ -3,8 +3,10 @@ import { Dialog } from '@base-ui/react/dialog';
 import { MessageSquare, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CommentSection } from '@/features/feed/components/CommentSection';
+import type { SessionQuestionsResponse } from '../types/practice.types';
+import { SessionReactionButton } from './SessionReactionButton';
 
-export function SessionDiscussionPanel({ sessionId, title }: { sessionId: number; title: string }) {
+export function SessionDiscussionPanel({ sessionId, title, reactCount, myReaction }: Pick<SessionQuestionsResponse, 'sessionId' | 'title' | 'reactCount' | 'myReaction'>) {
   const closeButton = useRef<HTMLButtonElement>(null);
 
   return (
@@ -34,6 +36,9 @@ export function SessionDiscussionPanel({ sessionId, title }: { sessionId: number
           </Dialog.Close>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          <div className="mb-4 border-b border-border pb-4">
+            <SessionReactionButton sessionId={sessionId} reactCount={reactCount} myReaction={myReaction} showLabel />
+          </div>
           <CommentSection targetType="SESSION" targetId={sessionId} />
         </div>
       </Dialog.Popup>

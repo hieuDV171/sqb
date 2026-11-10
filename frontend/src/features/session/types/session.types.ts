@@ -1,3 +1,5 @@
+import type { ReactionType } from '@/features/feed/services/reactService';
+
 export interface CursorPaginationDto {
   after?: number | null;
   hasNext: boolean;
@@ -89,6 +91,7 @@ export interface SubmissionSessionSummaryDto {
   approvedQuestionCount?: number | null;
   createdAt: string;
   reactCount: number;
+  myReaction?: ReactionType | null;
   commentCount: number;
   status: SessionStatus;
 }

@@ -84,6 +84,9 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
 
                 List<Question> questions = questionRepository.findQuestionsBySessionId(sessionId);
                 List<SessionQuestionsResponse.PracticeQuestionDto> questionDtos = mapQuestionsToDtos(questions, currentUserId);
+                ReactionType sessionReaction = reactRepository
+                                .findByUserIdAndTargetTypeAndTargetId(currentUserId, InteractionTargetType.SESSION, sessionId)
+                                .map(React::getReactionType).orElse(null);
 
                 Subject subject = session.getCourseClass().getSubject();
 
@@ -97,6 +100,8 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 .subjectCode(subject != null ? subject.getCode() : null)
                                 .createdAt(session.getCreatedAt())
                                 .totalQuestions(questions.size())
+                                .reactCount(session.getReactCount())
+                                .myReaction(sessionReaction)
                                 .questions(questionDtos)
                                 .build();
         }

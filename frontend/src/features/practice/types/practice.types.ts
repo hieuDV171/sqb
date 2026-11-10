@@ -46,6 +46,8 @@ export interface SessionQuestionsResponse {
   subjectCode?: string;
   createdAt: string;
   totalQuestions: number;
+  reactCount?: number;
+  myReaction?: ReactionType | null;
   questions: PracticeQuestionDto[];
 }
 

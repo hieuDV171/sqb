@@ -35,6 +35,9 @@ import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
+import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
+import com.frozenheart.backend.core.entity.socialinteraction.React;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.exception.AppException;
@@ -61,6 +64,7 @@ import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository
 import com.frozenheart.backend.core.entity.user.UserCourseClass;
 import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
 import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
+import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -85,6 +89,7 @@ public class SessionServiceImpl implements SessionService {
     private final UserCourseClassRepository userCourseClassRepository;
     private final UserProfileRepository userProfileRepository;
     private final CurrentSemesterHolder currentSemesterHolder;
+    private final ReactRepository reactRepository;
 
     @Transactional
     @Override
@@ -330,6 +335,11 @@ public class SessionServiceImpl implements SessionService {
             nextAfter = mySubmissions.getLast().getSessionId();
         }
 
+        List<Long> sessionIds = mySubmissions.stream().map(SubmissionProjection::getSessionId).toList();
+        Map<Long, ReactionType> reactionsBySession = sessionIds.isEmpty() || currentUserId == null ? Map.of()
+                : reactRepository.findUserReactsByTargetIds(currentUserId, InteractionTargetType.SESSION, sessionIds)
+                        .stream().filter(react -> react.getReactionType() != null)
+                        .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (first, _) -> first));
         List<SubmissionsResponse.SubmissionSessionSummaryDto> contents = mySubmissions.stream()
                 .map(s -> SubmissionsResponse.SubmissionSessionSummaryDto.builder()
                         .sessionId(s.getSessionId())
@@ -349,6 +359,7 @@ public class SessionServiceImpl implements SessionService {
                                 ? s.getApprovedQuestionCount() : null)
                         .createdAt(s.getCreatedAt())
                         .reactCount(s.getReactCount())
+                        .myReaction(reactionsBySession.get(s.getSessionId()))
                         .commentCount(s.getCommentCount())
                         .build())
                 .toList();

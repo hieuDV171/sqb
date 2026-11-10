@@ -117,12 +117,12 @@ class QuestionInteractionServiceImplTest {
     @Test
     void keepsBothReviewOutcomesInPracticeAndLoadsOnlyTheViewersAnswer() {
         long userId = 7L;
-        long sessionId = 12L;
+        long sessionId = 101L;
         var authentication = UsernamePasswordAuthenticationToken.unauthenticated("student", null);
         authentication.setDetails(JwtPayload.builder().userId(userId).build());
         SecurityContextHolder.getContext().setAuthentication(authentication);
         try {
-            var session = Session.builder().id(sessionId).status(SessionStatus.RESOLVED)
+            var session = Session.builder().id(sessionId).status(SessionStatus.RESOLVED).reactCount(12)
                     .courseClass(CourseClass.builder().build()).build();
             var first = Question.builder().id(101L).status(QuestionStatus.APPROVED).reactCount(4).build();
             var second = Question.builder().id(102L).status(QuestionStatus.REJECTED).reactCount(8).build();
@@ -140,9 +140,17 @@ class QuestionInteractionServiceImplTest {
                     .thenReturn(List.of(answer));
             when(reactRepository.findUserReactsByTargetIds(userId, InteractionTargetType.QUESTION, List.of(101L, 102L)))
                     .thenReturn(List.of(reaction));
+            var sessionReaction = new React();
+            sessionReaction.setTargetId(sessionId);
+            sessionReaction.setReactionType(ReactionType.LOVE);
+            when(reactRepository.findByUserIdAndTargetTypeAndTargetId(userId, InteractionTargetType.SESSION, sessionId))
+                    .thenReturn(Optional.of(sessionReaction));
 
-            var questions = service.getSessionQuestions(sessionId).questions();
+            var response = service.getSessionQuestions(sessionId);
+            var questions = response.questions();
 
+            assertEquals(12, response.reactCount());
+            assertEquals(ReactionType.LOVE, response.myReaction());
             assertEquals(ReactionType.LIKE, questions.get(0).myInteraction().myReaction());
             assertEquals(4, questions.get(0).reactCount());
             assertEquals("B", questions.get(0).hiddenFields().selectedOptions().getFirst().key());

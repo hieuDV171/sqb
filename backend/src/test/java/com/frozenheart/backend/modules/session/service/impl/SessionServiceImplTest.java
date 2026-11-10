@@ -10,6 +10,9 @@ import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
+import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetType;
+import com.frozenheart.backend.core.entity.socialinteraction.React;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.UserCourseClass;
@@ -29,6 +32,7 @@ import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
+import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
@@ -83,6 +87,8 @@ class SessionServiceImplTest {
     private UserProfileRepository userProfileRepository;
     @Mock
     private CurrentSemesterHolder currentSemesterHolder;
+    @Mock
+    private ReactRepository reactRepository;
 
     @InjectMocks
     private SessionServiceImpl sessionService;
@@ -284,6 +290,35 @@ class SessionServiceImplTest {
 
         assertEquals(1, response.contents().size());
         assertEquals(SessionStatus.REVIEWING, response.contents().getFirst().status());
+    }
+
+    @Test
+    void getUserSubmissionsLoadsViewerReactionsForVisiblePageInOneBatch() {
+        setCurrentUser(7L);
+        SubmissionProjection first = mock(SubmissionProjection.class);
+        SubmissionProjection second = mock(SubmissionProjection.class);
+        SubmissionProjection nextPage = mock(SubmissionProjection.class);
+        when(first.getSessionId()).thenReturn(103L);
+        when(first.getReactCount()).thenReturn(6);
+        when(second.getSessionId()).thenReturn(102L);
+        when(sessionRepository.findSubmissions(
+                org.mockito.ArgumentMatchers.eq(8L), org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(SessionStatus.RESOLVED), org.mockito.ArgumentMatchers.isNull(),
+                any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(List.of(first, second, nextPage));
+        var reaction = new React();
+        reaction.setTargetId(103L);
+        reaction.setReactionType(ReactionType.LOVE);
+        when(reactRepository.findUserReactsByTargetIds(7L, InteractionTargetType.SESSION, List.of(103L, 102L)))
+                .thenReturn(List.of(reaction));
+
+        SubmissionsResponse response = sessionService.getUserSubmissions(8L, null, 2, null, null);
+
+        assertTrue(response.pagination().hasNext());
+        assertEquals(6, response.contents().getFirst().reactCount());
+        assertEquals(ReactionType.LOVE, response.contents().getFirst().myReaction());
+        assertNull(response.contents().getLast().myReaction());
+        verify(reactRepository).findUserReactsByTargetIds(7L, InteractionTargetType.SESSION, List.of(103L, 102L));
     }
 
     @Test

@@ -250,7 +250,12 @@ function PracticeWorkspace({ numericSessionId, initialQuestionId, isSessionDiscu
               <Dialog.Trigger render={<Button variant="outline" className="min-h-11" />}>
                 <MessageSquare aria-hidden="true" /> Thảo luận bộ câu hỏi
               </Dialog.Trigger>
-              <SessionDiscussionPanel sessionId={numericSessionId} title={sessionData.title} />
+              <SessionDiscussionPanel
+                sessionId={numericSessionId}
+                title={sessionData.title}
+                reactCount={sessionData.reactCount}
+                myReaction={sessionData.myReaction}
+              />
             </Dialog.Root>
             <Button variant="outline" onClick={() => setIsSummaryOpen(true)} className="min-h-11">
               <Award aria-hidden="true" /> Kết quả luyện tập

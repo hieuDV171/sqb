@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Copy, Heart, MessageSquare, PlayCircle } from 'lucide-react';
+import { Check, Copy, MessageSquare, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/stores/useToastStore';
 import type { SubmissionSessionSummaryDto } from '@/features/session/types/session.types';
+import { SessionReactionButton } from './SessionReactionButton';
 
 export function UserSessionCard({ session, userId }: { session: SubmissionSessionSummaryDto; userId: number }) {
   const practicePath = `/sessions/${session.sessionId}/practice`;
@@ -38,7 +39,7 @@ export function UserSessionCard({ session, userId }: { session: SubmissionSessio
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <span>{session.questionCounts ?? 0} câu hỏi</span>
-          <span className="inline-flex items-center gap-1"><Heart aria-hidden="true" className="size-3.5" /> {session.reactCount ?? 0}<span className="sr-only"> lượt thích</span></span>
+          <SessionReactionButton sessionId={session.sessionId} reactCount={session.reactCount} myReaction={session.myReaction} />
           <Link
             to={`${practicePath}?discussion=session`}
             state={{ fromMemberSessions: userId }}

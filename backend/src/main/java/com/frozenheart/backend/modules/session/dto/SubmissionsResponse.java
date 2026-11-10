@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
+import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -67,6 +68,9 @@ public record SubmissionsResponse(
 
             @Schema(description = "Số lượt thả cảm xúc (react) cho phiên", example = "12")
             int reactCount,
+
+            @Schema(description = "Cảm xúc của người gọi trên phiên, null nếu chưa thả cảm xúc", example = "LIKE")
+            ReactionType myReaction,
 
             @Schema(description = "Số lượng bình luận trao đổi trong phiên", example = "4")
             int commentCount
