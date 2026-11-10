@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { X, ShieldAlert, AlertTriangle, Loader2, Send } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { X, ShieldAlert, AlertTriangle, Loader2, Send, ImagePlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { mediaService } from '@/services/mediaService';
 import { useCreateReport } from '../hooks/useReport';
 import type { ViolationType, ReportTargetType } from '../types/report.types';
 
@@ -9,6 +11,16 @@ interface ReportModalProps {
   targetType: ReportTargetType;
   targetId: number;
   targetTitle?: string;
+}
+
+const evidenceImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const maxEvidenceBytes = 5 * 1024 * 1024;
+const pendingMediaLifetimeMs = 24 * 60 * 60 * 1000;
+
+interface EvidenceImage {
+  file: File;
+  previewUrl: string;
+  upload?: { publicUrl: string; uploadedAt: number };
 }
 
 export function ReportModal({
@@ -22,7 +34,19 @@ export function ReportModal({
 
   const [violationType, setViolationType] = useState<ViolationType>('SPAM');
   const [description, setDescription] = useState('');
-  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [evidence, setEvidence] = useState<EvidenceImage | null>(null);
+  const [evidenceError, setEvidenceError] = useState('');
+  const [submitPhase, setSubmitPhase] = useState<'idle' | 'uploading' | 'sending'>('idle');
+  const evidenceInput = useRef<HTMLInputElement>(null);
+  const evidenceHelpId = useId();
+  const previewUrl = evidence?.previewUrl;
+  const isSubmitting = submitPhase !== 'idle';
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   if (!isOpen) return null;
 
@@ -59,21 +83,68 @@ export function ReportModal({
     },
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const clearEvidence = () => {
+    setEvidence(null);
+    setEvidenceError('');
+  };
+
+  const handleClose = () => {
+    if (isSubmitting) return;
+    clearEvidence();
+    onClose();
+  };
+
+  const handleEvidenceChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    if (!evidenceImageTypes.includes(file.type) || file.size === 0 || file.size > maxEvidenceBytes) {
+      setEvidence(null);
+      setEvidenceError('Hãy chọn ảnh JPG, PNG, WebP hoặc GIF không rỗng và tối đa 5 MB.');
+      return;
+    }
+
+    setEvidenceError('');
+    setEvidence({ file, previewUrl: URL.createObjectURL(file) });
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    const uploaded = evidence?.upload;
+    let evidenceUrl = uploaded && Date.now() - uploaded.uploadedAt < pendingMediaLifetimeMs ? uploaded.publicUrl : undefined;
     try {
+      if (evidence && !evidenceUrl) {
+        setSubmitPhase('uploading');
+        setEvidenceError('');
+        try {
+          const uploadedAt = Date.now();
+          const { publicUrl } = await mediaService.uploadViaPresign(evidence.file, 'POST', { preserveOriginal: true });
+          evidenceUrl = publicUrl;
+          setEvidence({ ...evidence, upload: { publicUrl, uploadedAt } });
+        } catch {
+          setEvidenceError('Không thể tải ảnh lên. Hãy bấm Gửi báo cáo để thử lại.');
+          return;
+        }
+      }
+
+      setSubmitPhase('sending');
       await createReportMutation.mutateAsync({
         targetType,
         targetId,
         violationType,
         description: description.trim() || undefined,
-        evidenceUrls: evidenceUrl.trim() ? [evidenceUrl.trim()] : undefined,
+        evidenceUrls: evidenceUrl ? [evidenceUrl] : undefined,
       });
       onClose();
       setDescription('');
-      setEvidenceUrl('');
+      clearEvidence();
     } catch {
       // Handled by mutation onError toast
+    } finally {
+      setSubmitPhase('idle');
     }
   };
 
@@ -111,8 +182,10 @@ export function ReportModal({
 
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            aria-label="Đóng báo cáo"
+            className="p-1.5 rounded-xl text-slate-400 enabled:hover:text-slate-600 dark:enabled:hover:text-slate-200 enabled:hover:bg-slate-100 dark:enabled:hover:bg-slate-800 transition-colors enabled:cursor-pointer disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -174,19 +247,39 @@ export function ReportModal({
             </div>
           </div>
 
-          {/* Evidence URL */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Liên kết ảnh bằng chứng (tùy chọn)
-            </label>
+          <fieldset className="min-w-0 space-y-2">
+            <legend className="text-xs font-bold uppercase tracking-wider text-foreground">Ảnh bằng chứng (tùy chọn)</legend>
+            <p id={evidenceHelpId} className="text-xs text-muted-foreground">JPG, PNG, WebP hoặc GIF. Tối đa 5 MB.</p>
             <input
-              type="url"
-              value={evidenceUrl}
-              onChange={(e) => setEvidenceUrl(e.target.value)}
-              placeholder="https://... ảnh chụp màn hình vi phạm"
-              className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              ref={evidenceInput}
+              type="file"
+              accept={evidenceImageTypes.join(',')}
+              onChange={handleEvidenceChange}
+              disabled={isSubmitting}
+              hidden
             />
-          </div>
+            {evidence && (
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-2">
+                <img src={evidence.previewUrl} alt="Xem trước ảnh bằng chứng" className="size-16 shrink-0 rounded-lg bg-background object-contain" />
+                <span className="min-w-0 flex-1 truncate text-sm" title={evidence.file.name}>{evidence.file.name}</span>
+                <Button type="button" variant="ghost" size="icon" className="size-11" disabled={isSubmitting} aria-label="Gỡ ảnh bằng chứng" onClick={clearEvidence}>
+                  <X aria-hidden="true" />
+                </Button>
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              aria-describedby={evidenceHelpId}
+              disabled={isSubmitting}
+              onClick={() => evidenceInput.current?.click()}
+            >
+              <ImagePlus aria-hidden="true" />
+              {evidence ? 'Đổi ảnh' : 'Chọn ảnh'}
+            </Button>
+            {evidenceError && <p role="alert" className="text-xs text-destructive">{evidenceError}</p>}
+          </fieldset>
 
           <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -199,20 +292,21 @@ export function ReportModal({
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-300 enabled:hover:bg-slate-100 dark:enabled:hover:bg-slate-800 transition-colors enabled:cursor-pointer disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
-              disabled={createReportMutation.isPending}
+              disabled={isSubmitting}
               className="px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 transition-colors shadow-sm shadow-rose-500/20 flex items-center gap-1.5 cursor-pointer"
             >
-              {createReportMutation.isPending ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Đang gửi...
+                  {submitPhase === 'uploading' ? 'Đang tải ảnh…' : 'Đang gửi…'}
                 </>
               ) : (
                 <>

@@ -97,17 +97,18 @@ async function compressImageIfNeeded(file: File, purpose: MediaPurpose = 'QUESTI
 
 export const mediaService = {
   /**
-   * Upload file media chuẩn 2 bước qua Presigned URL (Tự động nén WebP trước khi gửi):
+   * Upload file media qua Presigned URL. Mặc định nén ảnh, trừ khi cần giữ bản gốc.
    * Bước 1: Gọi BE POST /medias/presign lấy uploadUrl (Presigned PUT) và publicUrl
    * Bước 2: Upload trực tiếp payload file từ Browser lên Cloudflare R2 qua HTTP PUT
    */
   uploadViaPresign: async (
     file: File,
-    purpose: MediaPurpose = 'QUESTION'
+    purpose: MediaPurpose = 'QUESTION',
+    options?: { preserveOriginal?: boolean },
   ): Promise<{ objectKey: string; publicUrl: string; expiresInSeconds: number }> => {
     try {
       // Tự động nén ảnh sang WebP (giảm 90-95% dung lượng) trước khi xin presign và upload
-      const processedFile = await compressImageIfNeeded(file, purpose);
+      const processedFile = options?.preserveOriginal ? file : await compressImageIfNeeded(file, purpose);
 
       const presignPayload: PresignMediaRequest = {
         files: [
