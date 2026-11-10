@@ -76,7 +76,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 pb-10">
+    <div data-study-workspace className="mx-auto max-w-6xl space-y-5 pb-10">
       <Button variant="ghost" className="min-h-11" nativeButton={false} render={<Link to={queue} />}>
         <ArrowLeft aria-hidden="true" /> Phiên cần duyệt
       </Button>
@@ -128,7 +128,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
             <EmptyState title="Phiên chưa có câu hỏi" description="Quay lại danh sách để chọn một phiên khác." />
           ) : (
             <div className="grid items-start gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
-              <aside aria-label="Tiến độ duyệt" className="space-y-4 rounded-2xl border border-border bg-card p-4">
+              <aside aria-label="Tiến độ duyệt" className="space-y-4 rounded-2xl border border-border bg-card p-4 lg:sticky-study-progress">
                 <div className="space-y-1.5">
                   <h2 className="font-semibold">Tiến độ duyệt</h2>
                   <p className="text-sm text-muted-foreground" aria-live="polite">{processed}/{total} câu đã xử lý</p>

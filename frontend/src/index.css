@@ -118,9 +118,17 @@ body:has([data-feed-page])::-webkit-scrollbar {
   display: none;
 }
 
-/* Keep the document as the feed's vertical scroll container. */
-main:has([data-feed-page]) {
+/* Clip horizontal overflow without creating a scroll container for sticky panels. */
+main:has([data-feed-page], [data-study-workspace]) {
   overflow: clip visible;
+}
+
+@utility sticky-study-progress {
+  --study-progress-top: calc(var(--app-header-height) + var(--space-4));
+  position: sticky;
+  top: var(--study-progress-top);
+  max-height: calc(100dvh - var(--study-progress-top) - var(--space-4));
+  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

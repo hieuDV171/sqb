@@ -13,7 +13,7 @@ export function PracticeProgressBar({ questions, currentIndex, onSelectQuestion,
   const answeredCount = questions.filter((q) => q.myInteraction.answered || userAnswersRecord[q.questionId]).length;
 
   return (
-    <aside aria-labelledby="practice-progress" className="space-y-4 rounded-2xl border border-border bg-card p-4">
+    <aside aria-labelledby="practice-progress" className="space-y-4 rounded-2xl border border-border bg-card p-4 xl:sticky-study-progress">
       <div className="space-y-2">
         <h2 id="practice-progress" className="font-semibold">Tiến độ</h2>
         <p className="text-sm text-muted-foreground" role="status">Đã trả lời {answeredCount}/{questions.length} câu</p>

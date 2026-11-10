@@ -238,7 +238,7 @@ function PracticeWorkspace({ numericSessionId, initialQuestionId, isSessionDiscu
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div data-study-workspace className="mx-auto max-w-6xl space-y-5">
       {returnLink}
       <StudyHeader
         section="Luyện tập"
