@@ -1,0 +1,101 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1794328158168-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_group_invitations
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: conversation_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: inviter_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: invitee_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: expires_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: group_invitations
+  - changeSet:
+      id: 1794328158168-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addUniqueConstraint:
+            columnNames: conversation_id, invitee_id
+            constraintName: uq_group_invitation_conversation_invitee
+            tableName: group_invitations
+  - changeSet:
+      id: 1794328158168-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createIndex:
+            columns:
+              - column:
+                  name: invitee_id
+              - column:
+                  name: id
+            indexName: idx_group_invitation_inbox
+            tableName: group_invitations
+  - changeSet:
+      id: 1794328158168-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: conversation_id
+            baseTableName: group_invitations
+            constraintName: FK_GROUP_INVITATIONS_ON_CONVERSATION
+            referencedColumnNames: id
+            referencedTableName: conversations
+  - changeSet:
+      id: 1794328158168-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: invitee_id
+            baseTableName: group_invitations
+            constraintName: FK_GROUP_INVITATIONS_ON_INVITEE
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1794328158168-6
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: inviter_id
+            baseTableName: group_invitations
+            constraintName: FK_GROUP_INVITATIONS_ON_INVITER
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1794328158168-14
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: is_error
+            tableName: user_ratings
+
