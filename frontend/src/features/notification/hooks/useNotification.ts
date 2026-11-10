@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { notificationService } from '../services/notificationService';
 import type {
   UpdatePushSettingsRequestDto,
@@ -9,26 +10,41 @@ import { useGamificationStore } from '@/stores/useGamificationStore';
 
 export const NOTIFICATION_KEYS = {
   all: ['notifications'] as const,
-  list: (after?: number, limit?: number) =>
-    [...NOTIFICATION_KEYS.all, 'list', after, limit] as const,
+  lists: ['notifications', 'list'] as const,
+  list: (limit: number) => [...NOTIFICATION_KEYS.lists, limit] as const,
   pushSettings: () => [...NOTIFICATION_KEYS.all, 'push-settings'] as const,
   activityFeeds: (after?: number) => ['activity-feeds', after] as const,
   newFeedCount: (since?: number) => ['activity-feeds', 'new-count', since] as const,
 };
 
-export function useNotifications(params?: { after?: number; limit?: number }) {
-  const setGamificationUnread = useGamificationStore((s) => s.setUnreadNotifications);
+type NotificationPages = InfiniteData<NotificationListResponseDto>;
 
-  return useQuery({
-    queryKey: NOTIFICATION_KEYS.list(params?.after, params?.limit),
-    queryFn: async () => {
-      const res = await notificationService.getNotifications(params);
-      if (res.data?.unreadCount !== undefined) {
-        setGamificationUnread(res.data.unreadCount);
-      }
-      return res.data;
+export function useNotificationClock() {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+export function useNotifications({ limit = 20, poll = false } = {}) {
+  const setUnread = useGamificationStore((s) => s.setUnreadNotifications);
+
+  return useInfiniteQuery({
+    queryKey: NOTIFICATION_KEYS.list(limit),
+    initialPageParam: undefined as number | undefined,
+    queryFn: async ({ pageParam, signal }) => {
+      const { data } = await notificationService.getNotifications({ after: pageParam, limit }, signal);
+      if (!data) throw new Error('Không thể tải thông báo.');
+      if (pageParam === undefined && !signal.aborted) setUnread(data.unreadCount);
+      return data;
     },
-    refetchInterval: 30000, // Poll every 30s as fallback if websocket reconnects
+    getNextPageParam: (page, _, __, pageParams) => {
+      const cursor = page.pagination?.after;
+      return page.pagination?.hasNext && typeof cursor === 'number' && !pageParams.includes(cursor) ? cursor : undefined;
+    },
+    refetchInterval: poll ? 30_000 : false,
   });
 }
 
@@ -41,11 +57,11 @@ export function useMarkAsRead() {
       notificationService.markAsRead(notificationId),
     onMutate: async (notificationId: number) => {
       // 1. Dừng các query notifications đang chạy để tránh xung đột
-      await queryClient.cancelQueries({ queryKey: NOTIFICATION_KEYS.all });
+      await queryClient.cancelQueries({ queryKey: NOTIFICATION_KEYS.lists });
 
       // 2. Chụp snapshot cache hiện tại và số đếm unread
-      const previousNotifications = queryClient.getQueriesData<NotificationListResponseDto>({
-        queryKey: NOTIFICATION_KEYS.all,
+      const previousNotifications = queryClient.getQueriesData<NotificationPages>({
+        queryKey: NOTIFICATION_KEYS.lists,
       });
       const previousUnreadCount = useGamificationStore.getState().unreadNotifications;
 
@@ -54,20 +70,18 @@ export function useMarkAsRead() {
 
       // Cập nhật ngay readAt cho thông báo đó trong cache (chấm xanh biến mất ở 0ms)
       const nowIso = new Date().toISOString();
-      queryClient.setQueriesData<NotificationListResponseDto>(
-        { queryKey: NOTIFICATION_KEYS.all },
-        (oldData) => {
-          if (!oldData?.items) return oldData;
-          return {
-            ...oldData,
-            unreadCount: Math.max(0, (oldData.unreadCount || 1) - 1),
-            items: oldData.items.map((item) =>
-              item.notificationId === notificationId
-                ? { ...item, readAt: item.readAt || nowIso }
-                : item
-            ),
-          };
-        }
+      queryClient.setQueriesData<NotificationPages>(
+        { queryKey: NOTIFICATION_KEYS.lists },
+        (oldData) => oldData && ({
+          ...oldData,
+          pages: oldData.pages.map((page) => ({
+            ...page,
+            unreadCount: Math.max(0, page.unreadCount - 1),
+            items: page.items.map((item) => item.notificationId === notificationId
+              ? { ...item, readAt: item.readAt || nowIso }
+              : item),
+          })),
+        })
       );
 
       return { previousNotifications, previousUnreadCount };
@@ -92,7 +106,7 @@ export function useMarkAsRead() {
     },
     onSettled: () => {
       // 6. Luôn làm mới ngầm sau cùng
-      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
     },
   });
 }
@@ -105,11 +119,11 @@ export function useMarkAllAsRead() {
     mutationFn: () => notificationService.markAllAsRead(),
     onMutate: async () => {
       // 1. Dừng các query notifications đang chạy
-      await queryClient.cancelQueries({ queryKey: NOTIFICATION_KEYS.all });
+      await queryClient.cancelQueries({ queryKey: NOTIFICATION_KEYS.lists });
 
       // 2. Chụp snapshot cache hiện tại
-      const previousNotifications = queryClient.getQueriesData<NotificationListResponseDto>({
-        queryKey: NOTIFICATION_KEYS.all,
+      const previousNotifications = queryClient.getQueriesData<NotificationPages>({
+        queryKey: NOTIFICATION_KEYS.lists,
       });
       const previousUnreadCount = useGamificationStore.getState().unreadNotifications;
 
@@ -117,19 +131,16 @@ export function useMarkAllAsRead() {
       setGamificationUnread(0);
 
       const nowIso = new Date().toISOString();
-      queryClient.setQueriesData<NotificationListResponseDto>(
-        { queryKey: NOTIFICATION_KEYS.all },
-        (oldData) => {
-          if (!oldData?.items) return oldData;
-          return {
-            ...oldData,
+      queryClient.setQueriesData<NotificationPages>(
+        { queryKey: NOTIFICATION_KEYS.lists },
+        (oldData) => oldData && ({
+          ...oldData,
+          pages: oldData.pages.map((page) => ({
+            ...page,
             unreadCount: 0,
-            items: oldData.items.map((item) => ({
-              ...item,
-              readAt: item.readAt || nowIso,
-            })),
-          };
-        }
+            items: page.items.map((item) => ({ ...item, readAt: item.readAt || nowIso })),
+          })),
+        })
       );
 
       return { previousNotifications, previousUnreadCount };
@@ -151,14 +162,15 @@ export function useMarkAllAsRead() {
     },
     onSettled: () => {
       // 5. Invalidate ngầm
-      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
     },
   });
 }
 
-export function usePushSettings() {
+export function usePushSettings(enabled = true) {
   return useQuery({
     queryKey: NOTIFICATION_KEYS.pushSettings(),
+    enabled,
     queryFn: async () => {
       const res = await notificationService.getPushSettings();
       return res.data;

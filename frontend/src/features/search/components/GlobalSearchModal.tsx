@@ -265,7 +265,7 @@ export function GlobalSearchModal({
               }
             : undefined
         }
-        className={`flex max-h-[min(76vh,680px)] w-full flex-col overflow-hidden border border-border bg-card shadow-xl ${
+        className={`flex max-h-[min(82dvh,42.5rem)] w-full flex-col overflow-hidden border border-border bg-card shadow-xl ${
           isDesktop
             ? 'rounded-2xl animate-in fade-in zoom-in-95 duration-150'
             : 'max-w-2xl rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150'
@@ -298,7 +298,7 @@ export function GlobalSearchModal({
                   setDebouncedQuery('');
                   inputRef.current?.focus();
                 }}
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 aria-label="Xóa từ khóa"
               >
                 <X aria-hidden="true" className="h-4 w-4" />
@@ -312,7 +312,7 @@ export function GlobalSearchModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex min-h-9 cursor-pointer items-center justify-center rounded-xl px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Đóng tìm kiếm"
               >
                 Đóng
@@ -321,26 +321,26 @@ export function GlobalSearchModal({
           </div>
         </div>
 
-        <div id="global-search-results" className="flex-1 overflow-y-auto p-3 sm:p-4">
+        <div id="global-search-results" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
           {debouncedQuery ? (
             <div>
               <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-sm font-semibold text-muted-foreground">
                   Kết quả nhanh ({searchResults?.totalHits ?? results.length})
                 </span>
                 {isFetching && !isLoading && (
                   <span
-                    className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400"
+                    className="flex items-center gap-1.5 text-xs text-academic"
                     role="status"
                   >
-                    <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 aria-hidden="true" className="h-3.5 w-3.5 motion-safe:animate-spin" />
                     Đang cập nhật
                   </span>
                 )}
               </div>
 
               {!canSearch ? (
-                <p className="px-1 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                <p className="px-1 py-8 text-center text-sm text-muted-foreground">
                   Nhập ít nhất 2 ký tự để tìm kiếm.
                 </p>
               ) : isLoading ? (
@@ -348,12 +348,12 @@ export function GlobalSearchModal({
                   {[1, 2, 3].map((item) => (
                     <div
                       key={item}
-                      className="flex animate-pulse items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800"
+                      className="flex animate-pulse items-center gap-3 rounded-xl border border-border p-3"
                     >
-                      <div className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-9 w-9 rounded-xl bg-muted" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-3 w-1/3 rounded bg-slate-200 dark:bg-slate-800" />
-                        <div className="h-3 w-2/3 rounded bg-slate-100 dark:bg-slate-800/70" />
+                        <div className="h-3 w-1/3 rounded bg-muted" />
+                        <div className="h-3 w-2/3 rounded bg-muted/65" />
                       </div>
                     </div>
                   ))}
@@ -380,10 +380,10 @@ export function GlobalSearchModal({
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
                     <Search aria-hidden="true" className="h-6 w-6" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  <p className="text-sm font-semibold text-foreground">
                     Không tìm thấy kết quả cho &quot;{debouncedQuery}&quot;
                   </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Hãy thử từ khóa ngắn hơn hoặc kiểm tra lỗi chính tả.
                   </p>
                 </div>
@@ -395,7 +395,7 @@ export function GlobalSearchModal({
                       type="button"
                       disabled={item.type === 'QUESTION' && !item.question?.sessionId}
                       onClick={() => handleNavigateItem(item)}
-                      className="group flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-xl border border-transparent p-3 text-left transition-colors hover:border-indigo-100 hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-default disabled:opacity-60 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/30"
+                      className="group flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-xl border border-transparent p-3 text-left transition-colors hover:border-indigo-100 hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/30"
                     >
                       <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-indigo-900/50 dark:group-hover:text-indigo-300">
                         {item.type === 'USER' && <User aria-hidden="true" className="h-4 w-4" />}
@@ -409,7 +409,7 @@ export function GlobalSearchModal({
                         {item.type === 'USER' && item.user && (
                           <span className="block">
                             <span className="flex items-center gap-2">
-                              <span className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
+                              <span className="truncate text-base font-semibold text-foreground">
                                 {getUserDisplayName(item.user)}
                               </span>
                               {getUserIdentifier(item.user) && (
@@ -418,7 +418,7 @@ export function GlobalSearchModal({
                                 </span>
                               )}
                             </span>
-                            <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                               {item.user.schoolFaculty || item.user.major || item.user.role || 'Thành viên SQB'}
                             </span>
                           </span>
@@ -426,10 +426,10 @@ export function GlobalSearchModal({
 
                         {item.type === 'POST' && item.post && (
                           <span className="block">
-                            <span className="mb-0.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            <span className="mb-0.5 block text-xs font-semibold text-muted-foreground">
                               Bài viết từ {item.post.authorName || 'Thành viên SQB'}
                             </span>
-                            <span className="line-clamp-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <span className="line-clamp-2 text-sm font-medium text-foreground">
                               {item.post.content}
                             </span>
                           </span>
@@ -449,7 +449,7 @@ export function GlobalSearchModal({
                                 </span>
                               )}
                             </span>
-                            <span className="line-clamp-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <span className="line-clamp-2 text-sm font-medium text-foreground">
                               {item.question.content}
                             </span>
                           </span>
@@ -457,10 +457,10 @@ export function GlobalSearchModal({
 
                         {item.type === 'SESSION' && item.session && (
                           <span className="block">
-                            <span className="mb-0.5 block text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                            <span className="mb-0.5 block text-xs font-semibold text-academic">
                               Phiên đóng góp câu hỏi
                             </span>
-                            <span className="line-clamp-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+                            <span className="line-clamp-2 text-base font-semibold text-foreground">
                               {item.session.title}
                             </span>
                             {item.session.sessionCode && (
@@ -474,7 +474,7 @@ export function GlobalSearchModal({
                             <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
                               [{item.subject.subjectCode}]
                             </span>
-                            <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">
+                            <span className="block text-base font-semibold text-foreground">
                               {item.subject.subjectName}
                             </span>
                           </span>
@@ -510,7 +510,7 @@ export function GlobalSearchModal({
                 <section aria-labelledby="recent-searches-heading">
                   <h2
                     id="recent-searches-heading"
-                    className="mb-2.5 flex items-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    className="mb-2.5 flex items-center gap-1.5 px-1 text-sm font-semibold text-muted-foreground"
                   >
                     <History aria-hidden="true" className="h-3.5 w-3.5" />
                     Tìm kiếm gần đây
@@ -524,7 +524,7 @@ export function GlobalSearchModal({
                         <button
                           type="button"
                           onClick={() => handleSelectKeyword(saved.queryText)}
-                          className="min-h-10 cursor-pointer px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:text-slate-200 dark:hover:bg-slate-800"
+                          className="min-h-10 cursor-pointer px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           {saved.queryText}
                         </button>
@@ -532,7 +532,7 @@ export function GlobalSearchModal({
                           type="button"
                           onClick={() => deleteSavedMutation.mutate(saved.savedSearchId)}
                           disabled={deleteSavedMutation.isPending}
-                          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-slate-400 transition-colors hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                          className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-slate-400 transition-colors hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-rose-400"
                           aria-label={`Xóa ${saved.queryText} khỏi lịch sử`}
                         >
                           <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
@@ -548,12 +548,12 @@ export function GlobalSearchModal({
                   <div className="mb-2.5 px-1">
                     <h2
                       id="trending-searches-heading"
-                      className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"
                     >
                       <TrendingUp aria-hidden="true" className="h-3.5 w-3.5 text-amber-500" />
                       Thịnh hành trong SQB
                     </h2>
-                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 text-[11px] text-muted-foreground">
                       Tổng hợp từ các lượt tìm kiếm đã xác nhận trong 7 ngày gần đây.
                     </p>
                   </div>
@@ -563,7 +563,7 @@ export function GlobalSearchModal({
                         key={trend}
                         type="button"
                         onClick={() => handleSelectKeyword(trend)}
-                        className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
+                        className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60"
                       >
                         <span className="font-bold text-amber-600 dark:text-amber-400">
                           #{index + 1}
@@ -580,10 +580,10 @@ export function GlobalSearchModal({
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
                     <Search aria-hidden="true" className="h-6 w-6" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  <p className="text-sm font-semibold text-foreground">
                     Chưa có lịch sử tìm kiếm
                   </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Lịch sử chỉ được lưu sau khi bạn xác nhận một từ khóa.
                   </p>
                 </div>
@@ -594,7 +594,7 @@ export function GlobalSearchModal({
 
         {debouncedQuery && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-            <span className="hidden text-xs text-slate-500 dark:text-slate-400 sm:inline">
+            <span className="hidden text-xs text-muted-foreground sm:inline">
               Nhấn{' '}
               <kbd className="rounded border bg-white px-1.5 py-0.5 font-mono text-[10px] dark:bg-slate-800">
                 Enter
@@ -604,7 +604,7 @@ export function GlobalSearchModal({
             <button
               type="button"
               onClick={handleViewAllResults}
-              className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-xs font-bold text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+              className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-xs font-bold text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
             >
               Xem tất cả
               <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />

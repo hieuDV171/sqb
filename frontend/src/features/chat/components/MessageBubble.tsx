@@ -97,7 +97,7 @@ export function MessageBubble({
           className={`relative px-4 py-2.5 rounded-2xl shadow-xs text-sm leading-relaxed break-words ${
             isMe
               ? 'bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-br-xs'
-              : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/70 dark:border-slate-700/60 rounded-bl-xs'
+              : 'bg-card text-foreground border border-slate-200/70 dark:border-slate-700/60 rounded-bl-xs'
           }`}
         >
           {/* Images Grid */}
@@ -149,15 +149,15 @@ export function MessageBubble({
 
       {/* Floating Action Menu (Reply, Delete) */}
       <div
-        className={`opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity ${
+        className={`flex shrink-0 items-center gap-0.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 pointer-coarse:opacity-100 ${
           isMe ? 'order-first mr-1' : 'ml-1'
         }`}
       >
         <button
           type="button"
           onClick={() => onReply(message)}
-          title="Trả lời tin nhắn này"
-          className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          title="Trả lời tin nhắn này" aria-label="Trả lời tin nhắn"
+          className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <Reply className="w-3.5 h-3.5" />
         </button>
@@ -165,8 +165,8 @@ export function MessageBubble({
         <button
           type="button"
           onClick={() => onDelete(message)}
-          title={isMe ? 'Thu hồi tin nhắn' : 'Xóa tin nhắn phía bạn'}
-          className="p-1 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          aria-label={isMe ? 'Thu hồi tin nhắn' : 'Xóa tin nhắn phía bạn'} title={isMe ? 'Thu hồi tin nhắn' : 'Xóa tin nhắn phía bạn'}
+          className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>

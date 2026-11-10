@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { stompClient } from '@/lib/stompClient';
 import { onForegroundMessage, syncCurrentFidIfAuthenticated } from '@/lib/firebase';
@@ -8,6 +9,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { useChatRealtimeListener, FloatingChatWidget } from '@/features/chat';
+import { NOTIFICATION_KEYS } from '@/features/notification/hooks/useNotification';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -24,6 +26,7 @@ function readPushMessage(payload: unknown): PushMessageShape {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -57,6 +60,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       const title = message.notification?.title || message.data?.title || 'Thông báo mới từ SQB';
       const body = message.notification?.body || message.data?.body || '';
       toast.info(body || title, title);
+      void queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
     }).then((unsub) => {
       unsubscribe = unsub;
     }).catch(() => {});
@@ -64,7 +68,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, queryClient]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground transition-colors duration-200">

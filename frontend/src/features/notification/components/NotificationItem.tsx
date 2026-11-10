@@ -15,10 +15,11 @@ import { useMarkAsRead } from '@/features/notification';
 
 interface NotificationItemProps {
   notification: NotificationDto;
+  now: number;
   onItemClick?: () => void;
 }
 
-export function NotificationItem({ notification, onItemClick }: NotificationItemProps) {
+export function NotificationItem({ notification, now, onItemClick }: NotificationItemProps) {
   const navigate = useNavigate();
   const markAsReadMutation = useMarkAsRead();
 
@@ -114,7 +115,7 @@ export function NotificationItem({ notification, onItemClick }: NotificationItem
   const formatRelativeTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      const diffMs = Date.now() - date.getTime();
+      const diffMs = now - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       if (diffMins < 1) return 'Vừa xong';
       if (diffMins < 60) return `${diffMins} phút trước`;
@@ -129,55 +130,59 @@ export function NotificationItem({ notification, onItemClick }: NotificationItem
   };
 
   return (
-    <div
+    <button
+      type="button"
       onClick={handleClick}
-      className={`group relative flex items-start gap-3.5 p-3.5 sm:p-4 rounded-2xl transition-all cursor-pointer ${
+      className={`group relative flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:p-4 ${
         isRead
-          ? 'bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-300'
-          : 'bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 text-slate-900 dark:text-slate-100 font-medium'
+          ? 'hover:bg-muted'
+          : 'bg-academic-soft/55 hover:bg-academic-soft'
       }`}
     >
       {/* Icon or Actor Avatar */}
-      <div className="relative shrink-0 mt-0.5">
+      <span className="relative shrink-0 mt-0.5">
         {notification.actor ? (
           <UserAvatar
             name={notification.actor.fullName || notification.actor.username}
             avatarUrl={notification.actor.avatarUrl}
-            className="border border-slate-200 dark:border-slate-700"
+            className="border border-border" decorative
           />
         ) : (
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${iconBg}`}>
+          <span className={`w-10 h-10 rounded-2xl flex items-center justify-center ${iconBg}`}>
             <TypeIcon className="w-5 h-5" />
-          </div>
+          </span>
         )}
 
         {/* Mini badge icon on avatar */}
         {notification.actor && (
-          <div
-            className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full ring-2 ring-white dark:ring-slate-900 flex items-center justify-center ${iconBg}`}
+          <span
+            className={`absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full ring-2 ring-card ${iconBg}`}
           >
             <TypeIcon className="w-3 h-3" />
-          </div>
+          </span>
         )}
-      </div>
+      </span>
 
       {/* Text Info */}
-      <div className="flex-1 min-w-0 pr-2">
-        <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+      <span className="flex-1 min-w-0 pr-2">
+        <span className="block break-words text-sm font-semibold leading-snug text-foreground">
           {notification.title}
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+        </span>
+        <span className="mt-1 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
           {notification.body}
-        </p>
-        <span className="inline-block text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+        </span>
+        <span className="mt-1.5 block text-xs text-muted-foreground">
           {formatRelativeTime(notification.createdAt)}
         </span>
-      </div>
+      </span>
 
       {/* Unread indicator dot */}
       {!isRead && (
-        <div className="shrink-0 mt-1.5 w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 ring-4 ring-indigo-100 dark:ring-indigo-950/50 animate-pulse" />
+        <>
+          <span className="sr-only">Chưa đọc</span>
+          <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-primary" />
+        </>
       )}
-    </div>
+    </button>
   );
 }

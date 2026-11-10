@@ -371,3 +371,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Tìm kiếm chung tra mã phiên đầy đủ từ PostgreSQL theo ID và đối chiếu toàn bộ mã. Điều kiện đọc là phiên đã chốt hoặc tài khoản gọi chính là người nộp. Phiên chưa chốt không cần được lập chỉ mục tìm kiếm.
 - API phiên của chính mình áp dụng từ khóa trước khi phân trang. Cả ba màn tìm phiên chấp nhận dấu `#` ở đầu mã. Lượt tra mã đầy đủ không được ghi vào lịch sử mới hoặc gợi ý thịnh hành.
+
+### [ADR-033] Nối các trang thông báo trên frontend
+
+- Trang thông báo và menu xem nhanh dùng cùng API con trỏ. Trang nối kết quả theo `pagination.after`, còn menu hiển thị trang đầu với giới hạn riêng.
+- Đánh dấu đã đọc cập nhật các trang đã lưu trong cả hai chế độ và làm mới dữ liệu sau khi API phản hồi. Thông báo đẩy khi đang mở ứng dụng yêu cầu tải lại danh sách.

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { useChatStore } from '../stores/useChatStore';
 import { ConversationList } from '../components/ConversationList';
 import { ChatWindow } from '../components/ChatWindow';
@@ -15,7 +16,9 @@ export function MessagesPage() {
   const { conversationId: paramConvId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
 
-  const { activeConversationId, setActiveConversationId } = useChatStore();
+  const setActiveConversationId = useChatStore((state) => state.setActiveConversationId);
+  const parsedId = Number(paramConvId);
+  const activeConversationId = Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : null;
 
   // Modals state
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -31,25 +34,16 @@ export function MessagesPage() {
     message: null,
   });
 
-  // Đồng bộ URL param vào store
   useEffect(() => {
-    if (paramConvId) {
-      const parsed = parseInt(paramConvId, 10);
-      if (!isNaN(parsed) && parsed !== activeConversationId) {
-        setActiveConversationId(parsed);
-      }
-    } else {
-      setActiveConversationId(null);
-    }
-  }, [paramConvId, activeConversationId, setActiveConversationId]);
+    setActiveConversationId(activeConversationId);
+    return () => setActiveConversationId(null);
+  }, [activeConversationId, setActiveConversationId]);
 
   const handleSelectConversation = (id: number) => {
-    setActiveConversationId(id);
     navigate(`/messages/${id}`);
   };
 
   const handleBackToList = () => {
-    setActiveConversationId(null);
     navigate('/messages');
   };
 
@@ -59,10 +53,10 @@ export function MessagesPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-5rem)] max-w-7xl mx-auto rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden flex">
+    <div className="mx-auto flex h-[max(24rem,calc(100dvh-var(--app-header-height)-var(--app-mobile-nav-height)-4rem-env(safe-area-inset-bottom)))] max-w-7xl overflow-hidden rounded-2xl border border-border bg-card md:h-[max(24rem,calc(100dvh-var(--app-header-height)-3rem))] lg:h-[max(24rem,calc(100dvh-var(--app-header-height)-4rem))]">
       {/* Cột trái: Danh sách hội thoại (Ẩn trên màn hình nhỏ nếu đang mở chat) */}
       <div
-        className={`w-full md:w-80 lg:w-96 shrink-0 h-full flex flex-col ${
+        className={`h-full min-h-0 w-full shrink-0 flex-col md:w-72 xl:w-96 ${
           activeConversationId ? 'hidden md:flex' : 'flex'
         }`}
       >
@@ -71,53 +65,55 @@ export function MessagesPage() {
           onOpenNewDirectModal={() => setIsNewDirectModalOpen(true)}
           onOpenCreateGroupModal={() => setIsCreateGroupModalOpen(true)}
           onOpenPinModal={handleOpenPinModal}
+          onCloseConversation={handleBackToList}
         />
       </div>
 
       {/* Cột phải: Cửa sổ Chat thời gian thực (Ẩn trên màn hình nhỏ nếu chưa chọn chat) */}
       <div
-        className={`flex-1 h-full flex flex-col min-w-0 ${
+        className={`h-full min-h-0 min-w-0 flex-1 flex-col ${
           activeConversationId ? 'flex' : 'hidden md:flex'
         }`}
       >
         {activeConversationId ? (
           <ChatWindow
+            key={activeConversationId}
             conversationId={activeConversationId}
             onBack={handleBackToList}
             onOpenGroupMembers={() => setIsGroupMembersModalOpen(true)}
             onOpenDeleteModal={(msg) => setDeleteModalState({ isOpen: true, message: msg })}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/30">
-            <div className="w-16 h-16 rounded-3xl bg-linear-to-tr from-indigo-500/10 to-violet-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 ring-8 ring-indigo-500/5">
+          <div className="flex-1 flex flex-col items-center justify-center p-5 text-center bg-surface-subtle">
+            <div className="mb-4 grid size-16 place-items-center rounded-2xl bg-academic-soft text-academic">
               <MessageSquare className="w-8 h-8" />
             </div>
 
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">
-              Hộp thư & Trao đổi học tập
+            <h3 className="text-xl font-bold text-foreground">
+              Chọn một cuộc trò chuyện
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-6">
-              Chọn một cuộc trò chuyện ở danh sách bên trái hoặc tạo cuộc thảo luận mới để trao đổi bài giảng, đề thi.
+            <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-6">
+              Mở hội thoại trong hộp thư hoặc bắt đầu trao đổi mới.
             </p>
 
-            <div className="flex items-center gap-3">
-              <button
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
                 type="button"
                 onClick={() => setIsNewDirectModalOpen(true)}
-                className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-md shadow-indigo-500/20 transition-all cursor-pointer flex items-center gap-2"
+                className="min-h-11"
               >
                 <MessageSquarePlus className="w-4 h-4" />
                 Nhắn tin 1-1
-              </button>
+              </Button>
 
-              <button
+              <Button variant="outline"
                 type="button"
                 onClick={() => setIsCreateGroupModalOpen(true)}
-                className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-2"
+                className="min-h-11"
               >
                 <Users className="w-4 h-4" />
                 Tạo nhóm học tập
-              </button>
+              </Button>
             </div>
           </div>
         )}

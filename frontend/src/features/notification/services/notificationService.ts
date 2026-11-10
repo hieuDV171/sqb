@@ -17,16 +17,17 @@ export const notificationService = {
   getNotifications: async (params?: {
     after?: number;
     limit?: number;
-  }): Promise<GlobalResponse<NotificationListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<NotificationListResponseDto>>(
+  }, signal?: AbortSignal): Promise<GlobalResponse<NotificationListResponseDto>> => {
+    return axiosClient.get<GlobalResponse<NotificationListResponseDto>, GlobalResponse<NotificationListResponseDto>>(
       '/notifications',
       {
+        signal,
         params: {
           after: params?.after,
           limit: params?.limit ?? 20,
         },
       }
-    )) as any;
+    );
   },
 
   /**
@@ -36,9 +37,9 @@ export const notificationService = {
   markAsRead: async (
     notificationId: number
   ): Promise<GlobalResponse<ReadNotificationResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<ReadNotificationResponseDto>>(
+    return axiosClient.post<GlobalResponse<ReadNotificationResponseDto>, GlobalResponse<ReadNotificationResponseDto>>(
       `/notifications/${notificationId}/read`
-    )) as any;
+    );
   },
 
   /**
@@ -46,9 +47,9 @@ export const notificationService = {
    * POST /api/v1/notifications/read-all
    */
   markAllAsRead: async (): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(
+    return axiosClient.post<GlobalResponse<void>, GlobalResponse<void>>(
       '/notifications/read-all'
-    )) as any;
+    );
   },
 
   /**
@@ -56,9 +57,9 @@ export const notificationService = {
    * GET /api/v1/settings/push
    */
   getPushSettings: async (): Promise<GlobalResponse<PushSettingsResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<PushSettingsResponseDto>>(
+    return axiosClient.get<GlobalResponse<PushSettingsResponseDto>, GlobalResponse<PushSettingsResponseDto>>(
       '/settings/push'
-    )) as any;
+    );
   },
 
   /**
@@ -68,10 +69,10 @@ export const notificationService = {
   updatePushSettings: async (
     data: UpdatePushSettingsRequestDto
   ): Promise<GlobalResponse<PushSettingsResponseDto>> => {
-    return (await axiosClient.put<GlobalResponse<PushSettingsResponseDto>>(
+    return axiosClient.put<GlobalResponse<PushSettingsResponseDto>, GlobalResponse<PushSettingsResponseDto>>(
       '/settings/push',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -82,7 +83,7 @@ export const notificationService = {
     after?: number;
     limit?: number;
   }): Promise<GlobalResponse<CursorResponse<ActivityFeedItemDto>>> => {
-    return (await axiosClient.get<GlobalResponse<CursorResponse<ActivityFeedItemDto>>>(
+    return axiosClient.get<GlobalResponse<CursorResponse<ActivityFeedItemDto>>, GlobalResponse<CursorResponse<ActivityFeedItemDto>>>(
       '/activity-feeds',
       {
         params: {
@@ -90,7 +91,7 @@ export const notificationService = {
           limit: params?.limit ?? 20,
         },
       }
-    )) as any;
+    );
   },
 
   /**
@@ -100,11 +101,11 @@ export const notificationService = {
   getNewFeedCount: async (
     since?: number
   ): Promise<GlobalResponse<NewFeedCountResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<NewFeedCountResponseDto>>(
+    return axiosClient.get<GlobalResponse<NewFeedCountResponseDto>, GlobalResponse<NewFeedCountResponseDto>>(
       '/activity-feeds/new-count',
       {
         params: { since },
       }
-    )) as any;
+    );
   },
 };

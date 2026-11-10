@@ -34,7 +34,7 @@ export function FloatingChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-3 right-4 z-40 flex items-end gap-3 pointer-events-none">
+    <div className="pointer-events-none fixed right-4 bottom-3 z-40 hidden max-w-[calc(100vw-2rem)] items-end gap-3 md:flex">
       {openFloatingChats.map((convId) => {
         const isMinimized = minimizedFloatingChats.includes(convId);
         const conv = findConversation(convId);
@@ -44,10 +44,12 @@ export function FloatingChatWidget() {
           return (
             <div
               key={convId}
-              onClick={() => toggleMinimizeFloatingChat(convId)}
-              className="pointer-events-auto flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl cursor-pointer hover:scale-105 transition-all group animate-in slide-in-from-bottom-3"
+              className="pointer-events-auto flex items-center gap-1 rounded-full border border-border bg-card p-1 shadow-lg"
             >
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
+              <button type="button" onClick={() => toggleMinimizeFloatingChat(convId)}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-2 hover:bg-muted"
+                aria-label={`Mở ${conv?.displayName || 'cuộc trò chuyện'}`}>
+              <span className="grid size-7 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {conv?.displayAvatarUrl ? (
                   <img src={conv.displayAvatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : isGroup ? (
@@ -55,19 +57,18 @@ export function FloatingChatWidget() {
                 ) : (
                   getAvatarInitial(conv?.displayName)
                 )}
-              </div>
+              </span>
 
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 max-w-[100px] truncate">
+              <span className="max-w-24 truncate text-sm font-semibold text-foreground">
                 {conv?.displayName || 'Trò chuyện'}
               </span>
+              </button>
 
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeFloatingChat(convId);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-all"
+                onClick={() => closeFloatingChat(convId)}
+                aria-label="Đóng hội thoại"
+                className="grid size-11 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -78,7 +79,7 @@ export function FloatingChatWidget() {
         return (
           <div
             key={convId}
-            className="pointer-events-auto w-80 sm:w-88 h-[460px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200"
+            className="pointer-events-auto w-80 sm:w-88 h-[460px] bg-card rounded-3xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200"
           >
             {/* Widget Top Bar Controls */}
             <div className="h-10 px-3 bg-indigo-600 dark:bg-slate-850 flex items-center justify-between text-white shrink-0">
@@ -93,7 +94,7 @@ export function FloatingChatWidget() {
                 <button
                   type="button"
                   onClick={() => toggleMinimizeFloatingChat(convId)}
-                  title="Thu nhỏ"
+                  title="Thu nhỏ" aria-label="Thu nhỏ hội thoại"
                   className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
                 >
                   <Minus className="w-3.5 h-3.5" />
@@ -105,7 +106,7 @@ export function FloatingChatWidget() {
                     closeFloatingChat(convId);
                     navigate(`/messages/${convId}`);
                   }}
-                  title="Mở toàn màn hình"
+                  title="Mở toàn màn hình" aria-label="Mở hội thoại toàn màn hình"
                   className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
@@ -114,7 +115,7 @@ export function FloatingChatWidget() {
                 <button
                   type="button"
                   onClick={() => closeFloatingChat(convId)}
-                  title="Đóng cửa sổ"
+                  title="Đóng cửa sổ" aria-label="Đóng cửa sổ hội thoại"
                   className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />

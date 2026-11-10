@@ -1,6 +1,8 @@
-import { getAvatarInitial } from '@/lib/avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { Button } from '@/components/ui/button';
+import { useStompStatus } from '@/lib/stompClient';
 import { useState, useMemo } from 'react';
-import { useConversations, useGroupMembers, useHideConversation } from '../hooks/useChat';
+import { useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '../hooks/useChat';
 import { useConversationTypingListener } from '../hooks/useChatRealtime';
 import { useChatStore } from '../stores/useChatStore';
 import { MessageList } from './MessageList';
@@ -29,24 +31,27 @@ export function ChatWindow({
   // Đăng ký nhận sự kiện typing thời gian thực trên topic /topic/conv.{conversationId}.typing
   useConversationTypingListener(conversationId);
 
-  const { typingMap } = useChatStore();
+  const { typingMap, isPinUnlocked } = useChatStore();
+  const realtime = useStompStatus();
   const [replyTo, setReplyTo] = useState<MessageDto | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Lấy thông tin hội thoại từ cache của danh sách
   const { data: conversationsData } = useConversations();
+  const { data: hiddenData } = useHiddenConversations();
+  const { data: messageData } = useMessages(conversationId);
   const hideMutation = useHideConversation();
 
   const conversation = useMemo(() => {
-    if (!conversationsData?.pages) return null;
-    for (const page of conversationsData.pages) {
+    const pages = [...(conversationsData?.pages ?? []), ...(isPinUnlocked ? hiddenData?.pages ?? [] : [])];
+    for (const page of pages) {
       const found = page.items.find((c) => c.conversationId === conversationId);
       if (found) return found;
     }
     return null;
-  }, [conversationsData, conversationId]);
+  }, [conversationsData, hiddenData, isPinUnlocked, conversationId]);
 
-  const isGroup = conversation?.type === 'GROUP';
+  const isGroup = (conversation?.type ?? messageData?.pages[0]?.conversationType) === 'GROUP';
   const { data: members = [] } = useGroupMembers(conversationId, isGroup);
 
   // Danh sách người đang gõ trong cuộc trò chuyện này
@@ -58,57 +63,42 @@ export function ChatWindow({
 
   const handleHide = () => {
     if (window.confirm('Bạn có muốn ẩn cuộc hội thoại này vào kho bí mật?')) {
-      hideMutation.mutate(conversationId);
-      onBack?.();
+      hideMutation.mutate(conversationId, { onSuccess: () => onBack?.() });
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/50 relative overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-surface-subtle">
       {/* Chat Header */}
-      <div className="h-16 px-4 border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-10 shadow-2xs">
+      <div className="z-10 flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-2 sm:px-4">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile Back Button */}
           {onBack && (
-            <button
-              type="button"
+            <Button variant="ghost" size="icon"
               onClick={onBack}
-              className="md:hidden p-2 -ml-1 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="size-11 md:hidden"
               aria-label="Quay lại danh sách"
             >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
+              <ChevronLeft aria-hidden="true" />
+            </Button>
           )}
 
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white font-semibold text-sm shadow-xs">
-              {conversation?.displayAvatarUrl ? (
-                <img
-                  src={conversation.displayAvatarUrl}
-                  alt={conversation.displayName}
-                  className="w-full h-full object-cover"
-                />
-              ) : isGroup ? (
-                <Users className="w-5 h-5 text-white/90" />
-              ) : (
-                getAvatarInitial(conversation?.displayName)
-              )}
-            </div>
-            {/* Online Indicator */}
-            <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
-          </div>
+          {isGroup && !conversation?.displayAvatarUrl ? (
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-academic-soft text-academic"><Users aria-hidden="true" className="size-5" /></span>
+          ) : (
+            <UserAvatar name={conversation?.displayName} avatarUrl={conversation?.displayAvatarUrl} decorative />
+          )}
 
           {/* Title & Subtitle */}
           <div className="flex flex-col min-w-0">
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
-              {conversation?.displayName || 'Đang tải thông tin...'}
+            <h3 className="text-sm sm:text-base font-bold text-foreground truncate">
+              {conversation?.displayName || (isGroup ? 'Nhóm trò chuyện' : 'Cuộc trò chuyện')}
             </h3>
 
             {/* Subtitle / Typing notification */}
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            <div className="text-xs text-muted-foreground truncate">
               {typingUsers.length > 0 ? (
-                <span className="text-indigo-600 dark:text-indigo-400 font-medium animate-pulse">
+                <span className="text-academic font-medium animate-pulse">
                   {typingUsers.join(', ')} đang soạn tin...
                 </span>
               ) : isGroup ? (
@@ -116,7 +106,7 @@ export function ChatWindow({
                   {members.length > 0 ? `${members.length} thành viên` : `${conversation?.memberCount || 0} thành viên`}
                 </span>
               ) : (
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">Đang hoạt động</span>
+                <span>Trò chuyện trực tiếp</span>
               )}
             </div>
           </div>
@@ -128,21 +118,21 @@ export function ChatWindow({
             <button
               type="button"
               onClick={onOpenGroupMembers}
-              title="Xem danh sách thành viên"
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+              title="Xem danh sách thành viên" aria-label="Xem danh sách thành viên"
+              className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
             >
               <Users className="w-5 h-5" />
             </button>
           )}
 
-          <button
+          {!conversation?.hiddenAt && <button
             type="button"
             onClick={handleHide}
-            title="Ẩn hội thoại vào kho bí mật"
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
+            title="Ẩn hội thoại" aria-label="Ẩn hội thoại" disabled={hideMutation.isPending}
+            className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
           >
-            <EyeOff className="w-5 h-5" />
-          </button>
+            <EyeOff aria-hidden="true" className="size-5" />
+          </button>}
         </div>
       </div>
 
@@ -155,10 +145,17 @@ export function ChatWindow({
         onImageClick={(url) => setPreviewImageUrl(url)}
       />
 
+      {realtime !== 'CONNECTED' && (
+        <p role="status" className="shrink-0 border-t border-border bg-warning-soft px-3 py-2 text-sm text-warning">
+          {realtime === 'CONNECTING' ? 'Đang kết nối tin nhắn…' : 'Mất kết nối tin nhắn. Bạn vẫn có thể soạn tin.'}
+        </p>
+      )}
+
       {/* Chat Input */}
       <ChatInput
         conversationId={conversationId}
         replyTo={replyTo}
+        canSend={realtime === 'CONNECTED'}
         onCancelReply={() => setReplyTo(null)}
       />
 
@@ -171,6 +168,7 @@ export function ChatWindow({
           <button
             type="button"
             onClick={() => setPreviewImageUrl(null)}
+            aria-label="Đóng ảnh phóng to"
             className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors cursor-pointer"
           >
             <X className="w-6 h-6" />

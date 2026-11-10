@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/error-state';
 import { useMessages } from '../hooks/useChat';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { MessageBubble } from './MessageBubble';
@@ -22,13 +24,16 @@ export function MessageList({
   onImageClick,
 }: MessageListProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     data,
     isLoading,
+    isLoadingError,
+    isFetchNextPageError,
+    isFetching,
+    refetch,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
@@ -42,29 +47,48 @@ export function MessageList({
     return [...flat].reverse();
   }, [data]);
 
-  // Tự động cuộn xuống dưới cùng khi có tin nhắn mới hoặc khi vừa mở hội thoại
-  const lastMessageId = allMessages.length > 0 ? allMessages[allMessages.length - 1].messageId : null;
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const nearBottom = useRef(true);
+  const prependAnchor = useRef<{ height: number; top: number; pages: number } | null>(null);
+  const pageCount = data?.pages.length ?? 0;
+  const lastMessageId = allMessages.at(-1)?.messageId;
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    const anchor = prependAnchor.current;
+    if (!container || !anchor || pageCount <= anchor.pages) return;
+    container.scrollTop = anchor.top + container.scrollHeight - anchor.height;
+    prependAnchor.current = null;
+  }, [pageCount]);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container && nearBottom.current) container.scrollTop = container.scrollHeight;
   }, [conversationId, lastMessageId]);
 
-  // Lắng nghe khi người dùng cuộn lên trên cùng để load tin nhắn cũ hơn
+  function loadOlder() {
+    const container = scrollContainerRef.current;
+    if (!container || isFetching) return;
+    prependAnchor.current = { height: container.scrollHeight, top: container.scrollTop, pages: pageCount };
+    void fetchNextPage({ cancelRefetch: false });
+  }
+
   useEffect(() => {
+    const root = scrollContainerRef.current;
     const sentinel = topSentinelRef.current;
-    if (!sentinel || !hasNextPage || isFetchingNextPage) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
+    if (!root || !sentinel || !hasNextPage || isFetching || isFetchNextPageError || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      observer.disconnect();
+      prependAnchor.current = { height: root.scrollHeight, top: root.scrollTop, pages: pageCount };
+      void fetchNextPage({ cancelRefetch: false });
+    }, { root, rootMargin: '100px 0px 0px 0px' });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetching, isFetchNextPageError, fetchNextPage, pageCount]);
+
+  if (isLoadingError) {
+    return <div className="min-h-0 flex-1 overflow-y-auto p-3"><ErrorState title="Không thể tải tin nhắn" onRetry={() => void refetch()} /></div>;
+  }
 
   if (isLoading) {
     return (
@@ -76,9 +100,9 @@ export function MessageList({
               i % 2 === 0 ? 'justify-end' : 'justify-start'
             }`}
           >
-            {i % 2 !== 0 && <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />}
+            {i % 2 !== 0 && <div className="w-8 h-8 rounded-full bg-muted" />}
             <div
-              className={`h-10 rounded-2xl bg-slate-200 dark:bg-slate-800 ${
+              className={`h-10 rounded-2xl bg-muted ${
                 i % 2 === 0 ? 'w-48' : 'w-64'
               }`}
             />
@@ -90,14 +114,14 @@ export function MessageList({
 
   if (allMessages.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
         <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 flex items-center justify-center mb-3">
           <MessageSquareDashed className="w-6 h-6" />
         </div>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+        <p className="text-sm font-semibold text-foreground">
           Chưa có tin nhắn nào
         </p>
-        <p className="text-xs text-slate-400 mt-1 max-w-xs">
+        <p className="text-xs text-muted-foreground mt-1 max-w-xs">
           Hãy gửi lời chào để bắt đầu cuộc trò chuyện thân mật ngay bây giờ!
         </p>
       </div>
@@ -107,13 +131,22 @@ export function MessageList({
   return (
     <div
       ref={scrollContainerRef}
-      className="flex-1 overflow-y-auto px-4 py-3 space-y-1"
+      className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 py-3 sm:px-4 [overflow-anchor:none]"
+      onScroll={(event) => {
+        const element = event.currentTarget;
+        nearBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+      }}
     >
       {/* Sentinel tải tin nhắn cũ */}
-      <div ref={topSentinelRef} className="h-6 flex items-center justify-center">
+      <div ref={topSentinelRef} className="flex min-h-2 items-center justify-center">
+        {hasNextPage && !isFetchingNextPage && (isFetchNextPageError || typeof IntersectionObserver === 'undefined') && (
+          <Button variant="ghost" className="min-h-11" onClick={loadOlder}>
+            {isFetchNextPageError ? 'Thử tải lại tin nhắn cũ' : 'Tải tin nhắn cũ'}
+          </Button>
+        )}
         {isFetchingNextPage && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-400">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="w-3.5 h-3.5 motion-safe:animate-spin" />
             <span>Đang tải tin nhắn cũ hơn...</span>
           </div>
         )}
@@ -138,7 +171,7 @@ export function MessageList({
           <React.Fragment key={message.messageId}>
             {showDateDivider && (
               <div className="flex items-center justify-center my-4 select-none">
-                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50 shadow-2xs">
+                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[11px] font-semibold text-slate-500 dark:text-muted-foreground border border-slate-200/50 dark:border-slate-700/50 shadow-2xs">
                   {formatDateDivider(message.createdAt)}
                 </span>
               </div>
@@ -157,7 +190,6 @@ export function MessageList({
         );
       })}
 
-      <div ref={bottomRef} className="h-2" />
     </div>
   );
 }

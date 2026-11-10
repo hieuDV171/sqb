@@ -1,205 +1,110 @@
-import { useState, useMemo } from 'react';
-import {
-  CheckCheck,
-  Settings,
-  RefreshCw,
-  SlidersHorizontal,
-  Inbox,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import {
-  useNotifications,
-  useMarkAllAsRead,
-  NotificationItem,
-  PushSettingsModal,
-  type NotificationType,
-} from '@/features/notification';
+import { useState } from 'react';
+import { CheckCheck, Settings, RefreshCw, Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { cn } from '@/lib/utils';
+import { useNotifications, useMarkAllAsRead, useNotificationClock, NotificationItem, PushSettingsModal } from '@/features/notification';
+
+const filters = [
+  ['ALL', 'Tất cả'],
+  ['UNREAD', 'Chưa đọc'],
+  ['ACADEMIC', 'Học thuật'],
+  ['SOCIAL', 'Bạn bè và tương tác'],
+  ['GAMIFICATION', 'Thành tích'],
+] as const;
+type Filter = typeof filters[number][0];
+
+const categories = {
+  ACADEMIC: ['QUESTION_APPROVED', 'QUESTION_ERROR_PENALTY'],
+  SOCIAL: ['FRIEND_REQUEST', 'NEW_COMMENT'],
+  GAMIFICATION: ['EARNED_BADGE', 'GAME5_SEMESTER_RECAP', 'LEADERBOARD_HONOR'],
+};
 
 export function NotificationsPage() {
-  const [filterType, setFilterType] = useState<'ALL' | 'UNREAD' | 'ACADEMIC' | 'SOCIAL' | 'GAMIFICATION'>('ALL');
-  const [isPushSettingsOpen, setIsPushSettingsOpen] = useState(false);
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
-
-  const {
-    data: notificationData,
-    isLoading,
-    isFetching,
-    refetch,
-  } = useNotifications({
-    after: cursor,
-    limit: 20,
+  const [filter, setFilter] = useState<Filter>('ALL');
+  const [showSettings, setShowSettings] = useState(false);
+  const now = useNotificationClock();
+  const notifications = useNotifications();
+  const markAll = useMarkAllAsRead();
+  const unreadCount = notifications.data?.pages[0]?.unreadCount ?? 0;
+  const items = (notifications.data?.pages.flatMap((page) => page.items) ?? []).filter((item) => {
+    if (filter === 'ALL') return true;
+    if (filter === 'UNREAD') return !item.readAt;
+    return categories[filter].includes(item.type);
   });
-
-  const markAllMutation = useMarkAllAsRead();
-
-  const allItems = notificationData?.items || [];
-  const unreadCount = notificationData?.unreadCount ?? 0;
-
-  // Filter items
-  const filteredNotifications = useMemo(() => {
-    if (filterType === 'ALL') return allItems;
-    if (filterType === 'UNREAD') return allItems.filter((n) => !n.readAt);
-
-    const academicTypes: NotificationType[] = [
-      'QUESTION_APPROVED',
-      'QUESTION_ERROR_PENALTY',
-    ];
-    const socialTypes: NotificationType[] = ['FRIEND_REQUEST', 'NEW_COMMENT'];
-    const gamificationTypes: NotificationType[] = [
-      'EARNED_BADGE',
-      'GAME5_SEMESTER_RECAP',
-      'LEADERBOARD_HONOR',
-    ];
-
-    if (filterType === 'ACADEMIC') {
-      return allItems.filter((n) => academicTypes.includes(n.type));
-    }
-    if (filterType === 'SOCIAL') {
-      return allItems.filter((n) => socialTypes.includes(n.type));
-    }
-    if (filterType === 'GAMIFICATION') {
-      return allItems.filter((n) => gamificationTypes.includes(n.type));
-    }
-
-    return allItems;
-  }, [allItems, filterType]);
-
-  const tabs: { key: typeof filterType; label: string }[] = [
-    { key: 'ALL', label: 'Tất cả' },
-    { key: 'UNREAD', label: `Chưa đọc ${unreadCount > 0 ? `(${unreadCount})` : ''}` },
-    { key: 'ACADEMIC', label: 'Học thuật' },
-    { key: 'SOCIAL', label: 'Bạn bè & Tương tác' },
-    { key: 'GAMIFICATION', label: 'Huy hiệu & BXH' },
-  ];
+  const { sentinel, supportsAutoLoad } = useInfiniteScroll(
+    notifications.hasNextPage && !notifications.isFetching && !notifications.isFetchNextPageError && items.length > 0,
+    notifications.fetchNextPage,
+    notifications.data?.pages.length ?? 0,
+  );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Trung Tâm Thông Báo
-            </h1>
-            <Badge variant="role">Hệ thống</Badge>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Cập nhật hoạt động học thuật, lời mời kết bạn, kết quả thẩm định và thành tích vinh danh.
-          </p>
+          <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-academic"><Bell aria-hidden="true" className="size-4" /> Không gian của bạn</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Thông báo</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Theo dõi cập nhật học tập, tương tác và thành tích.</p>
         </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
           {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={() => markAllMutation.mutate()}
-              disabled={markAllMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer"
-            >
-              <CheckCheck className="w-4 h-4" />
-              Đánh dấu đã đọc tất cả
-            </button>
+            <Button variant="secondary" className="min-h-11" disabled={markAll.isPending} onClick={() => markAll.mutate()}>
+              <CheckCheck aria-hidden="true" /> Đánh dấu tất cả đã đọc
+            </Button>
           )}
-
-          <button
-            type="button"
-            onClick={() => setIsPushSettingsOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
-          >
-            <Settings className="w-4 h-4" />
-            Cài đặt
-          </button>
+          <Button variant="outline" className="min-h-11" onClick={() => setShowSettings(true)}>
+            <Settings aria-hidden="true" /> Cài đặt
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Filter Tabs Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-          <SlidersHorizontal className="w-4 h-4 text-slate-400 ml-2 hidden sm:block" />
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setFilterType(tab.key)}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-                filterType === tab.key
-                  ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              {tab.label}
-            </button>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-2.5">
+        <div role="group" aria-label="Lọc thông báo" className="flex flex-wrap gap-1">
+          {filters.map(([key, label]) => (
+            <Button key={key} variant="ghost" aria-pressed={filter === key} onClick={() => setFilter(key)}
+              className={cn('min-h-11 px-3', filter === key ? 'bg-academic-soft text-academic hover:bg-academic-soft hover:text-academic' : 'text-muted-foreground')}>
+              {label}{key === 'UNREAD' && unreadCount > 0 ? ' (' + unreadCount + ')' : ''}
+            </Button>
           ))}
         </div>
-
-        <button
-          type="button"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ml-auto"
-          title="Làm mới"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-        </button>
+        <Button variant="ghost" size="icon" className="ml-auto size-11 text-muted-foreground" aria-label="Làm mới thông báo"
+          disabled={notifications.isFetching} onClick={() => void notifications.refetch()}>
+          <RefreshCw aria-hidden="true" className={cn(notifications.isFetching && 'motion-safe:animate-spin')} />
+        </Button>
       </div>
 
-      {/* List Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="p-6 space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-start gap-4 animate-pulse">
-                <div className="w-10 h-10 rounded-2xl bg-slate-200 dark:bg-slate-800 shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
-                  <div className="h-3 bg-slate-100 dark:bg-slate-800/60 rounded w-2/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredNotifications.length === 0 ? (
-          <div className="py-16 px-4 text-center">
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-500 mx-auto mb-4">
-              <Inbox className="w-8 h-8" />
-            </div>
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-              Không có thông báo nào trong mục này
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-              Khi có tương tác mới, hệ thống sẽ tự động gửi thông báo theo các cài đặt nhận tin của bạn.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/80 p-2">
-            {filteredNotifications.map((item) => (
-              <NotificationItem key={item.notificationId} notification={item} />
-            ))}
-          </div>
-        )}
+      {notifications.isLoading ? (
+        <div aria-busy="true" aria-label="Đang tải thông báo" className="space-y-2">
+          {[1, 2, 3, 4].map((row) => <Skeleton key={row} className="h-24 rounded-2xl" />)}
+        </div>
+      ) : notifications.isLoadingError ? (
+        <ErrorState title="Không thể tải thông báo" onRetry={() => void notifications.refetch()} />
+      ) : items.length ? (
+        <ul aria-label="Danh sách thông báo" className="space-y-1 rounded-2xl border border-border bg-card p-2">
+          {items.map((item) => <li key={item.notificationId}><NotificationItem notification={item} now={now} /></li>)}
+        </ul>
+      ) : (
+        <EmptyState icon={Bell} title={notifications.hasNextPage ? 'Chưa có thông báo phù hợp trong các mục đã tải' : 'Không có thông báo trong mục này'}
+          description={notifications.hasNextPage ? 'Bạn có thể xem thêm thông báo cũ hơn.' : 'Thông báo mới sẽ xuất hiện ở đây.'} />
+      )}
 
-        {/* Cursor Pagination Load More */}
-        {notificationData?.pagination?.hasNext && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-center bg-slate-50/50 dark:bg-slate-900/50">
-            <button
-              type="button"
-              onClick={() => {
-                const last = allItems[allItems.length - 1];
-                if (last) setCursor(last.notificationId);
-              }}
-              disabled={isFetching}
-              className="px-5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors cursor-pointer"
-            >
-              {isFetching ? 'Đang tải thêm...' : 'Xem thông báo cũ hơn'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Push Settings Modal */}
-      <PushSettingsModal
-        isOpen={isPushSettingsOpen}
-        onClose={() => setIsPushSettingsOpen(false)}
-      />
+      {notifications.hasNextPage && (
+        <div className="space-y-2 text-center">
+          <div ref={sentinel} aria-hidden="true" className="h-px" />
+          {notifications.isFetchNextPageError && <p role="status" className="text-sm text-destructive">Không tải được thông báo cũ hơn.</p>}
+          {notifications.isFetchingNextPage ? (
+            <p role="status" className="text-sm text-muted-foreground">Đang tải thêm thông báo…</p>
+          ) : (!supportsAutoLoad || notifications.isFetchNextPageError || !items.length) && (
+            <Button variant="outline" className="min-h-11" disabled={notifications.isFetching} onClick={() => void notifications.fetchNextPage({ cancelRefetch: false })}>
+              {notifications.isFetchNextPageError ? 'Thử tải lại' : 'Xem thông báo cũ hơn'}
+            </Button>
+          )}
+        </div>
+      )}
+      <PushSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }

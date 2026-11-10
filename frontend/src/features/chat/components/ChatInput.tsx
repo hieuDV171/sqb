@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import { useChatStore } from '../stores/useChatStore';
 import { mediaService } from '@/services/mediaService';
 import type { MessageDto, MessageType } from '../types/chat.types';
@@ -14,12 +15,14 @@ import { toast } from '@/stores/useToastStore';
 interface ChatInputProps {
   conversationId: number;
   replyTo: MessageDto | null;
+  canSend: boolean;
   onCancelReply: () => void;
 }
 
 export function ChatInput({
   conversationId,
   replyTo,
+  canSend,
   onCancelReply,
 }: ChatInputProps) {
   const { sendMessage, sendTyping } = useChatStore();
@@ -29,11 +32,18 @@ export function ChatInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimerRef = useRef<any>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imagePreviewRef = useRef(selectedImages);
+
+  useEffect(() => { imagePreviewRef.current = selectedImages; }, [selectedImages]);
+  useEffect(() => () => {
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    imagePreviewRef.current.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+  }, []);
 
   // Focus textarea when conversation or reply changes
   useEffect(() => {
-    textareaRef.current?.focus();
+    if (replyTo || window.matchMedia('(pointer: fine)').matches) textareaRef.current?.focus();
   }, [conversationId, replyTo]);
 
   // Tự động điều chỉnh chiều cao textarea theo nội dung
@@ -46,6 +56,7 @@ export function ChatInput({
 
   // Xử lý gửi trạng thái Typing
   const handleTypingEvent = () => {
+    if (!canSend) return;
     sendTyping(conversationId, true);
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
@@ -88,10 +99,10 @@ export function ChatInput({
 
   const handleSend = async () => {
     const trimmed = content.trim();
-    if (!trimmed && selectedImages.length === 0) return;
+    if (!canSend || isUploading || (!trimmed && selectedImages.length === 0)) return;
 
     try {
-      let uploadedUrls: string[] = [];
+      const uploadedUrls: string[] = [];
 
       if (selectedImages.length > 0) {
         setIsUploading(true);
@@ -133,7 +144,7 @@ export function ChatInput({
       } else {
         toast.error('Không thể gửi tin nhắn. Kết nối WebSocket bị gián đoạn.');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('[ChatInput] Lỗi khi gửi tin nhắn:', err);
       toast.error('Có lỗi xảy ra khi tải ảnh hoặc gửi tin nhắn');
     } finally {
@@ -142,23 +153,23 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
   };
 
   return (
-    <div className="border-t border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs p-3 space-y-2">
+    <div className="shrink-0 space-y-2 border-t border-border bg-card p-2 sm:p-3">
       {/* Reply Preview Bar */}
       {replyTo && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border-l-4 border-indigo-500 text-xs animate-in fade-in duration-150">
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-academic-soft border-l-4 border-academic text-xs animate-in fade-in duration-150">
           <div className="flex items-center gap-2 truncate">
-            <CornerDownRight className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+            <CornerDownRight className="w-3.5 h-3.5 text-academic shrink-0" />
+            <span className="font-semibold text-foreground truncate">
               Đang trả lời {replyTo.senderName}:
             </span>
-            <span className="text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-muted-foreground truncate">
               {replyTo.content || '[Hình ảnh]'}
             </span>
           </div>
@@ -207,9 +218,10 @@ export function ChatInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          title="Đính kèm hình ảnh (Tự động nén WebP)"
+          title="Đính kèm hình ảnh"
+          aria-label="Đính kèm hình ảnh"
           disabled={isUploading}
-          className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+          className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
           <ImageIcon className="w-5 h-5" />
         </button>
@@ -225,24 +237,26 @@ export function ChatInput({
               handleTypingEvent();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
-            className="w-full py-2.5 px-4 text-sm bg-slate-100/80 dark:bg-slate-800/80 border border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 rounded-2xl outline-none resize-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100 max-h-32"
+            aria-label="Nội dung tin nhắn"
+            placeholder="Nhập tin nhắn…"
+            className="min-h-11 w-full min-w-0 resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 md:text-sm"
           />
         </div>
 
         {/* Send Button */}
-        <button
+        <Button size="icon"
           type="button"
-          onClick={handleSend}
-          disabled={isUploading || (!content.trim() && selectedImages.length === 0)}
-          className="p-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-xs hover:shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none shrink-0"
+          aria-label="Gửi tin nhắn"
+          onClick={() => void handleSend()}
+          disabled={!canSend || isUploading || (!content.trim() && selectedImages.length === 0)}
+          className="size-11"
         >
           {isUploading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />
           ) : (
-            <Send className="w-5 h-5" />
+            <Send aria-hidden="true" />
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
