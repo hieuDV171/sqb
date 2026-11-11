@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, CalendarDays, CheckCircle2, Circle, Lock, Loader2, Pencil, Plus, Search, Settings } from 'lucide-react';
+import { BookOpen, CalendarDays, CalendarRange, CheckCircle2, Circle, Lock, Loader2, Pencil, Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -214,24 +214,28 @@ function SemesterSettings() {
                       </div>
                     </td>
                     <td className="px-2 py-3 align-middle sm:px-4">
-                      <div className="flex flex-wrap justify-end gap-2 [&_button]:max-w-full [&_button]:whitespace-normal">
-                        <EditSemesterStartDate semester={semester} disabled={busy} />
-                        {semester.active ? (
-                          <Button type="button" variant="outline" size="sm" disabled={busy}
-                            className="min-h-11 border-warning/30 bg-warning-soft px-2 text-warning hover:bg-warning/15 hover:text-warning sm:px-3"
-                            onClick={() => start(semester.isFinalize ? 'deactivate' : 'finalize', semester)}>
-                            {semester.isFinalize ? <Lock aria-hidden="true" className="hidden sm:block" /> : <CheckCircle2 aria-hidden="true" className="hidden sm:block" />}
-                            {semester.isFinalize ? 'Đóng học kỳ' : 'Chốt sổ'}
-                          </Button>
-                        ) : (
-                          <>
-                            {!semester.isFinalize && <Button type="button" variant="outline" size="sm"
-                              className="min-h-11 border-success/30 bg-success-soft px-2 text-success hover:bg-success/15 hover:text-success sm:px-3"
-                              disabled={busy || Boolean(active)} onClick={() => start('activate', semester)}>Kích hoạt</Button>}
-                            <Button type="button" variant="destructive" size="sm" className="min-h-11 px-2 sm:px-3" disabled={busy}
-                              aria-label={`Xóa học kỳ ${semester.name}`} onClick={() => start('delete', semester)}>Xóa</Button>
-                          </>
-                        )}
+                      <div className="@container ml-auto max-w-72">
+                        <div className="grid items-center justify-items-end gap-2 @min-[12rem]:grid-cols-[max-content_minmax(0,1fr)] [&_button]:max-w-full [&_button]:whitespace-normal">
+                          <EditSemesterStartDate semester={semester} disabled={busy} />
+                          <div className="flex min-w-0 flex-wrap justify-end gap-2">
+                            {semester.active ? (
+                              <Button type="button" variant="outline" size="sm" disabled={busy}
+                                className="min-h-11 border-warning/30 bg-warning-soft px-2 text-warning hover:bg-warning/15 hover:text-warning sm:px-3"
+                                onClick={() => start(semester.isFinalize ? 'deactivate' : 'finalize', semester)}>
+                                {semester.isFinalize ? <Lock aria-hidden="true" className="hidden sm:block" /> : <CheckCircle2 aria-hidden="true" className="hidden sm:block" />}
+                                {semester.isFinalize ? 'Đóng học kỳ' : 'Chốt sổ'}
+                              </Button>
+                            ) : (
+                              <>
+                                {!semester.isFinalize && <Button type="button" variant="outline" size="sm"
+                                  className="min-h-11 border-success/30 bg-success-soft px-2 text-success hover:bg-success/15 hover:text-success sm:px-3"
+                                  disabled={busy || Boolean(active)} onClick={() => start('activate', semester)}>Kích hoạt</Button>}
+                                <Button type="button" variant="destructive" size="sm" className="min-h-11 px-2 sm:px-3" disabled={busy}
+                                  aria-label={`Xóa học kỳ ${semester.name}`} onClick={() => start('delete', semester)}>Xóa</Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -359,7 +363,7 @@ export function AdminSettingsPage() {
   const [section, setSection] = useState<'semesters' | 'subjects'>('semesters');
   return (
     <div className="mx-auto max-w-6xl space-y-4 pb-8">
-      <AdminPageHeader icon={Settings} title="Cấu hình học vụ"
+      <AdminPageHeader icon={CalendarRange} title="Cấu hình học vụ"
         description="Quản lý học kỳ và danh mục môn học của hệ thống." />
       <div role="group" aria-label="Mục cấu hình học vụ" className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card p-2">
         <Button type="button" variant={section === 'semesters' ? 'secondary' : 'ghost'} aria-pressed={section === 'semesters'}
