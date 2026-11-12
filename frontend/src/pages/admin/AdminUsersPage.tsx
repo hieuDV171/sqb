@@ -59,7 +59,7 @@ type AccountDraft = {
 
 type ResetResult = { email: string; error?: string };
 
-const panelClass = "mx-auto w-full max-w-3xl rounded-2xl border-border";
+const panelClass = "w-full rounded-2xl border-border";
 
 function AccountPanelHeading({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
   return (
@@ -612,7 +612,7 @@ export function AdminUsersPage() {
               Nhập Excel
             </Button>
           </aside>
-          <Card className={panelClass}>
+          <Card className={cn(panelClass, "mx-auto max-w-3xl")}>
             <AccountPanelHeading icon={UserPlus} title="Tạo tài khoản">
               Điền thông tin từng người. Bạn có thể thêm nhiều tài khoản và tạo trong một lần.
             </AccountPanelHeading>
