@@ -166,7 +166,7 @@ export const chatService = {
     conversationId: number,
     userId: number
   ): Promise<GlobalResponse<void>> => {
-    return await axiosClient.delete<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}`);
+    return await axiosClient.delete<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}`, { skipToast: true });
   },
 
   /**
@@ -178,7 +178,7 @@ export const chatService = {
     userId: number,
     data: UpdateMemberRoleRequestDto
   ): Promise<GlobalResponse<void>> => {
-    return await axiosClient.put<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}/role`, data);
+    return await axiosClient.put<GlobalResponse<void>, GlobalResponse<void>>(`/conversations/${conversationId}/members/${userId}/role`, data, { skipToast: true });
   },
 
   /**

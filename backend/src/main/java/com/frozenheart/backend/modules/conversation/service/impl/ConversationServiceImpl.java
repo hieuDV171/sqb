@@ -9,6 +9,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.conversation.dto.*;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
@@ -700,6 +701,10 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Không thể tự thay đổi vai trò của chính mình");
                 }
 
+                conversationRepository.findForMembershipUpdate(conversationId)
+                                .filter(conversation -> conversation.getType() == ConversationType.GROUP)
+                                .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND));
+
                 UserParticipant callerParticipant = userParticipantRepository
                                 .findByUserIdAndConversationId(currentUserId, conversationId)
                                 .orElseThrow(
@@ -722,19 +727,19 @@ public class ConversationServiceImpl implements ConversationService {
                         throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Thành viên đã rời khỏi nhóm");
                 }
 
-                if (request.getRole() == ConversationRole.CHIEF) {
-                        // Chuyển giao ngôi Tù trưởng: Tù trưởng hiện tại lùi về làm Già làng
-                        // (VILLAGE_ELDER)
-                        callerParticipant.setRole(ConversationRole.VILLAGE_ELDER);
-                        userParticipantRepository.save(callerParticipant);
-
-                        targetParticipant.setRole(ConversationRole.CHIEF);
-                        userParticipantRepository.save(targetParticipant);
+                ConversationRole newRole = request.getRole();
+                if (newRole == targetParticipant.getRole()) {
                         return;
                 }
 
-                targetParticipant.setRole(request.getRole());
+                if (newRole == ConversationRole.CHIEF) {
+                        callerParticipant.setRole(ConversationRole.VILLAGE_ELDER);
+                        userParticipantRepository.save(callerParticipant);
+                }
+
+                targetParticipant.setRole(newRole);
                 userParticipantRepository.save(targetParticipant);
+                eventPublisher.publishEvent(new WsGroupRolesChangedDto(conversationId));
         }
 
         @Override
@@ -810,6 +815,9 @@ public class ConversationServiceImpl implements ConversationService {
                 callerParticipant.setLeftAt(Instant.now());
                 userParticipantRepository.save(callerParticipant);
                 groupInvitationRepository.deleteForInviter(conversationId, currentUserId);
+                if (newChiefDto != null) {
+                        eventPublisher.publishEvent(new WsGroupRolesChangedDto(conversationId));
+                }
 
                 return LeaveGroupResponseDto.builder()
                                 .conversationId(conversationId)

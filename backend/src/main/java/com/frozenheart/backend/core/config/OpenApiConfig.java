@@ -103,11 +103,13 @@ public class OpenApiConfig {
 
                 | STOMP Topic / Queue | Mô tả sự kiện | Payload DTO nhận được (snake_case) |
                 | :--- | :--- | :--- |
-                | `/user/queue/messages` | Nhận tin nhắn mới, thu hồi tin nhắn, biên nhận đã đọc và trạng thái đang soạn. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsMessageRevokedDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` |
+                | `/user/queue/messages` | Nhận tin nhắn, thu hồi, biên nhận đã đọc, trạng thái đang soạn và thay đổi vai trò nhóm. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsMessageRevokedDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` / `WsGroupRolesChangedDto` |
 
                 Với tin nhắn trả lời, `NEW_MESSAGE` chứa `reply_to_message` cùng cấu trúc với lịch sử REST, gồm ID tin gốc, người gửi và `content_preview`. Nếu người nhận đã xóa tin gốc ở phía mình, bản trích dẫn chỉ báo tin gốc không còn hiển thị.
 
                 Sau khi thu hồi với mọi người được lưu thành công, `MESSAGE_REVOKED` gửi `conversation_id` và `message_id` tới thành viên còn tham gia. Xóa tin ở phía mình không tạo sự kiện này.
+
+                `GROUP_ROLES_CHANGED` gửi `conversation_id` sau khi giao dịch đổi vai trò nhóm thành công. Client tải lại danh sách thành viên của nhóm.
                 """;
 
         return new OpenAPI()

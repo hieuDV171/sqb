@@ -231,6 +231,11 @@ export interface WsMessageRevokedDto {
   messageId: number;
 }
 
+export interface WsGroupRolesChangedDto {
+  eventType: 'GROUP_ROLES_CHANGED';
+  conversationId: number;
+}
+
 export interface WsTypingBroadcastDto {
   eventType: 'TYPING_STATUS';
   conversationId: number;

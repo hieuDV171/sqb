@@ -98,9 +98,11 @@ export function DeviceManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const actionTrigger = useRef<HTMLButtonElement>(null);
   const refreshButton = useRef<HTMLButtonElement>(null);
+  const isCurrent = (device: DeviceResponse) => device.isCurrentDevice || device.deviceId === currentDeviceId;
+  const orderedDevices = [...devices].sort((a, b) => Number(isCurrent(b)) - Number(isCurrent(a)));
 
   async function confirmAction() {
-    if (!action || isSubmitting || action.device.isCurrentDevice || action.device.deviceId === currentDeviceId) return;
+    if (!action || isSubmitting || isCurrent(action.device)) return;
     setIsSubmitting(true);
     setActionError(null);
     try {
@@ -159,9 +161,9 @@ export function DeviceManagementPage() {
 
       {devices.length > 0 && (
         <section className={gridClass} aria-label="Danh sách thiết bị" aria-busy={isLoading}>
-          {devices.map((device) => (
+          {orderedDevices.map((device) => (
             <DeviceCard key={device.userDeviceId || device.deviceId} device={device}
-              isCurrent={device.isCurrentDevice || device.deviceId === currentDeviceId}
+              isCurrent={isCurrent(device)}
               onAction={(type, trigger) => {
                 actionTrigger.current = trigger;
                 setActionError(null);

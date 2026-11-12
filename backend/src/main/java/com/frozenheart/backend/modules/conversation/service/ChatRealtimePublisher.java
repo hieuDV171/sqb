@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,17 @@ public class ChatRealtimePublisher {
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public void publishRevocation(WsMessageRevokedDto event) {
-        userParticipantRepository.findByConversationIdAndLeftAtIsNull(event.conversationId())
+        deliverToActiveMembers(event.conversationId(), event);
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void publishGroupRolesChanged(WsGroupRolesChangedDto event) {
+        deliverToActiveMembers(event.conversationId(), event);
+    }
+
+    private void deliverToActiveMembers(Long conversationId, Object event) {
+        userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversationId)
                 .forEach(participant -> deliver(participant, event));
     }
 

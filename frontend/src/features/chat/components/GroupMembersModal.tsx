@@ -1,25 +1,16 @@
-import { getAvatarInitial } from '@/lib/avatar';
-import { useState, useMemo } from 'react';
-import {
-  useGroupMembers,
-  useAddGroupMembers,
-  useRemoveGroupMember,
-  useUpdateMemberRole,
-} from '../hooks/useChat';
-import { GroupCandidatePicker } from './GroupCandidatePicker';
+import { useRef, useState } from 'react';
+import { AlertDialog } from '@base-ui/react/alert-dialog';
+import { Dialog } from '@base-ui/react/dialog';
+import { Menu } from '@base-ui/react/menu';
+import { Check, ChevronDown, Crown, Loader2, Search, Shield, Trash2, User, UserPlus, Users, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { ConversationRole, GroupCandidateDto } from '../types/chat.types';
-import {
-  Users,
-  Crown,
-  Shield,
-  User,
-  Search,
-  UserPlus,
-  Trash2,
-  X,
-  Loader2,
-} from 'lucide-react';
+import { useAddGroupMembers, useGroupMembers, useRemoveGroupMember, useUpdateMemberRole } from '../hooks/useChat';
+import type { ConversationMemberDto, ConversationRole, GroupCandidateDto } from '../types/chat.types';
+import { GroupCandidatePicker } from './GroupCandidatePicker';
 
 interface GroupMembersModalProps {
   conversationId: number;
@@ -27,271 +18,272 @@ interface GroupMembersModalProps {
   onClose: () => void;
 }
 
+type MemberAction =
+  | { type: 'remove'; member: ConversationMemberDto }
+  | { type: 'changeRole'; member: ConversationMemberDto; role: ConversationRole };
+
+const roleInfo = {
+  CHIEF: { label: 'Tù trưởng', icon: Crown, variant: 'gold' },
+  VILLAGE_ELDER: { label: 'Già làng', icon: Shield, variant: 'info' },
+  VILLAGER: { label: 'Dân làng', icon: User, variant: 'secondary' },
+} as const;
+
+const roleOptions = [
+  { role: 'VILLAGER', label: 'Dân làng' },
+  { role: 'VILLAGE_ELDER', label: 'Già làng' },
+  { role: 'CHIEF', label: 'Chuyển quyền Tù trưởng' },
+] as const;
+
+function MemberRoleMenu({ member, disabled, onSelect }: {
+  member: ConversationMemberDto;
+  disabled: boolean;
+  onSelect: (role: ConversationRole, trigger: HTMLButtonElement | null) => void;
+}) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const nextRole = useRef<ConversationRole | null>(null);
+
+  return (
+    <Menu.Root modal={false} onOpenChangeComplete={(open) => {
+      if (open || nextRole.current === null) return;
+      const role = nextRole.current;
+      nextRole.current = null;
+      onSelect(role, trigger.current);
+    }}>
+      <Menu.Trigger ref={trigger} disabled={disabled}
+        render={<Button type="button" variant="outline" className="min-h-11 justify-between text-base sm:w-40" />}
+        aria-label={'Đổi vai trò của ' + member.fullName + ' (' + roleInfo[member.role].label + ')'}>
+        {roleInfo[member.role].label}
+        <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="end" sideOffset={6} className="z-[72] max-w-(--available-width)">
+          <Menu.Popup className="w-60 max-w-(--available-width) overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            {roleOptions.map(({ role, label }) => (
+              <Menu.Item key={role} disabled={role === member.role} onClick={() => { nextRole.current = role; }}
+                className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-base outline-none data-highlighted:bg-accent data-disabled:cursor-default">
+                {label}
+                {role === member.role && <Check aria-hidden="true" className="size-4 shrink-0 text-academic" />}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+
 export function GroupMembersModal({ isOpen, ...props }: GroupMembersModalProps) {
   return isOpen ? <GroupMembersDialog key={props.conversationId} {...props} /> : null;
 }
 
 function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalProps, 'isOpen'>) {
-  const currentUserId = useAuthStore((s) => s.user?.id);
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddMode, setIsAddMode] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState<GroupCandidateDto[]>([]);
+  const [action, setAction] = useState<MemberAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const actionTrigger = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
 
-  const { data: members = [], isLoading: isLoadingMembers } = useGroupMembers(conversationId);
-  const addMembersMutation = useAddGroupMembers();
-  const removeMemberMutation = useRemoveGroupMember();
-  const updateRoleMutation = useUpdateMemberRole();
+  const { data: members = [], isLoading, isError, refetch } = useGroupMembers(conversationId);
+  const addMembers = useAddGroupMembers();
+  const removeMember = useRemoveGroupMember();
+  const updateRole = useUpdateMemberRole();
+  const isSubmitting = removeMember.isPending || updateRole.isPending;
 
-  // Xác định vai trò của người dùng hiện tại trong nhóm
-  const myRole: ConversationRole | null = useMemo(() => {
-    const me = members.find((m) => m.userId === currentUserId);
-    return me ? me.role : null;
-  }, [members, currentUserId]);
-
+  const myRole = members.find((member) => member.userId === currentUserId)?.role;
   const isChief = myRole === 'CHIEF';
-  const isVillageElder = myRole === 'VILLAGE_ELDER';
-  const canManage = isChief || isVillageElder;
+  const canManage = isChief || myRole === 'VILLAGE_ELDER';
+  const matchingMembers = members.filter((member) => member.fullName.toLowerCase().includes(searchTerm.trim().toLowerCase()));
 
-  const handleOpenAddMode = () => {
-    setSelectedPeople([]);
-    setIsAddMode(true);
-  };
-
-  const handleAddSelectedPeople = () => {
-    if (selectedPeople.length === 0) return;
-    addMembersMutation.mutate(
-      {
-        conversationId,
-        data: { userIds: selectedPeople.map((person) => person.userId) },
-      },
-      {
-        onSuccess: () => {
-          setIsAddMode(false);
-          setSelectedPeople([]);
-        },
-      }
+  function canRemove(member: ConversationMemberDto) {
+    return member.userId !== currentUserId && (
+      (isChief && member.role !== 'CHIEF') || (myRole === 'VILLAGE_ELDER' && member.role === 'VILLAGER')
     );
-  };
+  }
 
-  const handleRemoveMember = (userId: number, name: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa thành viên "${name}" khỏi nhóm?`)) {
-      removeMemberMutation.mutate({ conversationId, userId });
-    }
-  };
-
-  const handleRoleChange = (userId: number, newRole: ConversationRole) => {
-    updateRoleMutation.mutate({
-      conversationId,
-      userId,
-      data: { role: newRole },
-    });
-  };
-
-  const filteredMembers = members.filter((m) =>
-    m.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  const target = action && members.find((member) => member.userId === action.member.userId);
+  const canConfirm = action && target && target.role === action.member.role && (
+    action.type === 'remove' ? canRemove(target) : isChief && target.userId !== currentUserId
   );
 
-  const renderRoleBadge = (role: ConversationRole) => {
-    switch (role) {
-      case 'CHIEF':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <Crown className="w-3 h-3 text-amber-500" />
-            Tù trưởng
-          </span>
-        );
-      case 'VILLAGE_ELDER':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-            <Shield className="w-3 h-3 text-indigo-500" />
-            Già làng
-          </span>
-        );
-      case 'VILLAGER':
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-            <User className="w-3 h-3" />
-            Dân làng
-          </span>
-        );
+  function askForConfirmation(nextAction: MemberAction, trigger: HTMLButtonElement | null) {
+    actionTrigger.current = trigger;
+    setActionError(null);
+    setAction(nextAction);
+  }
+
+  async function confirmAction() {
+    if (!action || !canConfirm || isSubmitting) return;
+    setActionError(null);
+    const variables = { conversationId, userId: action.member.userId };
+    try {
+      if (action.type === 'remove') {
+        await removeMember.mutateAsync(variables);
+      } else {
+        await updateRole.mutateAsync({ ...variables, data: { role: action.role } });
+      }
+      setAction(null);
+    } catch (error) {
+      const message = typeof error === 'object' && error !== null && 'message' in error ? error.message : null;
+      setActionError(typeof message === 'string' && message ? message : 'Thao tác thất bại. Hãy thử lại.');
     }
-  };
+  }
+
+  function addSelectedPeople() {
+    if (!canManage || selectedPeople.length === 0) return;
+    addMembers.mutate({ conversationId, data: { userIds: selectedPeople.map((person) => person.userId) } }, {
+      onSuccess: () => {
+        setIsAddMode(false);
+        setSelectedPeople([]);
+      },
+    });
+  }
+
+  const removing = action?.type === 'remove';
+  const transferring = action?.type === 'changeRole' && action.role === 'CHIEF';
+  const actionLabel = removing ? 'Xóa thành viên' : transferring ? 'Chuyển quyền Tù trưởng' : 'Đổi vai trò';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-      <div
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <Users className="w-5 h-5" />
+    <Dialog.Root open onOpenChange={(open) => {
+      if (!open && !action && !addMembers.isPending) onClose();
+    }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/55" />
+        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-[71] mx-auto flex max-h-[calc(100dvh-2rem)] max-w-xl -translate-y-1/2 flex-col rounded-2xl border border-border bg-card text-foreground shadow-xl">
+          <div className="flex items-start gap-3 border-b border-border p-4 sm:p-5">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-academic-soft text-academic">
+              <Users aria-hidden="true" className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <Dialog.Title className="text-xl font-bold sm:text-2xl">Thành viên nhóm ({members.length})</Dialog.Title>
+              <Dialog.Description className="text-base text-muted-foreground">Tù trưởng, Già làng và Dân làng</Dialog.Description>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Thành viên nhóm ({members.length})
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Tù trưởng, Già làng và Dân làng
-              </p>
-            </div>
+            <Dialog.Close render={<Button ref={closeButton} type="button" variant="ghost" size="icon" className="size-11" />}
+              aria-label="Đóng danh sách thành viên" disabled={addMembers.isPending}>
+              <X aria-hidden="true" />
+            </Dialog.Close>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content Mode: Add Friends vs Member List */}
-        {isAddMode ? (
-          <div className="flex-1 flex flex-col overflow-hidden py-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Thêm hoặc mời vào nhóm
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsAddMode(false)}
-                className="text-xs text-indigo-600 hover:underline cursor-pointer"
-              >
-                Quay lại danh sách
-              </button>
-            </div>
-
-            <GroupCandidatePicker conversationId={conversationId} selected={selectedPeople}
-              onSelectionChange={setSelectedPeople} disabled={addMembersMutation.isPending} />
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleAddSelectedPeople}
-                disabled={selectedPeople.length === 0 || addMembersMutation.isPending}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {addMembersMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isAddMode && canManage ? (
+            <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-base font-semibold">Thêm hoặc mời vào nhóm</h4>
+                <Button type="button" variant="ghost" className="min-h-11 text-base" disabled={addMembers.isPending}
+                  onClick={() => setIsAddMode(false)}>Quay lại danh sách</Button>
+              </div>
+              <GroupCandidatePicker conversationId={conversationId} selected={selectedPeople}
+                onSelectionChange={setSelectedPeople} disabled={addMembers.isPending} />
+              <Button type="button" className="min-h-11 w-full text-base" onClick={addSelectedPeople}
+                disabled={selectedPeople.length === 0 || addMembers.isPending}>
+                {addMembers.isPending && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
                 Xác nhận ({selectedPeople.length} người)
-              </button>
+              </Button>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col overflow-hidden py-4 space-y-3">
-            {/* Search & Add Button */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Tìm thành viên trong nhóm..."
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-100 dark:bg-slate-800/80 rounded-xl outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
-                />
+          ) : (
+            <div className="flex min-h-0 flex-col gap-3 p-4 sm:p-5">
+              <div className="flex flex-wrap gap-2">
+                <label className="relative min-w-40 flex-1">
+                  <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <span className="sr-only">Tìm thành viên trong nhóm</span>
+                  <Input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Tìm thành viên trong nhóm…" className="min-h-11 pl-9 md:text-base" />
+                </label>
+                {canManage && (
+                  <Button type="button" variant="outline" className="min-h-11 text-base"
+                    onClick={() => { setSelectedPeople([]); setIsAddMode(true); }}>
+                    <UserPlus aria-hidden="true" /> Thêm người
+                  </Button>
+                )}
               </div>
 
-              {canManage && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddMode}
-                  className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Thêm người
-                </button>
-              )}
-            </div>
-
-            {/* Members List */}
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-              {isLoadingMembers ? (
-                <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Đang tải danh sách thành viên...
-                </div>
-              ) : filteredMembers.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400">
-                  Không tìm thấy thành viên phù hợp
-                </div>
-              ) : (
-                filteredMembers.map((member) => {
-                  const isMe = member.userId === currentUserId;
-                  const canKick =
-                    isChief
-                      ? !isMe
-                      : isVillageElder
-                      ? member.role === 'VILLAGER' && !isMe
-                      : false;
-
-                  return (
-                    <div
-                      key={member.userId}
-                      className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 truncate">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                          {member.avatarUrl ? (
-                            <img src={member.avatarUrl} alt={member.fullName} className="w-full h-full object-cover" />
-                          ) : (
-                            getAvatarInitial(member.fullName)
-                          )}
-                        </div>
-                        <div className="truncate">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-                              {member.fullName}
-                            </span>
-                            {isMe && (
-                              <span className="text-[10px] text-slate-400 font-normal">(Bạn)</span>
-                            )}
+              <div className="min-h-0 overflow-y-auto" aria-busy={isLoading}>
+                {isLoading ? (
+                  <p role="status" className="flex items-center justify-center gap-2 p-6 text-base text-muted-foreground">
+                    <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> Đang tải thành viên…
+                  </p>
+                ) : isError && members.length === 0 ? (
+                  <div className="space-y-2 p-6 text-center text-base">
+                    <p>Không thể tải danh sách thành viên.</p>
+                    <Button type="button" variant="outline" onClick={() => void refetch()}>Thử lại</Button>
+                  </div>
+                ) : matchingMembers.length === 0 ? (
+                  <p className="p-6 text-center text-base text-muted-foreground">Không tìm thấy thành viên phù hợp.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {matchingMembers.map((member) => {
+                      const isMe = member.userId === currentUserId;
+                      const { icon: RoleIcon, label, variant } = roleInfo[member.role];
+                      return (
+                        <li key={member.userId}
+                          className="grid gap-2 rounded-xl p-2.5 hover:bg-surface-subtle sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <UserAvatar name={member.fullName} avatarUrl={member.avatarUrl} decorative className="size-11 text-base" />
+                            <div className="min-w-0">
+                              <p className="text-base font-semibold wrap-anywhere">
+                                {member.fullName} {isMe && <span className="text-sm font-normal text-muted-foreground">(Bạn)</span>}
+                              </p>
+                              <Badge variant={variant} className="mt-1 text-sm">
+                                <RoleIcon aria-hidden="true" className="size-3.5" /> {label}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="mt-0.5">{renderRoleBadge(member.role)}</div>
-                        </div>
-                      </div>
-
-                      {/* Action Menu for Chief / Elder */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Role Selector (only Chief can change roles) */}
-                        {isChief && !isMe && (
-                          <select
-                            value={member.role}
-                            onChange={(e) =>
-                              handleRoleChange(member.userId, e.target.value as ConversationRole)
-                            }
-                            disabled={updateRoleMutation.isPending}
-                            className="text-[11px] font-medium py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
-                          >
-                            <option value="VILLAGER">Dân làng</option>
-                            <option value="VILLAGE_ELDER">Già làng</option>
-                            <option value="CHIEF">Chuyển quyền Tù trưởng</option>
-                          </select>
-                        )}
-
-                        {/* Kick Member Button */}
-                        {canKick && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMember(member.userId, member.fullName)}
-                            title="Xóa thành viên khỏi nhóm"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+                          {((isChief && !isMe) || canRemove(member)) && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {isChief && !isMe && (
+                                <MemberRoleMenu member={member} disabled={isSubmitting}
+                                  onSelect={(role, trigger) => askForConfirmation({ type: 'changeRole', member, role }, trigger)} />
+                              )}
+                              {canRemove(member) && (
+                                <Button type="button" variant="ghost" size="icon" className="size-11 text-destructive"
+                                  disabled={isSubmitting} aria-label={'Xóa ' + member.fullName + ' khỏi nhóm'}
+                                  onClick={(event) => askForConfirmation({ type: 'remove', member }, event.currentTarget)}>
+                                  <Trash2 aria-hidden="true" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+
+          <AlertDialog.Root open={action !== null} onOpenChange={(open) => {
+            if (!open && !isSubmitting) setAction(null);
+          }}>
+            {action && (
+              <AlertDialog.Portal>
+                <AlertDialog.Backdrop className="fixed inset-0 z-[73] bg-black/55" />
+                <AlertDialog.Popup className="fixed inset-x-4 top-1/2 z-[74] mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl"
+                  finalFocus={() => actionTrigger.current?.isConnected ? actionTrigger.current : closeButton.current}>
+                  <AlertDialog.Title className="text-xl font-bold">{actionLabel}?</AlertDialog.Title>
+                  <AlertDialog.Description className="text-base leading-relaxed wrap-anywhere text-muted-foreground">
+                    {removing ? <>Xóa <strong>{action.member.fullName}</strong> khỏi nhóm. Người này sẽ mất quyền truy cập cuộc trò chuyện.</>
+                      : transferring ? <>Chuyển quyền Tù trưởng cho <strong>{action.member.fullName}</strong>. Vai trò của bạn sẽ chuyển thành Già làng.</>
+                        : action.type === 'changeRole' && <>Đổi vai trò của <strong>{action.member.fullName}</strong> từ <strong>{roleInfo[action.member.role].label}</strong> thành <strong>{roleInfo[action.role].label}</strong>.</>}
+                  </AlertDialog.Description>
+                  {actionError && <p role="alert" className="text-base text-destructive">{actionError}</p>}
+                  {!canConfirm && !isSubmitting && (
+                    <p role="status" className="text-sm text-muted-foreground">Vai trò hoặc danh sách thành viên đã thay đổi. Hãy đóng hộp thoại và kiểm tra lại.</p>
+                  )}
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <AlertDialog.Close render={<Button type="button" variant="outline" className="min-h-11 text-base" disabled={isSubmitting} />}>Hủy</AlertDialog.Close>
+                    <Button type="button" variant={removing || transferring ? 'destructive' : 'default'} className="min-h-11 text-base"
+                      disabled={!canConfirm || isSubmitting} onClick={() => void confirmAction()}>
+                      {isSubmitting ? 'Đang xử lý…' : actionLabel}
+                    </Button>
+                  </div>
+                </AlertDialog.Popup>
+              </AlertDialog.Portal>
+            )}
+          </AlertDialog.Root>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

@@ -122,6 +122,8 @@ export function useHiddenConversations(enabled: boolean = false, limit: number =
  * Hook lấy danh sách thành viên nhóm
  */
 export function useGroupMembers(conversationId: number | null, enabled: boolean = true) {
+  const allowed = useChatStore((state) =>
+    conversationId === null || state.isPinUnlocked || !state.hiddenConversationIds.includes(conversationId));
   return useQuery({
     queryKey: conversationId ? CHAT_QUERY_KEYS.groupMembers(conversationId) : ['conversations', 'null', 'members'],
     queryFn: async () => {
@@ -129,7 +131,7 @@ export function useGroupMembers(conversationId: number | null, enabled: boolean 
       const res = await chatService.getGroupMembers(conversationId);
       return res.data;
     },
-    enabled: enabled && !!conversationId,
+    enabled: enabled && !!conversationId && allowed,
   });
 }
 
@@ -316,9 +318,8 @@ export function useRemoveGroupMember() {
   return useMutation({
     mutationFn: ({ conversationId, userId }: { conversationId: number; userId: number }) =>
       chatService.removeGroupMember(conversationId, userId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId) });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
       toast.success('Đã xóa thành viên khỏi nhóm');
     },
   });
@@ -339,8 +340,8 @@ export function useUpdateMemberRole() {
       userId: number;
       data: UpdateMemberRoleRequestDto;
     }) => chatService.updateMemberRole(conversationId, userId, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId) });
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId), exact: true });
       toast.success('Cập nhật vai trò thành viên thành công');
     },
   });

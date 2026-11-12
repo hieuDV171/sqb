@@ -422,3 +422,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Khi lượt chuyển sang `RESOLVED`, lưu `questionEvaluations` trong `actualData` cùng kết quả và `resolvedAt`. Mỗi câu có ID, mã câu, thứ tự, độ tự tin, điểm trung bình, số người đánh giá hợp lệ và kết luận. Các số liệu này lấy từ cùng truy vấn dùng để tính kết quả, gồm cả câu có 0 đánh giá.
 - Lịch sử lấy số liệu đã lưu cho chủ lượt. Chỉnh sửa đánh giá về sau chỉ cập nhật điểm cộng đồng. Lượt đã chốt bằng phiên bản trước chỉ hiển thị số liệu tổng hợp đã ghi. Giữ nguyên API và schema.
+
+### [ADR-042] Cập nhật vai trò nhóm chat qua STOMP
+
+- Đổi vai trò lấy cùng khóa hàng hội thoại với thao tác thành viên để tuần tự hóa chuyển quyền Tù trưởng. Khi đổi vai trò hoặc khi Tù trưởng rời nhóm và có người kế nhiệm, phát `GROUP_ROLES_CHANGED` sau commit đến thành viên đang hoạt động qua `/user/queue/messages`, dùng cùng kiểm tra PIN cho hội thoại ẩn.
+- Sự kiện chỉ mang ID hội thoại. Frontend tải lại truy vấn thành viên của nhóm để lấy cả vai trò mới và quyền thao tác theo vai trò. Khi STOMP kết nối lại, làm mới các truy vấn thành viên đang mở.

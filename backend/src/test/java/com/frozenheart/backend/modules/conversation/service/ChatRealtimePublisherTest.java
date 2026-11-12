@@ -2,9 +2,11 @@ package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.NativeMessageHeaderAccessor;
@@ -28,14 +30,14 @@ import static org.mockito.Mockito.when;
 
 class ChatRealtimePublisherTest {
 
-    @Test
-    void publishesAfterCommitToActiveMembersAndMarksHiddenRecipients() {
+    @ParameterizedTest
+    @MethodSource("conversationEvents")
+    void publishesAfterCommitToActiveMembersAndMarksHiddenRecipients(Object event) {
         var messaging = mock(SimpMessagingTemplate.class);
         var participants = mock(UserParticipantRepository.class);
         var normal = UserParticipant.builder().user(User.builder().id(1L).build()).build();
         var hidden = UserParticipant.builder().user(User.builder().id(2L).build()).hiddenAt(Instant.now()).build();
         when(participants.findByConversationIdAndLeftAtIsNull(10L)).thenReturn(List.of(normal, hidden));
-        var event = new WsMessageRevokedDto(10L, 25L);
         var transaction = new TransactionTemplate(new InMemoryTransactionManager());
 
         try (var context = new AnnotationConfigApplicationContext()) {
@@ -62,6 +64,10 @@ class ChatRealtimePublisherTest {
                             headers.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
                     return true;
                 }));
+    }
+
+    private static List<Object> conversationEvents() {
+        return List.of(new WsMessageRevokedDto(10L, 25L), new WsGroupRolesChangedDto(10L));
     }
 
     private static class InMemoryTransactionManager extends AbstractPlatformTransactionManager {

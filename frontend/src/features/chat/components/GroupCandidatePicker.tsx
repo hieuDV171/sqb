@@ -26,14 +26,14 @@ export function GroupCandidatePicker({ conversationId, selected, onSelectionChan
 
   return (
     <fieldset disabled={disabled} className="min-w-0 space-y-2">
-      <legend className="text-sm font-semibold">Chọn người ({selected.length} đã chọn)</legend>
-      <p className="text-xs text-muted-foreground">Bạn bè được thêm ngay. Những người có quan hệ theo dõi sẽ nhận lời mời.</p>
+      <legend className="text-base font-semibold">Chọn người ({selected.length} đã chọn)</legend>
+      <p className="text-sm text-muted-foreground">Bạn bè được thêm ngay. Những người có quan hệ theo dõi sẽ nhận lời mời.</p>
       <label className="relative block">
         <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <span className="sr-only">Tìm người theo tên</span>
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
           placeholder="Tìm theo tên"
-          className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-9 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
+          className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-9 text-base focus-visible:outline-2 focus-visible:outline-ring" />
       </label>
       <div aria-busy={waiting} className="max-h-52 overflow-y-auto rounded-xl border border-border p-1">
         {waiting ? (
@@ -59,8 +59,8 @@ export function GroupCandidatePicker({ conversationId, selected, onSelectionChan
               <label key={person.userId} className="flex min-h-12 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-accent has-checked:bg-academic-soft">
                 <UserAvatar name={person.fullName} avatarUrl={person.avatarUrl} decorative className="size-8" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{person.fullName}</span>
-                  <span className="block text-xs text-muted-foreground">{relationship}</span>
+                  <span className="block truncate text-base font-medium">{person.fullName}</span>
+                  <span className="block text-sm text-muted-foreground">{relationship}</span>
                 </span>
                 <input type="checkbox" checked={checked} disabled={!checked && selected.length >= 199}
                   onChange={(event) => onSelectionChange(event.target.checked

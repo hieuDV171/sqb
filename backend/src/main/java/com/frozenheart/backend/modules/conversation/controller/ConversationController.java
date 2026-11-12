@@ -210,13 +210,13 @@ public class ConversationController {
                 return ResponseEntity.ok(GlobalResponse.success("Xóa thành viên khỏi nhóm thành công", null));
         }
 
-        @Operation(summary = "Cập nhật vai trò thành viên nhóm", description = "Chỉ Tù trưởng (CHIEF) mới có quyền đổi vai trò thành viên (bổ nhiệm VILLAGE_ELDER hoặc hạ xuống VILLAGER). Nếu bổ nhiệm CHIEF mới, Tù trưởng cũ sẽ tự động lùi về làm Già làng (VILLAGE_ELDER).")
+        @Operation(summary = "Cập nhật vai trò thành viên nhóm", description = "Chỉ Tù trưởng (CHIEF) mới có quyền đổi vai trò thành viên. Khi chuyển quyền, Tù trưởng cũ trở thành Già làng (VILLAGE_ELDER). Nếu vai trò thay đổi, GROUP_ROLES_CHANGED được phát sau khi giao dịch hoàn tất.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Cập nhật vai trò thành viên thành công"),
                         @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
                         @ApiResponse(responseCode = "403", description = "Chỉ Tù trưởng mới có quyền thay đổi vai trò (ACTION_NOT_ALLOWED)"),
-                        @ApiResponse(responseCode = "404", description = "Thành viên không tồn tại trong nhóm (RESOURCE_NOT_FOUND)")
+                        @ApiResponse(responseCode = "404", description = "Không tìm thấy nhóm hoặc thành viên đang hoạt động (CONVERSATION_NOT_FOUND / RESOURCE_NOT_FOUND)")
         })
         @PutMapping("/conversations/{id}/members/{userId}/role")
         public ResponseEntity<GlobalResponse<Void>> updateMemberRole(

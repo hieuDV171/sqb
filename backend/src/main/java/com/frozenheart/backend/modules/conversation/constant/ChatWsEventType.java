@@ -4,5 +4,6 @@ public enum ChatWsEventType {
     NEW_MESSAGE,
     MESSAGE_REVOKED,
     MESSAGE_READ,
-    TYPING_STATUS
+    TYPING_STATUS,
+    GROUP_ROLES_CHANGED
 }
