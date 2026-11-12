@@ -11,6 +11,8 @@ import { MobileNav } from './MobileNav';
 import { useChatRealtimeListener, FloatingChatWidget } from '@/features/chat';
 import { NOTIFICATION_KEYS } from '@/features/notification/hooks/useNotification';
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sqb-sidebar-collapsed';
+
 interface AppLayoutProps {
   children?: React.ReactNode;
 }
@@ -27,8 +29,24 @@ function readPushMessage(payload: unknown): PushMessageShape {
 export function AppLayout({ children }: AppLayoutProps) {
   const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  function toggleSidebar() {
+    const collapsed = !isSidebarCollapsed;
+    setIsSidebarCollapsed(collapsed);
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+    } catch {
+      // Tùy chọn vẫn áp dụng cho trang hiện tại nếu trình duyệt chặn lưu trữ.
+    }
+  }
 
   // Lắng nghe các sự kiện WebSocket STOMP toàn cục (tin nhắn mới, biên nhận đọc)
   useChatRealtimeListener();
@@ -80,7 +98,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="relative flex w-full flex-1">
         <Sidebar
           isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          onToggleCollapse={toggleSidebar}
         />
 
         <MobileNav
