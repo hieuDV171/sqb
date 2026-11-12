@@ -7,7 +7,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAllBadges, useMyBadges } from '../hooks/useGamification';
 import { getTierColor, type BadgeResponseDto, type BadgeTier, type UserBadgeResponseDto } from '../types/gamification.types';
-import { GamificationSelect } from './GamificationSelect';
+import { FilterSelect } from '@/components/ui/filter-select';
 
 const tierLabels: Record<BadgeTier, string> = {
   BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch kim', DIAMOND: 'Kim cương',
@@ -58,7 +58,7 @@ export function BadgesTab() {
             <Button type="button" aria-pressed={mode === 'all'} variant={mode === 'all' ? 'secondary' : 'ghost'} className="min-h-11"
               onClick={() => setMode('all')}>Danh mục{all.data && ` (${all.data.length})`}</Button>
           </div>
-          <GamificationSelect label="Cấp huy hiệu" inlineLabel value={tier} options={tiers} onChange={setTier} />
+          <FilterSelect label="Cấp huy hiệu" inlineLabel value={tier} options={tiers} onChange={setTier} />
         </div>
       </div>
 

@@ -5,19 +5,19 @@ import type { AssignStudentsRequest, CreateCourseClassRequest } from '@/features
 
 export const COURSE_CLASS_KEYS = {
   all: ['course-classes'] as const,
-  list: (isAdmin: boolean, includeHistory: boolean) =>
-    [...COURSE_CLASS_KEYS.all, 'list', isAdmin, includeHistory] as const,
+  list: (isAdmin: boolean, includeHistory: boolean, semesterId?: number) =>
+    [...COURSE_CLASS_KEYS.all, 'list', isAdmin, includeHistory, semesterId] as const,
   detail: (courseClassId: number) => [...COURSE_CLASS_KEYS.all, 'detail', courseClassId] as const,
   students: (courseClassId: number) => [...COURSE_CLASS_KEYS.all, 'students', courseClassId] as const,
   lecturers: () => [...COURSE_CLASS_KEYS.all, 'lecturers'] as const,
 };
 
-export function useCourseClasses(isAdmin: boolean, includeHistory = true) {
+export function useCourseClasses(isAdmin: boolean, includeHistory = true, semesterId?: number) {
   return useQuery({
-    queryKey: COURSE_CLASS_KEYS.list(isAdmin, includeHistory),
+    queryKey: COURSE_CLASS_KEYS.list(isAdmin, includeHistory, isAdmin ? semesterId : undefined),
     queryFn: async () => {
       const response = isAdmin
-        ? await courseClassService.getActiveClasses()
+        ? await courseClassService.getClassesBySemester(semesterId)
         : await courseClassService.getMyClasses(includeHistory);
       return response.data ?? [];
     },

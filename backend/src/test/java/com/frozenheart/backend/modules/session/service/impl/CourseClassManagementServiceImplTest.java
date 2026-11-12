@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.session.service.impl;
 
+import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.entity.session.Semester;
@@ -49,6 +50,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,6 +87,34 @@ class CourseClassManagementServiceImplTest {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void adminCanListClassesOfAPreviousSemesterWithoutAnActiveSemester() {
+        setCurrentAdmin(1L);
+        var semester = Semester.builder().id(52L).name("20252").build();
+        var subject = Subject.builder().id(11L).code("IT4788").name("Phát triển ứng dụng").build();
+        var previousClass = CourseClass.builder().id(21L).classCode("171146")
+                .semester(semester).subject(subject).build();
+        when(courseClassRepository.findBySemesterIdFetchAll(52L)).thenReturn(List.of(previousClass));
+        when(userCourseClassRepository.countStudentsByCourseClassIds(Set.of(21L)))
+                .thenReturn(List.<Object[]>of(new Object[] {21L, 42L}));
+
+        var result = service.getCourseClassesBySemester(52L).getFirst();
+
+        assertEquals(52L, result.semesterId());
+        assertEquals("20252", result.semesterName());
+        assertEquals(42, result.totalStudents());
+    }
+
+    @Test
+    void lecturerCannotUseTheSharedListToReadAPreviousSemester() {
+        setCurrentLecturer(20L);
+
+        var failure = assertThrows(AppException.class, () -> service.getCourseClassesBySemester(52L));
+
+        assertEquals(ResponseCode.ACCESS_DENIED, failure.getResponseCode());
+        verifyNoInteractions(courseClassRepository);
     }
 
     @Test

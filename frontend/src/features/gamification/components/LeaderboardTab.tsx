@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useLeaderboard } from '@/features/gamification';
 import type { LeaderboardEntryDto, LeaderboardPeriod } from '@/features/gamification';
-import { GamificationSelect } from './GamificationSelect';
+import { FilterSelect } from '@/components/ui/filter-select';
 import { useGamificationSubjects } from '../hooks/useGamificationSubjects';
 
 const scopes = [
@@ -85,7 +85,7 @@ export function LeaderboardTab() {
           </div>
           {period === 'SUBJECT' && (
             <div className="w-full sm:w-72">
-              <GamificationSelect label="Môn học" value={subject ? String(subject.subjectId) : ''}
+              <FilterSelect label="Môn học" value={subject ? String(subject.subjectId) : ''}
                 disabled={!subjects.data?.length}
                 options={(subjects.data ?? []).map((item) => ({ value: String(item.subjectId), label: `${item.code} · ${item.name}` }))}
                 onChange={(value) => setSubjectId(Number(value))} />

@@ -175,13 +175,20 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
 
     @Override
     @Transactional(readOnly = true)
-    public List<CourseClassResponse> getCourseClassesByActiveSemester() {
-        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
-        if (activeSemester == null) {
-            return Collections.emptyList();
+    public List<CourseClassResponse> getCourseClassesBySemester(Long semesterId) {
+        if (semesterId != null) {
+            if (!UserRole.ADMIN.name().equalsIgnoreCase(JwtPayload.getCurrentUserPayload().getRole())) {
+                throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ quản trị viên được chọn học kỳ cho danh sách lớp chung");
+            }
+        } else {
+            Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+            if (activeSemester == null) {
+                return Collections.emptyList();
+            }
+            semesterId = activeSemester.getId();
         }
 
-        List<CourseClass> classes = courseClassRepository.findBySemesterIdFetchAll(activeSemester.getId());
+        List<CourseClass> classes = courseClassRepository.findBySemesterIdFetchAll(semesterId);
         return mapToCourseClassResponses(classes);
     }
 

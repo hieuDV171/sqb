@@ -1,6 +1,6 @@
 import { getAvatarInitial } from '@/lib/avatar';
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, CalendarDays, Search, School, UserPlus, Users } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -12,6 +12,7 @@ import {
 
 export function CourseClassDetailPage() {
   const { courseClassId: courseClassIdParam } = useParams();
+  const { search } = useLocation();
   const courseClassId = Number(courseClassIdParam);
   const [query, setQuery] = useState('');
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -58,7 +59,7 @@ export function CourseClassDetailPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
       <Link
-        to="/lecturer/course-classes"
+        to={{ pathname: '/lecturer/course-classes', search }}
         className="inline-flex min-h-10 items-center gap-2 rounded-xl px-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
       >
         <ArrowLeft className="h-4 w-4" /> Danh sách lớp học phần

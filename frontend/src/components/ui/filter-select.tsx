@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown } from 'lucide-react';
 
-interface GamificationSelectProps {
+interface FilterSelectProps {
   label: string;
   value: string;
   options: { value: string; label: string }[];
@@ -11,7 +11,7 @@ interface GamificationSelectProps {
   inlineLabel?: boolean;
 }
 
-export function GamificationSelect({ label, value, options, onChange, disabled, inlineLabel }: GamificationSelectProps) {
+export function FilterSelect({ label, value, options, onChange, disabled, inlineLabel }: FilterSelectProps) {
   const labelId = useId();
   const placeholder = options.find((option) => option.value === '')?.label ?? 'Chọn một mục';
 

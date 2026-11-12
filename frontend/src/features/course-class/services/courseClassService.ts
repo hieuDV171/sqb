@@ -10,8 +10,10 @@ import type {
 } from '@/features/course-class';
 
 export const courseClassService = {
-  getActiveClasses: async (): Promise<GlobalResponse<CourseClassResponse[]>> =>
-    (await axiosClient.get('/lecturer/course-classes')) as never,
+  getClassesBySemester: async (semesterId?: number): Promise<GlobalResponse<CourseClassResponse[]>> =>
+    axiosClient.get<GlobalResponse<CourseClassResponse[]>, GlobalResponse<CourseClassResponse[]>>(
+      '/lecturer/course-classes', { params: { semesterId } },
+    ),
 
   getMyClasses: async (includeHistory = true): Promise<GlobalResponse<CourseClassResponse[]>> =>
     (await axiosClient.get('/lecturer/course-classes/my-classes', {

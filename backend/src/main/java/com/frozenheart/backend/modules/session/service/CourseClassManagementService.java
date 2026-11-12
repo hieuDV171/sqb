@@ -15,7 +15,7 @@ public interface CourseClassManagementService {
     // 2. Quản lý lớp học phần (CourseClass)
     CourseClassResponse createCourseClass(CreateCourseClassRequest request);
 
-    List<CourseClassResponse> getCourseClassesByActiveSemester();
+    List<CourseClassResponse> getCourseClassesBySemester(Long semesterId);
 
     List<CourseClassResponse> getMyCourseClasses(Long semesterId, boolean includeHistory);
 

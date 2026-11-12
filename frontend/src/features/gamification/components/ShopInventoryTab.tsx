@@ -10,7 +10,7 @@ import { useBuyCosmetic, useEquipCosmetic, useMyInventory, useShop, useUnequipCo
 import type { CosmeticType, CosmeticRarity, CosmeticSortBy, InventoryItemDto, ShopItemDto } from '../types/gamification.types';
 import { getRarityColor } from '../types/gamification.types';
 import { FittingRoomPreview } from './FittingRoomPreview';
-import { GamificationSelect } from './GamificationSelect';
+import { FilterSelect } from '@/components/ui/filter-select';
 
 const typeLabels: Record<CosmeticType, string> = {
   AVATAR_FRAME: 'Khung ảnh đại diện',
@@ -102,12 +102,12 @@ export function ShopInventoryTab() {
             </Button>
           </div>
           <div className="flex w-full flex-wrap gap-3 sm:w-auto">
-            <GamificationSelect label="Loại vật phẩm" inlineLabel value={type ?? ''} options={types}
+            <FilterSelect label="Loại vật phẩm" inlineLabel value={type ?? ''} options={types}
               onChange={(value) => { setType(value ? value as CosmeticType : undefined); setPreviewId(undefined); }} />
             {isShop
-              ? <GamificationSelect label="Sắp xếp" inlineLabel value={sort} options={sorts}
+              ? <FilterSelect label="Sắp xếp" inlineLabel value={sort} options={sorts}
                   onChange={(value) => { setSort(value as CosmeticSortBy); setPreviewId(undefined); }} />
-              : <GamificationSelect label="Độ hiếm" inlineLabel value={rarity ?? ''} options={rarities}
+              : <FilterSelect label="Độ hiếm" inlineLabel value={rarity ?? ''} options={rarities}
                   onChange={(value) => { setRarity(value ? value as CosmeticRarity : undefined); setPreviewId(undefined); }} />}
           </div>
         </div>

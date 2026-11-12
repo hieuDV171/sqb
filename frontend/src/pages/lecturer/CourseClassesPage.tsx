@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BookOpen, ChevronRight, History, Plus, Search, School, Users } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { FilterSelect } from '@/components/ui/filter-select';
 import { sessionService } from '@/features/session/services/sessionService';
+import { useAdminSemesters } from '@/hooks/useAdminSemesters';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
   CreateCourseClassDialog,
@@ -18,8 +20,20 @@ export function CourseClassesPage() {
   const [includeHistory, setIncludeHistory] = useState(true);
   const [query, setQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const requestedSemester = Number(params.get('semester'));
+  const semesterId = isAdmin && Number.isSafeInteger(requestedSemester) && requestedSemester > 0
+    ? requestedSemester : undefined;
+  const semesters = useAdminSemesters(isAdmin);
+  const semesterOptions = [
+    { value: '', label: 'Học kỳ hiện tại' },
+    ...(semesters.data ?? []).map((semester) => ({
+      value: String(semester.semesterId),
+      label: semester.active ? `${semester.name} · Hiện tại` : semester.name,
+    })),
+  ];
 
-  const classesQuery = useCourseClasses(isAdmin, includeHistory);
+  const classesQuery = useCourseClasses(isAdmin, includeHistory, semesterId);
   const lecturersQuery = useLecturers(isAdmin);
   const subjectsQuery = useQuery({
     queryKey: ['subjects', 'course-class-management'],
@@ -46,22 +60,36 @@ export function CourseClassesPage() {
       });
   }, [classesQuery.data, query]);
 
-  const totalStudents = (classesQuery.data ?? []).reduce(
+  const totalStudents = filteredClasses.reduce(
     (sum, courseClass) => sum + courseClass.totalStudents,
     0
   );
-  const activeClasses = (classesQuery.data ?? []).filter((courseClass) => courseClass.activeSemester).length;
+  const activeClasses = filteredClasses.filter((courseClass) => courseClass.activeSemester).length;
+  const backSearch = semesterId === undefined ? '' : `?semester=${semesterId}`;
+  const classHref = (id: number) => `/lecturer/course-classes/${id}${backSearch}`;
+  const hasSearch = query.trim().length > 0;
+
+  function selectSemester(value: string) {
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value) next.set('semester', value);
+      else next.delete('semester');
+      return next;
+    }, { replace: true });
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-            <School className="h-4 w-4" /> Không gian giảng dạy
+            <School className="h-4 w-4" /> {isAdmin ? 'Không gian quản trị' : 'Không gian giảng dạy'}
           </div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Lớp học phần</h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            Quản lý lớp phụ trách, xem danh sách sinh viên và bổ sung sinh viên bằng MSSV.
+            {isAdmin
+              ? 'Xem lớp theo học kỳ, danh sách sinh viên và phân công giảng viên.'
+              : 'Quản lý lớp phụ trách, xem danh sách sinh viên và bổ sung sinh viên bằng MSSV.'}
           </p>
         </div>
         <button
@@ -76,7 +104,7 @@ export function CourseClassesPage() {
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Tổng quan lớp học phần">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Tổng số lớp đang hiển thị</p>
-          <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{classesQuery.data?.length ?? 0}</p>
+          <p className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{filteredClasses.length}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Lớp học kỳ hiện tại</p>
@@ -100,7 +128,21 @@ export function CourseClassesPage() {
               className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
           </div>
-          {!isAdmin && (
+          {isAdmin ? (
+            <div className="w-full sm:w-auto">
+              <FilterSelect label="Học kỳ" inlineLabel
+                value={semesterId === undefined ? '' : String(semesterId)}
+                options={semesterOptions}
+                onChange={selectSemester}
+                disabled={semesters.isPending || semesters.isLoadingError} />
+              {semesters.isLoadingError && (
+                <p className="mt-2 text-sm text-destructive">
+                  Không tải được học kỳ.{' '}
+                  <button type="button" className="font-semibold underline" onClick={() => void semesters.refetch()}>Thử lại</button>
+                </p>
+              )}
+            </div>
+          ) : (
             <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
@@ -131,12 +173,13 @@ export function CourseClassesPage() {
           <div className="p-5">
             <EmptyState
               icon={School}
-              title={query ? 'Không tìm thấy lớp phù hợp' : 'Chưa có lớp học phần'}
-              description={query
+              title={hasSearch ? 'Không tìm thấy lớp phù hợp' : 'Chưa có lớp học phần'}
+              description={hasSearch
                 ? 'Hãy thử từ khóa khác hoặc xóa bộ lọc tìm kiếm.'
-                : 'Tạo lớp đầu tiên để bắt đầu quản lý sinh viên và nội dung học tập.'}
-              actionLabel={query ? 'Xóa tìm kiếm' : 'Tạo lớp học phần'}
-              onAction={query ? () => setQuery('') : () => setIsCreateOpen(true)}
+                : semesterId !== undefined ? 'Học kỳ đã chọn chưa có lớp học phần.'
+                  : 'Tạo lớp đầu tiên để bắt đầu quản lý sinh viên và nội dung học tập.'}
+              actionLabel={hasSearch ? 'Xóa tìm kiếm' : semesterId !== undefined ? 'Xem học kỳ hiện tại' : 'Tạo lớp học phần'}
+              onAction={hasSearch ? () => setQuery('') : semesterId !== undefined ? () => selectSemester('') : () => setIsCreateOpen(true)}
             />
           </div>
         ) : (
@@ -156,7 +199,7 @@ export function CourseClassesPage() {
                   {filteredClasses.map((courseClass) => (
                     <tr key={courseClass.courseClassId} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
                       <td className="px-5 py-4">
-                        <Link to={`/lecturer/course-classes/${courseClass.courseClassId}`} className="group block">
+                        <Link to={classHref(courseClass.courseClassId)} className="group block">
                           <p className="font-bold text-slate-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
                             {courseClass.classCode}
                           </p>
@@ -182,7 +225,7 @@ export function CourseClassesPage() {
                       </td>
                       <td className="px-5 py-4">
                         <Link
-                          to={`/lecturer/course-classes/${courseClass.courseClassId}`}
+                          to={classHref(courseClass.courseClassId)}
                           aria-label={`Mở lớp ${courseClass.classCode}`}
                           className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400"
                         >
@@ -199,7 +242,7 @@ export function CourseClassesPage() {
               {filteredClasses.map((courseClass) => (
                 <Link
                   key={courseClass.courseClassId}
-                  to={`/lecturer/course-classes/${courseClass.courseClassId}`}
+                  to={classHref(courseClass.courseClassId)}
                   className="flex min-h-24 items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">

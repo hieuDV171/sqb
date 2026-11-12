@@ -11,12 +11,12 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ADMIN_SEMESTERS_KEY, useAdminSemesters } from '@/hooks/useAdminSemesters';
 import { adminService } from '@/services/adminService';
 import { toast } from '@/stores/useToastStore';
 import type { SemesterResponse } from '@/types/auth.types';
 import { AdminPageHeader } from './AdminPageHeader';
 
-const semesterKey = ['admin', 'semesters'] as const;
 
 type SemesterAction = {
   type: 'activate' | 'finalize' | 'deactivate' | 'delete';
@@ -44,7 +44,7 @@ function EditSemesterStartDate({ semester, disabled }: { semester: SemesterRespo
     mutationFn: (value: string) => adminService.updateSemesterStartDate(semester.semesterId, value),
     onSuccess: async () => {
       toast.success(`Đã cập nhật ngày khai giảng học kỳ ${semester.name}`);
-      await queryClient.invalidateQueries({ queryKey: semesterKey });
+      await queryClient.invalidateQueries({ queryKey: ADMIN_SEMESTERS_KEY });
       setOpen(false);
     },
   });
@@ -95,17 +95,14 @@ function SemesterSettings() {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [action, setAction] = useState<SemesterAction | null>(null);
-  const semesters = useQuery({
-    queryKey: semesterKey,
-    queryFn: async () => (await adminService.getAllSemesters()).data,
-  });
+  const semesters = useAdminSemesters();
   const create = useMutation({
     mutationFn: adminService.createSemester,
     onSuccess: async ({ data }) => {
       setName('');
       setStartDate('');
       toast.success(`Đã tạo học kỳ ${data.name}`);
-      await queryClient.invalidateQueries({ queryKey: semesterKey });
+      await queryClient.invalidateQueries({ queryKey: ADMIN_SEMESTERS_KEY });
     },
   });
   const change = useMutation({
@@ -113,7 +110,7 @@ function SemesterSettings() {
       if (type === 'finalize' || type === 'deactivate') {
         const current = (await adminService.getAllSemesters()).data.find((item) => item.active);
         if (current?.semesterId !== semester.semesterId || current.isFinalize !== (type === 'deactivate')) {
-          await queryClient.invalidateQueries({ queryKey: semesterKey });
+          await queryClient.invalidateQueries({ queryKey: ADMIN_SEMESTERS_KEY });
           throw new Error('Học kỳ đang hoạt động hoặc trạng thái chốt sổ đã thay đổi. Hãy kiểm tra lại danh sách.');
         }
       }
@@ -127,7 +124,7 @@ function SemesterSettings() {
     onSuccess: async () => {
       toast.success('Đã cập nhật học kỳ');
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: semesterKey }),
+        queryClient.invalidateQueries({ queryKey: ADMIN_SEMESTERS_KEY }),
         queryClient.invalidateQueries({ queryKey: ['gamification'] }),
       ]);
       setAction(null);
