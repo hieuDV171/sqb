@@ -1,12 +1,14 @@
-import React, { useId, useState, useRef, useMemo } from "react";
+import React, { useId, useState, useRef } from "react";
+import { Combobox } from "@base-ui/react/combobox";
 import { Select } from "@base-ui/react/select";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CustomSelect, type CustomSelectOption } from "@/components/ui/custom-select";
+import { cn } from "@/lib/utils";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/useToastStore";
@@ -14,6 +16,7 @@ import type {
   BulkImportResult,
   ExcelImportClassResult,
   Gender,
+  LecturerSummary,
   SingleUserImportDto,
   UserRole,
 } from "@/types/auth.types";
@@ -33,6 +36,11 @@ import {
   Trash2,
   PlusCircle,
   Info,
+  Search,
+  ShieldCheck,
+  TriangleAlert,
+  X,
+  type LucideIcon,
 } from "lucide-react";
 
 const accountTabs = [
@@ -48,6 +56,84 @@ type AccountDraft = {
   user: SingleUserImportDto;
   passwordConfirmation: string;
 };
+
+type ResetResult = { email: string; error?: string };
+
+const panelClass = "mx-auto w-full max-w-3xl rounded-2xl border-border";
+
+function AccountPanelHeading({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
+  return (
+    <CardHeader className="gap-1.5">
+      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-academic">
+        <Icon aria-hidden="true" className="size-5" /> {title}
+      </CardTitle>
+      <CardDescription>{children}</CardDescription>
+    </CardHeader>
+  );
+}
+
+function AccountFormError({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="flex items-center gap-2.5 rounded-xl border border-destructive/25 bg-destructive/10 p-3.5 text-sm text-destructive">
+      <AlertCircle aria-hidden="true" className="size-4 shrink-0" /> {message}
+    </p>
+  );
+}
+
+function LecturerPicker({ lecturers, value, onChange, disabled, pending }: {
+  lecturers: LecturerSummary[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  pending: boolean;
+}) {
+  const { contains } = Combobox.useFilter({ locale: "vi" });
+  const selected = lecturers.find((lecturer) => String(lecturer.id) === value) ?? null;
+
+  return (
+    <Combobox.Root items={lecturers} value={selected} disabled={disabled}
+      itemToStringLabel={(lecturer) => lecturer.fullName} itemToStringValue={(lecturer) => String(lecturer.id)}
+      filter={(lecturer, query) => contains(`${lecturer.fullName} ${lecturer.studentLecturerCode ?? ""} ${lecturer.schoolFaculty ?? ""} ${lecturer.id}`, query)}
+      onValueChange={(lecturer) => onChange(lecturer ? String(lecturer.id) : "")}>
+      <Combobox.InputGroup className="relative">
+        <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Combobox.Input id="lecturerId" aria-describedby="lecturer-hint"
+          placeholder={pending ? "Đang tải danh sách giảng viên…" : "Tìm theo tên hoặc mã giảng viên"}
+          render={<Input className="pr-20 pl-10" />} />
+        <div className="absolute inset-y-0 right-1 flex items-center">
+          <Combobox.Clear aria-label="Bỏ chọn giảng viên" render={<Button variant="ghost" size="icon-sm" type="button" />}>
+            <X aria-hidden="true" />
+          </Combobox.Clear>
+          <Combobox.Trigger aria-label="Mở danh sách giảng viên" render={<Button variant="ghost" size="icon-sm" type="button" />}>
+            <ChevronDown aria-hidden="true" />
+          </Combobox.Trigger>
+        </div>
+      </Combobox.InputGroup>
+      <Combobox.Portal>
+        <Combobox.Positioner sideOffset={6} className="z-50 w-(--anchor-width) max-w-(--available-width)">
+          <Combobox.Popup className="max-h-[min(20rem,var(--available-height))] overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            <Combobox.Empty className="px-3 py-2 text-sm text-muted-foreground empty:p-0">Không tìm thấy giảng viên.</Combobox.Empty>
+            <Combobox.List>
+              {(lecturer: LecturerSummary) => (
+                <Combobox.Item key={lecturer.id} value={lecturer}
+                  className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm outline-none data-highlighted:bg-accent">
+                  <span className="min-w-0">
+                    <span className="block font-medium">{lecturer.fullName}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {[lecturer.studentLecturerCode?.trim() || `ID ${lecturer.id}`, lecturer.schoolFaculty].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <Combobox.ItemIndicator className="shrink-0 text-academic"><Check aria-hidden="true" className="size-4" /></Combobox.ItemIndicator>
+                </Combobox.Item>
+              )}
+            </Combobox.List>
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
+  );
+}
 
 const roleOptions: { value: UserRole; label: string }[] = [
   { value: "STUDENT", label: "Sinh viên" },
@@ -162,7 +248,7 @@ export function AdminUsersPage() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    if (!isExcelUploading) setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -173,42 +259,25 @@ export function AdminUsersPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
-        setSelectedFile(file);
-        setExcelError(null);
-        setExcelResult(null);
-      } else {
-        setExcelError("Chỉ chấp nhận file định dạng Excel (.xlsx, .xls)!");
-      }
-    }
+    selectExcelFile(e.dataTransfer.files[0]);
   };
 
-  const lecturerOptions: CustomSelectOption[] = useMemo(() => {
-    return (lecturersQuery.data ?? []).map((lec) => {
-      const cleanCode = lec.studentLecturerCode ? lec.studentLecturerCode.trim().replace(/^#+/, "") : "";
-      return {
-        value: lec.id.toString(),
-        label: `${lec.fullName} (ID: ${lec.id})`,
-        badge: cleanCode ? `#${cleanCode}` : undefined,
-        subLabel: lec.schoolFaculty || undefined,
-      };
-    });
-  }, [lecturersQuery.data]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-      setExcelError(null);
-      setExcelResult(null);
+  function selectExcelFile(file?: File) {
+    if (!file || isExcelUploading) return;
+    if (!/\.xlsx?$/i.test(file.name)) {
+      setExcelError("Chỉ chấp nhận tệp Excel (.xlsx, .xls).");
+      return;
     }
-  };
+    setSelectedFile(file);
+    setExcelError(null);
+    setExcelResult(null);
+  }
 
   const handleExcelImport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isExcelUploading) return;
     if (!selectedFile) {
-      setExcelError("Vui lòng chọn file Excel danh sách lớp (.xlsx, .xls)");
+      setExcelError("Hãy chọn tệp Excel danh sách lớp.");
       return;
     }
 
@@ -346,12 +415,17 @@ export function AdminUsersPage() {
   // =========================================================================
   const [resetEmailInput, setResetEmailInput] = useState("");
   const [customNewPassword, setCustomNewPassword] = useState("");
+  const [resetPasswordConfirmation, setResetPasswordConfirmation] = useState("");
   const [isResetLoading, setIsResetLoading] = useState(false);
-  const [resetLogs, setResetLogs] = useState<string[]>([]);
+  const [resetLogs, setResetLogs] = useState<ResetResult[]>([]);
   const [resetError, setResetError] = useState<string | null>(null);
+  const resetConfirmationError = resetPasswordConfirmation
+    ? getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation)
+    : null;
 
   const handleAdminResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isResetLoading) return;
     setResetError(null);
 
     // Hỗ trợ nhập 1 email hoặc nhiều email ngăn cách bởi dấu phẩy/xuống dòng
@@ -361,38 +435,46 @@ export function AdminUsersPage() {
       .filter((em) => em.length > 0);
 
     if (rawEmails.length === 0) {
-      setResetError("Vui lòng nhập ít nhất 1 email tài khoản cần reset!");
+      setResetError("Hãy nhập ít nhất một email tài khoản cần cấp lại mật khẩu.");
+      return;
+    }
+
+    const passwordError = getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation);
+    if (passwordError) {
+      setResetError(passwordError);
+      document.getElementById("reset-confirm-password")?.focus();
       return;
     }
 
     setIsResetLoading(true);
-    const newLogs: string[] = [];
+    setResetLogs([]);
+    const newLogs: ResetResult[] = [];
 
     for (const email of rawEmails) {
       try {
         await adminService.adminResetPassword({
           email,
-          newPassword: customNewPassword ? customNewPassword.trim() : null,
+          newPassword: customNewPassword.trim() || null,
         });
-        newLogs.push(`✅ [${email}]: Đã cấp lại mật khẩu và thu hồi các phiên đăng nhập.`);
+        newLogs.push({ email });
       } catch (err) {
-        newLogs.push(`❌ [${email}]: ${errorMessage(err, "Không thể cấp lại mật khẩu.")}`);
+        newLogs.push({ email, error: errorMessage(err, "Không thể cấp lại mật khẩu.") });
       }
     }
 
     setResetLogs(newLogs);
     setIsResetLoading(false);
-    toast.info("Đã hoàn tất quy trình xử lý danh sách reset mật khẩu.", "Kết quả Reset");
+    toast.info("Đã xử lý danh sách email.", "Cấp lại mật khẩu");
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-10">
+    <div className="@container mx-auto max-w-6xl space-y-6 pb-10">
       <AdminPageHeader icon={Users} title="Quản lý tài khoản"
         description="Nhập sinh viên từ Excel, tạo tài khoản hàng loạt và cấp lại mật khẩu." />
       <div role="group" aria-label="Thao tác quản lý tài khoản"
         className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card p-2">
         {accountTabs.map(({ value, label, icon: Icon }) => (
-          <Button key={value} type="button" variant={activeTab === value ? "secondary" : "ghost"}
+          <Button key={value} id={`admin-account-tab-${value}`} type="button" variant={activeTab === value ? "secondary" : "ghost"}
             aria-pressed={activeTab === value} className="min-h-11"
             onClick={() => setActiveTab(value)}>
             <Icon aria-hidden="true" /> {label}
@@ -401,462 +483,349 @@ export function AdminUsersPage() {
       </div>
 
       {activeTab === "excel" && (
-        <Card className="rounded-2xl border border-border bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-              <FileSpreadsheet className="w-5 h-5" />
-              <CardTitle className="text-lg">Nhập Danh Sách Sinh Viên Lớp Học Phần (Excel)</CardTitle>
-            </div>
-            <CardDescription>
-              Vào đầu kỳ học, Giảng viên gửi danh sách sinh viên theo lớp. Tải file Excel lên để hệ thống tạo tài khoản Sinh viên chưa xác thực, dùng mật khẩu tạm và yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên.
-            </CardDescription>
-          </CardHeader>
+        <Card className={panelClass}>
+          <AccountPanelHeading icon={FileSpreadsheet} title="Nhập danh sách lớp từ Excel">
+            Hệ thống ghi danh sinh viên vào lớp và tạo tài khoản cho những người chưa có.
+          </AccountPanelHeading>
           <CardContent className="space-y-6">
-            {excelError && (
-              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{excelError}</span>
-              </div>
-            )}
-
+            <AccountFormError message={excelError} />
             <form onSubmit={handleExcelImport} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    File Excel danh sách lớp (.xlsx, .xls) *
-                  </Label>
-
-                  {/* Hidden native input */}
-                  <input
-                    ref={fileInputRef}
-                    id="excelFile"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-
+              <div className="space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
+                <div className="space-y-1.5" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+                  <Label htmlFor="excel-file">Tệp Excel danh sách lớp *</Label>
+                  <input ref={fileInputRef} id="excel-file" type="file" accept=".xlsx,.xls"
+                    className="hidden" disabled={isExcelUploading} onChange={(event) => selectExcelFile(event.target.files?.[0])} />
                   {selectedFile ? (
-                    <div className="p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center justify-between gap-3 animate-in fade-in duration-200">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                          <FileSpreadsheet className="w-5 h-5" />
-                        </div>
+                    <div className={cn(
+                      "flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/25 bg-success-soft p-3",
+                      isDragging && "border-academic bg-academic-soft",
+                    )}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-success" />
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                            {selectedFile.name}
-                          </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {(selectedFile.size / 1024).toFixed(1)} KB • Sẵn sàng nạp dữ liệu
-                          </p>
+                          <p className="wrap-anywhere font-medium">{selectedFile.name}</p>
+                          <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="h-8 px-2.5 text-xs rounded-xl cursor-pointer"
-                        >
-                          Đổi file
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" disabled={isExcelUploading}
+                          onClick={() => fileInputRef.current?.click()}>Đổi tệp</Button>
+                        <Button type="button" variant="ghost" size="icon" aria-label="Gỡ tệp Excel" disabled={isExcelUploading}
+                          className="text-destructive hover:text-destructive" onClick={() => {
                             setSelectedFile(null);
+                            setExcelError(null);
                             if (fileInputRef.current) fileInputRef.current.value = "";
-                          }}
-                          className="h-8 px-2 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer"
-                          title="Gỡ bỏ file"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          }}>
+                          <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => fileInputRef.current?.click()}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          fileInputRef.current?.click();
-                        }
-                      }}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${
-                        isDragging
-                          ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30"
-                          : "border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/40 dark:bg-slate-900/30"
-                      }`}
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-2">
-                        <Upload className="w-4 h-4" />
-                      </div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Nhấp để chọn hoặc kéo thả file Excel vào đây
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                        Chấp nhận file định dạng .xlsx, .xls
-                      </p>
-                    </div>
+                    <button type="button" disabled={isExcelUploading} onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-input bg-card px-4 py-6 text-center transition-colors hover:border-academic hover:bg-academic-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50",
+                        isDragging && "border-academic bg-academic-soft",
+                      )}>
+                      <span className="grid size-10 place-items-center rounded-xl bg-academic-soft text-academic">
+                        <Upload aria-hidden="true" className="size-5" />
+                      </span>
+                      <span className="font-semibold">Chọn hoặc kéo thả tệp Excel</span>
+                      <span className="text-xs text-muted-foreground">Định dạng .xlsx hoặc .xls</span>
+                    </button>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="lecturerId" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Giảng viên phụ trách lớp (Tùy chọn)
-                  </Label>
-                  <CustomSelect
-                    id="lecturerId"
-                    value={lecturerId}
-                    onChange={setLecturerId}
-                    options={lecturerOptions}
-                    placeholder={
-                      lecturersQuery.isPending
-                        ? "Đang tải danh sách giảng viên..."
-                        : "Chọn giảng viên từ hệ thống (hoặc để trống)..."
-                    }
-                    emptyLabel="-- Bỏ trống (Hệ thống tự tìm hoặc không chỉ định) --"
-                    disabled={lecturersQuery.isPending || lecturersQuery.isError}
-                  />
+                  <Label htmlFor="lecturerId">Giảng viên phụ trách lớp (tùy chọn)</Label>
+                  <LecturerPicker lecturers={lecturersQuery.data ?? []} value={lecturerId} onChange={setLecturerId}
+                    pending={lecturersQuery.isPending} disabled={isExcelUploading || lecturersQuery.isPending || lecturersQuery.isError} />
+                  <p id="lecturer-hint" className="text-sm text-muted-foreground">
+                    Để trống nếu muốn hệ thống đọc thông tin giảng viên từ tệp.
+                  </p>
                   {lecturersQuery.isError && (
                     <div className="flex flex-wrap items-center gap-2">
                       <p role="alert" className="text-sm text-destructive">Không thể tải danh sách giảng viên.</p>
-                      <Button type="button" variant="outline" onClick={() => void lecturersQuery.refetch()}>Thử lại</Button>
+                      <Button type="button" variant="outline" disabled={isExcelUploading} onClick={() => void lecturersQuery.refetch()}>Thử lại</Button>
                     </div>
                   )}
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Chọn giảng viên từ hệ thống để phân công lớp hoặc để trống nếu tự động nhận diện từ file Excel.
-                  </p>
                 </div>
               </div>
 
-              {/* Excel Guidelines Card */}
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1.5 leading-relaxed">
-                <div className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
-                  <Info className="w-4 h-4" /> Định dạng file Excel hợp lệ:
-                </div>
-                <p>• Hỗ trợ cả <strong>file mẫu chuẩn</strong> và <strong>file rút gọn</strong> (Mã học phần, Tên học phần, MSSV, Họ và tên SV).</p>
-                <p>• Nếu file không có cột <em>Mã lớp</em>, hệ thống sẽ <strong>tự động trích xuất mã lớp từ tên file</strong> (VD: <code>171146-IT4409.xlsx</code> ➔ Mã lớp <code>171146</code>).</p>
-                <p>• Email và mật khẩu sẽ tự động được sinh theo chuẩn HUST (<code>*@sis.hust.edu.vn</code>) nếu file không chứa cột Email / Ngày sinh.</p>
-                <p>• Môn học (VD: <code>IT4409</code>) và Học kỳ hiện tại phải được tạo và kích hoạt sẵn trong hệ thống trước khi import.</p>
+              <div className="rounded-xl border border-academic/20 bg-academic-soft p-4">
+                <h3 className="flex items-center gap-2 font-semibold text-academic">
+                  <Info aria-hidden="true" className="size-4" /> Chuẩn bị tệp Excel
+                </h3>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                  <li>Dùng mẫu chuẩn hoặc mẫu rút gọn có mã học phần, tên học phần, MSSV và họ tên.</li>
+                  <li>Nếu thiếu cột mã lớp, hệ thống đọc mã từ tên tệp. Ví dụ <code>171146-IT4409.xlsx</code> có mã lớp <code>171146</code>.</li>
+                  <li>Hệ thống tự sinh email theo chuẩn HUST và mật khẩu tạm nếu thiếu dữ liệu tương ứng.</li>
+                  <li>Môn học phải có trong danh mục và học kỳ hiện tại phải được kích hoạt.</li>
+                </ul>
               </div>
 
-              <div className="flex justify-end pt-2">
-                <Button
-                  type="submit"
-                  disabled={isExcelUploading || !selectedFile}
-                  className="gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md shadow-indigo-200 dark:shadow-none"
-                >
-                  {isExcelUploading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Đang xử lý & khởi tạo tài khoản...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      Tiến hành Import & Khởi Tạo
-                    </>
-                  )}
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isExcelUploading || !selectedFile} className="min-h-11 w-full sm:w-auto">
+                  {isExcelUploading ? <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" /> : <Upload aria-hidden="true" />}
+                  {isExcelUploading ? "Đang nhập danh sách…" : "Nhập danh sách lớp"}
                 </Button>
               </div>
             </form>
 
-            {/* Result Stats Display */}
             {excelResult && (
-              <div className="mt-6 p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900/40 pb-3">
-                  <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    <span>Kết Quả Import Lớp Học Phần: {excelResult.classCode}</span>
-                  </div>
-                  <Badge variant="role">
-                    {excelResult.subjectCode} - {excelResult.subjectName}
-                  </Badge>
+              <div className="space-y-3 rounded-xl border border-success/25 bg-success-soft p-4" role="status">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 font-semibold text-success">
+                    <CheckCircle2 aria-hidden="true" className="size-5 shrink-0" /> Đã nhập lớp {excelResult.classCode}
+                  </h3>
+                  <Badge variant="outline">{excelResult.subjectCode} · {excelResult.subjectName}</Badge>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 text-center">
-                    <p className="text-xs text-slate-500 font-medium">Tài khoản mới tạo</p>
-                    <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                      {excelResult.newUsersCreated}
-                    </p>
-                  </div>
-                  <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 text-center">
-                    <p className="text-xs text-slate-500 font-medium">Đã có tài khoản</p>
-                    <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
-                      {excelResult.existingUsersFound}
-                    </p>
-                  </div>
-                  <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 text-center">
-                    <p className="text-xs text-slate-500 font-medium">Ghi danh mới vào lớp</p>
-                    <p className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">
-                      {excelResult.newEnrollments}
-                    </p>
-                  </div>
-                  <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 text-center">
-                    <p className="text-xs text-slate-500 font-medium">Tổng số dòng đọc</p>
-                    <p className="text-xl font-bold text-slate-700 dark:text-slate-200 mt-1">
-                      {excelResult.totalRowsInFile}
-                    </p>
-                  </div>
-                </div>
+                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    ["Tài khoản mới", excelResult.newUsersCreated],
+                    ["Đã có tài khoản", excelResult.existingUsersFound],
+                    ["Ghi danh mới", excelResult.newEnrollments],
+                    ["Tổng số dòng", excelResult.totalRowsInFile],
+                  ].map(([label, count]) => (
+                    <div key={label} className="rounded-lg border border-border bg-card p-3">
+                      <dt className="text-xs text-muted-foreground">{label}</dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums">{count}</dd>
+                    </div>
+                  ))}
+                </dl>
               </div>
             )}
           </CardContent>
         </Card>
       )}
-
-      {/* ========================================================================= */}
-      {/* TAB 2: TẠO TÙY CHỈNH TỪNG TÀI KHOẢN (BULK-IMPORT)                        */}
-      {/* ========================================================================= */}
       {activeTab === "bulk" && (
-        <Card className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-academic">
-              <UserPlus aria-hidden="true" className="size-5" />
-              <CardTitle className="text-lg">Tạo tài khoản</CardTitle>
-            </div>
-            <CardDescription>
+        <div className="grid items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_minmax(0,3.35fr)_minmax(0,1fr)]">
+          <aside className="hidden space-y-3 rounded-2xl border border-academic/20 bg-linear-to-br from-academic-soft to-card p-4 @min-[64rem]:block">
+            <span className="grid size-9 place-items-center rounded-xl bg-academic-soft text-academic">
+              <FileSpreadsheet aria-hidden="true" className="size-5" />
+            </span>
+            <h2 className="text-sm font-semibold">Có danh sách lớp?</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">Nhập tệp Excel để tạo tài khoản và ghi danh cả lớp trong một lần.</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => {
+              setActiveTab("excel");
+              document.getElementById("admin-account-tab-excel")?.focus();
+            }}>
+              Nhập Excel
+            </Button>
+          </aside>
+          <Card className={panelClass}>
+            <AccountPanelHeading icon={UserPlus} title="Tạo tài khoản">
               Điền thông tin từng người. Bạn có thể thêm nhiều tài khoản và tạo trong một lần.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {bulkError && (
-              <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-destructive/25 bg-destructive/10 p-3.5 text-sm text-destructive">
-                <AlertCircle aria-hidden="true" className="size-4 shrink-0" />
-                <span>{bulkError}</span>
-              </div>
-            )}
+            </AccountPanelHeading>
+            <CardContent className="space-y-6">
+              <AccountFormError message={bulkError} />
 
-            <form onSubmit={handleBulkSubmit} className="space-y-6">
-              <div className="space-y-4">
-                {usersToImport.map(({ id, user, passwordConfirmation }, index) => {
-                  const fieldPrefix = `account-${id}`;
-                  const confirmationError = passwordConfirmation
-                    ? getPasswordConfirmationError(user.password, passwordConfirmation)
-                    : null;
+              <form onSubmit={handleBulkSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  {usersToImport.map(({ id, user, passwordConfirmation }, index) => {
+                    const fieldPrefix = `account-${id}`;
+                    const confirmationError = passwordConfirmation
+                      ? getPasswordConfirmationError(user.password, passwordConfirmation)
+                      : null;
 
-                  return (
-                    <fieldset key={id} disabled={isBulkLoading} aria-labelledby={`${fieldPrefix}-heading`}
-                      className="min-w-0 space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
-                      {usersToImport.length > 1 && (
-                        <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
-                          <h3 id={`${fieldPrefix}-heading`} className="text-sm font-semibold">Tài khoản {index + 1}</h3>
-                          <Button type="button" variant="ghost" size="sm" aria-label={`Xóa tài khoản ${index + 1} khỏi danh sách`}
-                            className="text-destructive hover:text-destructive" onClick={() => handleRemoveUserRow(id)}>
-                            <Trash2 aria-hidden="true" /> Xóa dòng
-                          </Button>
-                        </div>
-                      )}
-                      {usersToImport.length === 1 && <span id={`${fieldPrefix}-heading`} className="sr-only">Thông tin tài khoản</span>}
+                    return (
+                      <fieldset key={id} disabled={isBulkLoading} aria-labelledby={`${fieldPrefix}-heading`}
+                        className="min-w-0 space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
+                        {usersToImport.length > 1 && (
+                          <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                            <h3 id={`${fieldPrefix}-heading`} className="text-sm font-semibold">Tài khoản {index + 1}</h3>
+                            <Button type="button" variant="ghost" size="sm" aria-label={`Xóa tài khoản ${index + 1} khỏi danh sách`}
+                              className="text-destructive hover:text-destructive" onClick={() => handleRemoveUserRow(id)}>
+                              <Trash2 aria-hidden="true" /> Xóa dòng
+                            </Button>
+                          </div>
+                        )}
+                        {usersToImport.length === 1 && <span id={`${fieldPrefix}-heading`} className="sr-only">Thông tin tài khoản</span>}
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`${fieldPrefix}-email`}>Email tài khoản *</Label>
-                          <Input id={`${fieldPrefix}-email`} type="email" placeholder="sv.k66@hust.edu.vn"
-                            value={user.email} required onChange={(event) => handleUserFieldChange(id, "email", event.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`${fieldPrefix}-full-name`}>Họ và tên *</Label>
-                          <Input id={`${fieldPrefix}-full-name`} placeholder="Nguyễn Văn An" value={user.fullName}
-                            required onChange={(event) => handleUserFieldChange(id, "fullName", event.target.value)} />
-                        </div>
-
-                        <AccountSelect label="Vai trò" value={user.role ?? "STUDENT"} options={roleOptions}
-                          disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "role", value)} />
-                        <AccountSelect label="Giới tính" value={user.gender ?? "MALE"} options={genderOptions}
-                          disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "gender", value)} />
-
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`${fieldPrefix}-code`}>MSSV / MSGV</Label>
-                          <Input id={`${fieldPrefix}-code`} placeholder="20211234" value={user.studentLecturerCode ?? ""}
-                            onChange={(event) => handleUserFieldChange(id, "studentLecturerCode", event.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`${fieldPrefix}-birth-date`}>Ngày sinh</Label>
-                          <Input id={`${fieldPrefix}-birth-date`} type="date" value={user.dateOfBirth ?? ""}
-                            onChange={(event) => handleUserFieldChange(id, "dateOfBirth", event.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`${fieldPrefix}-faculty`}>Khoa / Viện</Label>
-                          <Input id={`${fieldPrefix}-faculty`} placeholder="Trường CNTT&TT" value={user.schoolFaculty ?? ""}
-                            onChange={(event) => handleUserFieldChange(id, "schoolFaculty", event.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`${fieldPrefix}-class`}>Lớp sinh hoạt</Label>
-                          <Input id={`${fieldPrefix}-class`} placeholder="IT1-02" value={user.className ?? ""}
-                            onChange={(event) => handleUserFieldChange(id, "className", event.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 border-t border-border pt-4">
                         <div className="grid gap-4 sm:grid-cols-2">
-                          <AccountPasswordField id={`${fieldPrefix}-password`} label="Mật khẩu tùy chỉnh" value={user.password ?? ""}
-                            describedBy={`${fieldPrefix}-password-hint`} onChange={(value) => handleUserFieldChange(id, "password", value)} />
-                          <AccountPasswordField id={`${fieldPrefix}-confirm-password`} label="Xác nhận mật khẩu" value={passwordConfirmation}
-                            required={Boolean(user.password?.trim())} invalid={Boolean(confirmationError)}
-                            describedBy={confirmationError ? `${fieldPrefix}-password-error` : `${fieldPrefix}-password-hint`}
-                            onChange={(value) => setUsersToImport((previous) => previous.map((draft) => draft.id === id
-                              ? { ...draft, passwordConfirmation: value }
-                              : draft))} />
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldPrefix}-email`}>Email tài khoản *</Label>
+                            <Input id={`${fieldPrefix}-email`} type="email" placeholder="sv.k66@hust.edu.vn"
+                              value={user.email} required onChange={(event) => handleUserFieldChange(id, "email", event.target.value)} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldPrefix}-full-name`}>Họ và tên *</Label>
+                            <Input id={`${fieldPrefix}-full-name`} placeholder="Nguyễn Văn An" value={user.fullName}
+                              required onChange={(event) => handleUserFieldChange(id, "fullName", event.target.value)} />
+                          </div>
+
+                          <AccountSelect label="Vai trò" value={user.role ?? "STUDENT"} options={roleOptions}
+                            disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "role", value)} />
+                          <AccountSelect label="Giới tính" value={user.gender ?? "MALE"} options={genderOptions}
+                            disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "gender", value)} />
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldPrefix}-code`}>MSSV / MSGV</Label>
+                            <Input id={`${fieldPrefix}-code`} placeholder="20211234" value={user.studentLecturerCode ?? ""}
+                              onChange={(event) => handleUserFieldChange(id, "studentLecturerCode", event.target.value)} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldPrefix}-birth-date`}>Ngày sinh</Label>
+                            <DatePicker id={`${fieldPrefix}-birth-date`} value={user.dateOfBirth ?? ""} disabled={isBulkLoading}
+                              allowClear allowYearJump onChange={(value) => handleUserFieldChange(id, "dateOfBirth", value)} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldPrefix}-faculty`}>Khoa / Viện</Label>
+                            <Input id={`${fieldPrefix}-faculty`} placeholder="Trường CNTT&TT" value={user.schoolFaculty ?? ""}
+                              onChange={(event) => handleUserFieldChange(id, "schoolFaculty", event.target.value)} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldPrefix}-class`}>Lớp sinh hoạt</Label>
+                            <Input id={`${fieldPrefix}-class`} placeholder="IT1-02" value={user.className ?? ""}
+                              onChange={(event) => handleUserFieldChange(id, "className", event.target.value)} />
+                          </div>
                         </div>
-                        {confirmationError && <p id={`${fieldPrefix}-password-error`} className="text-sm text-destructive">{confirmationError}</p>}
-                        <p id={`${fieldPrefix}-password-hint`} className="text-sm text-muted-foreground">
-                          Nếu để trống, hệ thống sẽ chọn mật khẩu theo thứ tự ưu tiên ngày sinh (ddMMyyyy), mã SV/CB, rồi mật khẩu mặc định.
-                        </p>
-                      </div>
-                    </fieldset>
-                  );
-                })}
-              </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isBulkLoading}
-                  onClick={handleAddUserRow}
-                  className="min-h-11 w-full sm:w-auto"
-                >
-                  <PlusCircle className="w-4 h-4" /> Thêm một dòng tài khoản
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={isBulkLoading}
-                  className="min-h-11 w-full sm:w-auto"
-                >
-                  {isBulkLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo tài khoản...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" /> Xác nhận tạo {usersToImport.length} tài khoản
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-
-            {/* Bulk Result Details */}
-            {bulkResult && (
-              <div className="mt-6 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-3">
-                <div className="flex items-center gap-4 text-xs font-semibold">
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    ✅ Thành công: {bulkResult.totalSuccess}
-                  </span>
-                  <span className="text-rose-600 dark:text-rose-400">
-                    ❌ Thất bại: {bulkResult.totalFailed}
-                  </span>
+                        <div className="space-y-2 border-t border-border pt-4">
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <AccountPasswordField id={`${fieldPrefix}-password`} label="Mật khẩu tùy chỉnh" value={user.password ?? ""}
+                              describedBy={`${fieldPrefix}-password-hint`} onChange={(value) => handleUserFieldChange(id, "password", value)} />
+                            <AccountPasswordField id={`${fieldPrefix}-confirm-password`} label="Xác nhận mật khẩu" value={passwordConfirmation}
+                              required={Boolean(user.password?.trim())} invalid={Boolean(confirmationError)}
+                              describedBy={confirmationError ? `${fieldPrefix}-password-error` : `${fieldPrefix}-password-hint`}
+                              onChange={(value) => setUsersToImport((previous) => previous.map((draft) => draft.id === id
+                                ? { ...draft, passwordConfirmation: value }
+                                : draft))} />
+                          </div>
+                          {confirmationError && <p id={`${fieldPrefix}-password-error`} className="text-sm text-destructive">{confirmationError}</p>}
+                          <p id={`${fieldPrefix}-password-hint`} className="text-sm text-muted-foreground">
+                            Nếu để trống, hệ thống sẽ chọn mật khẩu theo thứ tự ưu tiên ngày sinh (ddMMyyyy), mã SV/CB, rồi mật khẩu mặc định.
+                          </p>
+                        </div>
+                      </fieldset>
+                    );
+                  })}
                 </div>
-                {bulkResult.errors.length > 0 && (
-                  <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg text-xs text-red-600 space-y-1">
-                    <p className="font-bold">Chi tiết lỗi:</p>
-                    {bulkResult.errors.map((err, i) => (
-                      <p key={i}>• {err}</p>
-                    ))}
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isBulkLoading}
+                    onClick={handleAddUserRow}
+                    className="min-h-11 w-full sm:w-auto"
+                  >
+                    <PlusCircle className="w-4 h-4" /> Thêm một dòng tài khoản
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    disabled={isBulkLoading}
+                    className="min-h-11 w-full sm:w-auto"
+                  >
+                    {isBulkLoading ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo tài khoản...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" /> Xác nhận tạo {usersToImport.length} tài khoản
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+
+              {/* Bulk Result Details */}
+              {bulkResult && (
+                <div className="mt-6 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-3">
+                  <div className="flex items-center gap-4 text-xs font-semibold">
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      ✅ Thành công: {bulkResult.totalSuccess}
+                    </span>
+                    <span className="text-rose-600 dark:text-rose-400">
+                      ❌ Thất bại: {bulkResult.totalFailed}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  {bulkResult.errors.length > 0 && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg text-xs text-red-600 space-y-1">
+                      <p className="font-bold">Chi tiết lỗi:</p>
+                      {bulkResult.errors.map((err, i) => (
+                        <p key={i}>• {err}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <aside className="hidden space-y-3 rounded-2xl border border-success/20 bg-linear-to-br from-success-soft to-card p-4 @min-[64rem]:block">
+            <span className="grid size-9 place-items-center rounded-xl bg-success-soft text-success">
+              <ShieldCheck aria-hidden="true" className="size-5" />
+            </span>
+            <h2 className="text-sm font-semibold">Lần đăng nhập đầu</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">Người dùng đăng nhập bằng mật khẩu tạm, sau đó đổi mật khẩu và xác thực email.</p>
+          </aside>
+        </div>
       )}
 
       {/* ========================================================================= */}
       {/* TAB 3: RESET MẬT KHẨU VỀ MẶC ĐỊNH CHO SINH VIÊN / GIẢNG VIÊN              */}
       {/* ========================================================================= */}
       {activeTab === "reset" && (
-        <Card className="rounded-2xl border border-border bg-card">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-              <KeyRound className="w-5 h-5" />
-              <CardTitle className="text-lg">Cấp Lại Mật Khẩu Mặc Định (Reset Password)</CardTitle>
-            </div>
-            <CardDescription>
-              Khi Giảng viên tổng hợp danh sách Sinh viên quên mật khẩu gửi cho Quản trị viên, nhập danh sách email vào đây để khôi phục mật khẩu về mặc định của hệ thống.
-            </CardDescription>
-          </CardHeader>
+        <Card className={panelClass}>
+          <AccountPanelHeading icon={KeyRound} title="Cấp lại mật khẩu">
+            Cấp lại mật khẩu cho một hoặc nhiều tài khoản theo địa chỉ email.
+          </AccountPanelHeading>
           <CardContent className="space-y-6">
-            {resetError && (
-              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{resetError}</span>
-              </div>
-            )}
+            <AccountFormError message={resetError} />
+            <form onSubmit={handleAdminResetPassword} className="space-y-5">
+              <fieldset disabled={isResetLoading} className="min-w-0 space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="resetEmails">Email tài khoản *</Label>
+                  <textarea id="resetEmails" rows={4} value={resetEmailInput} required spellCheck={false}
+                    autoCapitalize="none" aria-describedby="reset-emails-hint" placeholder="sv.k66@hust.edu.vn"
+                    onChange={(event) => setResetEmailInput(event.target.value)}
+                    className="block w-full resize-y rounded-xl border border-input bg-card px-3.5 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm" />
+                  <p id="reset-emails-hint" className="text-sm text-muted-foreground">Phân cách các email bằng dấu phẩy hoặc xuống dòng.</p>
+                </div>
+                <div className="space-y-2 border-t border-border pt-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <AccountPasswordField id="reset-new-password" label="Mật khẩu tùy chỉnh" value={customNewPassword}
+                      describedBy="reset-password-hint" onChange={setCustomNewPassword} />
+                    <AccountPasswordField id="reset-confirm-password" label="Xác nhận mật khẩu" value={resetPasswordConfirmation}
+                      required={Boolean(customNewPassword.trim())} invalid={Boolean(resetConfirmationError)}
+                      describedBy={resetConfirmationError ? "reset-password-error" : "reset-password-hint"}
+                      onChange={setResetPasswordConfirmation} />
+                  </div>
+                  {resetConfirmationError && <p id="reset-password-error" className="text-sm text-destructive">{resetConfirmationError}</p>}
+                  <p id="reset-password-hint" className="text-sm text-muted-foreground">
+                    Để trống cả hai ô để dùng mật khẩu mặc định.
+                  </p>
+                </div>
+              </fieldset>
+              <p className="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning-soft p-3.5 text-sm text-warning">
+                <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                Khi cấp lại mật khẩu, các phiên đăng nhập hiện tại của tài khoản sẽ bị thu hồi.
+              </p>
 
-            <form onSubmit={handleAdminResetPassword} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="resetEmails" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Danh sách Email cần reset (Nhập 1 hoặc nhiều email, ngăn cách bởi dấu phẩy hoặc xuống dòng) *
-                </Label>
-                <textarea
-                  id="resetEmails"
-                  rows={4}
-                  placeholder={`sv1.k66@hust.edu.vn\nsv2.k66@hust.edu.vn, sv3.k66@hust.edu.vn`}
-                  value={resetEmailInput}
-                  onChange={(e) => setResetEmailInput(e.target.value)}
-                  required
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-mono text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="customPass" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Mật khẩu mới chỉ định (Bỏ trống nếu muốn lấy mật khẩu mặc định của trường)
-                </Label>
-                <Input
-                  id="customPass"
-                  type="password"
-                  placeholder="Để trống để reset về mật khẩu mặc định hệ thống"
-                  value={customNewPassword}
-                  onChange={(e) => setCustomNewPassword(e.target.value)}
-                  className="text-xs sm:text-sm"
-                />
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300 space-y-1 leading-relaxed">
-                <p className="font-semibold">⚠️ Cơ chế xử lý an toàn của Backend:</p>
-                <p>• Khi reset mật khẩu, Backend sẽ tự động xóa sạch toàn bộ Refresh Token trong Redis (`rt:email:*`), buộc tài khoản phải đăng xuất khỏi tất cả các thiết bị đang đăng nhập.</p>
-                <p>• Quản trị viên chỉ cần gửi lại mật khẩu mặc định cho Giảng viên để thông báo cho Sinh viên.</p>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  type="submit"
-                  disabled={isResetLoading}
-                  className="gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-md shadow-rose-200 dark:shadow-none"
-                >
-                  {isResetLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Đang reset...
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound className="w-4 h-4" /> Thực Hiện Reset Mật Khẩu
-                    </>
-                  )}
+              <div className="flex justify-end">
+                <Button type="submit" variant="destructive" disabled={isResetLoading || !resetEmailInput.trim()} className="min-h-11 w-full sm:w-auto">
+                  {isResetLoading ? <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" /> : <KeyRound aria-hidden="true" />}
+                  {isResetLoading ? "Đang cấp lại mật khẩu…" : "Cấp lại mật khẩu"}
                 </Button>
               </div>
             </form>
 
-            {/* Execution Logs */}
             {resetLogs.length > 0 && (
-              <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 text-slate-100 font-mono text-xs space-y-1 max-h-48 overflow-y-auto">
-                <p className="text-slate-400 font-semibold mb-2">Nhật ký xử lý reset mật khẩu:</p>
-                {resetLogs.map((log, i) => (
-                  <p key={i} className="leading-relaxed">{log}</p>
-                ))}
+              <div className="rounded-xl border border-border bg-surface-subtle p-4" role="status">
+                <h3 className="font-semibold">Kết quả cấp lại mật khẩu</h3>
+                <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto">
+                  {resetLogs.map(({ email, error }, index) => (
+                    <li key={`${email}-${index}`} className="flex items-start gap-2 py-2">
+                      {error ? <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+                        : <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />}
+                      <div className="min-w-0">
+                        <p className="wrap-anywhere font-medium">{email}</p>
+                        <p className={error ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>{error ?? "Đã cấp lại mật khẩu"}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </CardContent>

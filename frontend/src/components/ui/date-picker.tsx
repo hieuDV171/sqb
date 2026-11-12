@@ -2,6 +2,7 @@ import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Popover } from '@base-ui/react/popover';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -35,9 +36,10 @@ type DatePickerProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   allowClear?: boolean;
+  allowYearJump?: boolean;
 };
 
-export function DatePicker({ id, value, onChange, disabled, allowClear }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, disabled, allowClear, allowYearJump }: DatePickerProps) {
   const titleId = useId();
   const activeDay = useRef<HTMLButtonElement>(null);
   const localNow = new Date();
@@ -45,11 +47,14 @@ export function DatePicker({ id, value, onChange, disabled, allowClear }: DatePi
   const todayIso = isoDate(today);
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(today);
+  const [yearInput, setYearInput] = useState<string | null>(null);
   const year = cursor.getUTCFullYear();
   const month = cursor.getUTCMonth();
   const monthStart = calendarDate(year, month, 1);
   const firstDay = mondayIndex(monthStart);
   const dayCount = calendarDate(year, month + 1, 0).getUTCDate();
+  const targetYear = Number(yearInput);
+  const validTargetYear = Number.isInteger(targetYear) && targetYear >= 1 && targetYear <= 9999;
 
   function choose(next: string) {
     onChange(next);
@@ -60,6 +65,12 @@ export function DatePicker({ id, value, onChange, disabled, allowClear }: DatePi
     if (next.getUTCFullYear() < 1 || next.getUTCFullYear() > 9999) return;
     setCursor(next);
     if (focusDay) requestAnimationFrame(() => activeDay.current?.focus());
+  }
+
+  function jumpToYear() {
+    if (!validTargetYear) return;
+    move(addMonths(cursor, (targetYear - year) * 12), true);
+    setYearInput(null);
   }
 
   function onDayKeyDown(event: KeyboardEvent<HTMLButtonElement>, date: Date) {
@@ -84,7 +95,10 @@ export function DatePicker({ id, value, onChange, disabled, allowClear }: DatePi
 
   return (
     <Popover.Root open={open} onOpenChange={(next) => {
-      if (next) setCursor(value ? new Date(value + 'T00:00:00Z') : today);
+      if (next) {
+        setCursor(value ? new Date(value + 'T00:00:00Z') : today);
+        setYearInput(null);
+      }
       setOpen(next);
     }}>
       <Popover.Trigger render={<Button id={id} type="button" variant="outline" disabled={disabled}
@@ -121,10 +135,27 @@ export function DatePicker({ id, value, onChange, disabled, allowClear }: DatePi
                 );
               })}
             </div>
-            <div className="mt-2 flex justify-end gap-2 border-t border-border pt-2">
+            <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-border pt-2">
+              {allowYearJump && (
+                <Button type="button" variant="ghost" className="mr-auto" aria-expanded={yearInput !== null}
+                  onClick={() => setYearInput((current) => current === null ? String(year) : null)}>Đổi năm</Button>
+              )}
               {allowClear && value && <Button type="button" variant="ghost" onClick={() => choose('')}>Xóa ngày</Button>}
               <Button type="button" variant="ghost" onClick={() => choose(todayIso)}>Hôm nay</Button>
             </div>
+            {yearInput !== null && (
+              <div className="mt-2 flex gap-2">
+                <Input aria-label="Năm muốn đến" inputMode="numeric" maxLength={4} value={yearInput} autoFocus
+                  onFocus={(event) => event.currentTarget.select()}
+                  onChange={(event) => setYearInput(event.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return;
+                    event.preventDefault();
+                    jumpToYear();
+                  }} />
+                <Button type="button" variant="outline" disabled={!validTargetYear} onClick={jumpToYear}>Đến năm</Button>
+              </div>
+            )}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
