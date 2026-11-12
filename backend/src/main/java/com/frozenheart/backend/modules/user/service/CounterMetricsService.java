@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.user.service;
 
 import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
+import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
 import java.util.List;
@@ -18,6 +19,8 @@ public interface CounterMetricsService {
     void awardPointsAndApprovedQuestions(Long userId, double pointsDelta, int approvedDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject);
 
     void awardPointsAndApprovedQuestionsBatch(List<UserPointRewardDto> rewards);
+
+    void awardGamePointsBatch(List<UserPointRewardDto> rewards, Semester semester);
 
     void awardPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId);
 

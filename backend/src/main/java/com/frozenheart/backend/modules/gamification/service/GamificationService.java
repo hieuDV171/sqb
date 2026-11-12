@@ -5,6 +5,7 @@ import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.modules.gamification.dto.*;
 
 import java.util.List;
+import java.util.Map;
 
 public interface GamificationService {
 
@@ -24,7 +25,7 @@ public interface GamificationService {
 
     MyPredictionsResponse getMyPredictions(Long after, Integer limit);
 
-    void resolveGame2And3ForSession(Session session, List<Question> qList);
+    void onSessionsFinalized(Map<Session, List<Question>> sessions);
 
     int resolveNextGame1Batch();
 

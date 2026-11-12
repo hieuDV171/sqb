@@ -487,7 +487,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     private void finalizeSession(Session session, List<Question> questions, Instant now) {
         session.setStatus(SessionStatus.RESOLVED);
         sessionRepository.save(session);
-        gamificationService.resolveGame2And3ForSession(session, questions);
+        gamificationService.onSessionsFinalized(Map.of(session, questions));
 
         var questionIds = questions.stream().map(Question::getId).toList();
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.SESSION, session.getId()));

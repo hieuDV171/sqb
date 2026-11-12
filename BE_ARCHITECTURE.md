@@ -410,3 +410,15 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Lượt Game 1 đặt cho ngày hôm sau theo giờ Việt Nam và chỉ đến hạn khi ngày mục tiêu đã kết thúc. Tác vụ khởi chạy một lần mỗi đêm lúc 00:05 và ngừng mở lô mới từ 00:20. Nếu bỏ lỡ lịch hoặc còn lượt tồn, lần chạy kế tiếp sẽ xử lý tiếp.
 - Mỗi lô chọn ngày mục tiêu quá hạn cũ nhất, khóa tối đa 500 lượt đang chờ và đếm người nộp theo lô cho các lớp của đúng ngày đó. Tác vụ tiếp tục sau lô dưới 500 lượt và dừng khi lô rỗng. Mỗi lô chuyển lượt `PENDING` sang `RESOLVED` và cộng thưởng trong giao dịch riêng.
 - Lịch sử trả cả `created_at` và `target_date` để giao diện phân biệt ngày đặt với ngày dự đoán.
+
+### [ADR-040] Chấm Game 3 theo hai mốc sau khi chốt phiên
+
+- Chốt phiên thủ công hoặc tự động ghi một lượt `GAME_3_AUTHOR_CONFIDENCE` vào bảng `predictions` của học kỳ đang mở nếu phiên có ít nhất 10 câu. Lượt lưu độ tự tin của 10 câu đầu theo `displayOrder` (dùng ID khi trùng hoặc thiếu thứ tự), gồm cả câu bị từ chối. Phiên đã chốt trước khi triển khai giữ nguyên kết quả và điểm cũ.
+- Cron lúc 00:30 giờ Việt Nam đọc các lượt đến hạn theo lô tối đa 500 lượt. Mốc đầu là 14 ngày kể từ lúc chốt phiên. Mỗi câu cần ít nhất 3 người đánh giá khác tác giả, lấy trung bình thang 0–4. Chênh tối đa 0,5 là khớp. Năm câu khớp đem lại 0,25 điểm công khai, sáu câu lệch kết thúc với kết quả thua. Nếu chưa kết luận, `targetDate` chuyển sang mốc 28 ngày. Khi hết hạn, lượt chưa phân định được ghi `RESOLVED` kèm `actualData.outcome = INSUFFICIENT_RATINGS`.
+- Chốt sổ chấm các lượt còn chờ của học kỳ ngay trong giao dịch chốt sổ, kể cả các lượt chưa đến mốc 14 ngày. Các lần chấm chỉ xét đánh giá được tạo trước mốc tương ứng hoặc thời điểm chốt sổ nếu đến trước. `user_ratings` lưu điểm mới nhất của mỗi người, nên một lần sửa điểm trên đánh giá đã có có thể được đọc nếu tác vụ chạy sau mốc.
+- Đăng ký, chấm đêm và chốt sổ dùng khóa hàng học kỳ. Trạng thái kết quả, điểm và xu commit cùng giao dịch. Chốt sổ tính hạng từ `point_histories` để tính cả điểm vừa cộng, còn Redis nhận sự kiện sau commit theo đúng ID học kỳ. Dùng các trường hiện có, không cần Liquibase.
+
+### [ADR-041] Lưu số liệu tại lần chốt kết quả Game 3
+
+- Khi lượt chuyển sang `RESOLVED`, lưu `questionEvaluations` trong `actualData` cùng kết quả và `resolvedAt`. Mỗi câu có ID, mã câu, thứ tự, độ tự tin, điểm trung bình, số người đánh giá hợp lệ và kết luận. Các số liệu này lấy từ cùng truy vấn dùng để tính kết quả, gồm cả câu có 0 đánh giá.
+- Lịch sử lấy số liệu đã lưu cho chủ lượt. Chỉnh sửa đánh giá về sau chỉ cập nhật điểm cộng đồng. Lượt đã chốt bằng phiên bản trước chỉ hiển thị số liệu tổng hợp đã ghi. Giữ nguyên API và schema.

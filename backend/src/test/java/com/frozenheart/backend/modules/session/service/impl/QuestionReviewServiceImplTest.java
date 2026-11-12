@@ -42,6 +42,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -204,7 +205,7 @@ class QuestionReviewServiceImplTest {
         assertEquals(SessionStatus.RESOLVED, session.getStatus());
         verify(sessionRepository, times(2)).lockReviewSessions(List.of(30L), false);
         verify(sessionRepository).save(session);
-        verify(gamificationService).resolveGame2And3ForSession(session, List.of(question));
+        verify(gamificationService).onSessionsFinalized(Map.of(session, List.of(question)));
         verify(counterMetricsService).awardPointsAndApprovedQuestionsBatch(anyList());
         verify(notificationRepository).save(any());
         verify(questionRepository, never()).saveAll(anyList());

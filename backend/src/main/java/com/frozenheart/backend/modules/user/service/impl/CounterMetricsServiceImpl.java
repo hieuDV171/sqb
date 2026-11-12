@@ -93,6 +93,18 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
     @Override
     @Transactional
     public void awardPointsAndApprovedQuestionsBatch(List<UserPointRewardDto> rewards) {
+        if (rewards != null && !rewards.isEmpty()) {
+            awardPointsBatch(rewards, currentSemesterHolder.getCurrentSemester(), CoinTransactionType.QUESTION_APPROVED);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void awardGamePointsBatch(List<UserPointRewardDto> rewards, Semester semester) {
+        awardPointsBatch(rewards, semester, CoinTransactionType.GAME_REWARD);
+    }
+
+    private void awardPointsBatch(List<UserPointRewardDto> rewards, Semester semester, CoinTransactionType coinType) {
         if (rewards == null || rewards.isEmpty()) {
             return;
         }
@@ -115,8 +127,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         Map<Long, UserGamification> gamificationsToSave = new HashMap<>();
         List<PointHistory> historiesToSave = new ArrayList<>();
         List<CoinTransaction> coinTransactionsToSave = new ArrayList<>();
-        Semester currentSemester = currentSemesterHolder.getCurrentSemester();
-
+        String coinDescription = coinType == CoinTransactionType.GAME_REWARD
+                ? "Cộng điểm thưởng công khai: +" : "Thưởng duyệt câu hỏi: +";
         for (UserPointRewardDto reward : rewards) {
             if (reward.userId() == null)
                 continue;
@@ -147,7 +159,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .targetType(reward.targetType())
                         .targetId(reward.targetId())
                         .subject(reward.subject())
-                        .semester(currentSemester)
+                        .semester(semester)
                         .createdAt(Instant.now())
                         .build();
                 historiesToSave.add(history);
@@ -157,8 +169,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .user(userRef)
                         .amount(reward.pointsDelta())
                         .balanceAfter(g.getCoinBalance())
-                        .type(CoinTransactionType.QUESTION_APPROVED)
-                        .description("Thưởng duyệt câu hỏi: +" + reward.pointsDelta() + " xu (" + reason.name() + ")")
+                        .type(coinType)
+                        .description(coinDescription + reward.pointsDelta() + " xu (" + reason.name() + ")")
                         .targetType(mapToCoinTargetType(reward.targetType()))
                         .targetId(reward.targetId())
                         .createdAt(Instant.now())
@@ -169,6 +181,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .userId(reward.userId())
                         .points(reward.pointsDelta())
                         .subjectId(reward.subject() != null ? reward.subject().getId() : null)
+                        .semesterId(semester != null ? semester.getId() : null)
                         .build());
             }
         }

@@ -29,8 +29,8 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private final StringRedisTemplate redisTemplate;
     private final DefaultRedisScript<Long> updateScoreScript;
     private final PointHistoryRepository pointHistoryRepository;
+    private final CurrentSemesterHolder currentSemesterHolder;
 
-    private final Semester currentSemester;
 
     // ⚠️ Lưu ý quan trọng về kiến trúc Redis (Cluster Mode)
     // Phương pháp gom Key vào Lua Script này hoạt động hoàn hảo trên
@@ -52,6 +52,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             CurrentSemesterHolder currentSemesterHolder, PointHistoryRepository pointHistoryRepository) {
         this.redisTemplate = redisTemplate;
         this.pointHistoryRepository = pointHistoryRepository;
+        this.currentSemesterHolder = currentSemesterHolder;
 
         // Khởi tạo Lua Script
         String script = """
@@ -79,7 +80,6 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                 return 1""";
 
         this.updateScoreScript = new DefaultRedisScript<>(script, Long.class);
-        this.currentSemester = currentSemesterHolder.getCurrentSemester();
     }
 
     @Override
@@ -104,7 +104,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     @Override
     public void rebuildLeaderboard(LeaderboardPeriod period, Long subjectId) {
 
-        Long semesterId = currentSemester.getId();
+        Long semesterId = currentSemesterHolder.getCurrentSemester().getId();
         String redisKey = RedisKeyUtil.buildLeaderboardKey(period, semesterId, subjectId);
 
         rebuildLeaderboard(subjectId, semesterId, redisKey);
@@ -156,13 +156,20 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     protected void handlePointAddedEvent(PointAddedEvent event) {
         Long userId = event.userId();
         double points = event.points();
-        Long currentSemesterId = currentSemester.getId();
+        Long semesterId = event.semesterId();
+        if (semesterId == null) {
+            Semester semester = currentSemesterHolder.getCurrentSemester();
+            if (semester == null) {
+                return;
+            }
+            semesterId = semester.getId();
+        }
 
         List<String> targetKeys = new ArrayList<>();
-        targetKeys.add(RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SEMESTER, currentSemesterId, null));
+        targetKeys.add(RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SEMESTER, semesterId, null));
         if (event.subjectId() != null) {
             targetKeys.add(
-                    RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SUBJECT, currentSemesterId, event.subjectId()));
+                    RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SUBJECT, semesterId, event.subjectId()));
         }
 
         // Giao tiếp với Redis ĐÚNG 1 LẦN DUY NHẤT

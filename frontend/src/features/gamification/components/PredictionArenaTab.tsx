@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Bot, BrainCircuit, Database, History, RefreshCw, Send, Users } from 'lucide-react';
+import { Bot, BrainCircuit, ChevronDown, Database, History, RefreshCw, Send, ShieldAlert, Target, Users } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -7,22 +8,26 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StudySubjectSelect } from '@/features/session/components/StudySubjectSelect';
 import { cn } from '@/lib/utils';
 import {
   useActiveGame6Session,
   useGame1Classes,
   useMyPredictions,
   usePredictGame1,
-  usePredictGame2,
   usePredictGame4,
   useSubmitGame6,
 } from '../hooks/useGamification';
-import type { GamePredictionResponse, GameType } from '../types/gamification.types';
+import { useGamificationSubjects } from '../hooks/useGamificationSubjects';
+import type { Game3Result, GamePredictionResponse, GameType } from '../types/gamification.types';
+import { ErrorHunterTab } from './ErrorHunterTab';
 
 const tabs = [
   { id: 'game1', label: '1 · Nộp bài ngày mai', icon: Users },
   { id: 'game2', label: '2 · Duyệt câu hỏi', icon: Bot },
+  { id: 'game3', label: '3 · Độ tự tin', icon: Target },
   { id: 'game4', label: '4 · Quy mô cuối kỳ', icon: Database },
+  { id: 'game5', label: '5 · Thợ săn lỗi', icon: ShieldAlert },
   { id: 'game6', label: '6 · Phán đoán AI', icon: BrainCircuit },
   { id: 'history', label: 'Lịch sử', icon: History },
 ] as const;
@@ -39,6 +44,13 @@ const gameLabels: Record<GameType, string> = {
 const schoolTimeZone = 'Asia/Ho_Chi_Minh';
 const schoolDate = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeZone: schoolTimeZone });
 const schoolDateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: schoolTimeZone });
+const ratingFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 });
+const questionVerdicts = {
+  MATCH: { label: 'Khớp', variant: 'success' },
+  MISMATCH: { label: 'Lệch', variant: 'destructive' },
+  INSUFFICIENT_RATINGS: { label: 'Chưa đủ đánh giá', variant: 'outline' },
+  MISSING_CONFIDENCE: { label: 'Thiếu độ tự tin', variant: 'outline' },
+} as const;
 
 function GamePanel({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
@@ -66,13 +78,64 @@ function NumberField({ id, label, value, onChange, min, max }: {
 
 function PredictionStatus({ item }: { item: GamePredictionResponse }) {
   if (item.status === 'PENDING') return <Badge variant="warning">Đang chờ</Badge>;
+  if (item.gameType === 'GAME_3_AUTHOR_CONFIDENCE' && item.status === 'RESOLVED'
+      && item.actualData?.outcome === 'INSUFFICIENT_RATINGS') {
+    return <Badge variant="outline">Chưa đủ đánh giá</Badge>;
+  }
   if (item.status === 'CANCELLED') return <Badge variant="outline">Đã hủy</Badge>;
   return item.isCorrect
     ? <Badge variant="success">Đoán trúng</Badge>
     : <Badge variant="destructive">Chưa chính xác</Badge>;
 }
 
+function Game3ResultDetails({ result }: { result: Game3Result }) {
+  return (
+    <details className="group rounded-xl border border-border bg-surface-subtle sm:col-span-2">
+      <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 group-open:rotate-180" />
+        Chi tiết lần xét
+        <span className="text-muted-foreground">{result.matchedQuestions} câu khớp · {result.nonMatchingQuestions} câu lệch</span>
+      </summary>
+      {result.questionEvaluations?.length ? (
+        <ul className="divide-y divide-border border-t border-border">
+          {result.questionEvaluations.map((row) => {
+            const verdict = questionVerdicts[row.verdict];
+            return (
+              <li key={row.questionId} className="grid gap-2 px-3 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-center">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">Câu {row.displayOrder ?? `#${row.questionId}`}</span>
+                    <Badge variant={verdict.variant}>{verdict.label}</Badge>
+                  </div>
+                  {row.questionCode && <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{row.questionCode}</p>}
+                </div>
+                <dl className="grid grid-cols-3 gap-2 text-sm tabular-nums">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Độ tự tin</dt>
+                    <dd>{row.declaredConfidence == null ? '—' : ratingFormat.format(row.declaredConfidence)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Điểm TB</dt>
+                    <dd title={row.averageRating?.toString()}>{row.averageRating == null ? '—' : ratingFormat.format(row.averageRating)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Người đánh giá</dt>
+                    <dd>{row.ratingCount}</dd>
+                  </div>
+                </dl>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="border-t border-border px-3 py-3 text-sm text-muted-foreground">Lượt này chỉ lưu số liệu tổng hợp.</p>
+      )}
+    </details>
+  );
+}
+
 function HistoryRow({ item }: { item: GamePredictionResponse }) {
+  const isGame3 = item.gameType === 'GAME_3_AUTHOR_CONFIDENCE';
   return (
     <li className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-start">
       <div className="min-w-0 space-y-1">
@@ -81,8 +144,8 @@ function HistoryRow({ item }: { item: GamePredictionResponse }) {
           <PredictionStatus item={item} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Đặt lúc <time dateTime={item.createdAt}>{schoolDateTime.format(new Date(item.createdAt))}</time>
-          {item.resolvedAt && <> · Chốt lúc <time dateTime={item.resolvedAt}>{schoolDateTime.format(new Date(item.resolvedAt))}</time></>}
+          {isGame3 ? 'Phiên chốt lúc' : 'Đặt lúc'} <time dateTime={item.createdAt}>{schoolDateTime.format(new Date(item.createdAt))}</time>
+          {item.resolvedAt && <> · {isGame3 ? 'Xét lúc' : 'Chốt lúc'} <time dateTime={item.resolvedAt}>{schoolDateTime.format(new Date(item.resolvedAt))}</time></>}
         </p>
       </div>
       <div className="space-y-1 text-sm text-muted-foreground sm:text-right">
@@ -91,14 +154,21 @@ function HistoryRow({ item }: { item: GamePredictionResponse }) {
             Dự đoán cho ngày <time dateTime={item.targetDate}>{schoolDate.format(new Date(item.targetDate))}</time>
           </p>
         )}
-        {item.targetId != null && <p className="text-xs">{item.gameType === 'GAME_1_PARTICIPANTS' ? 'Lớp' : 'Mục tiêu'} #{item.targetId}</p>}
+        {isGame3 && item.status === 'PENDING' && item.targetDate && (
+          <p className="font-medium text-foreground">
+            Mốc xét tiếp theo <time dateTime={item.targetDate}>{schoolDate.format(new Date(item.targetDate))}</time>
+          </p>
+        )}
+        {item.targetId != null && <p className="text-xs">{item.gameType === 'GAME_1_PARTICIPANTS' ? 'Lớp' : isGame3 ? 'Phiên' : 'Mục tiêu'} #{item.targetId}</p>}
       </div>
+      {isGame3 && item.status === 'RESOLVED' && item.actualData && <Game3ResultDetails result={item.actualData} />}
     </li>
   );
 }
 
 export function PredictionArenaTab() {
-  const [activeGame, setActiveGame] = useState<(typeof tabs)[number]['id']>('game1');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeGame = tabs.find(({ id }) => id === searchParams.get('game'))?.id ?? 'game1';
   const classesQuery = useGame1Classes();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [game1Count, setGame1Count] = useState('1');
@@ -106,14 +176,12 @@ export function PredictionArenaTab() {
   const game1Classes = classesQuery.data ?? [];
   const selectedClass = game1Classes.find((course) => course.courseClassId === selectedClassId && !course.alreadyPredicted);
 
-  const [game2SessionId, setGame2SessionId] = useState('');
-  const [game2LlmCount, setGame2LlmCount] = useState('0');
-  const [game2HumanCount, setGame2HumanCount] = useState('0');
-  const predictGame2 = usePredictGame2();
-
-  const [game4SubjectId, setGame4SubjectId] = useState('');
+  const [game4SubjectId, setGame4SubjectId] = useState<number>();
   const [game4BankSize, setGame4BankSize] = useState('100');
   const predictGame4 = usePredictGame4();
+  const subjectsQuery = useGamificationSubjects(activeGame === 'game4');
+  const subjects = subjectsQuery.data ?? [];
+  const game4Subject = subjects.find((subject) => subject.subjectId === game4SubjectId);
 
   const game6Query = useActiveGame6Session();
   const game6 = game6Query.data;
@@ -132,20 +200,10 @@ export function PredictionArenaTab() {
     });
   }
 
-  function submitGame2(event: FormEvent) {
-    event.preventDefault();
-    if (!game2SessionId || predictGame2.isPending) return;
-    predictGame2.mutate({
-      sessionId: Number(game2SessionId),
-      predictedLlmCount: Number(game2LlmCount),
-      predictedHumanCount: Number(game2HumanCount),
-    });
-  }
-
   function submitGame4(event: FormEvent) {
     event.preventDefault();
-    if (!game4SubjectId || predictGame4.isPending) return;
-    predictGame4.mutate({ subjectId: Number(game4SubjectId), predictedBankSize: Number(game4BankSize) });
+    if (!game4Subject || predictGame4.isPending) return;
+    predictGame4.mutate({ subjectId: game4Subject.subjectId, predictedBankSize: Number(game4BankSize) });
   }
 
   return (
@@ -154,7 +212,12 @@ export function PredictionArenaTab() {
         {tabs.map(({ id, label, icon: Icon }) => (
           <Button key={id} type="button" variant={activeGame === id ? 'secondary' : 'ghost'}
             aria-pressed={activeGame === id} className={cn('min-h-11', activeGame === id && 'bg-academic-soft text-academic', id === 'history' && 'sm:ml-auto')}
-            onClick={() => setActiveGame(id)}>
+            onClick={() => {
+              if (id === activeGame) return;
+              const next = new URLSearchParams(searchParams);
+              next.set('game', id);
+              setSearchParams(next);
+            }}>
             <Icon aria-hidden="true" /> {label}
           </Button>
         ))}
@@ -195,29 +258,51 @@ export function PredictionArenaTab() {
       )}
 
       {activeGame === 'game2' && (
-        <GamePanel title="Số câu hỏi được duyệt"
-          description="Dự đoán có bao nhiêu câu do AI và do người biên soạn trong phiên đề xuất của bạn sẽ được giảng viên duyệt.">
-          <form onSubmit={submitGame2} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
-            <NumberField id="game2-session" label="ID phiên đề xuất" min={1} value={game2SessionId} onChange={setGame2SessionId} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <NumberField id="game2-ai-count" label="Số câu do AI tạo" min={0} value={game2LlmCount} onChange={setGame2LlmCount} />
-              <NumberField id="game2-human-count" label="Số câu do người biên soạn" min={0} value={game2HumanCount} onChange={setGame2HumanCount} />
-            </div>
-            <Button type="submit" disabled={predictGame2.isPending}><Send aria-hidden="true" />{predictGame2.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
-          </form>
+        <GamePanel title="Thể lệ Game 2 · Số câu hỏi được duyệt"
+          description="Bạn có thể tham gia Game 2 ngay khi gửi phiên đề xuất câu hỏi của mình.">
+          <ol className="max-w-2xl list-decimal space-y-2 rounded-xl border border-border bg-surface-subtle py-4 pr-4 pl-9 text-sm">
+            <li>Khi đề xuất phiên, nhập hai số dự đoán: số câu do AI tạo và số câu do người biên soạn sẽ được duyệt.</li>
+            <li>Khi giảng viên chốt phiên, hệ thống đối chiếu từng số với kết quả thực tế.</li>
+            <li>Bạn nhận <strong className="text-academic">0,5 điểm công khai</strong> khi cả hai số đều khớp.</li>
+          </ol>
+          <Button render={<Link to="/sessions/propose" />} nativeButton={false}>Đề xuất câu hỏi</Button>
+        </GamePanel>
+      )}
+
+      {activeGame === 'game3' && (
+        <GamePanel title="Thể lệ Game 3 · Độ tự tin của tác giả"
+          description="Khi chốt phiên có ít nhất 10 câu hỏi, bạn tự động tham gia Game 3. Hệ thống xét 10 câu đầu theo thứ tự đề xuất, gồm cả câu bị từ chối.">
+          <ol className="max-w-2xl list-decimal space-y-2 rounded-xl border border-border bg-surface-subtle py-4 pr-4 pl-9 text-sm">
+            <li>Hệ thống xét lần đầu sau 14 ngày kể từ khi chốt phiên. Mỗi câu cần ít nhất 3 người khác tác giả đánh giá.</li>
+            <li>Điểm đánh giá trung bình và độ tự tin được so trên thang 0–4. Chênh tối đa 0,5 điểm được tính là khớp.</li>
+            <li>Ít nhất 5 câu khớp được thưởng <strong className="text-academic">0,25 điểm công khai</strong>. Nếu 6 câu trở lên lệch quá 0,5 điểm, lượt dự đoán kết thúc với kết quả chưa chính xác.</li>
+            <li>Nếu chưa thể kết luận, hệ thống xét lại ở mốc 28 ngày hoặc lúc chốt sổ học kỳ, tùy mốc nào đến trước. Nếu vẫn chưa thể kết luận, lịch sử sẽ ghi “Chưa đủ đánh giá”.</li>
+          </ol>
+          <p className="max-w-2xl text-sm text-muted-foreground">Nếu học kỳ chốt sổ trước mốc 14 ngày, hệ thống xét kết quả ngay khi chốt sổ.</p>
+          <p className="max-w-2xl text-sm text-muted-foreground">Kết quả thắng hoặc thua được chốt ngay khi đủ điều kiện. Bạn vẫn có thể sửa đánh giá sau đó. Lịch sử hiển thị số liệu tại lần xét đã chốt.</p>
         </GamePanel>
       )}
 
       {activeGame === 'game4' && (
         <GamePanel title="Quy mô ngân hàng câu hỏi cuối kỳ"
           description="Dự đoán tổng số câu hỏi được duyệt vào ngân hàng đề của một môn khi học kỳ kết thúc.">
-          <form onSubmit={submitGame4} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
-            <NumberField id="game4-subject" label="ID môn học" min={1} value={game4SubjectId} onChange={setGame4SubjectId} />
-            <NumberField id="game4-bank-size" label="Tổng số câu hỏi dự đoán" min={10} value={game4BankSize} onChange={setGame4BankSize} />
-            <Button type="submit" disabled={predictGame4.isPending}><Send aria-hidden="true" />{predictGame4.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
-          </form>
+          {subjectsQuery.isLoading ? <Skeleton className="h-28 max-w-xl rounded-xl" aria-label="Đang tải môn học" />
+            : subjectsQuery.isError ? <ErrorState title="Không thể tải danh sách môn học" onRetry={() => void subjectsQuery.refetch()} />
+            : subjects.length === 0 ? <EmptyState icon={Database} title="Chưa có môn học để dự đoán" />
+            : (
+              <form onSubmit={submitGame4} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
+                <StudySubjectSelect subjects={subjects} value={game4Subject?.subjectId} onChange={setGame4SubjectId}
+                  label="Môn học" emptyLabel="Chọn một môn học…" required />
+                <NumberField id="game4-bank-size" label="Tổng số câu hỏi dự đoán" min={0} value={game4BankSize} onChange={setGame4BankSize} />
+                <Button type="submit" disabled={!game4Subject || predictGame4.isPending}>
+                  <Send aria-hidden="true" />{predictGame4.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}
+                </Button>
+              </form>
+            )}
         </GamePanel>
       )}
+
+      {activeGame === 'game5' && <ErrorHunterTab />}
 
       {activeGame === 'game6' && (
         <GamePanel title="Phán đoán câu hỏi do AI tạo"

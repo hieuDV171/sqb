@@ -45,7 +45,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Luồng tự động hóa kiểm duyệt phiên đề xuất sau 3 ngày & 6 ngày nếu không có
@@ -121,6 +123,7 @@ public class AiAutomatedReviewScheduler {
         List<Question> allQuestionsToUpdate = new ArrayList<>();
         List<Long> finalizedQuestionIds = new ArrayList<>();
         List<Session> allSessionsToUpdate = new ArrayList<>();
+        Map<Session, List<Question>> finalizedQuestionsBySession = new LinkedHashMap<>();
         List<UserPointRewardDto> rewardsToBatch = new ArrayList<>();
         List<Post> autoPostsToSave = new ArrayList<>();
         List<Notification> autoNotificationsToSave = new ArrayList<>();
@@ -158,7 +161,7 @@ public class AiAutomatedReviewScheduler {
             session.setReviewedAt(now);
             allSessionsToUpdate.add(session);
 
-            gamificationService.resolveGame2And3ForSession(session, questionsList);
+            finalizedQuestionsBySession.put(session, questionsList);
 
             // Thưởng điểm & Tự động đăng bài/feed nếu có ít nhất 1 câu hỏi được duyệt
             if (approvedInSession > 0 && session.getProposer() != null) {
@@ -218,6 +221,7 @@ public class AiAutomatedReviewScheduler {
         }
         if (!allSessionsToUpdate.isEmpty()) {
             sessionRepository.saveAll(allSessionsToUpdate);
+            gamificationService.onSessionsFinalized(finalizedQuestionsBySession);
             List<Long> sIds = allSessionsToUpdate.stream().map(Session::getId).toList();
             eventPublisher
                     .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.SESSION, sIds));

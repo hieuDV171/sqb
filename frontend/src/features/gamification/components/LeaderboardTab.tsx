@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Crown, Medal, Award, Search, Target, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,10 +7,10 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { sessionService } from '@/features/session/services/sessionService';
 import { useLeaderboard } from '@/features/gamification';
 import type { LeaderboardEntryDto, LeaderboardPeriod } from '@/features/gamification';
 import { GamificationSelect } from './GamificationSelect';
+import { useGamificationSubjects } from '../hooks/useGamificationSubjects';
 
 const scopes = [
   { value: 'SEMESTER', label: 'Toàn học kỳ' },
@@ -57,12 +56,7 @@ export function LeaderboardTab() {
   const [period, setPeriod] = useState<LeaderboardPeriod>('SEMESTER');
   const [subjectId, setSubjectId] = useState<number>();
   const [search, setSearch] = useState('');
-  const subjects = useQuery({
-    queryKey: ['subjects', 'gamification'],
-    queryFn: async () => (await sessionService.getAllSubjects()).data ?? [],
-    enabled: period === 'SUBJECT',
-    staleTime: 5 * 60_000,
-  });
+  const subjects = useGamificationSubjects(period === 'SUBJECT');
   const subject = subjects.data?.find((item) => item.subjectId === subjectId) ?? subjects.data?.[0];
   const leaderboard = useLeaderboard({ period, subjectId: period === 'SUBJECT' ? subject?.subjectId : undefined, limit: 50 });
   const entries = leaderboard.data?.entries ?? [];

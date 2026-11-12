@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type GamificationTab = 'leaderboard' | 'shop' | 'predictions' | 'badges' | 'error-hunter';
+export type GamificationTab = 'leaderboard' | 'shop' | 'predictions' | 'badges';
 
 interface GamificationState {
   // Navigation

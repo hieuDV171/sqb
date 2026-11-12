@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { BookOpen, Flag, Send, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +63,9 @@ export function ErrorHunterTab() {
           </li>
         ))}
       </ol>
+      <Button render={<Link to="/questions/practice" />} nativeButton={false} variant="outline">
+        <BookOpen aria-hidden="true" /> Mở bộ câu hỏi luyện tập
+      </Button>
 
       {canReview && (
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">

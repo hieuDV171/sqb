@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.gamification.repository;
 
 import com.frozenheart.backend.core.entity.prediction.PointHistory;
 import com.frozenheart.backend.modules.gamification.dto.LeaderboardAggregation;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +27,16 @@ public interface PointHistoryRepository extends JpaRepository<PointHistory, Long
             @Param("subjectId") Long subjectId,
             @Param("semesterId") Long semesterId
     );
+
+    @Query("""
+        SELECT p.user.id AS userId, SUM(p.points) AS totalPoints, MAX(p.createdAt) AS lastEventTime
+        FROM PointHistory p
+        WHERE p.semester.id = :semesterId
+        GROUP BY p.user.id
+        HAVING SUM(p.points) > 0
+        ORDER BY SUM(p.points) DESC, MAX(p.createdAt) ASC, p.user.id DESC
+        """)
+    List<LeaderboardAggregation> findFinalSemesterRanks(@Param("semesterId") Long semesterId, Pageable pageable);
 
     @Query("""
         SELECT p FROM PointHistory p

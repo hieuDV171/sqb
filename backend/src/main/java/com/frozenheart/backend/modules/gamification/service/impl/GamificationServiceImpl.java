@@ -23,6 +23,7 @@ import com.frozenheart.backend.modules.gamification.service.LeaderboardService;
 import com.frozenheart.backend.modules.session.repository.*;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
+import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -121,6 +122,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final PostRepository postRepository;
     private final ActivityFeedService activityFeedService;
     private final UserCurrencyService userCurrencyService;
+    private final Game3ResolutionService game3ResolutionService;
 
     private static final String GAME6_SYSTEM_PROMPT = """
             Bạn là trợ lý AI chuyên tinh chỉnh và nâng cao chất lượng câu hỏi thi trắc nghiệm.
@@ -730,28 +732,32 @@ public class GamificationServiceImpl implements GamificationService {
     }
 
     // =========================================================================
-    // Resolve Game 2 & Game 3 when a review is finalized.
+    // Settle Game 2 and register the later Game 3 review.
     // =========================================================================
     @Override
     @Transactional
-    public void resolveGame2And3ForSession(Session session, List<Question> qList) {
-        if (session == null || qList == null || qList.isEmpty())
+    public void onSessionsFinalized(Map<Session, List<Question>> sessions) {
+        if (sessions.isEmpty()) {
             return;
+        }
+        game3ResolutionService.registerFinalizedSessions(sessions);
+        Map<Long, Session> byId = sessions.keySet().stream().collect(Collectors.toMap(Session::getId, s -> s));
+        List<Prediction> game2Preds = predictionRepository.findPendingForTargets(
+                GameType.GAME_2_APPROVED_QUESTIONS, PredictionTargetType.SESSION, byId.keySet(), PredictionStatus.PENDING);
 
-        // RESOLVE GAME 2
-        long actualApprovedLlm = qList.stream()
-                .filter(q -> q.getStatus() == QuestionStatus.APPROVED && q.isLlmGenerated())
-                .count();
-        long actualApprovedHomoSapiens = qList.stream()
-                .filter(q -> q.getStatus() == QuestionStatus.APPROVED && !q.isLlmGenerated())
-                .count();
-
-        List<Prediction> game2Preds = predictionRepository.findByGameTypeAndTargetTypeAndTargetIdFetchGambler(
-                GameType.GAME_2_APPROVED_QUESTIONS, PredictionTargetType.SESSION, session.getId());
-
+        List<UserPointRewardDto> rewards = new ArrayList<>();
+        Instant now = Instant.now();
         for (Prediction pred : game2Preds) {
+            Session session = byId.get(pred.getTargetId());
+            List<Question> questions = sessions.get(session);
+            long actualApprovedLlm = questions.stream()
+                    .filter(q -> q.getStatus() == QuestionStatus.APPROVED && q.isLlmGenerated())
+                    .count();
+            long actualApprovedHuman = questions.stream()
+                    .filter(q -> q.getStatus() == QuestionStatus.APPROVED && !q.isLlmGenerated())
+                    .count();
             pred.setStatus(PredictionStatus.RESOLVED);
-            pred.setResolvedAt(Instant.now());
+            pred.setResolvedAt(now);
 
             boolean exact = false;
             if (pred.getPredictionData() != null && pred.getPredictionData().getData() instanceof Map<?, ?> dataMap) {
@@ -761,48 +767,24 @@ public class GamificationServiceImpl implements GamificationService {
                 long predLlm = llmVal instanceof Number ? ((Number) llmVal).longValue() : 0;
                 long predHuman = humanVal instanceof Number ? ((Number) humanVal).longValue() : 0;
 
-                exact = (predLlm == actualApprovedLlm && predHuman == actualApprovedHomoSapiens);
+                exact = (predLlm == actualApprovedLlm && predHuman == actualApprovedHuman);
             }
 
             pred.setCorrect(exact);
             if (exact) {
                 Subject subject = session.getCourseClass().getSubject();
-                counterMetricsService.awardPublicPoints(
+                rewards.add(new UserPointRewardDto(
                         pred.getGambler().getId(),
                         Point.GAME2_AWARD.getPoints(),
+                        0,
                         PointHistoryReason.GAME_2_WIN,
                         PointHistoryTargetType.SESSION,
                         session.getId(),
-                        subject);
+                        subject));
             }
         }
-
-        // RESOLVE GAME 3 (Author confidence prediction if session >= 10 questions)
-        if (qList.size() >= 10 && session.getProposer() != null) {
-            List<Question> first10 = qList.subList(0, 10);
-            int accurateCount = 0;
-
-            for (Question q : first10) {
-                Double declaredConfidence = q.getConfidenceScore();
-                Double avgRating = q.getAvgRating();
-                if (declaredConfidence != null && avgRating != null) {
-                    double diff = Math.abs(declaredConfidence - avgRating);
-                    if (diff <= 0.5) {
-                        accurateCount++;
-                    }
-                }
-            }
-
-            if (accurateCount >= 5) { // >= 50% accurate
-                Subject subject = session.getCourseClass().getSubject();
-                counterMetricsService.awardPublicPoints(
-                        session.getProposer().getId(),
-                        Point.GAME3_AWARD.getPoints(),
-                        PointHistoryReason.GAME_3_AUTHOR_CONFIDENCE_WIN,
-                        PointHistoryTargetType.SESSION,
-                        session.getId(),
-                        subject);
-            }
+        if (!rewards.isEmpty()) {
+            counterMetricsService.awardGamePointsBatch(rewards, currentSemesterHolder.getCurrentSemester());
         }
     }
 
@@ -958,7 +940,7 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     @Transactional
     public void finalizeSemester() {
-        Semester current = semesterRepository.findByActiveTrue().orElse(null);
+        Semester current = semesterRepository.findActiveForUpdate().orElse(null);
         if (current == null) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Không thể chốt sổ! Hiện tại không có học kỳ nào đang được kích hoạt trong hệ thống.");
         }
@@ -966,6 +948,7 @@ public class GamificationServiceImpl implements GamificationService {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, String.format("Học kỳ '%s' đang hoạt động đã được chốt sổ trước đó.", current.getName()));
         }
 
+        game3ResolutionService.resolveBeforeSemesterClose(current, Instant.now());
         counterMetricsService.finalizeSemesterPoints();
 
         // Gửi thông báo tổng kết Game 5 (Recap) cho những người báo lỗi chính xác trong kỳ
@@ -1049,13 +1032,15 @@ public class GamificationServiceImpl implements GamificationService {
         // Reset toàn bộ is_used = false trong legacy_questions cho học kỳ mới
         legacyQuestionRepository.resetAllIsUsedToFalse();
 
-        // Trao huy hiệu thứ hạng Leaderboard cho các sinh viên đạt Top cuối kỳ (Chống N+1)
+        // Redis receives point events after commit. Use the ledger to include awards in this transaction.
+        List<LeaderboardAggregation> finalRanks = pointHistoryRepository.findFinalSemesterRanks(
+                current.getId(), PageRequest.of(0, 10));
         try {
-            String redisKey = RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SEMESTER, current.getId(), null);
-            Set<ZSetOperations.TypedTuple<String>> topRanks = redisTemplate.opsForZSet()
-                    .reverseRangeWithScores(redisKey, 0, 9);
-            if (topRanks != null && !topRanks.isEmpty()) {
-                Map<Long, Integer> userRankMap = createUserRankMap(topRanks);
+            if (!finalRanks.isEmpty()) {
+                Map<Long, Integer> userRankMap = new HashMap<>();
+                for (int index = 0; index < finalRanks.size(); index++) {
+                    userRankMap.put(finalRanks.get(index).getUserId(), index + 1);
+                }
 
                 List<User> winners = userRepository.findAllById(userRankMap.keySet());
                 if (!winners.isEmpty()) {
@@ -1068,7 +1053,14 @@ public class GamificationServiceImpl implements GamificationService {
 
         // Tạo bài Post vinh danh Thủ khoa / Top 3 cuối kỳ kèm thưởng Xu và Notification
         try {
-            publishLeaderboardHonorPost(current, true);
+            List<LeaderboardWinnerEntry> winners = new ArrayList<>();
+            for (int index = 0; index < Math.min(3, finalRanks.size()); index++) {
+                LeaderboardAggregation row = finalRanks.get(index);
+                int rank = index + 1;
+                winners.add(new LeaderboardWinnerEntry(
+                        row.getUserId(), rank, row.getTotalPoints(), calculateHonorCoins(rank, true)));
+            }
+            publishLeaderboardHonorPost(current, winners, true);
         } catch (Exception e) {
             log.error("[GamificationService] Lỗi khi tạo bài post vinh danh cuối kỳ: {}", e.getMessage());
         }
@@ -1079,22 +1071,6 @@ public class GamificationServiceImpl implements GamificationService {
         leaderboardService.scheduleOldSemesterCleanup(current.getId());
 
         log.info("[GamificationService] Finalized semester successfully.");
-    }
-
-    private @NonNull Map<Long, Integer> createUserRankMap(Set<ZSetOperations.TypedTuple<String>> topRanks) {
-        Map<Long, Integer> userRankMap = new HashMap<>();
-        int rank = 1;
-        for (ZSetOperations.TypedTuple<String> tuple : topRanks) {
-            if (tuple.getValue() != null) {
-                try {
-                    Long winnerId = Long.parseLong(tuple.getValue());
-                    userRankMap.put(winnerId, rank);
-                } catch (NumberFormatException ignored) {
-                }
-            }
-            rank++;
-        }
-        return userRankMap;
     }
 
     private long getBankSizeDiff(Prediction p, long actualBankSize) {
@@ -1480,14 +1456,10 @@ public class GamificationServiceImpl implements GamificationService {
             }
         }
 
-        publishLeaderboardHonorPost(current, false);
+        publishMonthlyLeaderboardHonorPost(current);
     }
 
-    private void publishLeaderboardHonorPost(Semester semester, boolean isEndOfSemester) {
-        if (semester == null) {
-            return;
-        }
-
+    private void publishMonthlyLeaderboardHonorPost(Semester semester) {
         String redisKey = RedisKeyUtil.buildLeaderboardKey(LeaderboardPeriod.SEMESTER, semester.getId(), null);
         Set<ZSetOperations.TypedTuple<String>> topRanks = redisTemplate.opsForZSet()
                 .reverseRangeWithScores(redisKey, 0, 2);
@@ -1506,7 +1478,7 @@ public class GamificationServiceImpl implements GamificationService {
                 if (points > 0) {
                     try {
                         Long uId = Long.parseLong(tuple.getValue());
-                        double coins = calculateHonorCoins(rank, isEndOfSemester);
+                        double coins = calculateHonorCoins(rank, false);
                         winners.add(new LeaderboardWinnerEntry(uId, rank, points, coins));
                     } catch (NumberFormatException ignored) {}
                 }
@@ -1514,6 +1486,11 @@ public class GamificationServiceImpl implements GamificationService {
             rank++;
         }
 
+        publishLeaderboardHonorPost(semester, winners, false);
+    }
+
+    private void publishLeaderboardHonorPost(Semester semester, List<LeaderboardWinnerEntry> winners,
+            boolean isEndOfSemester) {
         if (winners.isEmpty()) {
             log.info("[HonorPost] Không có sinh viên nào có điểm > 0 trong học kỳ '{}', bỏ qua vinh danh.", semester.getName());
             return;

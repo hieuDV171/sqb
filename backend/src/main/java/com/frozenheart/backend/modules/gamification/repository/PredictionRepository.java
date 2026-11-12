@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface PredictionRepository extends JpaRepository<Prediction, Long> {
@@ -33,6 +34,15 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
     @Query("SELECT p FROM Prediction p JOIN FETCH p.gambler WHERE p.gameType = :gameType AND p.targetType = :targetType AND p.targetId = :targetId")
     List<Prediction> findByGameTypeAndTargetTypeAndTargetIdFetchGambler(@Param("gameType") GameType gameType,
             @Param("targetType") PredictionTargetType targetType, @Param("targetId") Long targetId);
+
+    @Query("""
+            SELECT p FROM Prediction p JOIN FETCH p.gambler
+            WHERE p.gameType = :gameType AND p.targetType = :targetType
+              AND p.targetId IN :targetIds AND p.status = :status
+            """)
+    List<Prediction> findPendingForTargets(@Param("gameType") GameType gameType,
+            @Param("targetType") PredictionTargetType targetType, @Param("targetIds") Set<Long> targetIds,
+            @Param("status") PredictionStatus status);
 
     boolean existsByGamblerIdAndGameTypeAndTargetId(Long gamblerId, GameType gameType, Long targetId);
 
@@ -57,5 +67,17 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
             Pageable pageable);
 
     Optional<Prediction> findByGamblerIdAndGameTypeAndTargetId(Long gamblerId, GameType gameType, Long targetId);
+
+    @Query("""
+            SELECT p FROM Prediction p JOIN FETCH p.gambler
+            WHERE p.gameType = com.frozenheart.backend.core.entity.prediction.GameType.GAME_3_AUTHOR_CONFIDENCE
+              AND p.targetType = com.frozenheart.backend.core.entity.prediction.PredictionTargetType.SESSION
+              AND p.status = com.frozenheart.backend.core.entity.prediction.PredictionStatus.PENDING
+              AND (:closingSemester = true OR p.targetDate <= :now)
+              AND EXISTS (SELECT s.id FROM Session s WHERE s.id = p.targetId AND s.courseClass.semester.id = :semesterId)
+            ORDER BY p.targetDate, p.id
+            """)
+    List<Prediction> findPendingGame3Batch(@Param("semesterId") Long semesterId,
+            @Param("now") Instant now, @Param("closingSemester") boolean closingSemester, Pageable pageable);
 
 }

@@ -1,5 +1,7 @@
 package com.frozenheart.backend.modules.session.repository;
 
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -57,6 +59,28 @@ public interface UserRatingRepository extends JpaRepository<UserRating, UserRati
     interface QuestionRatingCount {
         Long getQuestionId();
         long getRatingCount();
+    }
+
+    @Query("""
+            SELECT q.id AS questionId, q.questionCode AS questionCode, q.displayOrder AS displayOrder,
+                   COUNT(DISTINCT ur.id.userId) AS ratingCount, AVG(ur.rating) AS averageRating
+            FROM Question q
+            JOIN Prediction p ON p.targetId = q.session.id AND p.id IN :predictionIds
+            LEFT JOIN UserRating ur ON ur.id.ratedQuestionId = q.id
+                AND ur.id.userId <> p.gambler.id
+                AND ur.createdAt < p.targetDate AND ur.createdAt < :now
+            WHERE q.id IN :questionIds
+            GROUP BY q.id, q.questionCode, q.displayOrder
+            """)
+    List<Game3QuestionRating> summarizeGame3Ratings(@Param("predictionIds") Collection<Long> predictionIds,
+            @Param("questionIds") Collection<Long> questionIds, @Param("now") Instant now);
+
+    interface Game3QuestionRating {
+        Long getQuestionId();
+        String getQuestionCode();
+        Integer getDisplayOrder();
+        long getRatingCount();
+        Double getAverageRating();
     }
 
 }

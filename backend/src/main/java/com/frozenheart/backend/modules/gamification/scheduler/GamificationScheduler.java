@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.gamification.scheduler;
 
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
+import com.frozenheart.backend.modules.gamification.service.impl.Game3ResolutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,6 +21,7 @@ public class GamificationScheduler {
     private static final LocalTime GAME_1_BATCH_DEADLINE = LocalTime.of(0, 20);
 
     private final GamificationService gamificationService;
+    private final Game3ResolutionService game3ResolutionService;
 
     /**
      * Chốt Game 1 lúc 00:05. Không bắt đầu lô mới từ 00:20 theo giờ Việt Nam.
@@ -47,6 +49,21 @@ public class GamificationScheduler {
             log.warn("[GamificationScheduler] Game 1 batch deadline reached after resolving {} predictions; any remaining predictions will be retried next night", resolved);
         } catch (Exception e) {
             log.error("[GamificationScheduler] Game 1 resolution stopped after committing {} predictions", resolved, e);
+        }
+    }
+
+    @Scheduled(cron = "0 30 0 * * *", zone = Time.DEFAULT_TIMEZONE)
+    public void scheduleDailyGame3Resolution() {
+        Instant cutoff = Instant.now();
+        int processed = 0;
+        try {
+            int batchSize;
+            while ((batchSize = game3ResolutionService.resolveNextDueBatch(cutoff)) > 0) {
+                processed += batchSize;
+            }
+            log.info("[GamificationScheduler] Processed {} Game 3 evaluations", processed);
+        } catch (Exception e) {
+            log.error("[GamificationScheduler] Game 3 stopped after committing {} evaluations", processed, e);
         }
     }
 

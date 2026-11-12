@@ -1,4 +1,4 @@
-import { Award, CheckCircle, Flame, ShieldAlert, ShoppingBag, Target, Trophy } from 'lucide-react';
+import { Award, CheckCircle, Flame, ShoppingBag, Target, Trophy } from 'lucide-react';
 import { SqbCoin } from '@/components/common/SqbCoin';
 import { Button } from '@/components/ui/button';
 import { useGamificationStore, type GamificationTab } from '@/features/gamification';
@@ -8,7 +8,6 @@ const sections = [
   { id: 'badges', label: 'Huy hiệu', icon: Award },
   { id: 'shop', label: 'Cửa hàng & tủ đồ', icon: ShoppingBag },
   { id: 'predictions', label: 'Dự đoán', icon: Target },
-  { id: 'error-hunter', label: 'Thợ săn lỗi', icon: ShieldAlert },
 ] as const;
 
 interface GamificationHeaderProps {

@@ -269,19 +269,39 @@ export interface Game6SubmitRequest {
   selectedLlmQuestionIds: number[];
 }
 
-export interface GamePredictionResponse {
+export interface Game3Result {
+  outcome: 'WON' | 'LOST' | 'INSUFFICIENT_RATINGS';
+  matchedQuestions: number;
+  nonMatchingQuestions: number;
+  questionEvaluations?: Game3QuestionEvaluation[];
+}
+
+interface Game3QuestionEvaluation {
+  questionId: number;
+  questionCode?: string | null;
+  displayOrder?: number | null;
+  declaredConfidence?: number | null;
+  averageRating?: number | null;
+  ratingCount: number;
+  verdict: 'MATCH' | 'MISMATCH' | 'INSUFFICIENT_RATINGS' | 'MISSING_CONFIDENCE';
+}
+
+interface GamePredictionFields {
   predictionId: number;
-  gameType: GameType;
   targetType: string;
   targetId: number;
   predictionData: unknown;
-  actualData?: unknown;
   status: PredictionStatus;
   isCorrect: boolean;
   createdAt: string;
   targetDate?: string | null;
   resolvedAt?: string;
 }
+
+export type GamePredictionResponse = GamePredictionFields & (
+  | { gameType: 'GAME_3_AUTHOR_CONFIDENCE'; actualData?: Game3Result | null }
+  | { gameType: Exclude<GameType, 'GAME_3_AUTHOR_CONFIDENCE'>; actualData?: unknown }
+);
 
 export interface MyPredictionsResponse {
   contents: GamePredictionResponse[];
