@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useId, useState, useRef, useMemo } from "react";
+import { Select } from "@base-ui/react/select";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { toast } from "@/stores/useToastStore";
 import type {
   BulkImportResult,
   ExcelImportClassResult,
+  Gender,
   SingleUserImportDto,
   UserRole,
 } from "@/types/auth.types";
@@ -23,6 +25,10 @@ import {
   KeyRound,
   CheckCircle2,
   AlertCircle,
+  Check,
+  ChevronDown,
+  Eye,
+  EyeOff,
   RefreshCw,
   Trash2,
   PlusCircle,
@@ -36,6 +42,98 @@ const accountTabs = [
 ] as const;
 
 type ActiveTab = typeof accountTabs[number]["value"];
+
+type AccountDraft = {
+  id: number;
+  user: SingleUserImportDto;
+  passwordConfirmation: string;
+};
+
+const roleOptions: { value: UserRole; label: string }[] = [
+  { value: "STUDENT", label: "Sinh viên" },
+  { value: "LECTURER", label: "Giảng viên" },
+  { value: "ADMIN", label: "Quản trị viên" },
+];
+
+const genderOptions: { value: Gender; label: string }[] = [
+  { value: "MALE", label: "Nam" },
+  { value: "FEMALE", label: "Nữ" },
+];
+
+function AccountSelect<Value extends string>({ label, value, options, onChange, disabled }: {
+  label: string;
+  value: Value;
+  options: { value: Value; label: string }[];
+  onChange: (value: Value) => void;
+  disabled: boolean;
+}) {
+  const labelId = useId();
+
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <Label id={labelId}>{label}</Label>
+      <Select.Root items={options} value={value} disabled={disabled}
+        onValueChange={(next) => { if (next !== null) onChange(next); }}>
+        <Select.Trigger aria-labelledby={labelId}
+          className="flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 text-left text-base outline-none transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:h-10 md:text-sm">
+          <Select.Value className="min-w-0 truncate" />
+          <Select.Icon className="shrink-0 text-muted-foreground"><ChevronDown aria-hidden="true" className="size-4" /></Select.Icon>
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Positioner sideOffset={6} alignItemWithTrigger={false} className="z-50 w-(--anchor-width) max-w-(--available-width)">
+            <Select.Popup className="max-h-(--available-height) overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+              <Select.List>
+                {options.map((option) => (
+                  <Select.Item key={option.value} value={option.value}
+                    className="flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm outline-none data-highlighted:bg-accent data-selected:font-semibold">
+                    <Select.ItemText>{option.label}</Select.ItemText>
+                    <Select.ItemIndicator><Check aria-hidden="true" className="size-4 text-academic" /></Select.ItemIndicator>
+                  </Select.Item>
+                ))}
+              </Select.List>
+            </Select.Popup>
+          </Select.Positioner>
+        </Select.Portal>
+      </Select.Root>
+    </div>
+  );
+}
+
+function AccountPasswordField({ id, label, value, onChange, required, invalid, describedBy }: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Input id={id} type={visible ? "text" : "password"} value={value}
+          autoComplete="new-password" autoCapitalize="none" spellCheck={false}
+          required={required} aria-invalid={invalid} aria-describedby={describedBy}
+          className="pr-12 [&::-ms-reveal]:hidden" onChange={(event) => onChange(event.target.value)} />
+        <Button type="button" variant="ghost" size="icon" aria-controls={id}
+          aria-label={`${visible ? "Ẩn" : "Hiện"} ${label.toLocaleLowerCase("vi-VN")}`}
+          className="absolute inset-y-0 right-0 h-full rounded-l-none text-muted-foreground"
+          onClick={() => setVisible((current) => !current)}>
+          {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function getPasswordConfirmationError(password: string | undefined, confirmation: string) {
+  if (!password?.trim()) return confirmation ? "Hãy nhập mật khẩu tùy chỉnh trước." : null;
+  if (!confirmation) return "Hãy nhập lại mật khẩu.";
+  return password === confirmation ? null : "Mật khẩu xác nhận không khớp.";
+}
 
 function errorMessage(error: unknown, fallback: string) {
   return error && typeof error === "object" && "message" in error && typeof error.message === "string"
@@ -136,18 +234,20 @@ export function AdminUsersPage() {
   // =========================================================================
   // TAB 2: BULK USER CREATION (TÙY CHỈNH) STATE
   // =========================================================================
-  const [usersToImport, setUsersToImport] = useState<SingleUserImportDto[]>([
+  const nextAccountId = useRef(2);
+  const [usersToImport, setUsersToImport] = useState<AccountDraft[]>([
     {
-      email: "",
-      fullName: "",
-      password: "",
-      studentLecturerCode: "",
-      dateOfBirth: "",
-      schoolFaculty: "Trường CNTT&TT",
-      major: "Khoa học máy tính",
-      className: "IT1-01",
-      gender: "MALE",
-      role: "STUDENT",
+      id: 1,
+      passwordConfirmation: "",
+      user: {
+        email: "",
+        fullName: "",
+        schoolFaculty: "Trường CNTT&TT",
+        major: "Khoa học máy tính",
+        className: "IT1-01",
+        gender: "MALE",
+        role: "STUDENT",
+      },
     },
   ]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
@@ -155,56 +255,60 @@ export function AdminUsersPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const handleAddUserRow = () => {
+    const id = nextAccountId.current++;
     setUsersToImport((prev) => [
       ...prev,
       {
-        email: "",
-        fullName: "",
-        password: "",
-        studentLecturerCode: "",
-        dateOfBirth: "",
-        schoolFaculty: "Trường CNTT&TT",
-        major: "",
-        className: "",
-        gender: "MALE",
-        role: "STUDENT",
+        id,
+        passwordConfirmation: "",
+        user: {
+          email: "",
+          fullName: "",
+          schoolFaculty: "Trường CNTT&TT",
+          gender: "MALE",
+          role: "STUDENT",
+        },
       },
     ]);
   };
 
-  const handleRemoveUserRow = (index: number) => {
-    if (usersToImport.length === 1) return;
-    setUsersToImport((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveUserRow = (id: number) => {
+    setUsersToImport((prev) => prev.length === 1 ? prev : prev.filter((draft) => draft.id !== id));
   };
 
   const handleUserFieldChange = <Field extends keyof SingleUserImportDto>(
-    index: number,
+    id: number,
     field: Field,
     value: SingleUserImportDto[Field],
   ) => {
-    setUsersToImport((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
+    setUsersToImport((prev) => prev.map((draft) => draft.id === id
+      ? { ...draft, user: { ...draft.user, [field]: value } }
+      : draft));
   };
 
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBulkLoading) return;
     setBulkError(null);
     setBulkResult(null);
 
     // Validation sơ bộ
     for (let i = 0; i < usersToImport.length; i++) {
-      const u = usersToImport[i];
+      const { id, user: u, passwordConfirmation } = usersToImport[i];
       if (!u.email || !u.fullName) {
         setBulkError(`Dòng #${i + 1}: Email và Họ tên là bắt buộc!`);
+        return;
+      }
+      const passwordError = getPasswordConfirmationError(u.password, passwordConfirmation);
+      if (passwordError) {
+        setBulkError(`Tài khoản ${i + 1}. ${passwordError}`);
+        document.getElementById(`account-${id}-confirm-password`)?.focus();
         return;
       }
     }
 
     // Chuẩn hóa payload: biến chuỗi rỗng thành undefined để backend tự động fallback mật khẩu & ngày sinh
-    const sanitizedUsers = usersToImport.map((u) => ({
+    const sanitizedUsers = usersToImport.map(({ user: u }) => ({
       ...u,
       password: u.password?.trim() ? u.password.trim() : undefined,
       dateOfBirth: u.dateOfBirth?.trim() ? u.dateOfBirth.trim() : undefined,
@@ -515,165 +619,113 @@ export function AdminUsersPage() {
       {/* TAB 2: TẠO TÙY CHỈNH TỪNG TÀI KHOẢN (BULK-IMPORT)                        */}
       {/* ========================================================================= */}
       {activeTab === "bulk" && (
-        <Card className="rounded-2xl border border-border bg-card">
+        <Card className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-card">
           <CardHeader>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-              <UserPlus className="w-5 h-5" />
-              <CardTitle className="text-lg">Tạo Tài Khoản Tùy Chỉnh Riêng Biệt (Bulk Import)</CardTitle>
+            <div className="flex items-center gap-2 text-academic">
+              <UserPlus aria-hidden="true" className="size-5" />
+              <CardTitle className="text-lg">Tạo tài khoản</CardTitle>
             </div>
             <CardDescription>
-              Sử dụng khi Quản trị viên cần tạo từng tài khoản hoặc danh sách cá nhân hóa với thông tin cụ thể (MSSV, Họ tên, Khoa viện, Ngành, Lớp, Giới tính, Vai trò...) thay vì import qua file Excel.
+              Điền thông tin từng người. Bạn có thể thêm nhiều tài khoản và tạo trong một lần.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {bulkError && (
-              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-destructive/25 bg-destructive/10 p-3.5 text-sm text-destructive">
+                <AlertCircle aria-hidden="true" className="size-4 shrink-0" />
                 <span>{bulkError}</span>
               </div>
             )}
 
             <form onSubmit={handleBulkSubmit} className="space-y-6">
               <div className="space-y-4">
-                {usersToImport.map((user, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 relative space-y-3"
-                  >
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Tài khoản #{idx + 1}
-                      </span>
+                {usersToImport.map(({ id, user, passwordConfirmation }, index) => {
+                  const fieldPrefix = `account-${id}`;
+                  const confirmationError = passwordConfirmation
+                    ? getPasswordConfirmationError(user.password, passwordConfirmation)
+                    : null;
+
+                  return (
+                    <fieldset key={id} disabled={isBulkLoading} aria-labelledby={`${fieldPrefix}-heading`}
+                      className="min-w-0 space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
                       {usersToImport.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveUserRow(idx)}
-                          className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 cursor-pointer font-medium"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Xóa dòng này
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                      <div className="space-y-1 sm:col-span-1">
-                        <Label className="text-xs">Email tài khoản *</Label>
-                        <Input
-                          type="email"
-                          placeholder="sv.k66@hust.edu.vn"
-                          value={user.email}
-                          onChange={(e) => handleUserFieldChange(idx, "email", e.target.value)}
-                          required
-                          className="text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-1 sm:col-span-1">
-                        <Label className="text-xs">Họ và tên *</Label>
-                        <Input
-                          placeholder="Nguyễn Văn An"
-                          value={user.fullName}
-                          onChange={(e) => handleUserFieldChange(idx, "fullName", e.target.value)}
-                          required
-                          className="text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Vai trò</Label>
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleUserFieldChange(idx, "role", e.target.value as UserRole)}
-                          className="w-full h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                        >
-                          <option value="STUDENT">🎓 Sinh viên (STUDENT)</option>
-                          <option value="LECTURER">👨‍🏫 Giảng viên (LECTURER)</option>
-                          <option value="ADMIN">🛡️ Quản trị viên (ADMIN)</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Giới tính</Label>
-                        <select
-                          value={user.gender || "MALE"}
-                          onChange={(e) => handleUserFieldChange(idx, "gender", e.target.value as SingleUserImportDto["gender"])}
-                          className="w-full h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-                        >
-                          <option value="MALE">Nam</option>
-                          <option value="FEMALE">Nữ</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                      <div className="space-y-1">
-                        <Label className="text-xs">MSSV / MSGV</Label>
-                        <Input
-                          placeholder="20211234"
-                          value={user.studentLecturerCode || ""}
-                          onChange={(e) => handleUserFieldChange(idx, "studentLecturerCode", e.target.value)}
-                          className="text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Ngày sinh (dd/MM/yyyy)</Label>
-                        <Input
-                          type="date"
-                          value={user.dateOfBirth || ""}
-                          onChange={(e) => handleUserFieldChange(idx, "dateOfBirth", e.target.value)}
-                          className="text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Khoa / Viện</Label>
-                        <Input
-                          placeholder="Trường CNTT&TT"
-                          value={user.schoolFaculty || ""}
-                          onChange={(e) => handleUserFieldChange(idx, "schoolFaculty", e.target.value)}
-                          className="text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Lớp sinh hoạt</Label>
-                        <Input
-                          placeholder="IT1-02"
-                          value={user.className || ""}
-                          onChange={(e) => handleUserFieldChange(idx, "className", e.target.value)}
-                          className="text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-1">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs">Mật khẩu tùy chỉnh</Label>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            (Nếu để trống: Ưu tiên Ngày sinh (ddMMyyyy) ➔ Mã SV/CB ➔ Mật khẩu hệ thống)
-                          </span>
+                        <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                          <h3 id={`${fieldPrefix}-heading`} className="text-sm font-semibold">Tài khoản {index + 1}</h3>
+                          <Button type="button" variant="ghost" size="sm" aria-label={`Xóa tài khoản ${index + 1} khỏi danh sách`}
+                            className="text-destructive hover:text-destructive" onClick={() => handleRemoveUserRow(id)}>
+                            <Trash2 aria-hidden="true" /> Xóa dòng
+                          </Button>
                         </div>
-                        <Input
-                          type="password"
-                          placeholder="Để trống để hệ thống tự sinh theo Ngày sinh (ddMMyyyy) hoặc Mã SV/CB"
-                          value={user.password || ""}
-                          onChange={(e) => handleUserFieldChange(idx, "password", e.target.value)}
-                          className="text-xs"
-                        />
+                      )}
+                      {usersToImport.length === 1 && <span id={`${fieldPrefix}-heading`} className="sr-only">Thông tin tài khoản</span>}
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${fieldPrefix}-email`}>Email tài khoản *</Label>
+                          <Input id={`${fieldPrefix}-email`} type="email" placeholder="sv.k66@hust.edu.vn"
+                            value={user.email} required onChange={(event) => handleUserFieldChange(id, "email", event.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${fieldPrefix}-full-name`}>Họ và tên *</Label>
+                          <Input id={`${fieldPrefix}-full-name`} placeholder="Nguyễn Văn An" value={user.fullName}
+                            required onChange={(event) => handleUserFieldChange(id, "fullName", event.target.value)} />
+                        </div>
+
+                        <AccountSelect label="Vai trò" value={user.role ?? "STUDENT"} options={roleOptions}
+                          disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "role", value)} />
+                        <AccountSelect label="Giới tính" value={user.gender ?? "MALE"} options={genderOptions}
+                          disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "gender", value)} />
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${fieldPrefix}-code`}>MSSV / MSGV</Label>
+                          <Input id={`${fieldPrefix}-code`} placeholder="20211234" value={user.studentLecturerCode ?? ""}
+                            onChange={(event) => handleUserFieldChange(id, "studentLecturerCode", event.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${fieldPrefix}-birth-date`}>Ngày sinh</Label>
+                          <Input id={`${fieldPrefix}-birth-date`} type="date" value={user.dateOfBirth ?? ""}
+                            onChange={(event) => handleUserFieldChange(id, "dateOfBirth", event.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${fieldPrefix}-faculty`}>Khoa / Viện</Label>
+                          <Input id={`${fieldPrefix}-faculty`} placeholder="Trường CNTT&TT" value={user.schoolFaculty ?? ""}
+                            onChange={(event) => handleUserFieldChange(id, "schoolFaculty", event.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${fieldPrefix}-class`}>Lớp sinh hoạt</Label>
+                          <Input id={`${fieldPrefix}-class`} placeholder="IT1-02" value={user.className ?? ""}
+                            onChange={(event) => handleUserFieldChange(id, "className", event.target.value)} />
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+
+                      <div className="space-y-2 border-t border-border pt-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <AccountPasswordField id={`${fieldPrefix}-password`} label="Mật khẩu tùy chỉnh" value={user.password ?? ""}
+                            describedBy={`${fieldPrefix}-password-hint`} onChange={(value) => handleUserFieldChange(id, "password", value)} />
+                          <AccountPasswordField id={`${fieldPrefix}-confirm-password`} label="Xác nhận mật khẩu" value={passwordConfirmation}
+                            required={Boolean(user.password?.trim())} invalid={Boolean(confirmationError)}
+                            describedBy={confirmationError ? `${fieldPrefix}-password-error` : `${fieldPrefix}-password-hint`}
+                            onChange={(value) => setUsersToImport((previous) => previous.map((draft) => draft.id === id
+                              ? { ...draft, passwordConfirmation: value }
+                              : draft))} />
+                        </div>
+                        {confirmationError && <p id={`${fieldPrefix}-password-error`} className="text-sm text-destructive">{confirmationError}</p>}
+                        <p id={`${fieldPrefix}-password-hint`} className="text-sm text-muted-foreground">
+                          Nếu để trống, hệ thống sẽ chọn mật khẩu theo thứ tự ưu tiên ngày sinh (ddMMyyyy), mã SV/CB, rồi mật khẩu mặc định.
+                        </p>
+                      </div>
+                    </fieldset>
+                  );
+                })}
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={isBulkLoading}
                   onClick={handleAddUserRow}
-                  className="gap-2 text-xs w-full sm:w-auto"
+                  className="min-h-11 w-full sm:w-auto"
                 >
                   <PlusCircle className="w-4 h-4" /> Thêm một dòng tài khoản
                 </Button>
@@ -681,7 +733,7 @@ export function AdminUsersPage() {
                 <Button
                   type="submit"
                   disabled={isBulkLoading}
-                  className="gap-2 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-xs sm:text-sm w-full sm:w-auto"
+                  className="min-h-11 w-full sm:w-auto"
                 >
                   {isBulkLoading ? (
                     <>
