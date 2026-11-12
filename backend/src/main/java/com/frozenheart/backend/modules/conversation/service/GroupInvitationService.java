@@ -126,6 +126,7 @@ public class GroupInvitationService {
             member.setRole(ConversationRole.VILLAGER);
             member.setJoinedAt(Instant.now());
             member.setLeftAt(null);
+            member.setRemovedFromGroup(null);
             participants.save(member);
         }
         invitations.delete(invitation);

@@ -1,8 +1,9 @@
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useStompStatus } from '@/lib/stompClient';
-import { useState, useMemo } from 'react';
-import { useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '../hooks/useChat';
+import { useEffect, useState, useMemo } from 'react';
+import { getGroupExitReason, useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '../hooks/useChat';
 import { useChatStore } from '../stores/useChatStore';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
@@ -12,6 +13,7 @@ import {
   ChevronLeft,
   EyeOff,
   Lock,
+  UserMinus,
   X,
 } from 'lucide-react';
 
@@ -21,6 +23,7 @@ interface ChatWindowProps {
   onUnlock?: () => void;
   onOpenGroupMembers?: () => void;
   onOpenDeleteModal?: (message: MessageDto) => void;
+  onMembershipLost?: () => void;
 }
 
 export function ChatWindow(props: ChatWindowProps) {
@@ -45,6 +48,7 @@ function UnlockedChatWindow({
   onBack,
   onOpenGroupMembers,
   onOpenDeleteModal,
+  onMembershipLost,
 }: ChatWindowProps) {
   const { typingMap, isPinUnlocked } = useChatStore();
   const realtime = useStompStatus();
@@ -54,7 +58,8 @@ function UnlockedChatWindow({
   // Lấy thông tin hội thoại từ cache của danh sách
   const { data: conversationsData } = useConversations();
   const { data: hiddenData } = useHiddenConversations(isPinUnlocked);
-  const { data: messageData } = useMessages(conversationId);
+  const messages = useMessages(conversationId);
+  const messageData = messages.data;
   const hideMutation = useHideConversation();
   const replyTo = replyToId === null ? null : messageData?.pages
     .flatMap((page) => page.messages)
@@ -75,7 +80,12 @@ function UnlockedChatWindow({
   const isGroup = (conversation?.type ?? messageData?.pages[0]?.conversationType) === 'GROUP';
   const displayName = conversation?.displayName ?? messageData?.pages[0]?.groupName;
   const displayAvatar = conversation?.displayAvatarUrl ?? messageData?.pages[0]?.groupAvatarUrl;
-  const { data: members = [] } = useGroupMembers(conversationId, isGroup);
+  const { data: members = [], error: membersError } = useGroupMembers(conversationId, isGroup);
+  const groupExitReason = getGroupExitReason(messages.error) ?? getGroupExitReason(membersError);
+
+  useEffect(() => {
+    if (groupExitReason) onMembershipLost?.();
+  }, [groupExitReason, onMembershipLost]);
 
   // Danh sách người đang gõ trong cuộc trò chuyện này
   const typingUsers = useMemo(() => {
@@ -89,6 +99,17 @@ function UnlockedChatWindow({
       hideMutation.mutate(conversationId, { onSuccess: () => onBack?.() });
     }
   };
+
+  if (groupExitReason) {
+    return (
+      <div className="grid h-full place-items-center overflow-y-auto p-4 bg-surface-subtle" role="status">
+        <EmptyState icon={UserMinus}
+          title={groupExitReason === 'removed' ? 'Bạn đã được mời ra khỏi nhóm' : 'Bạn không còn là thành viên của nhóm'}
+          description="Cuộc trò chuyện chỉ mở cho thành viên đang tham gia."
+          actionLabel="Về danh sách tin nhắn" onAction={onBack} />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-surface-subtle">
@@ -168,7 +189,7 @@ function UnlockedChatWindow({
         conversationId={conversationId}
         typingUsers={typingUsers}
         replyTo={replyTo}
-        canSend={realtime === 'CONNECTED'}
+        canSend={realtime === 'CONNECTED' && !messages.isPending}
         onCancelReply={() => setReplyToId(null)}
       />
 

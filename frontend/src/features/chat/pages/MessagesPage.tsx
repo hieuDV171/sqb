@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useChatStore } from '../stores/useChatStore';
@@ -52,6 +52,11 @@ export function MessagesPage() {
     navigate('/messages');
   };
 
+  const closeConversationModals = useCallback(() => {
+    setIsGroupMembersModalOpen(false);
+    setDeleteModalState({ isOpen: false, message: null });
+  }, []);
+
   return (
     <div className="mx-auto flex h-[max(24rem,calc(100dvh-var(--app-header-height)-var(--app-mobile-nav-height)-4rem-env(safe-area-inset-bottom)))] max-w-7xl overflow-hidden rounded-2xl border border-border bg-card md:h-[max(24rem,calc(100dvh-var(--app-header-height)-3rem))] lg:h-[max(24rem,calc(100dvh-var(--app-header-height)-4rem))]">
       {/* Cột trái: Danh sách hội thoại (Ẩn trên màn hình nhỏ nếu đang mở chat) */}
@@ -88,6 +93,7 @@ export function MessagesPage() {
             onUnlock={() => setIsPinModalOpen(true)}
             onOpenGroupMembers={() => setIsGroupMembersModalOpen(true)}
             onOpenDeleteModal={(msg) => setDeleteModalState({ isOpen: true, message: msg })}
+            onMembershipLost={closeConversationModals}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-5 text-center bg-surface-subtle">

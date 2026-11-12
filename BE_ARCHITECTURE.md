@@ -427,3 +427,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Đổi vai trò lấy cùng khóa hàng hội thoại với thao tác thành viên để tuần tự hóa chuyển quyền Tù trưởng. Khi đổi vai trò hoặc khi Tù trưởng rời nhóm và có người kế nhiệm, phát `GROUP_ROLES_CHANGED` sau commit đến thành viên đang hoạt động qua `/user/queue/messages`, dùng cùng kiểm tra PIN cho hội thoại ẩn.
 - Sự kiện chỉ mang ID hội thoại. Frontend tải lại truy vấn thành viên của nhóm để lấy cả vai trò mới và quyền thao tác theo vai trò. Khi STOMP kết nối lại, làm mới các truy vấn thành viên đang mở.
+
+### [ADR-043] Ghi nhận và đồng bộ khi thành viên bị mời ra khỏi nhóm
+
+- `user_participants.left_at` xác định tư cách thành viên đã kết thúc. Cột boolean nullable `removed_from_group` ghi nhận thao tác mời ra. Xóa cờ khi tự rời hoặc tham gia lại qua thêm trực tiếp hay chấp nhận lời mời. Bản ghi cũ có `left_at` và chưa có lý do dùng thông báo chung.
+- Sau commit phát `GROUP_MEMBER_REMOVED` qua hàng đợi cá nhân tới thành viên đang tham gia và người vừa bị mời ra, giữ kiểm tra PIN của từng người nhận. Frontend làm mới danh sách hội thoại, thành viên và gợi ý của nhóm. Phía người bị mời ra tải lại quyền truy cập từ API lịch sử.
+- API lịch sử và thành viên dùng HTTP 403 với mã `2413` khi bị mời ra và `2414` khi tư cách đã kết thúc mà thiếu dấu hiệu bị mời ra. Giao diện thay khu vực tin nhắn bằng thông báo tương ứng. Nhóm ẩn vẫn yêu cầu mở kho trước khi trả lý do.

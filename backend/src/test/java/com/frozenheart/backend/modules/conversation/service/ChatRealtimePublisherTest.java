@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -38,6 +40,11 @@ class ChatRealtimePublisherTest {
         var normal = UserParticipant.builder().user(User.builder().id(1L).build()).build();
         var hidden = UserParticipant.builder().user(User.builder().id(2L).build()).hiddenAt(Instant.now()).build();
         when(participants.findByConversationIdAndLeftAtIsNull(10L)).thenReturn(List.of(normal, hidden));
+        if (event instanceof WsGroupMemberRemovedDto) {
+            var removed = UserParticipant.builder().leftAt(Instant.now()).hiddenAt(Instant.now())
+                    .removedFromGroup(true).build();
+            when(participants.findByUserIdAndConversationId(3L, 10L)).thenReturn(Optional.of(removed));
+        }
         var transaction = new TransactionTemplate(new InMemoryTransactionManager());
 
         try (var context = new AnnotationConfigApplicationContext()) {
@@ -64,10 +71,17 @@ class ChatRealtimePublisherTest {
                             headers.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
                     return true;
                 }));
+        if (event instanceof WsGroupMemberRemovedDto) {
+            verify(messaging).convertAndSendToUser(eq("3"), eq("/queue/messages"), eq(event),
+                    argThat((Map<String, Object> headers) ->
+                            Map.of("sqb-hidden-chat", List.of("true"))
+                                    .equals(headers.get(NativeMessageHeaderAccessor.NATIVE_HEADERS))));
+        }
     }
 
     private static List<Object> conversationEvents() {
-        return List.of(new WsMessageRevokedDto(10L, 25L), new WsGroupRolesChangedDto(10L));
+        return List.of(new WsMessageRevokedDto(10L, 25L), new WsGroupRolesChangedDto(10L),
+                new WsGroupMemberRemovedDto(10L, 3L));
     }
 
     private static class InMemoryTransactionManager extends AbstractPlatformTransactionManager {

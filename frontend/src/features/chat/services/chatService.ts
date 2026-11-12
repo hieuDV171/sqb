@@ -144,7 +144,7 @@ export const chatService = {
   getGroupMembers: async (
     conversationId: number
   ): Promise<GlobalResponse<ConversationMemberDto[]>> => {
-    return await axiosClient.get<GlobalResponse<ConversationMemberDto[]>, GlobalResponse<ConversationMemberDto[]>>(`/conversations/${conversationId}/members`);
+    return await axiosClient.get<GlobalResponse<ConversationMemberDto[]>, GlobalResponse<ConversationMemberDto[]>>(`/conversations/${conversationId}/members`, { skipToast: true });
   },
 
   /**
@@ -203,6 +203,7 @@ export const chatService = {
   ): Promise<GlobalResponse<MessageListResponseDto>> => {
     return await axiosClient.get<GlobalResponse<MessageListResponseDto>, GlobalResponse<MessageListResponseDto>>(`/conversations/${conversationId}/messages`, {
       params: { after, limit },
+      skipToast: true,
     });
   },
 

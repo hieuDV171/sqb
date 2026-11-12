@@ -54,10 +54,13 @@ public class MessageServiceImpl implements MessageService {
 
         UserParticipant participant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, conversationId)
-                .filter(member -> member.getLeftAt() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                         "Bạn không tham gia cuộc hội thoại này"));
         hiddenChatAccess.requireIfHidden(participant);
+        if (participant.getLeftAt() != null) {
+            throw new AppException(Boolean.TRUE.equals(participant.getRemovedFromGroup())
+                    ? ResponseCode.GROUP_MEMBER_REMOVED : ResponseCode.GROUP_MEMBER_INACTIVE);
+        }
 
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 100) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);

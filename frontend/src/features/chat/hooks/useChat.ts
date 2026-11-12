@@ -3,6 +3,7 @@ import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
+  type QueryClient,
 } from '@tanstack/react-query';
 import { chatService } from '../services/chatService';
 import { useChatStore } from '../stores/useChatStore';
@@ -24,6 +25,12 @@ function isHiddenChatLocked(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '2411';
 }
 
+export function getGroupExitReason(error: unknown) {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
+  if (error.code === '2413') return 'removed';
+  if (error.code === '2414') return 'inactive';
+}
+
 export const CHAT_QUERY_KEYS = {
   conversations: ['conversations'] as const,
   hiddenConversations: ['conversations', 'hidden'] as const,
@@ -32,6 +39,15 @@ export const CHAT_QUERY_KEYS = {
   groupInvitations: ['group-invitations'] as const,
   messages: (conversationId: number) => ['messages', conversationId] as const,
 };
+
+export function refreshGroupMembership(queryClient: QueryClient, conversationId: number) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations, exact: true }),
+    queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.hiddenConversations, exact: true }),
+    queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(conversationId), exact: true }),
+    queryClient.invalidateQueries({ queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId] }),
+  ]);
+}
 
 export function useGroupCandidates(conversationId: number | undefined, search: string) {
   return useInfiniteQuery({
@@ -132,6 +148,7 @@ export function useGroupMembers(conversationId: number | null, enabled: boolean 
       return res.data;
     },
     enabled: enabled && !!conversationId && allowed,
+    retry: (attempt, error) => !getGroupExitReason(error) && !isHiddenChatLocked(error) && attempt < 1,
   });
 }
 
@@ -167,7 +184,7 @@ export function useMessages(conversationId: number | null, limit: number = 30) {
         : undefined;
     },
     enabled: !!conversationId && allowed,
-    retry: (attempt, error) => !isHiddenChatLocked(error) && attempt < 1,
+    retry: (attempt, error) => !getGroupExitReason(error) && !isHiddenChatLocked(error) && attempt < 1,
   });
 }
 
@@ -318,8 +335,8 @@ export function useRemoveGroupMember() {
   return useMutation({
     mutationFn: ({ conversationId, userId }: { conversationId: number; userId: number }) =>
       chatService.removeGroupMember(conversationId, userId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+    onSuccess: async (_, { conversationId }) => {
+      await refreshGroupMembership(queryClient, conversationId);
       toast.success('Đã xóa thành viên khỏi nhóm');
     },
   });

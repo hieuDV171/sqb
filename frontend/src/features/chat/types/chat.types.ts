@@ -236,6 +236,12 @@ export interface WsGroupRolesChangedDto {
   conversationId: number;
 }
 
+export interface WsGroupMemberRemovedDto {
+  eventType: 'GROUP_MEMBER_REMOVED';
+  conversationId: number;
+  removedUserId: number;
+}
+
 export interface WsTypingBroadcastDto {
   eventType: 'TYPING_STATUS';
   conversationId: number;

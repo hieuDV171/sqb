@@ -27,6 +27,8 @@ public class UserParticipant {
     private Instant joinedAt;
     private Instant leftAt;
 
+    private Boolean removedFromGroup;
+
     private boolean isMuted;
 
     private Instant hiddenAt;

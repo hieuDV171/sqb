@@ -110,6 +110,8 @@ public class OpenApiConfig {
                 Sau khi thu hồi với mọi người được lưu thành công, `MESSAGE_REVOKED` gửi `conversation_id` và `message_id` tới thành viên còn tham gia. Xóa tin ở phía mình không tạo sự kiện này.
 
                 `GROUP_ROLES_CHANGED` gửi `conversation_id` sau khi giao dịch đổi vai trò nhóm thành công. Client tải lại danh sách thành viên của nhóm.
+
+                `GROUP_MEMBER_REMOVED` gửi `conversation_id` và `removed_user_id` tới thành viên đang tham gia và người bị mời ra sau khi giao dịch hoàn tất.
                 """;
 
         return new OpenAPI()

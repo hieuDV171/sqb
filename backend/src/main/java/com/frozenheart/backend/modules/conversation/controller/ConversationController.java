@@ -170,7 +170,7 @@ public class ConversationController {
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Lấy danh sách thành viên thành công"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-                        @ApiResponse(responseCode = "403", description = "Bạn không tham gia cuộc hội thoại này (ACTION_NOT_ALLOWED)")
+                        @ApiResponse(responseCode = "403", description = "Không có quyền xem, kho ẩn đang khóa hoặc tư cách thành viên đã kết thúc (ACTION_NOT_ALLOWED / HIDDEN_CHAT_LOCKED / GROUP_MEMBER_REMOVED / GROUP_MEMBER_INACTIVE)")
         })
         @GetMapping("/conversations/{id}/members")
         public ResponseEntity<GlobalResponse<List<ConversationMemberDto>>> getGroupMembers(
@@ -195,7 +195,7 @@ public class ConversationController {
                 return ResponseEntity.ok(GlobalResponse.success(response));
         }
 
-        @Operation(summary = "Xóa thành viên khỏi nhóm chat", description = "Tù trưởng (CHIEF) có quyền xóa Già làng và Dân làng. Già làng (VILLAGE_ELDER) chỉ có quyền xóa Dân làng (VILLAGER).")
+        @Operation(summary = "Xóa thành viên khỏi nhóm chat", description = "Tù trưởng (CHIEF) có quyền xóa Già làng và Dân làng. Già làng (VILLAGE_ELDER) chỉ có quyền xóa Dân làng (VILLAGER). Sau khi lưu, sự kiện GROUP_MEMBER_REMOVED được gửi tới thành viên còn lại và người bị mời ra.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Xóa thành viên khỏi nhóm thành công"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),

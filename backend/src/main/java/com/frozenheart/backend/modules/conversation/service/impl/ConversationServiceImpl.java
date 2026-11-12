@@ -9,6 +9,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.conversation.dto.*;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
@@ -466,10 +467,13 @@ public class ConversationServiceImpl implements ConversationService {
 
                 UserParticipant participant = userParticipantRepository
                                 .findByUserIdAndConversationId(currentUserId, conversationId)
-                                .filter(member -> member.getLeftAt() == null)
                                 .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                                                 "Bạn không tham gia cuộc hội thoại này"));
                 hiddenChatAccess.requireIfHidden(participant);
+                if (participant.getLeftAt() != null) {
+                        throw new AppException(Boolean.TRUE.equals(participant.getRemovedFromGroup())
+                                        ? ResponseCode.GROUP_MEMBER_REMOVED : ResponseCode.GROUP_MEMBER_INACTIVE);
+                }
 
                 List<UserParticipant> participants = userParticipantRepository
                                 .findByConversationIdAndLeftAtIsNull(conversationId);
@@ -604,6 +608,7 @@ public class ConversationServiceImpl implements ConversationService {
                         UserParticipant participant = existingMap.get(targetUserId);
                         if (participant != null) {
                                 participant.setLeftAt(null);
+                                participant.setRemovedFromGroup(null);
                                 participant.setJoinedAt(now);
                                 participant.setRole(ConversationRole.VILLAGER);
                         } else {
@@ -687,8 +692,10 @@ public class ConversationServiceImpl implements ConversationService {
                 }
 
                 targetParticipant.setLeftAt(Instant.now());
+                targetParticipant.setRemovedFromGroup(true);
                 userParticipantRepository.save(targetParticipant);
                 groupInvitationRepository.deleteForInviter(conversationId, targetUserId);
+                eventPublisher.publishEvent(new WsGroupMemberRemovedDto(conversationId, targetUserId));
         }
 
         @Override
@@ -813,6 +820,7 @@ public class ConversationServiceImpl implements ConversationService {
                 }
 
                 callerParticipant.setLeftAt(Instant.now());
+                callerParticipant.setRemovedFromGroup(null);
                 userParticipantRepository.save(callerParticipant);
                 groupInvitationRepository.deleteForInviter(conversationId, currentUserId);
                 if (newChiefDto != null) {

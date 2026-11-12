@@ -7,8 +7,10 @@ import com.frozenheart.backend.core.entity.conversation.ConversationType;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.conversation.dto.UpdateMemberRoleRequestDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
+import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.impl.ConversationServiceImpl;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -41,6 +44,7 @@ class ConversationMemberRoleTest {
 
     @Mock private ConversationRepository conversations;
     @Mock private UserParticipantRepository participants;
+    @Mock private GroupInvitationRepository invitations;
     @Mock private HiddenChatAccess hiddenChatAccess;
     @Mock private ApplicationEventPublisher events;
     @InjectMocks private ConversationServiceImpl service;
@@ -88,5 +92,22 @@ class ConversationMemberRoleTest {
                 service.updateMemberRole(GROUP_ID, MEMBER_ID, new UpdateMemberRoleRequestDto(ConversationRole.CHIEF)));
 
         verifyNoInteractions(events);
+    }
+
+    @Test
+    void recordsRemovalBeforePublishingTheEvent() {
+        var chief = UserParticipant.builder().role(ConversationRole.CHIEF).build();
+        var member = UserParticipant.builder().role(ConversationRole.VILLAGER).build();
+        when(participants.findByUserIdAndConversationId(CHIEF_ID, GROUP_ID)).thenReturn(Optional.of(chief));
+        when(participants.findByUserIdAndConversationId(MEMBER_ID, GROUP_ID)).thenReturn(Optional.of(member));
+
+        service.removeGroupMember(GROUP_ID, MEMBER_ID);
+
+        assertNotNull(member.getLeftAt());
+        assertEquals(Boolean.TRUE, member.getRemovedFromGroup());
+        var order = inOrder(participants, invitations, events);
+        order.verify(participants).save(member);
+        order.verify(invitations).deleteForInviter(GROUP_ID, MEMBER_ID);
+        order.verify(events).publishEvent(new WsGroupMemberRemovedDto(GROUP_ID, MEMBER_ID));
     }
 }

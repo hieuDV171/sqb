@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
@@ -34,20 +35,32 @@ public class ChatRealtimePublisher {
         deliverToActiveMembers(event.conversationId(), event);
     }
 
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void publishGroupMemberRemoved(WsGroupMemberRemovedDto event) {
+        deliverToActiveMembers(event.conversationId(), event);
+        userParticipantRepository.findByUserIdAndConversationId(event.removedUserId(), event.conversationId())
+                .filter(member -> member.getLeftAt() != null && Boolean.TRUE.equals(member.getRemovedFromGroup()))
+                .ifPresent(member -> deliver(event.removedUserId(), member.getHiddenAt() != null, event));
+    }
+
     private void deliverToActiveMembers(Long conversationId, Object event) {
         userParticipantRepository.findByConversationIdAndLeftAtIsNull(conversationId)
                 .forEach(participant -> deliver(participant, event));
     }
 
     public void deliver(UserParticipant participant, Object event) {
-        String userId = participant.getUser().getId().toString();
-        if (participant.getHiddenAt() == null) {
-            messagingTemplate.convertAndSendToUser(userId, QUEUE, event);
+        deliver(participant.getUser().getId(), participant.getHiddenAt() != null, event);
+    }
+
+    private void deliver(Long userId, boolean hidden, Object event) {
+        if (!hidden) {
+            messagingTemplate.convertAndSendToUser(userId.toString(), QUEUE, event);
             return;
         }
         var headers = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
         headers.setNativeHeader(HiddenChatOutboundGuard.HIDDEN_CHAT_HEADER, "true");
         headers.setLeaveMutable(true);
-        messagingTemplate.convertAndSendToUser(userId, QUEUE, event, headers.getMessageHeaders());
+        messagingTemplate.convertAndSendToUser(userId.toString(), QUEUE, event, headers.getMessageHeaders());
     }
 }

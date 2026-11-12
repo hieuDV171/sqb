@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStompStatus, useStompSubscription } from '@/lib/stompClient';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { CHAT_QUERY_KEYS } from './useChat';
+import { CHAT_QUERY_KEYS, refreshGroupMembership } from './useChat';
 import { useChatStore } from '../stores/useChatStore';
-import type { WsGroupRolesChangedDto, WsMessageBroadcastDto, WsMessageRevokedDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto } from '../types/chat.types';
+import type { WsGroupMemberRemovedDto, WsGroupRolesChangedDto, WsMessageBroadcastDto, WsMessageRevokedDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto } from '../types/chat.types';
 
 /**
  * Hook lắng nghe tin nhắn và biên nhận đã đọc toàn cục của người dùng
@@ -19,7 +19,7 @@ export function useChatRealtimeListener() {
   const handleIncomingTyping = useChatStore((s) => s.handleIncomingTyping);
   const markMessageRevoked = useChatStore((s) => s.markMessageRevoked);
 
-  useStompSubscription<WsMessageBroadcastDto | WsMessageRevokedDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto | WsGroupRolesChangedDto>(
+  useStompSubscription<WsMessageBroadcastDto | WsMessageRevokedDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto | WsGroupRolesChangedDto | WsGroupMemberRemovedDto>(
     '/user/queue/messages',
     (data, frame) => {
       if (!data || !data.eventType) return;
@@ -39,6 +39,11 @@ export function useChatRealtimeListener() {
         handleIncomingTyping(data);
       } else if (data.eventType === 'GROUP_ROLES_CHANGED') {
         void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(data.conversationId), exact: true });
+      } else if (data.eventType === 'GROUP_MEMBER_REMOVED') {
+        if (data.removedUserId === useAuthStore.getState().user?.id) {
+          void queryClient.resetQueries({ queryKey: CHAT_QUERY_KEYS.messages(data.conversationId), exact: true });
+        }
+        void refreshGroupMembership(queryClient, data.conversationId);
       }
     },
     isAuthenticated
@@ -48,7 +53,8 @@ export function useChatRealtimeListener() {
     if (!isAuthenticated || stompStatus !== 'CONNECTED') return;
     // Recover updates missed while the socket was disconnected.
     void queryClient.invalidateQueries({
-      predicate: ({ queryKey }) => queryKey[0] === CHAT_QUERY_KEYS.conversations[0] && queryKey[2] === 'members',
+      predicate: ({ queryKey }) => queryKey[0] === CHAT_QUERY_KEYS.conversations[0]
+        || (queryKey[0] === CHAT_QUERY_KEYS.groupCandidates[0] && typeof queryKey[1] === 'number'),
     });
   }, [isAuthenticated, queryClient, stompStatus]);
 }
