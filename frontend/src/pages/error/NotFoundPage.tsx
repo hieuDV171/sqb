@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 export function NotFoundPage() {
   const navigate = useNavigate();
 
+  function goBack() {
+    if (window.history.state?.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/', { replace: true });
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <div className="max-w-md w-full text-center space-y-6 p-8 rounded-3xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800">
@@ -27,18 +35,16 @@ export function NotFoundPage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
           <Button
             variant="outline"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Quay lại
           </Button>
-          <Link to="/">
-            <Button className="w-full sm:w-auto gap-2">
+          <Button render={<Link to="/" replace />} nativeButton={false} className="w-full sm:w-auto gap-2">
               <Home className="w-4 h-4" />
               Về trang chủ
-            </Button>
-          </Link>
+          </Button>
         </div>
       </div>
     </div>

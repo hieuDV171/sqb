@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdminLeaderboardRebuildDialog } from '@/features/gamification/components/AdminLeaderboardRebuildDialog';
 import {
@@ -23,6 +22,7 @@ import {
   useRebuildLeaderboard,
 } from '@/features/gamification/hooks/useAdminLeaderboard';
 import type { LeaderboardPeriod } from '@/features/gamification/types/gamification.types';
+import { StudySubjectSelect } from '@/features/session/components/StudySubjectSelect';
 import { cn } from '@/lib/utils';
 
 function getErrorMessage(error: unknown): string {
@@ -34,17 +34,14 @@ function getErrorMessage(error: unknown): string {
 
 export function AdminLeaderboardsPage() {
   const [period, setPeriod] = useState<LeaderboardPeriod>('SEMESTER');
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number>();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [lastRebuild, setLastRebuild] = useState<{ label: string; completedAt: Date } | null>(null);
 
   const subjectsQuery = useAdminLeaderboardSubjects();
   const rebuildMutation = useRebuildLeaderboard();
-  const subjects = useMemo(() => subjectsQuery.data ?? [], [subjectsQuery.data]);
-  const selectedSubject = useMemo(
-    () => subjects.find((subject) => String(subject.subjectId) === selectedSubjectId),
-    [selectedSubjectId, subjects]
-  );
+  const subjects = subjectsQuery.data ?? [];
+  const selectedSubject = subjects.find((subject) => subject.subjectId === selectedSubjectId);
 
   const targetLabel = period === 'SEMESTER'
     ? 'bảng xếp hạng chung của học kỳ hiện tại'
@@ -66,10 +63,11 @@ export function AdminLeaderboardsPage() {
   };
 
   const confirmRebuild = async () => {
+    if (!canRebuild) return;
     try {
       await rebuildMutation.mutateAsync({
         type: period,
-        subjectId: period === 'SUBJECT' ? Number(selectedSubjectId) : undefined,
+        subjectId: period === 'SUBJECT' ? selectedSubject?.subjectId : undefined,
       });
       setLastRebuild({ label: targetLabel, completedAt: new Date() });
       setIsConfirmOpen(false);
@@ -162,7 +160,7 @@ export function AdminLeaderboardsPage() {
             </fieldset>
 
             {period === 'SUBJECT' && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+              <div className="rounded-2xl border border-border bg-surface-subtle p-4">
                 {subjectsQuery.isLoading ? (
                   <div aria-label="Đang tải danh sách môn học" className="space-y-2">
                     <Skeleton className="h-4 w-32" />
@@ -180,36 +178,18 @@ export function AdminLeaderboardsPage() {
                   <EmptyState
                     icon={BookOpen}
                     title="Chưa có môn học"
-                    description="Hãy tạo môn học trong Trung tâm quản trị tài khoản trước khi đồng bộ bảng xếp hạng theo môn."
+                    description="Hãy thêm môn trong Cấu hình học vụ trước khi đồng bộ bảng xếp hạng theo môn."
                     className="p-6 sm:p-7"
                   />
                 ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="leaderboard-subject" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      Môn học cần đồng bộ <span className="text-rose-600 dark:text-rose-400">*</span>
-                    </Label>
-                    <select
-                      id="leaderboard-subject"
-                      value={selectedSubjectId}
-                      onChange={(event) => {
-                        setSelectedSubjectId(event.target.value);
-                        rebuildMutation.reset();
-                        setLastRebuild(null);
-                      }}
-                      aria-describedby="leaderboard-subject-help"
-                      className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-white px-3.5 text-base text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white sm:text-sm"
-                    >
-                      <option value="">Chọn một môn học…</option>
-                      {subjects.map((subject) => (
-                        <option key={subject.subjectId} value={subject.subjectId}>
-                          {subject.code} — {subject.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p id="leaderboard-subject-help" className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                      Danh sách lấy từ danh mục môn học dùng chung của hệ thống.
-                    </p>
-                  </div>
+                  <StudySubjectSelect subjects={subjects} value={selectedSubject?.subjectId}
+                    label="Môn học cần đồng bộ" emptyLabel="Chọn một môn học…" required
+                    description="Danh sách lấy từ danh mục môn học dùng chung của hệ thống."
+                    onChange={(subjectId) => {
+                      setSelectedSubjectId(subjectId);
+                      rebuildMutation.reset();
+                      setLastRebuild(null);
+                    }} />
                 )}
               </div>
             )}

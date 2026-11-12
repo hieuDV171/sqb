@@ -1,273 +1,211 @@
-import { useState } from 'react';
-import { useDevices } from '@/hooks/useDevices';
+import { useRef, useState } from 'react';
+import { AlertDialog } from '@base-ui/react/alert-dialog';
+import { AlertCircle, Clock, LogOut, Monitor, RefreshCw, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@base-ui/react/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDevices } from '@/hooks/useDevices';
+import { cn } from '@/lib/utils';
 import { toast } from '@/stores/useToastStore';
-import {
-  Monitor,
-  Smartphone,
-  LogOut,
-  Trash2,
-  RefreshCw,
-  ShieldCheck,
-  Clock,
-  AlertTriangle,
-  Sparkles
-} from 'lucide-react';
+import type { DeviceResponse } from '@/types/device.types';
+
+type DeviceAction = { type: 'revoke' | 'delete'; device: DeviceResponse };
+
+const gridClass = 'grid gap-4 @min-[38rem]:grid-cols-2 @min-[61rem]:grid-cols-3';
+
+function DeviceCard({ device, isCurrent, onAction }: {
+  device: DeviceResponse;
+  isCurrent: boolean;
+  onAction: (type: DeviceAction['type'], trigger: HTMLButtonElement) => void;
+}) {
+  const isMobile = device.platform === 'IOS' || device.platform === 'ANDROID';
+  const Icon = isMobile ? Smartphone : Monitor;
+  const name = device.deviceName || (isMobile ? 'Thiết bị di động' : 'Trình duyệt web');
+
+  return (
+    <Card className={cn('min-w-0 rounded-2xl border-border', isCurrent && 'border-academic/40 ring-1 ring-academic/20')}>
+      <CardContent className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground',
+            isCurrent && 'bg-academic-soft text-academic')}>
+            <Icon aria-hidden="true" className="size-5" />
+          </span>
+          {isCurrent ? (
+            <Badge variant="outline" className="border-academic/25 bg-academic-soft text-academic">
+              <ShieldCheck aria-hidden="true" className="size-3.5" /> Thiết bị này
+            </Badge>
+          ) : device.isActive ? (
+            <Badge variant="outline" className="border-success/25 bg-success-soft text-success">
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-current" /> Đang hoạt động
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-muted text-muted-foreground">
+              <Clock aria-hidden="true" className="size-3.5" /> Phiên đã lưu
+            </Badge>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <h2 className="font-semibold wrap-anywhere">{name}</h2>
+          <p className="mt-1 truncate font-mono text-xs text-muted-foreground" title={device.deviceId}>ID {device.deviceId}</p>
+        </div>
+
+        <dl className="grid gap-2 rounded-xl border border-border bg-surface-subtle p-3 text-sm">
+          <div className="flex flex-wrap justify-between gap-x-2">
+            <dt className="text-muted-foreground">Nền tảng</dt>
+            <dd className="font-medium">{device.platform || '—'}</dd>
+          </div>
+          {device.osVersion && (
+            <div className="flex flex-wrap justify-between gap-x-2">
+              <dt className="text-muted-foreground">Hệ điều hành</dt>
+              <dd className="font-medium wrap-anywhere">{device.osVersion}</dd>
+            </div>
+          )}
+          {device.lastActiveAt && (
+            <div className="flex flex-wrap justify-between gap-x-2">
+              <dt className="text-muted-foreground">Hoạt động gần nhất</dt>
+              <dd className="font-medium tabular-nums">
+                <time dateTime={device.lastActiveAt}>{new Date(device.lastActiveAt).toLocaleString('vi-VN')}</time>
+              </dd>
+            </div>
+          )}
+        </dl>
+
+        {isCurrent && <p className="text-xs leading-relaxed text-muted-foreground">Để thoát thiết bị này, dùng Đăng xuất trong menu tài khoản.</p>}
+
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-border pt-3">
+          <Button type="button" variant="outline" disabled={isCurrent} className="min-h-11 flex-1"
+            onClick={(event) => onAction('revoke', event.currentTarget)}>
+            <LogOut aria-hidden="true" /> Đăng xuất
+          </Button>
+          <Button type="button" variant="destructive" disabled={isCurrent} className="min-h-11"
+            aria-label={`Xóa thiết bị ${name}`} onClick={(event) => onAction('delete', event.currentTarget)}>
+            <Trash2 aria-hidden="true" /> Xóa
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function DeviceManagementPage() {
   const { devices, isLoading, error, fetchDevices, revokeDevice, deleteDevice, currentDeviceId } = useDevices();
-
-  const [actionDeviceId, setActionDeviceId] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<'revoke' | 'delete' | null>(null);
+  const [action, setAction] = useState<DeviceAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const actionTrigger = useRef<HTMLButtonElement>(null);
+  const refreshButton = useRef<HTMLButtonElement>(null);
 
-  const handleConfirmAction = async () => {
-    if (!actionDeviceId || !actionType) return;
+  async function confirmAction() {
+    if (!action || isSubmitting || action.device.isCurrentDevice || action.device.deviceId === currentDeviceId) return;
     setIsSubmitting(true);
+    setActionError(null);
     try {
-      if (actionType === 'revoke') {
-        await revokeDevice(actionDeviceId);
-        toast.success('Đã đăng xuất phiên làm việc của thiết bị thành công');
-      } else if (actionType === 'delete') {
-        await deleteDevice(actionDeviceId);
-        toast.success('Đã xóa thiết bị khỏi danh sách của bạn thành công');
+      if (action.type === 'revoke') {
+        await revokeDevice(action.device.deviceId);
+        toast.success('Đã đăng xuất thiết bị');
+      } else {
+        await deleteDevice(action.device.deviceId);
+        toast.success('Đã xóa thiết bị khỏi danh sách');
       }
+      setAction(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Thao tác thất bại');
+      setActionError(err instanceof Error ? err.message : 'Thao tác thất bại. Hãy thử lại.');
     } finally {
       setIsSubmitting(false);
-      setActionDeviceId(null);
-      setActionType(null);
     }
-  };
-
-  const getPlatformIcon = (platform?: string) => {
-    switch (platform?.toUpperCase()) {
-      case 'IOS':
-      case 'ANDROID':
-        return <Smartphone className="w-6 h-6 text-indigo-600" />;
-      case 'DESKTOP':
-        return <Monitor className="w-6 h-6 text-blue-600" />;
-      case 'WEB':
-      default:
-        return <Monitor className="w-6 h-6 text-purple-600" />;
-    }
-  };
-
-  const targetDevice = devices.find((d) => d.deviceId === actionDeviceId);
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quản lý Thiết bị</h1>
-            <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/60 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Security Center
-            </span>
+    <div className="@container mx-auto max-w-6xl space-y-5 pb-8">
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-academic-soft text-academic">
+            <ShieldCheck aria-hidden="true" className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Quản lý thiết bị</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Xem thiết bị đã đăng nhập và quản lý phiên từ xa.</p>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Danh sách các trình duyệt và ứng dụng di động đang duy trì đăng nhập vào tài khoản của bạn.
-          </p>
         </div>
-
-        <Button
-          onClick={() => fetchDevices()}
-          disabled={isLoading}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-xl transition-colors cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Làm mới
+        <Button ref={refreshButton} type="button" variant="outline" className="min-h-11"
+          onClick={() => void fetchDevices()} disabled={isLoading || isSubmitting}>
+          <RefreshCw aria-hidden="true" className={cn(isLoading && 'motion-safe:animate-spin')} />
+          {isLoading ? 'Đang tải…' : 'Làm mới'}
         </Button>
-      </div>
+      </header>
 
-      {/* Error Message */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-sm">
-          <AlertTriangle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Loading Skeleton */}
       {isLoading && devices.length === 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-44 bg-slate-200/60 dark:bg-slate-800/60 rounded-2xl animate-pulse" />
-          ))}
+        <div className={gridClass} role="status">
+          <span className="sr-only">Đang tải danh sách thiết bị</span>
+          {[1, 2, 3].map((index) => <Skeleton key={index} className="h-64 rounded-2xl" aria-hidden="true" />)}
         </div>
       )}
 
-      {/* Empty State */}
-      {!isLoading && devices.length === 0 && !error && (
-        <Card className="p-12 text-center bg-white dark:bg-slate-900 border-dashed border-2 border-slate-200 dark:border-slate-800">
-          <CardContent className="space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500">
-              <Monitor className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Chưa ghi nhận thiết bị nào</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              Không tìm thấy thông tin thiết bị đang lưu vết trong tài khoản của bạn.
-            </p>
-          </CardContent>
-        </Card>
+      {error && !isLoading && (devices.length === 0 ? (
+        <ErrorState title="Không thể tải thiết bị" message={error} onRetry={() => void fetchDevices()} />
+      ) : (
+        <p role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/10 p-3.5 text-sm text-destructive">
+          <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /> {error}
+        </p>
+      ))}
+
+      {!isLoading && !error && devices.length === 0 && (
+        <EmptyState icon={Monitor} title="Chưa ghi nhận thiết bị nào" description="Thiết bị sẽ xuất hiện ở đây sau khi đăng nhập vào tài khoản của bạn." />
       )}
 
-      {/* Device List Grid */}
       {devices.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {devices.map((device) => {
-            const isCurrent = device.isCurrentDevice || device.deviceId === currentDeviceId;
-
-            return (
-              <Card
-                key={device.userDeviceId || device.deviceId}
-                className={`relative bg-white dark:bg-slate-900 border transition-all duration-200 rounded-2xl overflow-hidden hover:shadow-md ${
-                  isCurrent ? 'border-indigo-500/80 ring-2 ring-indigo-500/20' : 'border-slate-200/80 dark:border-slate-800'
-                }`}
-              >
-                <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
-                  {/* Top Badge & Header */}
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                        {getPlatformIcon(device.platform)}
-                      </div>
-                      {isCurrent ? (
-                        <span className="inline-flex items-center gap-1 bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-xs">
-                          <Sparkles className="w-3 h-3" /> Thiết bị này
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium px-2 py-0.5 rounded-full">
-                          <Clock className="w-3 h-3" />
-                          {device.isActive ? 'Đang hoạt động' : 'Phiên lưu'}
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base line-clamp-1">
-                      {device.deviceName || 'Trình duyệt Web'}
-                    </h3>
-                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                      ID: {device.deviceId}
-                    </p>
-                  </div>
-
-                  {/* Device Specs */}
-                  <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400 dark:text-slate-500">Nền tảng:</span>
-                      <span className="font-medium text-slate-800 dark:text-slate-200">{device.platform}</span>
-                    </div>
-                    {device.osVersion && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-400 dark:text-slate-500">Hệ điều hành:</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{device.osVersion}</span>
-                      </div>
-                    )}
-                    {device.lastActiveAt && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-400 dark:text-slate-500">Hoạt động gần nhất:</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
-                          {new Date(device.lastActiveAt).toLocaleString('vi-VN')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <Button
-                      disabled={isCurrent}
-                      onClick={() => {
-                        setActionDeviceId(device.deviceId);
-                        setActionType('revoke');
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-xl transition-colors enabled:cursor-pointer enabled:hover:bg-red-50 enabled:hover:text-red-600 dark:enabled:hover:bg-red-950/40 dark:enabled:hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Đăng xuất
-                    </Button>
-
-                    <Button
-                      disabled={isCurrent}
-                      onClick={() => {
-                        setActionDeviceId(device.deviceId);
-                        setActionType('delete');
-                      }}
-                      className="flex items-center justify-center p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-medium rounded-xl transition-colors enabled:cursor-pointer enabled:hover:bg-red-100 enabled:hover:text-red-700 dark:enabled:hover:bg-red-950/60 dark:enabled:hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Xóa khỏi danh sách thiết bị"
-                      title="Xóa khỏi danh sách thiết bị"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  {isCurrent && (
-                    <p className="text-xs text-muted-foreground">Để thoát thiết bị này, dùng Đăng xuất trong menu tài khoản.</p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <section className={gridClass} aria-label="Danh sách thiết bị" aria-busy={isLoading}>
+          {devices.map((device) => (
+            <DeviceCard key={device.userDeviceId || device.deviceId} device={device}
+              isCurrent={device.isCurrentDevice || device.deviceId === currentDeviceId}
+              onAction={(type, trigger) => {
+                actionTrigger.current = trigger;
+                setActionError(null);
+                setAction({ type, device });
+              }} />
+          ))}
+        </section>
       )}
 
-      {/* Confirmation Modal for Revoke / Delete */}
-      {actionType && targetDevice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3">
-              <div
-                className={`p-3 rounded-full ${
-                  actionType === 'delete' ? 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
-                }`}
-              >
-                {actionType === 'delete' ? <Trash2 className="w-6 h-6" /> : <LogOut className="w-6 h-6" />}
+      <AlertDialog.Root open={action !== null} onOpenChange={(open) => {
+        if (!open && !isSubmitting) setAction(null);
+      }}>
+        {action && (
+          <AlertDialog.Portal>
+            <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+            <AlertDialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl"
+              finalFocus={() => actionTrigger.current?.isConnected ? actionTrigger.current : refreshButton.current}>
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-destructive/10 text-destructive">
+                  {action.type === 'delete' ? <Trash2 aria-hidden="true" className="size-5" /> : <LogOut aria-hidden="true" className="size-5" />}
+                </span>
+                <div className="min-w-0">
+                  <AlertDialog.Title className="text-lg font-bold">
+                    {action.type === 'delete' ? 'Xóa thiết bị khỏi danh sách?' : 'Đăng xuất thiết bị từ xa?'}
+                  </AlertDialog.Title>
+                  <p className="mt-1 text-sm wrap-anywhere text-muted-foreground">{action.device.deviceName || action.device.deviceId}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  {actionType === 'delete' ? 'Xóa thiết bị khỏi danh sách?' : 'Đăng xuất thiết bị từ xa?'}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{targetDevice.deviceName}</p>
+              <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
+                {action.type === 'delete'
+                  ? 'Thiết bị sẽ bị gỡ khỏi danh sách và phiên đăng nhập trên thiết bị đó sẽ bị thu hồi.'
+                  : 'Thiết bị này sẽ cần đăng nhập lại để tiếp tục sử dụng tài khoản.'}
+              </AlertDialog.Description>
+              {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
+              <div className="flex flex-wrap justify-end gap-2">
+                <AlertDialog.Close render={<Button type="button" variant="outline" disabled={isSubmitting} />}>Hủy</AlertDialog.Close>
+                <Button type="button" variant="destructive" disabled={isSubmitting} onClick={() => void confirmAction()}>
+                  {isSubmitting ? 'Đang xử lý…' : action.type === 'delete' ? 'Xóa thiết bị' : 'Đăng xuất thiết bị'}
+                </Button>
               </div>
-            </div>
-
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-              {actionType === 'delete'
-                ? `Bạn có chắc chắn muốn XÓA thiết bị (ID: ${targetDevice.deviceId}) khỏi danh sách thiết bị của bạn không? Thiết bị này sẽ bị thu hồi toàn bộ quyền truy cập tài khoản.`
-                : `Hành động này sẽ hủy phiên làm việc hiện tại trên thiết bị "${targetDevice.deviceName}". Người dùng trên thiết bị đó sẽ bị yêu cầu đăng nhập lại.`}
-            </p>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                onClick={() => {
-                  setActionType(null);
-                  setActionDeviceId(null);
-                }}
-                disabled={isSubmitting}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Hủy
-              </Button>
-              <Button
-                onClick={handleConfirmAction}
-                disabled={isSubmitting}
-                className={`px-4 py-2 text-white rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                  actionType === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
-                }`}
-              >
-                {isSubmitting
-                  ? 'Đang xử lý...'
-                  : actionType === 'delete'
-                  ? 'Xác nhận xóa'
-                  : 'Xác nhận đăng xuất'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </AlertDialog.Popup>
+          </AlertDialog.Portal>
+        )}
+      </AlertDialog.Root>
     </div>
   );
 }

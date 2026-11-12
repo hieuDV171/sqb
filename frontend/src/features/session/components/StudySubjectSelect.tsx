@@ -7,21 +7,30 @@ interface StudySubjectSelectProps {
   subjects: SubjectResponse[];
   value?: number;
   onChange: (subjectId: number | undefined) => void;
+  label?: string;
+  emptyLabel?: string;
+  description?: string;
+  required?: boolean;
 }
 
-export function StudySubjectSelect({ subjects, value, onChange }: StudySubjectSelectProps) {
+export function StudySubjectSelect({ subjects, value, onChange, label = 'Môn học', emptyLabel = 'Tất cả môn học', description, required }: StudySubjectSelectProps) {
   const labelId = useId();
+  const descriptionId = useId();
   const items = [
-    { value: '', label: 'Tất cả môn học' },
+    { value: '', label: emptyLabel },
     ...subjects.map((subject) => ({ value: String(subject.subjectId), label: `${subject.code} · ${subject.name}` })),
   ];
 
   return (
     <div className="min-w-0 space-y-1.5">
-      <span id={labelId} className="block text-sm font-medium">Môn học</span>
+      <span id={labelId} className="block text-sm font-medium">
+        {label}{required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
+      </span>
       <Select.Root items={items} value={value === undefined ? '' : String(value)} onValueChange={(next) => onChange(next ? Number(next) : undefined)}>
         <Select.Trigger
           aria-labelledby={labelId}
+          aria-describedby={description ? descriptionId : undefined}
+          aria-required={required}
           className="flex min-h-11 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-left text-sm text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <Select.Value className="min-w-0 truncate" />
@@ -46,6 +55,7 @@ export function StudySubjectSelect({ subjects, value, onChange }: StudySubjectSe
           </Select.Positioner>
         </Select.Portal>
       </Select.Root>
+      {description && <p id={descriptionId} className="text-xs leading-relaxed text-muted-foreground">{description}</p>}
     </div>
   );
 }

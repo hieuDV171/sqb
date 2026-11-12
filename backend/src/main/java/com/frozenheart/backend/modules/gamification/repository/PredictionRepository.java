@@ -4,7 +4,9 @@ import com.frozenheart.backend.core.entity.prediction.GameType;
 import com.frozenheart.backend.core.entity.prediction.Prediction;
 import com.frozenheart.backend.core.entity.prediction.PredictionStatus;
 import com.frozenheart.backend.core.entity.prediction.PredictionTargetType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -40,9 +42,19 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
     List<Prediction> findByGamblerIdAndGameTypeAndTargetTypeAndTargetDateBetween(
             Long gamblerId, GameType gameType, PredictionTargetType targetType, Instant start, Instant end);
 
-    @Query("SELECT p FROM Prediction p JOIN FETCH p.gambler WHERE p.gameType = :gameType AND p.targetDate >= :start AND p.targetDate < :end")
-    List<Prediction> findByGameTypeAndTargetDateBetweenFetchGambler(@Param("gameType") GameType gameType,
-            @Param("start") Instant start, @Param("end") Instant end);
+    @Query("SELECT MIN(p.targetDate) FROM Prediction p WHERE p.gameType = :gameType AND p.status = :status AND p.targetDate < :cutoff")
+    Optional<Instant> findOldestTargetDateBefore(@Param("gameType") GameType gameType,
+            @Param("status") PredictionStatus status, @Param("cutoff") Instant cutoff);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p FROM Prediction p JOIN FETCH p.gambler
+            WHERE p.gameType = :gameType AND p.status = :status AND p.targetDate >= :start AND p.targetDate < :end
+            ORDER BY p.targetDate, p.id
+            """)
+    List<Prediction> findForResolution(@Param("gameType") GameType gameType,
+            @Param("status") PredictionStatus status, @Param("start") Instant start, @Param("end") Instant end,
+            Pageable pageable);
 
     Optional<Prediction> findByGamblerIdAndGameTypeAndTargetId(Long gamblerId, GameType gameType, Long targetId);
 

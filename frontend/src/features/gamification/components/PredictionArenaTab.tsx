@@ -1,525 +1,275 @@
-import { useState } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { Bot, BrainCircuit, Database, History, RefreshCw, Send, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import {
-  Users,
-  Bot,
-  Database,
-  BrainCircuit,
-  History,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Send,
-} from 'lucide-react';
-import {
+  useActiveGame6Session,
   useGame1Classes,
+  useMyPredictions,
   usePredictGame1,
   usePredictGame2,
   usePredictGame4,
-  useActiveGame6Session,
   useSubmitGame6,
-  useMyPredictions,
 } from '../hooks/useGamification';
+import type { GamePredictionResponse, GameType } from '../types/gamification.types';
+
+const tabs = [
+  { id: 'game1', label: '1 · Nộp bài ngày mai', icon: Users },
+  { id: 'game2', label: '2 · Duyệt câu hỏi', icon: Bot },
+  { id: 'game4', label: '4 · Quy mô cuối kỳ', icon: Database },
+  { id: 'game6', label: '6 · Phán đoán AI', icon: BrainCircuit },
+  { id: 'history', label: 'Lịch sử', icon: History },
+] as const;
+
+const gameLabels: Record<GameType, string> = {
+  GAME_1_PARTICIPANTS: 'Game 1 · Nộp bài ngày mai',
+  GAME_2_APPROVED_QUESTIONS: 'Game 2 · Duyệt câu hỏi',
+  GAME_3_AUTHOR_CONFIDENCE: 'Game 3 · Độ tự tin của tác giả',
+  GAME_4_SUBJECT_BANK_SIZE: 'Game 4 · Quy mô cuối kỳ',
+  GAME_5_REPORT_ERROR: 'Game 5 · Thợ săn lỗi',
+  GAME_6_LLM_IDENTIFICATION: 'Game 6 · Phán đoán AI',
+};
+
+const schoolTimeZone = 'Asia/Ho_Chi_Minh';
+const schoolDate = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeZone: schoolTimeZone });
+const schoolDateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: schoolTimeZone });
+
+function GamePanel({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <section className="space-y-5 rounded-2xl border border-border bg-card p-4 sm:p-6">
+      <div className="space-y-1">
+        <h3 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h3>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function NumberField({ id, label, value, onChange, min, max }: {
+  id: string; label: string; value: string; onChange: (value: string) => void; min: number; max?: number;
+}) {
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type="number" value={value} onChange={(event) => onChange(event.target.value)}
+        min={min} max={max} required />
+    </div>
+  );
+}
+
+function PredictionStatus({ item }: { item: GamePredictionResponse }) {
+  if (item.status === 'PENDING') return <Badge variant="warning">Đang chờ</Badge>;
+  if (item.status === 'CANCELLED') return <Badge variant="outline">Đã hủy</Badge>;
+  return item.isCorrect
+    ? <Badge variant="success">Đoán trúng</Badge>
+    : <Badge variant="destructive">Chưa chính xác</Badge>;
+}
+
+function HistoryRow({ item }: { item: GamePredictionResponse }) {
+  return (
+    <li className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-start">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">{gameLabels[item.gameType] ?? item.gameType}</span>
+          <PredictionStatus item={item} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Đặt lúc <time dateTime={item.createdAt}>{schoolDateTime.format(new Date(item.createdAt))}</time>
+          {item.resolvedAt && <> · Chốt lúc <time dateTime={item.resolvedAt}>{schoolDateTime.format(new Date(item.resolvedAt))}</time></>}
+        </p>
+      </div>
+      <div className="space-y-1 text-sm text-muted-foreground sm:text-right">
+        {item.gameType === 'GAME_1_PARTICIPANTS' && item.targetDate && (
+          <p className="font-medium text-foreground">
+            Dự đoán cho ngày <time dateTime={item.targetDate}>{schoolDate.format(new Date(item.targetDate))}</time>
+          </p>
+        )}
+        {item.targetId != null && <p className="text-xs">{item.gameType === 'GAME_1_PARTICIPANTS' ? 'Lớp' : 'Mục tiêu'} #{item.targetId}</p>}
+      </div>
+    </li>
+  );
+}
 
 export function PredictionArenaTab() {
-  const [activeGame, setActiveGame] = useState<'game1' | 'game2' | 'game4' | 'game6' | 'history'>('game1');
-
-  // Game 1 State
-  const { data: game1Classes = [], isLoading: isGame1Loading } = useGame1Classes();
+  const [activeGame, setActiveGame] = useState<(typeof tabs)[number]['id']>('game1');
+  const classesQuery = useGame1Classes();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
-  const [game1Count, setGame1Count] = useState<number>(1);
-  const predictGame1Mutation = usePredictGame1();
+  const [game1Count, setGame1Count] = useState('1');
+  const predictGame1 = usePredictGame1();
+  const game1Classes = classesQuery.data ?? [];
+  const selectedClass = game1Classes.find((course) => course.courseClassId === selectedClassId && !course.alreadyPredicted);
 
-  // Game 2 State
-  const [game2SessionId, setGame2SessionId] = useState<string>('');
-  const [game2LlmCount, setGame2LlmCount] = useState<number>(0);
-  const [game2HumanCount, setGame2HumanCount] = useState<number>(0);
-  const predictGame2Mutation = usePredictGame2();
+  const [game2SessionId, setGame2SessionId] = useState('');
+  const [game2LlmCount, setGame2LlmCount] = useState('0');
+  const [game2HumanCount, setGame2HumanCount] = useState('0');
+  const predictGame2 = usePredictGame2();
 
-  // Game 4 State
-  const [game4SubjectId, setGame4SubjectId] = useState<string>('');
-  const [game4BankSize, setGame4BankSize] = useState<number>(100);
-  const predictGame4Mutation = usePredictGame4();
+  const [game4SubjectId, setGame4SubjectId] = useState('');
+  const [game4BankSize, setGame4BankSize] = useState('100');
+  const predictGame4 = usePredictGame4();
 
-  // Game 6 State
-  const { data: activeGame6, isLoading: isGame6Loading } = useActiveGame6Session();
-  const [selectedLlmQuestionIds, setSelectedLlmQuestionIds] = useState<number[]>([]);
-  const submitGame6Mutation = useSubmitGame6();
+  const game6Query = useActiveGame6Session();
+  const game6 = game6Query.data;
+  const [game6Choices, setGame6Choices] = useState<{ sessionId: number; ids: number[] }>();
+  const selectedLlmQuestionIds = game6Choices?.sessionId === game6?.sessionId ? game6Choices?.ids ?? [] : [];
+  const submitGame6 = useSubmitGame6();
 
-  // History State
-  const { data: historyData, isLoading: isHistoryLoading } = useMyPredictions();
-  const predictionsList = historyData?.contents || [];
+  const historyQuery = useMyPredictions();
+  const predictions = historyQuery.data?.contents ?? [];
 
-  const handlePredictGame1 = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClassId) return;
-    predictGame1Mutation.mutate({
-      courseClassId: selectedClassId,
-      predictedCount: Number(game1Count),
+  function submitGame1(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedClass || predictGame1.isPending) return;
+    predictGame1.mutate({ courseClassId: selectedClass.courseClassId, predictedCount: Number(game1Count) }, {
+      onSuccess: () => setSelectedClassId(null),
     });
-  };
+  }
 
-  const handlePredictGame2 = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!game2SessionId) return;
-    predictGame2Mutation.mutate({
+  function submitGame2(event: FormEvent) {
+    event.preventDefault();
+    if (!game2SessionId || predictGame2.isPending) return;
+    predictGame2.mutate({
       sessionId: Number(game2SessionId),
       predictedLlmCount: Number(game2LlmCount),
       predictedHumanCount: Number(game2HumanCount),
     });
-  };
+  }
 
-  const handlePredictGame4 = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!game4SubjectId) return;
-    predictGame4Mutation.mutate({
-      subjectId: Number(game4SubjectId),
-      predictedBankSize: Number(game4BankSize),
-    });
-  };
-
-  const handleToggleLlmQuestion = (questionId: number) => {
-    if (selectedLlmQuestionIds.includes(questionId)) {
-      setSelectedLlmQuestionIds(selectedLlmQuestionIds.filter((id) => id !== questionId));
-    } else {
-      setSelectedLlmQuestionIds([...selectedLlmQuestionIds, questionId]);
-    }
-  };
-
-  const handleSubmitGame6 = () => {
-    if (!activeGame6) return;
-    submitGame6Mutation.mutate({
-      minigameSessionId: activeGame6.sessionId,
-      selectedLlmQuestionIds,
-    });
-  };
+  function submitGame4(event: FormEvent) {
+    event.preventDefault();
+    if (!game4SubjectId || predictGame4.isPending) return;
+    predictGame4.mutate({ subjectId: Number(game4SubjectId), predictedBankSize: Number(game4BankSize) });
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Sub-navigation for Minigames */}
-      <div className="flex items-center gap-2 p-1.5 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-x-auto scrollbar-none">
-        <button
-          type="button"
-          onClick={() => setActiveGame('game1')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-            activeGame === 'game1'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Game 1: Nộp Bài Ngày Mai</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveGame('game2')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-            activeGame === 'game2'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-          }`}
-        >
-          <Bot className="w-4 h-4" />
-          <span>Game 2: Tỷ Lệ Duyệt Đề</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveGame('game4')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-            activeGame === 'game4'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-          }`}
-        >
-          <Database className="w-4 h-4" />
-          <span>Game 4: Quy Mô Cuối Kỳ</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveGame('game6')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-            activeGame === 'game6'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-          }`}
-        >
-          <BrainCircuit className="w-4 h-4" />
-          <span>Game 6: Phán Đoán AI</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveGame('history')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ml-auto cursor-pointer ${
-            activeGame === 'history'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-          }`}
-        >
-          <History className="w-4 h-4" />
-          <span>Lịch Sử Dự Đoán</span>
-        </button>
+    <div className="space-y-5">
+      <div role="group" aria-label="Trò chơi dự đoán" className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card p-2">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <Button key={id} type="button" variant={activeGame === id ? 'secondary' : 'ghost'}
+            aria-pressed={activeGame === id} className={cn('min-h-11', activeGame === id && 'bg-academic-soft text-academic', id === 'history' && 'sm:ml-auto')}
+            onClick={() => setActiveGame(id)}>
+            <Icon aria-hidden="true" /> {label}
+          </Button>
+        ))}
       </div>
 
-      {/* GAME 1: PARTICIPANTS PREDICTION */}
       {activeGame === 'game1' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-xs space-y-6">
-          <div className="space-y-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400">
-              Minigame Hằng Ngày • Chốt cược 22:00
-            </span>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              Game 1: Dự Đoán Số Sinh Viên Nộp Bài Ngày Mai
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
-              Chọn lớp học phần bạn đang tham gia và dự đoán có bao nhiêu sinh viên sẽ đề xuất câu hỏi trong ngày mai. Đoán trúng nhận ngay xu thưởng lớn!
-            </p>
-          </div>
-
-          {isGame1Loading ? (
-            <div className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
-          ) : game1Classes.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-slate-500">
-              <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p className="font-semibold text-sm">Bạn chưa tham gia lớp học phần nào trong học kỳ này.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {game1Classes.map((cls) => {
-                const isSelected = selectedClassId === cls.courseClassId;
-                return (
-                  <div
-                    key={cls.courseClassId}
-                    onClick={() => !cls.alreadyPredicted && setSelectedClassId(cls.courseClassId)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                      cls.alreadyPredicted
-                        ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed'
-                        : isSelected
-                        ? 'bg-indigo-50/80 dark:bg-indigo-950/60 border-indigo-500 ring-2 ring-indigo-500/20 shadow-sm'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
-                        {cls.classCode}
-                      </span>
-                      {cls.alreadyPredicted ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" /> Đã đặt: {cls.predictedCount} SV
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400">Kỳ {cls.semester}</span>
-                      )}
-                    </div>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                      {cls.subjectName}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">GV: {cls.lecturerName}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {selectedClassId && (
-            <form onSubmit={handlePredictGame1} className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-3">
-              <div className="flex-1 w-full">
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Số lượng sinh viên bạn dự đoán:
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={game1Count}
-                  onChange={(e) => setGame1Count(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100"
-                />
+        <GamePanel title="Số sinh viên nộp bài ngày mai"
+          description="Dự đoán số sinh viên sẽ đề xuất câu hỏi trong một lớp học phần. Đặt trước 22:00. Kết quả được chốt từ 00:05 sau ngày dự đoán, theo giờ Việt Nam.">
+          {classesQuery.isLoading ? <Skeleton className="h-32 rounded-xl" aria-label="Đang tải lớp học phần" />
+            : classesQuery.isError ? <ErrorState title="Không thể tải lớp học phần" onRetry={() => void classesQuery.refetch()} />
+            : game1Classes.length === 0 ? <EmptyState icon={Users} title="Bạn chưa tham gia lớp học phần nào trong học kỳ này" />
+            : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {game1Classes.map((course) => (
+                  <button key={course.courseClassId} type="button" disabled={course.alreadyPredicted || predictGame1.isPending}
+                    aria-pressed={selectedClassId === course.courseClassId} onClick={() => setSelectedClassId(course.courseClassId)}
+                    className={cn('min-w-0 space-y-2 rounded-xl border border-border bg-surface-subtle p-4 text-left focus-visible:outline-2 focus-visible:outline-ring enabled:cursor-pointer enabled:hover:border-academic/60',
+                      selectedClassId === course.courseClassId && 'border-academic bg-academic-soft')}>
+                    <span className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-semibold text-academic">{course.classCode}</span>
+                      {course.alreadyPredicted ? (
+                        <span className="rounded-full bg-success-soft px-2.5 py-1 text-xs font-medium text-success">Đã đặt · {course.predictedCount} sinh viên</span>
+                      ) : <span className="text-xs text-muted-foreground">Kỳ {course.semester}</span>}
+                    </span>
+                    <span className="block wrap-anywhere font-semibold">{course.subjectName}</span>
+                    {course.lecturerName && <span className="block text-sm text-muted-foreground">GV {course.lecturerName}</span>}
+                  </button>
+                ))}
               </div>
-              <button
-                type="submit"
-                disabled={predictGame1Mutation.isPending}
-                className="w-full sm:w-auto mt-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-                <span>{predictGame1Mutation.isPending ? 'Đang gửi...' : 'Xác Nhận Dự Đoán'}</span>
-              </button>
+            )}
+          {selectedClass && (
+            <form onSubmit={submitGame1} className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,20rem)_auto] sm:items-end sm:justify-start">
+              <NumberField id="game1-count" label="Số sinh viên dự đoán" min={1} max={100} value={game1Count} onChange={setGame1Count} />
+              <Button type="submit" disabled={predictGame1.isPending}><Send aria-hidden="true" />{predictGame1.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
             </form>
           )}
-        </div>
+        </GamePanel>
       )}
 
-      {/* GAME 2: APPROVED QUESTIONS PREDICTION */}
       {activeGame === 'game2' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-xs space-y-6">
-          <div className="space-y-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400">
-              Dành Cho Tác Giả Phiên Đề Xuất
-            </span>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              Game 2: Dự Đoán Số Câu Hỏi Được Giảng Viên Duyệt
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
-              Khi bạn đề xuất một phiên câu hỏi, hãy dự đoán có bao nhiêu câu do AI (LLM) và Con người tạo ra sẽ được duyệt chính thức vào ngân hàng đề!
-            </p>
-          </div>
-
-          <form onSubmit={handlePredictGame2} className="space-y-4 max-w-md">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                Mã Phiên Đề Xuất (Session ID):
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Ví dụ: 12"
-                value={game2SessionId}
-                onChange={(e) => setGame2SessionId(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100"
-              />
+        <GamePanel title="Số câu hỏi được duyệt"
+          description="Dự đoán có bao nhiêu câu do AI và do người biên soạn trong phiên đề xuất của bạn sẽ được giảng viên duyệt.">
+          <form onSubmit={submitGame2} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
+            <NumberField id="game2-session" label="ID phiên đề xuất" min={1} value={game2SessionId} onChange={setGame2SessionId} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <NumberField id="game2-ai-count" label="Số câu do AI tạo" min={0} value={game2LlmCount} onChange={setGame2LlmCount} />
+              <NumberField id="game2-human-count" label="Số câu do người biên soạn" min={0} value={game2HumanCount} onChange={setGame2HumanCount} />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Số câu AI được duyệt:
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={game2LlmCount}
-                  onChange={(e) => setGame2LlmCount(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Số câu Con Người được duyệt:
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={game2HumanCount}
-                  onChange={(e) => setGame2HumanCount(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={predictGame2Mutation.isPending}
-              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              <span>{predictGame2Mutation.isPending ? 'Đang gửi...' : 'Gửi Dự Đoán Game 2'}</span>
-            </button>
+            <Button type="submit" disabled={predictGame2.isPending}><Send aria-hidden="true" />{predictGame2.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
           </form>
-        </div>
+        </GamePanel>
       )}
 
-      {/* GAME 4: FINAL BANK SIZE */}
       {activeGame === 'game4' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-xs space-y-6">
-          <div className="space-y-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400">
-              Giải Thưởng Cuối Học Kỳ • Top 3 Nhận Thưởng Lớn
-            </span>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              Game 4: Dự Đoán Quy Mô Ngân Hàng Câu Hỏi Môn Học
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
-              Dự đoán tổng số lượng câu hỏi sẽ được phê duyệt vào ngân hàng đề thi của môn học khi học kỳ khép lại.
-            </p>
-          </div>
-
-          <form onSubmit={handlePredictGame4} className="space-y-4 max-w-md">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                Mã Môn Học (Subject ID):
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Ví dụ: 10"
-                value={game4SubjectId}
-                onChange={(e) => setGame4SubjectId(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                Dự đoán tổng số câu hỏi khi kết thúc kỳ:
-              </label>
-              <input
-                type="number"
-                min="10"
-                value={game4BankSize}
-                onChange={(e) => setGame4BankSize(Number(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={predictGame4Mutation.isPending}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              <span>{predictGame4Mutation.isPending ? 'Đang gửi...' : 'Gửi Dự Đoán Game 4'}</span>
-            </button>
+        <GamePanel title="Quy mô ngân hàng câu hỏi cuối kỳ"
+          description="Dự đoán tổng số câu hỏi được duyệt vào ngân hàng đề của một môn khi học kỳ kết thúc.">
+          <form onSubmit={submitGame4} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
+            <NumberField id="game4-subject" label="ID môn học" min={1} value={game4SubjectId} onChange={setGame4SubjectId} />
+            <NumberField id="game4-bank-size" label="Tổng số câu hỏi dự đoán" min={10} value={game4BankSize} onChange={setGame4BankSize} />
+            <Button type="submit" disabled={predictGame4.isPending}><Send aria-hidden="true" />{predictGame4.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
           </form>
-        </div>
+        </GamePanel>
       )}
 
-      {/* GAME 6: AI VS HUMAN CHALLENGE */}
       {activeGame === 'game6' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-xs space-y-6">
-          <div className="space-y-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-pink-100 dark:bg-pink-900/60 text-pink-600 dark:text-pink-400">
-              Thử Thách Định Kỳ Thứ 7 Hàng Tuần
-            </span>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              Game 6: Phán Đoán Câu Hỏi AI vs Con Người
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
-              Hệ thống đưa ra 7 câu hỏi trắc nghiệm trộn lẫn giữa người biên soạn và mô hình AI sinh ra. Hãy chọn những câu hỏi bạn tin rằng do AI tạo!
-            </p>
-          </div>
-
-          {isGame6Loading ? (
-            <div className="h-48 rounded-2xl bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
-          ) : !activeGame6 ? (
-            <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-slate-500">
-              <BrainCircuit className="w-12 h-12 mx-auto mb-2 opacity-30 text-pink-500" />
-              <p className="font-semibold text-sm">Hiện tại chưa có phiên Game 6 nào đang mở.</p>
-              <p className="text-xs text-slate-400 mt-1">Phiên thử thách mở định kỳ vào Thứ 7 hằng tuần. Hẹn gặp lại bạn!</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>Tuần {activeGame6.weekNumber} / {activeGame6.year}</span>
-                <span>Đã chọn: <strong className="text-indigo-600 dark:text-indigo-400">{selectedLlmQuestionIds.length}</strong> câu AI</span>
+        <GamePanel title="Phán đoán câu hỏi do AI tạo"
+          description="Phiên thử thách mở vào thứ Bảy. Chọn những câu hỏi bạn cho rằng do AI tạo.">
+          {game6Query.isLoading ? <Skeleton className="h-40 rounded-xl" aria-label="Đang tải thử thách" />
+            : game6Query.isError ? <ErrorState title="Không thể tải thử thách" onRetry={() => void game6Query.refetch()} />
+            : !game6 ? <EmptyState icon={BrainCircuit} title="Chưa có phiên thử thách đang mở" />
+            : (
+              <div className="space-y-4">
+                <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
+                  <span>Tuần {game6.weekNumber} / {game6.year}</span>
+                  <span>Đã chọn {selectedLlmQuestionIds.length} câu</span>
+                </div>
+                <div className="space-y-3">
+                  {game6.questions.map((question, index) => {
+                    const checked = selectedLlmQuestionIds.includes(question.questionId);
+                    return (
+                      <label key={question.questionId} className={cn('flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface-subtle p-4',
+                        checked && 'border-academic bg-academic-soft')}>
+                        <input type="checkbox" checked={checked} disabled={submitGame6.isPending} className="mt-1 size-4 shrink-0 accent-academic"
+                          onChange={() => setGame6Choices({ sessionId: game6.sessionId, ids: checked
+                            ? selectedLlmQuestionIds.filter((id) => id !== question.questionId)
+                            : [...selectedLlmQuestionIds, question.questionId] })} />
+                        <span className="min-w-0 space-y-2">
+                          <span className="block text-sm font-semibold">Câu {index + 1}. {question.content}</span>
+                          <span className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                            {question.options?.map((option) => <span key={option.key}><strong>{option.key}.</strong> {option.content}</span>)}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <Button type="button" disabled={submitGame6.isPending || selectedLlmQuestionIds.length === 0}
+                  onClick={() => submitGame6.mutate({ minigameSessionId: game6.sessionId, selectedLlmQuestionIds })}>
+                  <Send aria-hidden="true" />{submitGame6.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}
+                </Button>
               </div>
-
-              <div className="space-y-3">
-                {activeGame6.questions.map((q, idx) => {
-                  const isChecked = selectedLlmQuestionIds.includes(q.questionId);
-                  return (
-                    <div
-                      key={q.questionId}
-                      onClick={() => handleToggleLlmQuestion(q.questionId)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                        isChecked
-                          ? 'bg-pink-50 dark:bg-pink-950/40 border-pink-400 ring-2 ring-pink-400/20'
-                          : 'bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-pink-200'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="mt-1 w-4 h-4 rounded-sm text-pink-600 focus:ring-pink-500"
-                        />
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Câu {idx + 1}: {q.content}
-                          </p>
-                          {q.options && q.options.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                              {q.options.map((opt) => (
-                                <span key={opt.key} className="text-[11px] text-slate-500">
-                                  <strong>{opt.key}.</strong> {opt.content}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                disabled={submitGame6Mutation.isPending || selectedLlmQuestionIds.length === 0}
-                onClick={handleSubmitGame6}
-                className="w-full py-3.5 rounded-2xl bg-pink-600 hover:bg-pink-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-pink-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-                <span>{submitGame6Mutation.isPending ? 'Đang gửi...' : 'Nộp Dự Đoán Game 6'}</span>
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+        </GamePanel>
       )}
 
-      {/* MY PREDICTIONS HISTORY */}
       {activeGame === 'history' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shadow-xs space-y-4">
-          <div className="space-y-1">
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              Lịch Sử Các Lượt Dự Đoán
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Theo dõi trạng thái và kết quả trúng/trượt từ các minigame bạn đã tham gia.
-            </p>
-          </div>
-
-          {isHistoryLoading ? (
-            <div className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-700/50 animate-pulse" />
-          ) : predictionsList.length === 0 ? (
-            <div className="py-12 text-center text-slate-400">
-              <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p className="font-semibold text-sm">Bạn chưa tham gia dự đoán minigame nào</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
-              {predictionsList.map((item) => {
-                const isPending = item.status === 'PENDING';
-                const isCorrect = item.isCorrect;
-
-                return (
-                  <div key={item.predictionId} className="py-3.5 flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
-                          {item.gameType}
-                        </span>
-                        {isPending ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Đang chờ
-                          </span>
-                        ) : isCorrect ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" /> Đoán trúng 🎯
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 flex items-center gap-1">
-                            <XCircle className="w-3 h-3" /> Chưa chính xác
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        Ngày tạo: {new Date(item.createdAt).toLocaleString('vi-VN')}
-                      </p>
-                    </div>
-
-                    <div className="text-right text-xs">
-                      <p className="text-slate-500">Mục tiêu: #{item.targetId}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <GamePanel title="Lịch sử dự đoán" description="Ngày đặt và ngày mục tiêu của Game 1 được hiển thị theo giờ Việt Nam.">
+          <Button type="button" variant="outline" disabled={historyQuery.isFetching} onClick={() => void historyQuery.refetch()}>
+            <RefreshCw aria-hidden="true" className={cn(historyQuery.isFetching && 'motion-safe:animate-spin')} /> Làm mới
+          </Button>
+          {historyQuery.isLoading ? <Skeleton className="h-40 rounded-xl" aria-label="Đang tải lịch sử dự đoán" />
+            : historyQuery.isError ? <ErrorState title="Không thể tải lịch sử dự đoán" onRetry={() => void historyQuery.refetch()} />
+            : predictions.length === 0 ? <EmptyState icon={History} title="Bạn chưa có lượt dự đoán nào" />
+            : <ul className="divide-y divide-border">{predictions.map((item) => <HistoryRow key={item.predictionId} item={item} />)}</ul>}
+        </GamePanel>
       )}
     </div>
   );

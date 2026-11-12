@@ -404,3 +404,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Admin đặt hoặc sửa ngày khai giảng của học kỳ hiện có qua API riêng. Dữ liệu dùng cột `semesters.start_date` hiện có.
 - Hibernate chỉ ghi các thuộc tính thay đổi. Luồng kích hoạt, sửa ngày và chốt sổ cập nhật entity được đọc trong giao dịch để việc sửa ngày và đổi trạng thái không ghi đè lẫn nhau.
 - Hủy cache học kỳ hiện tại sau khi giao dịch đổi ngày hoặc trạng thái commit. Lần đọc sau lấy lại trạng thái và ngày khai giảng đã lưu.
+
+### [ADR-039] Bù lượt Game 1 bị lỡ lịch chốt
+
+- Lượt Game 1 đặt cho ngày hôm sau theo giờ Việt Nam và chỉ đến hạn khi ngày mục tiêu đã kết thúc. Tác vụ khởi chạy một lần mỗi đêm lúc 00:05 và ngừng mở lô mới từ 00:20. Nếu bỏ lỡ lịch hoặc còn lượt tồn, lần chạy kế tiếp sẽ xử lý tiếp.
+- Mỗi lô chọn ngày mục tiêu quá hạn cũ nhất, khóa tối đa 500 lượt đang chờ và đếm người nộp theo lô cho các lớp của đúng ngày đó. Tác vụ tiếp tục sau lô dưới 500 lượt và dừng khi lô rỗng. Mỗi lô chuyển lượt `PENDING` sang `RESOLVED` và cộng thưởng trong giao dịch riêng.
+- Lịch sử trả cả `created_at` và `target_date` để giao diện phân biệt ngày đặt với ngày dự đoán.

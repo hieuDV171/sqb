@@ -38,6 +38,9 @@ public record GamePredictionResponse(
         @Schema(description = "Thời điểm đặt dự đoán", example = "2026-10-06T15:00:00Z")
         Instant createdAt,
 
+        @Schema(description = "Ngày mục tiêu được lưu theo thời điểm bắt đầu ngày trong múi giờ của trường. Có giá trị khi trò chơi có ngày mục tiêu.", example = "2026-10-06T17:00:00Z")
+        Instant targetDate,
+
         @Schema(description = "Thời điểm tổng kết kết quả", example = "2026-10-07T00:05:00Z")
         Instant resolvedAt
     ) {

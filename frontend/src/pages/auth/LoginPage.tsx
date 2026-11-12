@@ -51,7 +51,7 @@ function AccountHelpDialog({ open, onClose }: AccountHelpDialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="account-help-title"
-        className="relative z-10 w-full max-w-lg rounded-3xl border border-border bg-popover p-6 text-popover-foreground shadow-[var(--shadow-primitive-md)] sm:p-7"
+        className="relative z-10 w-full max-w-lg rounded-3xl border border-border bg-popover p-6 text-popover-foreground shadow-(--shadow-primitive-md) sm:p-7"
       >
         <button
           type="button"
@@ -118,7 +118,7 @@ export function LoginPage() {
     }
 
     const fid = await requestFid().catch(() => null);
-    login({
+    await login({
       email: trimmedEmail,
       password,
       deviceId: getOrCreateDeviceId(),
@@ -138,13 +138,13 @@ export function LoginPage() {
       <button
         type="button"
         onClick={toggleTheme}
-        className="absolute right-4 top-4 z-20 grid size-11 place-items-center rounded-xl border border-border bg-card/90 text-muted-foreground shadow-[var(--card-shadow)] backdrop-blur transition-colors hover:text-foreground sm:right-6 sm:top-6"
+        className="absolute right-4 top-4 z-20 grid size-11 place-items-center rounded-xl border border-border bg-card/90 text-muted-foreground shadow-(--card-shadow) backdrop-blur transition-colors hover:text-foreground sm:right-6 sm:top-6"
         aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
       >
         {theme === 'dark' ? <Sun className="size-5 text-reward" /> : <Moon className="size-5" />}
       </button>
 
-      <div className="relative mx-auto grid min-h-dvh w-full max-w-[90rem] items-stretch lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative mx-auto grid min-h-dvh w-full max-w-360 items-stretch lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hidden border-r border-border px-10 py-12 lg:flex lg:flex-col lg:justify-between xl:px-16 xl:py-16" aria-labelledby="welcome-title">
           <BrandMark />
 
@@ -168,7 +168,7 @@ export function LoginPage() {
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.title} className="rounded-2xl border border-border bg-card/75 p-4 shadow-[var(--card-shadow)] backdrop-blur">
+                  <div key={item.title} className="rounded-2xl border border-border bg-card/75 p-4 shadow-(--card-shadow) backdrop-blur">
                     <Icon className="size-5 text-primary" aria-hidden="true" />
                     <p className="mt-3 text-sm font-semibold">{item.title}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.text}</p>
@@ -178,7 +178,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">SQB Campus Intelligence · School Question Bank</p>
+          <p className="text-xs text-muted-foreground">SQB Campus Intelligence · Student-generated Question Bank</p>
         </section>
 
         <section className="flex min-h-dvh items-center justify-center px-4 py-20 sm:px-8 lg:px-12" aria-labelledby="login-title">
@@ -210,7 +210,7 @@ export function LoginPage() {
                       type="email"
                       autoComplete="username"
                       inputMode="email"
-                      placeholder="a.bc123456@hust.edu.vn"
+                      placeholder="abc.xyz123456@hust.edu.vn"
                       value={email}
                       aria-invalid={Boolean(activeError && !email.trim())}
                       onChange={(event) => {
@@ -223,7 +223,7 @@ export function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <Label htmlFor="password">Mật khẩu</Label>
-                      <button type="button" onClick={() => setShowHelpDialog(true)} className="min-h-11 rounded-lg px-1 text-xs font-semibold text-primary transition-colors hover:text-[var(--primary-hover)]">
+                      <button type="button" onClick={() => setShowHelpDialog(true)} className="min-h-11 rounded-lg px-1 text-xs font-semibold text-primary transition-colors hover:text-(--primary-hover)">
                         Cần hỗ trợ?
                       </button>
                     </div>

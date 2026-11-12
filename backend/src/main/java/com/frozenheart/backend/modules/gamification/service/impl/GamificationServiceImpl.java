@@ -683,6 +683,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .predictionData(predData)
                 .status(saved.getStatus())
                 .createdAt(saved.getCreatedAt())
+                .targetDate(saved.getTargetDate())
                 .build();
     }
 
@@ -714,6 +715,7 @@ public class GamificationServiceImpl implements GamificationService {
                         .actualData(p.getActualData() != null ? p.getActualData().getData() : null)
                         .isCorrect(p.isCorrect())
                         .createdAt(p.getCreatedAt())
+                        .targetDate(p.getTargetDate())
                         .resolvedAt(p.getResolvedAt())
                         .build())
                 .toList();
@@ -805,23 +807,29 @@ public class GamificationServiceImpl implements GamificationService {
     }
 
     // =========================================================================
-    // DAILY CRONJOB FOR GAME 1 (Runs daily 00:05)
+    // GAME 1: Chốt lượt quá hạn theo ngày mục tiêu, ưu tiên ngày cũ nhất.
     // =========================================================================
     @Override
     @Transactional
-    public void resolveGame1Daily() {
+    public int resolveNextGame1Batch() {
         ZoneId schoolZone = ZoneId.of(Time.DEFAULT_TIMEZONE);
-        LocalDate schoolYesterday = LocalDate.now(schoolZone).minusDays(1);
-        Instant startOfYesterday = schoolYesterday.atStartOfDay(schoolZone).toInstant();
-        Instant startOfToday = LocalDate.now(schoolZone).atStartOfDay(schoolZone).toInstant();
+        Instant cutoff = LocalDate.now(schoolZone).atStartOfDay(schoolZone).toInstant();
+        Optional<Instant> oldestTarget = predictionRepository.findOldestTargetDateBefore(
+                GameType.GAME_1_PARTICIPANTS, PredictionStatus.PENDING, cutoff);
+        if (oldestTarget.isEmpty()) {
+            return 0;
+        }
 
-        List<Prediction> preds = predictionRepository.findByGameTypeAndTargetDateBetweenFetchGambler(
-                GameType.GAME_1_PARTICIPANTS,
-                startOfYesterday,
-                startOfToday.minusNanos(1));
+        LocalDate targetDay = oldestTarget.get().atZone(schoolZone).toLocalDate();
+        Instant startOfTargetDay = targetDay.atStartOfDay(schoolZone).toInstant();
+        Instant endOfTargetDay = targetDay.plusDays(1).atStartOfDay(schoolZone).toInstant();
+
+        List<Prediction> preds = predictionRepository.findForResolution(
+                GameType.GAME_1_PARTICIPANTS, PredictionStatus.PENDING,
+                startOfTargetDay, endOfTargetDay, PageRequest.of(0, 500));
 
         if (preds.isEmpty()) {
-            return;
+            return 0;
         }
 
         Set<Long> classIds = preds.stream()
@@ -832,7 +840,7 @@ public class GamificationServiceImpl implements GamificationService {
         Map<Long, Long> classProposerCountMap = new HashMap<>();
         if (!classIds.isEmpty()) {
             List<Object[]> results = sessionRepository.countDistinctProposersByCourseClassesBetween(
-                    classIds, startOfYesterday, startOfToday);
+                    classIds, startOfTargetDay, endOfTargetDay);
             for (Object[] row : results) {
                 if (row[0] instanceof Number classIdNum && row[1] instanceof Number countNum) {
                     classProposerCountMap.put(classIdNum.longValue(), countNum.longValue());
@@ -876,6 +884,9 @@ public class GamificationServiceImpl implements GamificationService {
                         null);
             }
         }
+
+        log.info("[Game1] Resolved {} predictions for target date {}", preds.size(), targetDay);
+        return preds.size();
     }
 
     // =========================================================================

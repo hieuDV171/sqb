@@ -26,7 +26,7 @@ public interface GamificationService {
 
     void resolveGame2And3ForSession(Session session, List<Question> qList);
 
-    void resolveGame1Daily();
+    int resolveNextGame1Batch();
 
     void reviewErrorGame5(Long ratingUserId, Long questionId, ReviewErrorRequest request);
 

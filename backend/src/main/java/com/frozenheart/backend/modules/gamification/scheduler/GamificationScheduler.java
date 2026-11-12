@@ -7,23 +7,46 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class GamificationScheduler {
 
+    private static final LocalTime GAME_1_BATCH_DEADLINE = LocalTime.of(0, 20);
+
     private final GamificationService gamificationService;
 
     /**
-     * CronJob chạy hàng ngày lúc 00:05 để tổng kết Game 1 cho ngày hôm qua.
+     * Chốt Game 1 lúc 00:05. Không bắt đầu lô mới từ 00:20 theo giờ Việt Nam.
      */
     @Scheduled(cron = "0 5 0 * * *", zone = Time.DEFAULT_TIMEZONE)
     public void scheduleDailyGame1Resolution() {
-        log.info("[GamificationScheduler] Triggering daily Game 1 resolution...");
+        ZoneId schoolZone = ZoneId.of(Time.DEFAULT_TIMEZONE);
+        Instant deadline = LocalDate.now(schoolZone).atTime(GAME_1_BATCH_DEADLINE).atZone(schoolZone).toInstant();
+        resolveGame1BatchesUntil(deadline);
+    }
+
+    void resolveGame1BatchesUntil(Instant deadline) {
+        long resolved = 0;
+        log.info("[GamificationScheduler] Starting Game 1 resolution, batch deadline {}", deadline);
         try {
-            gamificationService.resolveGame1Daily();
+            while (Instant.now().isBefore(deadline)) {
+                // The scheduler has no transaction. Each service invocation commits its own batch.
+                int batchSize = gamificationService.resolveNextGame1Batch();
+                if (batchSize == 0) {
+                    log.info("[GamificationScheduler] Game 1 resolution complete, resolved {} predictions", resolved);
+                    return;
+                }
+                resolved += batchSize;
+            }
+            log.warn("[GamificationScheduler] Game 1 batch deadline reached after resolving {} predictions; any remaining predictions will be retried next night", resolved);
         } catch (Exception e) {
-            log.error("[GamificationScheduler] Error executing daily Game 1 resolution", e);
+            log.error("[GamificationScheduler] Game 1 resolution stopped after committing {} predictions", resolved, e);
         }
     }
 

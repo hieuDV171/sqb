@@ -208,9 +208,10 @@ export interface UnequipCosmeticResponseDto {
 export type GameType =
   | 'GAME_1_PARTICIPANTS'
   | 'GAME_2_APPROVED_QUESTIONS'
-  | 'GAME_4_BANK_SIZE'
-  | 'GAME_5_ERROR_HUNTER'
-  | 'GAME_6_AI_DETECTION';
+  | 'GAME_3_AUTHOR_CONFIDENCE'
+  | 'GAME_4_SUBJECT_BANK_SIZE'
+  | 'GAME_5_REPORT_ERROR'
+  | 'GAME_6_LLM_IDENTIFICATION';
 
 export type PredictionStatus = 'PENDING' | 'RESOLVED' | 'CANCELLED';
 
@@ -278,6 +279,7 @@ export interface GamePredictionResponse {
   status: PredictionStatus;
   isCorrect: boolean;
   createdAt: string;
+  targetDate?: string | null;
   resolvedAt?: string;
 }
 
