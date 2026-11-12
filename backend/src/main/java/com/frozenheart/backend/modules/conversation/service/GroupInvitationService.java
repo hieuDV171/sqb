@@ -9,6 +9,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.conversation.dto.GroupCandidateDto;
 import com.frozenheart.backend.modules.conversation.dto.GroupInvitationDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
@@ -17,6 +18,7 @@ import com.frozenheart.backend.modules.user.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.FollowRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ public class GroupInvitationService {
     private final BlockRepository blocks;
     private final UserProfileRepository profiles;
     private final HiddenChatAccess hiddenChatAccess;
+    private final ApplicationEventPublisher eventPublisher;
 
     public record Connections(Set<Long> friends, Set<Long> following, Set<Long> followers) {
         public boolean eligible(Long id) {
@@ -128,6 +131,7 @@ public class GroupInvitationService {
             member.setLeftAt(null);
             member.setRemovedFromGroup(null);
             participants.save(member);
+            eventPublisher.publishEvent(new WsGroupMembersAddedDto(group.getId()));
         }
         invitations.delete(invitation);
         return group.getId();

@@ -112,6 +112,8 @@ public class OpenApiConfig {
                 `GROUP_ROLES_CHANGED` gửi `conversation_id` sau khi giao dịch đổi vai trò nhóm thành công. Client tải lại danh sách thành viên của nhóm.
 
                 `GROUP_MEMBER_REMOVED` gửi `conversation_id` và `removed_user_id` tới thành viên đang tham gia và người bị mời ra sau khi giao dịch hoàn tất.
+
+                `GROUP_MEMBERS_ADDED` gửi `conversation_id` tới thành viên đang tham gia sau khi thêm trực tiếp hoặc sau khi người được mời chấp nhận vào nhóm.
                 """;
 
         return new OpenAPI()

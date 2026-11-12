@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStompStatus, useStompSubscription } from '@/lib/stompClient';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { CHAT_QUERY_KEYS, refreshGroupMembership } from './useChat';
+import { CHAT_QUERY_KEYS, refreshGroupMembership, refreshJoinedGroup } from './useChat';
 import { useChatStore } from '../stores/useChatStore';
-import type { WsGroupMemberRemovedDto, WsGroupRolesChangedDto, WsMessageBroadcastDto, WsMessageRevokedDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto } from '../types/chat.types';
+import type { WsGroupMemberRemovedDto, WsGroupMembersAddedDto, WsGroupRolesChangedDto, WsMessageBroadcastDto, WsMessageRevokedDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto } from '../types/chat.types';
 
 /**
  * Hook lắng nghe tin nhắn và biên nhận đã đọc toàn cục của người dùng
@@ -19,7 +19,7 @@ export function useChatRealtimeListener() {
   const handleIncomingTyping = useChatStore((s) => s.handleIncomingTyping);
   const markMessageRevoked = useChatStore((s) => s.markMessageRevoked);
 
-  useStompSubscription<WsMessageBroadcastDto | WsMessageRevokedDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto | WsGroupRolesChangedDto | WsGroupMemberRemovedDto>(
+  useStompSubscription<WsMessageBroadcastDto | WsMessageRevokedDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto | WsGroupRolesChangedDto | WsGroupMemberRemovedDto | WsGroupMembersAddedDto>(
     '/user/queue/messages',
     (data, frame) => {
       if (!data || !data.eventType) return;
@@ -39,6 +39,8 @@ export function useChatRealtimeListener() {
         handleIncomingTyping(data);
       } else if (data.eventType === 'GROUP_ROLES_CHANGED') {
         void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(data.conversationId), exact: true });
+      } else if (data.eventType === 'GROUP_MEMBERS_ADDED') {
+        void refreshJoinedGroup(queryClient, data.conversationId);
       } else if (data.eventType === 'GROUP_MEMBER_REMOVED') {
         if (data.removedUserId === useAuthStore.getState().user?.id) {
           void queryClient.resetQueries({ queryKey: CHAT_QUERY_KEYS.messages(data.conversationId), exact: true });

@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.conversation.service;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
@@ -81,7 +82,7 @@ class ChatRealtimePublisherTest {
 
     private static List<Object> conversationEvents() {
         return List.of(new WsMessageRevokedDto(10L, 25L), new WsGroupRolesChangedDto(10L),
-                new WsGroupMemberRemovedDto(10L, 3L));
+                new WsGroupMemberRemovedDto(10L, 3L), new WsGroupMembersAddedDto(10L));
     }
 
     private static class InMemoryTransactionManager extends AbstractPlatformTransactionManager {

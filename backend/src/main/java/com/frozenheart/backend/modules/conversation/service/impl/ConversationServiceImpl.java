@@ -10,6 +10,7 @@ import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.conversation.dto.*;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
@@ -635,6 +636,9 @@ public class ConversationServiceImpl implements ConversationService {
 
                 userParticipantRepository.saveAll(membersToSave);
                 groupInvitationRepository.saveAll(invitations);
+                if (!membersToSave.isEmpty()) {
+                        eventPublisher.publishEvent(new WsGroupMembersAddedDto(conversationId));
+                }
                 return AddGroupMembersResponseDto.builder()
                                 .addedMembers(addedMembers)
                                 .failedMembers(failedMembers)

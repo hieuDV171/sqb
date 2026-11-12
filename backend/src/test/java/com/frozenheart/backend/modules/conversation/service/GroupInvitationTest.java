@@ -10,6 +10,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.conversation.dto.AddGroupMembersRequestDto;
 import com.frozenheart.backend.modules.conversation.dto.CreateGroupConversationDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
@@ -25,6 +26,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -53,6 +55,7 @@ class GroupInvitationTest {
     @Mock private UserProfileRepository profiles;
     @Mock private UserRepository users;
     @Mock private HiddenChatAccess hiddenChatAccess;
+    @Mock private ApplicationEventPublisher events;
     @Mock private GroupInvitationService connections;
     @Captor private ArgumentCaptor<List<GroupInvitation>> savedInvitations;
     @Captor private ArgumentCaptor<List<UserParticipant>> savedParticipants;
@@ -109,6 +112,32 @@ class GroupInvitationTest {
         verify(participants).saveAll(List.of());
         verify(invitations).saveAll(savedInvitations.capture());
         assertSame(invitee, savedInvitations.getValue().getFirst().getInvitee());
+        verifyNoInteractions(events);
+    }
+
+    @Test
+    void addingFriendBackSavesMembershipAndPublishesChange() {
+        authenticate(inviter);
+        List<Long> targets = List.of(friend.getId());
+        var caller = UserParticipant.builder().user(inviter).role(ConversationRole.CHIEF).build();
+        var formerMember = UserParticipant.builder().user(friend).role(ConversationRole.VILLAGER)
+                .leftAt(Instant.now()).removedFromGroup(true).build();
+        when(conversations.findForMembershipUpdate(GROUP_ID)).thenReturn(Optional.of(group));
+        when(participants.findByUserIdAndConversationId(inviter.getId(), GROUP_ID)).thenReturn(Optional.of(caller));
+        when(participants.findByConversationIdAndLeftAtIsNull(GROUP_ID)).thenReturn(List.of(caller));
+        when(participants.findByConversationIdAndUserIdIn(GROUP_ID, targets)).thenReturn(List.of(formerMember));
+        when(users.findAllById(targets)).thenReturn(List.of(friend));
+        when(connections.connections(inviter.getId(), targets)).thenReturn(
+                new GroupInvitationService.Connections(Set.of(friend.getId()), Set.of(), Set.of()));
+
+        var result = conversationService.addGroupMembers(GROUP_ID, AddGroupMembersRequestDto.builder().userIds(targets).build());
+
+        assertEquals(friend.getId(), result.getAddedMembers().getFirst().getUserId());
+        assertNull(formerMember.getLeftAt());
+        assertNull(formerMember.getRemovedFromGroup());
+        var order = inOrder(participants, events);
+        order.verify(participants).saveAll(List.of(formerMember));
+        order.verify(events).publishEvent(new WsGroupMembersAddedDto(GROUP_ID));
     }
 
     @Test
@@ -124,6 +153,7 @@ class GroupInvitationTest {
         assertEquals(ConversationRole.VILLAGER, acceptedParticipant.getValue().getRole());
         assertNull(acceptedParticipant.getValue().getLeftAt());
         verify(invitations).delete(invitation);
+        verify(events).publishEvent(new WsGroupMembersAddedDto(GROUP_ID));
     }
 
     @Test
@@ -148,6 +178,7 @@ class GroupInvitationTest {
 
         verify(invitations).deleteForInvitee(INVITATION_ID, invitee.getId());
         verifyNoInteractions(participants);
+        verifyNoInteractions(events);
     }
 
     @Test

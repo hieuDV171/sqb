@@ -242,6 +242,11 @@ export interface WsGroupMemberRemovedDto {
   removedUserId: number;
 }
 
+export interface WsGroupMembersAddedDto {
+  eventType: 'GROUP_MEMBERS_ADDED';
+  conversationId: number;
+}
+
 export interface WsTypingBroadcastDto {
   eventType: 'TYPING_STATUS';
   conversationId: number;

@@ -80,7 +80,7 @@ function UnlockedChatWindow({
   const isGroup = (conversation?.type ?? messageData?.pages[0]?.conversationType) === 'GROUP';
   const displayName = conversation?.displayName ?? messageData?.pages[0]?.groupName;
   const displayAvatar = conversation?.displayAvatarUrl ?? messageData?.pages[0]?.groupAvatarUrl;
-  const { data: members = [], error: membersError } = useGroupMembers(conversationId, isGroup);
+  const { data: members, error: membersError } = useGroupMembers(conversationId, isGroup);
   const groupExitReason = getGroupExitReason(messages.error) ?? getGroupExitReason(membersError);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ function UnlockedChatWindow({
             </h3>
 
             <div className="truncate text-xs text-muted-foreground">
-              {isGroup ? `${members.length || conversation?.memberCount || 0} thành viên` : 'Trò chuyện trực tiếp'}
+              {isGroup ? `${members?.length ?? conversation?.memberCount ?? 0} thành viên` : 'Trò chuyện trực tiếp'}
             </div>
           </div>
         </div>

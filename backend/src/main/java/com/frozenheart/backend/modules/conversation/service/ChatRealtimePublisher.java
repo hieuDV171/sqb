@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageRevokedDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
@@ -32,6 +33,12 @@ public class ChatRealtimePublisher {
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public void publishGroupRolesChanged(WsGroupRolesChangedDto event) {
+        deliverToActiveMembers(event.conversationId(), event);
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void publishGroupMembersAdded(WsGroupMembersAddedDto event) {
         deliverToActiveMembers(event.conversationId(), event);
     }
 

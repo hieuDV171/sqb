@@ -433,3 +433,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - `user_participants.left_at` xác định tư cách thành viên đã kết thúc. Cột boolean nullable `removed_from_group` ghi nhận thao tác mời ra. Xóa cờ khi tự rời hoặc tham gia lại qua thêm trực tiếp hay chấp nhận lời mời. Bản ghi cũ có `left_at` và chưa có lý do dùng thông báo chung.
 - Sau commit phát `GROUP_MEMBER_REMOVED` qua hàng đợi cá nhân tới thành viên đang tham gia và người vừa bị mời ra, giữ kiểm tra PIN của từng người nhận. Frontend làm mới danh sách hội thoại, thành viên và gợi ý của nhóm. Phía người bị mời ra tải lại quyền truy cập từ API lịch sử.
 - API lịch sử và thành viên dùng HTTP 403 với mã `2413` khi bị mời ra và `2414` khi tư cách đã kết thúc mà thiếu dấu hiệu bị mời ra. Giao diện thay khu vực tin nhắn bằng thông báo tương ứng. Nhóm ẩn vẫn yêu cầu mở kho trước khi trả lý do.
+
+### [ADR-044] Đồng bộ khi có thành viên mới trong nhóm chat
+
+- Thêm trực tiếp và chấp nhận lời mời phát `GROUP_MEMBERS_ADDED` sau commit khi có thành viên mới hoặc tham gia lại. Lời mời còn chờ chưa làm tăng số thành viên. Dùng hàng đợi cá nhân và kiểm tra PIN hiện có, gồm cả người vừa tham gia.
+- Client tải lại danh sách hội thoại, thành viên và gợi ý của nhóm. Tiêu đề chat và hộp thành viên lấy số lượng từ cùng truy vấn thành viên khi đã tải. Với người tham gia lại đang mở nhóm, sự kiện làm mới truy vấn lịch sử từng báo lỗi hoặc còn chờ.

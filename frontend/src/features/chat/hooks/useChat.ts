@@ -49,6 +49,17 @@ export function refreshGroupMembership(queryClient: QueryClient, conversationId:
   ]);
 }
 
+export function refreshJoinedGroup(queryClient: QueryClient, conversationId: number) {
+  return Promise.all([
+    refreshGroupMembership(queryClient, conversationId),
+    queryClient.resetQueries({
+      queryKey: CHAT_QUERY_KEYS.messages(conversationId),
+      exact: true,
+      predicate: ({ state }) => state.status === 'error' || state.status === 'pending',
+    }),
+  ]);
+}
+
 export function useGroupCandidates(conversationId: number | undefined, search: string) {
   return useInfiniteQuery({
     queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId, search],
@@ -76,9 +87,9 @@ export function useRespondGroupInvitation() {
       await chatService.declineGroupInvitation(invitationId);
       return null;
     },
-    onSuccess: (conversationId) => {
+    onSuccess: async (conversationId) => {
       if (conversationId !== null) {
-        void queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+        await refreshJoinedGroup(queryClient, conversationId);
         toast.success('Đã tham gia nhóm');
       } else {
         toast.success('Đã từ chối lời mời');
@@ -306,11 +317,13 @@ export function useAddGroupMembers() {
   return useMutation({
     mutationFn: ({ conversationId, data }: { conversationId: number; data: AddGroupMembersRequestDto }) =>
       chatService.addGroupMembers(conversationId, data),
-    onSuccess: (res, variables) => {
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId) });
-      queryClient.invalidateQueries({ queryKey: [...CHAT_QUERY_KEYS.groupCandidates, variables.conversationId] });
+    onSuccess: async (res, { conversationId }) => {
       const added = res.data?.addedMembers?.length || 0;
+      if (added > 0) {
+        await refreshGroupMembership(queryClient, conversationId);
+      } else {
+        await queryClient.invalidateQueries({ queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId] });
+      }
       const invited = res.data?.invitedMemberCount || 0;
       const failed = res.data?.failedMembers?.length || 0;
       const summary = [
