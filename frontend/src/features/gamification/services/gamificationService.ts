@@ -270,8 +270,9 @@ export const gamificationService = {
   predictGame4: async (data: Game4PredictionRequest): Promise<GlobalResponse<GamePredictionResponse>> => {
     return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/bank-size',
-      data
-    )) as any;
+      data,
+      { skipToast: true }
+    )) as unknown as GlobalResponse<GamePredictionResponse>;
   },
 
   /**

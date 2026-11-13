@@ -1,4 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Bot, BrainCircuit, ChevronDown, Database, History, RefreshCw, Send, ShieldAlert, Target, Users } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StudySubjectSelect } from '@/features/session/components/StudySubjectSelect';
 import { cn } from '@/lib/utils';
+import { toast } from '@/stores/useToastStore';
 import {
   useActiveGame6Session,
   useGame1Classes,
@@ -178,6 +180,8 @@ export function PredictionArenaTab() {
 
   const [game4SubjectId, setGame4SubjectId] = useState<number>();
   const [game4BankSize, setGame4BankSize] = useState('100');
+  const [showGame4Duplicate, setShowGame4Duplicate] = useState(false);
+  const game4SubmitButton = useRef<HTMLButtonElement>(null);
   const predictGame4 = usePredictGame4();
   const subjectsQuery = useGamificationSubjects(activeGame === 'game4');
   const subjects = subjectsQuery.data ?? [];
@@ -203,7 +207,15 @@ export function PredictionArenaTab() {
   function submitGame4(event: FormEvent) {
     event.preventDefault();
     if (!game4Subject || predictGame4.isPending) return;
-    predictGame4.mutate({ subjectId: game4Subject.subjectId, predictedBankSize: Number(game4BankSize) });
+    predictGame4.mutate({ subjectId: game4Subject.subjectId, predictedBankSize: Number(game4BankSize) }, {
+      onError: (error: unknown) => {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === '2201') {
+          setShowGame4Duplicate(true);
+          return;
+        }
+        toast.error('Không thể đặt dự đoán Game 4.');
+      },
+    });
   }
 
   return (
@@ -294,11 +306,26 @@ export function PredictionArenaTab() {
                 <StudySubjectSelect subjects={subjects} value={game4Subject?.subjectId} onChange={setGame4SubjectId}
                   label="Môn học" emptyLabel="Chọn một môn học…" required />
                 <NumberField id="game4-bank-size" label="Tổng số câu hỏi dự đoán" min={0} value={game4BankSize} onChange={setGame4BankSize} />
-                <Button type="submit" disabled={!game4Subject || predictGame4.isPending}>
+                <Button ref={game4SubmitButton} type="submit" disabled={!game4Subject || predictGame4.isPending}>
                   <Send aria-hidden="true" />{predictGame4.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}
                 </Button>
               </form>
             )}
+          <AlertDialog.Root open={showGame4Duplicate} onOpenChange={setShowGame4Duplicate}>
+            <AlertDialog.Portal>
+              <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+              <AlertDialog.Popup finalFocus={game4SubmitButton}
+                className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-xl">
+                <AlertDialog.Title className="text-lg font-semibold">Bạn đã dự đoán cho môn này</AlertDialog.Title>
+                <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
+                  Mỗi môn chỉ được dự đoán một lần, nên bạn không thể dự đoán lại.
+                </AlertDialog.Description>
+                <div className="flex justify-end">
+                  <AlertDialog.Close render={<Button type="button" className="min-h-11" />}>Đóng</AlertDialog.Close>
+                </div>
+              </AlertDialog.Popup>
+            </AlertDialog.Portal>
+          </AlertDialog.Root>
         </GamePanel>
       )}
 

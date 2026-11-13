@@ -385,9 +385,6 @@ export function usePredictGame4() {
       toast.success('Đặt dự đoán Game 4 thành công!');
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.myPredictions() });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Không thể đặt dự đoán Game 4.');
-    },
   });
 }
 
