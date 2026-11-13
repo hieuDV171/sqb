@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useStompStatus, useStompSubscription } from '@/lib/stompClient';
 import { notificationService } from '../services/notificationService';
 import type {
   UpdatePushSettingsRequestDto,
@@ -28,7 +29,7 @@ export function useNotificationClock() {
   return now;
 }
 
-export function useNotifications({ limit = 20, poll = false } = {}) {
+export function useNotifications({ limit = 20 } = {}) {
   const setUnread = useGamificationStore((s) => s.setUnreadNotifications);
 
   return useInfiniteQuery({
@@ -44,8 +45,25 @@ export function useNotifications({ limit = 20, poll = false } = {}) {
       const cursor = page.pagination?.after;
       return page.pagination?.hasNext && typeof cursor === 'number' && !pageParams.includes(cursor) ? cursor : undefined;
     },
-    refetchInterval: poll ? 30_000 : false,
   });
+}
+
+export function useNotificationRealtime() {
+  const queryClient = useQueryClient();
+  const status = useStompStatus();
+
+  useStompSubscription<{ eventType: string }>('/user/queue/notifications', (event) => {
+    if (event?.eventType !== 'NOTIFICATIONS_CHANGED') return;
+
+    const lists = { queryKey: NOTIFICATION_KEYS.lists };
+    // Also replace an initial fetch that started before the new notification committed.
+    void queryClient.cancelQueries(lists).then(() => queryClient.invalidateQueries(lists));
+  });
+
+  useEffect(() => {
+    if (status !== 'CONNECTED') return;
+    void queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
+  }, [queryClient, status]);
 }
 
 export function useMarkAsRead() {

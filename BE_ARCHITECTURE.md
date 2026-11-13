@@ -444,3 +444,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - `CurrentSemesterService` đọc trực tiếp trạng thái học kỳ. Index `idx_semesters_single_active` trong changeset 07-02 bảo đảm tối đa một dòng `active = true`. Kích hoạt flush trong giao dịch để ánh xạ xung đột đúng index thành HTTP 409. Đóng kỳ lấy cùng khóa hàng với chốt sổ và Game 3, rồi cập nhật đúng dòng đã kiểm tra.
 - Khi chưa có kỳ hoạt động, API xem bảng xếp hạng và danh sách lớp theo kỳ hiện tại trả rỗng. Thao tác đồng bộ bảng xếp hạng, tạo lớp theo kỳ hiện tại, nhập lớp và đề xuất yêu cầu một kỳ hoạt động. Lớp lịch sử đọc trạng thái từ học kỳ đã join trong truy vấn lớp.
 - Sổ điểm và `PointAddedEvent` dùng cùng ID học kỳ. Game 1 lấy kỳ của lớp theo lô, Game 2 và thưởng duyệt lấy kỳ của phiên, Game 3 và chốt sổ dùng kỳ đã xác định trong giao dịch. Game 5 và Game 6 lấy kỳ tại lúc xử lý. Listener Redis bỏ qua sự kiện không có kỳ và chỉ dùng kỳ ghi trên sự kiện.
+
+### [ADR-046] Cập nhật thông báo trong ứng dụng qua STOMP
+
+- Các luồng tạo thông báo nội bộ lưu qua `NotificationWriter`. Sau khi commit, dịch vụ gửi `NOTIFICATIONS_CHANGED` tới hàng đợi cá nhân `/user/queue/notifications`. Khi lưu theo lô, mỗi tài khoản nhận một tín hiệu cho lô đó. Định tuyến dùng ID tài khoản đã xác thực và payload chỉ có loại sự kiện.
+- Frontend dùng lại kết nối STOMP của ứng dụng để tải lại danh sách và số chưa đọc khi có tín hiệu hoặc khi kết nối lại. REST vẫn cung cấp dữ liệu phân trang và trạng thái đã đọc. Luồng Firebase Cloud Messaging tiếp tục phục vụ thông báo đẩy theo cài đặt của người dùng.

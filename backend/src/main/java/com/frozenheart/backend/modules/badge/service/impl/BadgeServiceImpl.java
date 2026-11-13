@@ -38,7 +38,7 @@ import com.frozenheart.backend.core.entity.notification.Notification;
 import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
-import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 
 @Slf4j
 @Service
@@ -48,7 +48,7 @@ public class BadgeServiceImpl implements BadgeService {
     private final BadgeRepository badgeRepository;
     private final UserBadgeRepository userBadgeRepository;
     private final UserRepository userRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationWriter notificationWriter;
     private final BadgeEvaluationService badgeEvaluationService;
     private final UserProfileRepository userProfileRepository;
     private final ActivityFeedService activityFeedService;
@@ -350,7 +350,7 @@ public class BadgeServiceImpl implements BadgeService {
                 .targetId(badge.getId())
                 .creadtedAt(Instant.now())
                 .build();
-        notificationRepository.save(notification);
+        notificationWriter.create(notification);
 
         log.info("[BadgeService] Trao huy hiệu '{}' (ID: {}) cho User {} thành công!",
                 badge.getName(), badge.getId(), user.getId());

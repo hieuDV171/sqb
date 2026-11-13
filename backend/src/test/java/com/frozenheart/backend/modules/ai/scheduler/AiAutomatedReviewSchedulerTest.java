@@ -5,7 +5,7 @@ import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.ai.service.AiIntegrationService;
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
-import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -33,7 +33,7 @@ class AiAutomatedReviewSchedulerTest {
     @Mock SessionRepository sessionRepository;
     @Mock QuestionRepository questionRepository;
     @Mock PostRepository postRepository;
-    @Mock NotificationRepository notificationRepository;
+    @Mock NotificationWriter notificationWriter;
     @Mock AiIntegrationService aiIntegrationService;
     @Mock CounterMetricsService counterMetricsService;
     @Mock GamificationService gamificationService;

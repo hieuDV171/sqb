@@ -23,6 +23,7 @@ import java.util.Set;
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private static final Set<String> CHAT_COMMANDS = Set.of("/app/chat.send", "/app/chat.read", "/app/chat.typing");
+    private static final Set<String> USER_SUBSCRIPTIONS = Set.of("/user/queue/messages", "/user/queue/notifications");
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -102,7 +103,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         // Clients must not subscribe to physical broker queues or publish directly to them.
         boolean allowed = command == StompCommand.SEND
                 ? CHAT_COMMANDS.contains(destination)
-                : "/user/queue/messages".equals(destination);
+                : USER_SUBSCRIPTIONS.contains(destination);
         if (!allowed) {
             throw new MessageDeliveryException("Forbidden: Invalid STOMP destination");
         }

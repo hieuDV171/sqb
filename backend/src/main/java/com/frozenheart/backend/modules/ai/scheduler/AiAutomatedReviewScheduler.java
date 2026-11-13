@@ -31,7 +31,7 @@ import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
-import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -67,7 +67,7 @@ public class AiAutomatedReviewScheduler {
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
     private final PostRepository postRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationWriter notificationWriter;
     private final AiIntegrationService aiIntegrationService;
     private final CounterMetricsService counterMetricsService;
     private final GamificationService gamificationService;
@@ -236,7 +236,7 @@ public class AiAutomatedReviewScheduler {
             eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.POST, pIds));
         }
         if (!autoNotificationsToSave.isEmpty()) {
-            notificationRepository.saveAll(autoNotificationsToSave);
+            notificationWriter.createAll(autoNotificationsToSave);
         }
         rewardsBySemester.forEach((semester, rewards) ->
                 counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewards, semester));

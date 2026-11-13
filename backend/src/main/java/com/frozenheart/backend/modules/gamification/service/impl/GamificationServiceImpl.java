@@ -67,7 +67,7 @@ import com.frozenheart.backend.core.entity.notification.NotificationMetadata;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
-import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import org.springframework.context.ApplicationEventPublisher;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.UserCourseClass;
@@ -115,7 +115,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final BadgeService badgeService;
     private final CourseClassRepository courseClassRepository;
     private final UserCourseClassRepository userCourseClassRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationWriter notificationWriter;
     private final ApplicationEventPublisher eventPublisher;
     private final PointHistoryRepository pointHistoryRepository;
     private final CoinTransactionRepository coinTransactionRepository;
@@ -935,7 +935,7 @@ public class GamificationServiceImpl implements GamificationService {
                         .targetUrl("/questions/" + questionId)
                         .creadtedAt(Instant.now())
                         .build();
-                notificationRepository.save(authorNotif);
+                notificationWriter.create(authorNotif);
 
                 eventPublisher.publishEvent(PushNotificationEvent.single(
                         authorId,
@@ -1183,7 +1183,7 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         if (!notificationsToSave.isEmpty()) {
-            notificationRepository.saveAll(notificationsToSave);
+            notificationWriter.createAll(notificationsToSave);
         }
     }
 
@@ -1615,7 +1615,7 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         if (!notifs.isEmpty()) {
-            notificationRepository.saveAll(notifs);
+            notificationWriter.createAll(notifs);
         }
 
         log.info("[HonorPost] Đã tạo thành công bài post vinh danh (ID: {}) cho học kỳ {}", savedPost.getId(), semester.getName());

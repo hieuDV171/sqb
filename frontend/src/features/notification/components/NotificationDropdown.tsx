@@ -16,7 +16,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
   const [isPushSettingsOpen, setIsPushSettingsOpen] = useState(false);
   const now = useNotificationClock();
 
-  const { data, isLoading, isLoadingError, refetch } = useNotifications({ limit: 6, poll: true });
+  const { data, isLoading, isLoadingError, refetch } = useNotifications({ limit: 6 });
   const notificationData = data?.pages[0];
   const markAllMutation = useMarkAllAsRead();
 

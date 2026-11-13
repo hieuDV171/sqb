@@ -79,6 +79,10 @@ class WebSocketAuthInterceptorTest {
         var user = authenticate("sender", 10L);
 
         assertDoesNotThrow(() -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/messages", user), null));
+        assertDoesNotThrow(() -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/notifications", user), null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/notifications", null), null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/20/queue/notifications", user), null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SEND, "/user/queue/notifications", user), null));
         assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/topic/conv.20.typing", user), null));
         assertDoesNotThrow(() -> interceptor.preSend(stompMessage(StompCommand.SEND, "/app/chat.send", user), null));
         assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/queue/**", user), null));

@@ -76,7 +76,7 @@ import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
-import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import org.springframework.context.ApplicationEventPublisher;
 
 @Service
@@ -93,7 +93,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
     private final AnonymizerUtil anonymizerUtil;
     private final GamificationService gamificationService;
     private final PostRepository postRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationWriter notificationWriter;
     private final ApplicationEventPublisher eventPublisher;
     private final BadgeService badgeService;
     private final MetricService metricService;
@@ -511,7 +511,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         Post savedPost = postRepository.save(posts.getFirst());
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.POST, savedPost.getId()));
 
-        notificationRepository.save(Notification.builder()
+        notificationWriter.create(Notification.builder()
                 .receiver(proposer)
                 .actor(session.getReviewer())
                 .type(NotificationType.QUESTION_APPROVED)

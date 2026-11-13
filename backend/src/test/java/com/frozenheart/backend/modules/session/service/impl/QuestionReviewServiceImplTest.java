@@ -19,7 +19,7 @@ import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
-import com.frozenheart.backend.modules.notification.repository.NotificationRepository;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
@@ -69,7 +69,7 @@ class QuestionReviewServiceImplTest {
     @Mock AnonymizerUtil anonymizerUtil;
     @Mock GamificationService gamificationService;
     @Mock PostRepository postRepository;
-    @Mock NotificationRepository notificationRepository;
+    @Mock NotificationWriter notificationWriter;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock BadgeService badgeService;
     @Mock MetricService metricService;
@@ -209,7 +209,7 @@ class QuestionReviewServiceImplTest {
         verify(sessionRepository).save(session);
         verify(gamificationService).onSessionsFinalized(Map.of(session, List.of(question)));
         verify(counterMetricsService).awardPointsAndApprovedQuestionsBatch(anyList(), org.mockito.ArgumentMatchers.same(semester));
-        verify(notificationRepository).save(any());
+        verify(notificationWriter).create(any());
         verify(questionRepository, never()).saveAll(anyList());
     }
 
@@ -228,7 +228,7 @@ class QuestionReviewServiceImplTest {
         assertEquals(QuestionStatus.REJECTED, question.getStatus());
         assertEquals(QuestionRejectionCode.AUTO_REJECTED_ON_COMPLETION, question.getRejectionCode());
         verify(questionRepository).saveAll(List.of(question));
-        verifyNoInteractions(counterMetricsService, notificationRepository, postRepository);
+        verifyNoInteractions(counterMetricsService, notificationWriter, postRepository);
     }
 
     @Test

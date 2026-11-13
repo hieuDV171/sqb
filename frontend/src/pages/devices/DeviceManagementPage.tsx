@@ -77,14 +77,18 @@ function DeviceCard({ device, isCurrent, onAction }: {
         {isCurrent && <p className="text-xs leading-relaxed text-muted-foreground">Để thoát thiết bị này, dùng Đăng xuất trong menu tài khoản.</p>}
 
         <div className="mt-auto flex flex-wrap gap-2 border-t border-border pt-3">
-          <Button type="button" variant="outline" disabled={isCurrent} className="min-h-11 flex-1"
-            onClick={(event) => onAction('revoke', event.currentTarget)}>
-            <LogOut aria-hidden="true" /> Đăng xuất
-          </Button>
-          <Button type="button" variant="destructive" disabled={isCurrent} className="min-h-11"
-            aria-label={`Xóa thiết bị ${name}`} onClick={(event) => onAction('delete', event.currentTarget)}>
-            <Trash2 aria-hidden="true" /> Xóa
-          </Button>
+          <span className={cn('flex flex-1', isCurrent && 'cursor-not-allowed')}>
+            <Button type="button" variant="outline" disabled={isCurrent} className="min-h-11 flex-1"
+              onClick={(event) => onAction('revoke', event.currentTarget)}>
+              <LogOut aria-hidden="true" /> Đăng xuất
+            </Button>
+          </span>
+          <span className={cn('flex', isCurrent && 'cursor-not-allowed')}>
+            <Button type="button" variant="destructive" disabled={isCurrent} className="min-h-11"
+              aria-label={`Xóa thiết bị ${name}`} onClick={(event) => onAction('delete', event.currentTarget)}>
+              <Trash2 aria-hidden="true" /> Xóa
+            </Button>
+          </span>
         </div>
       </CardContent>
     </Card>
