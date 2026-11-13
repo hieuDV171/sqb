@@ -9,9 +9,10 @@ interface FilterSelectProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   inlineLabel?: boolean;
+  required?: boolean;
 }
 
-export function FilterSelect({ label, value, options, onChange, disabled, inlineLabel }: FilterSelectProps) {
+export function FilterSelect({ label, value, options, onChange, disabled, inlineLabel, required }: FilterSelectProps) {
   const labelId = useId();
   const placeholder = options.find((option) => option.value === '')?.label ?? 'Chọn một mục';
 
@@ -19,8 +20,10 @@ export function FilterSelect({ label, value, options, onChange, disabled, inline
     <div className={inlineLabel
       ? 'grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:w-auto sm:grid-cols-[auto_minmax(9rem,11rem)]'
       : 'min-w-0 space-y-1.5'}>
-      <span id={labelId} className="block text-sm font-medium">{label}</span>
-      <Select.Root items={options} value={value} disabled={disabled}
+      <span id={labelId} className="block text-sm font-medium">
+        {label}{required && <span aria-hidden="true" className="ml-1">*</span>}
+      </span>
+      <Select.Root items={options} value={value} disabled={disabled} required={required}
         onValueChange={(next) => { if (next !== null) onChange(next); }}>
         <Select.Trigger aria-labelledby={labelId}
           className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60">
