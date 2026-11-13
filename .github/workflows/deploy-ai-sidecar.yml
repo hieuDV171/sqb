@@ -1,0 +1,38 @@
+name: Build and Deploy SQB AI Sidecar
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'ai-sidecar/**'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy after publishing the image
+        type: boolean
+        default: true
+
+concurrency:
+  group: sqb-ai-sidecar-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-production-image.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      service: ai-sidecar
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || inputs.deploy)
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      target: ai-sidecar
+      sidecar_image: ${{ needs.build.outputs.image }}
+    secrets: inherit

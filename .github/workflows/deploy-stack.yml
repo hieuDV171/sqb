@@ -1,0 +1,28 @@
+name: Deploy SQB Production Stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: Compose services to apply (space-separated, blank applies the whole stack)
+        type: string
+      backend_image:
+        description: Optional BE image by digest (defaults to deployed image)
+        type: string
+      sidecar_image:
+        description: Optional sidecar image by digest (defaults to deployed image)
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      target: stack
+      services: ${{ inputs.services }}
+      backend_image: ${{ inputs.backend_image }}
+      sidecar_image: ${{ inputs.sidecar_image }}
+    secrets: inherit

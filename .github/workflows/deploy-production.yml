@@ -1,0 +1,64 @@
+name: Update SQB Production VPS
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      services:
+        type: string
+      backend_image:
+        type: string
+      sidecar_image:
+        type: string
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT || '22' }}
+      DEPLOY_TARGET: ${{ inputs.target }}
+      DEPLOY_SERVICES: ${{ inputs.services }}
+      DEPLOY_BACKEND_IMAGE: ${{ inputs.backend_image }}
+      DEPLOY_SIDECAR_IMAGE: ${{ inputs.sidecar_image }}
+      DEPLOY_STAGING: /opt/sqb/.deploy-staging/${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Check server configuration
+        if: env.SERVER_HOST == ''
+        run: echo "::warning::SERVER_HOST is not configured. Skipping VPS deployment."
+
+      - uses: actions/checkout@v4
+        if: env.SERVER_HOST != ''
+
+      - name: Upload deployment files
+        if: env.SERVER_HOST != ''
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
+          source: ${{ inputs.target == 'stack' && '.github/scripts/deploy-production.sh,docker-compose.prod.yml' || '.github/scripts/deploy-production.sh' }}
+          target: ${{ env.DEPLOY_STAGING }}
+
+      - name: Deploy via SSH
+        if: env.SERVER_HOST != ''
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          port: ${{ env.SERVER_PORT }}
+          command_timeout: 30m
+          envs: DEPLOY_TARGET,DEPLOY_SERVICES,DEPLOY_BACKEND_IMAGE,DEPLOY_SIDECAR_IMAGE,DEPLOY_STAGING
+          script: |
+            set -e
+            cd /opt/sqb
+            bash "$DEPLOY_STAGING/.github/scripts/deploy-production.sh"

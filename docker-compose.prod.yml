@@ -89,8 +89,6 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_started
-      ai-sidecar:
-        condition: service_started
     ports:
       # CHỈ BIND VÀO 127.0.0.1 (Localhost), chặn đứng mọi truy cập trực tiếp từ Internet
       - "127.0.0.1:8085:8080"
