@@ -2,13 +2,12 @@ package com.frozenheart.backend.modules.gamification.service.impl;
 
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.event.PointAddedEvent;
-import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.util.RedisKeyUtil;
 import com.frozenheart.backend.modules.gamification.dto.LeaderboardAggregation;
 import com.frozenheart.backend.modules.gamification.dto.LeaderboardPeriod;
 import com.frozenheart.backend.modules.gamification.repository.PointHistoryRepository;
 import com.frozenheart.backend.modules.gamification.service.LeaderboardService;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import org.springframework.data.redis.core.*;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.annotation.Async;
@@ -29,7 +28,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private final StringRedisTemplate redisTemplate;
     private final DefaultRedisScript<Long> updateScoreScript;
     private final PointHistoryRepository pointHistoryRepository;
-    private final CurrentSemesterHolder currentSemesterHolder;
+    private final CurrentSemesterService currentSemesterService;
 
 
     // ⚠️ Lưu ý quan trọng về kiến trúc Redis (Cluster Mode)
@@ -49,10 +48,10 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     // bằng SessionCallback
 
     public LeaderboardServiceImpl(StringRedisTemplate redisTemplate,
-            CurrentSemesterHolder currentSemesterHolder, PointHistoryRepository pointHistoryRepository) {
+            CurrentSemesterService currentSemesterService, PointHistoryRepository pointHistoryRepository) {
         this.redisTemplate = redisTemplate;
         this.pointHistoryRepository = pointHistoryRepository;
-        this.currentSemesterHolder = currentSemesterHolder;
+        this.currentSemesterService = currentSemesterService;
 
         // Khởi tạo Lua Script
         String script = """
@@ -104,7 +103,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     @Override
     public void rebuildLeaderboard(LeaderboardPeriod period, Long subjectId) {
 
-        Long semesterId = currentSemesterHolder.getCurrentSemester().getId();
+        Long semesterId = currentSemesterService.requireCurrentSemester().getId();
         String redisKey = RedisKeyUtil.buildLeaderboardKey(period, semesterId, subjectId);
 
         rebuildLeaderboard(subjectId, semesterId, redisKey);
@@ -158,11 +157,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         double points = event.points();
         Long semesterId = event.semesterId();
         if (semesterId == null) {
-            Semester semester = currentSemesterHolder.getCurrentSemester();
-            if (semester == null) {
-                return;
-            }
-            semesterId = semester.getId();
+            return;
         }
 
         List<String> targetKeys = new ArrayList<>();

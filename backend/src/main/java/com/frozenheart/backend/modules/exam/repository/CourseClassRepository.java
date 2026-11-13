@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface CourseClassRepository extends JpaRepository<CourseClass, Long> {
@@ -27,6 +28,9 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
 
     @Query("SELECT cc FROM CourseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester sem LEFT JOIN FETCH cc.lecturer l WHERE cc.id = :id")
     Optional<CourseClass> findByIdFetchAll(@Param("id") Long id);
+
+    @Query("SELECT cc FROM CourseClass cc JOIN FETCH cc.semester WHERE cc.id IN :ids")
+    List<CourseClass> findByIdInFetchSemester(@Param("ids") Collection<Long> ids);
 
     @Query("SELECT cc FROM CourseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester sem LEFT JOIN FETCH cc.lecturer l WHERE cc.semester.id = :semesterId ORDER BY cc.classCode ASC")
     List<CourseClass> findBySemesterIdFetchAll(@Param("semesterId") Long semesterId);

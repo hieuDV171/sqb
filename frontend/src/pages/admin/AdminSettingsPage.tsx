@@ -11,6 +11,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { COURSE_CLASS_KEYS } from '@/features/course-class/hooks/useCourseClasses';
 import { ADMIN_SEMESTERS_KEY, useAdminSemesters } from '@/hooks/useAdminSemesters';
 import { adminService } from '@/services/adminService';
 import { toast } from '@/stores/useToastStore';
@@ -126,8 +127,14 @@ function SemesterSettings() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ADMIN_SEMESTERS_KEY }),
         queryClient.invalidateQueries({ queryKey: ['gamification'] }),
+        queryClient.invalidateQueries({ queryKey: COURSE_CLASS_KEYS.all }),
       ]);
       setAction(null);
+    },
+    onError: (error) => {
+      if (error && typeof error === 'object' && 'code' in error && error.code === '2018') {
+        void queryClient.invalidateQueries({ queryKey: ADMIN_SEMESTERS_KEY });
+      }
     },
   });
   const list = semesters.data ?? [];

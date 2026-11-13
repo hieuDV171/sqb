@@ -10,6 +10,8 @@ import com.frozenheart.backend.modules.session.service.SemesterManagementService
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,16 +20,16 @@ import java.util.List;
 import java.util.Optional;
 
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SemesterManagementServiceImpl implements SemesterManagementService {
 
+    private static final String SINGLE_ACTIVE_INDEX = "idx_semesters_single_active";
+
     private final SemesterRepository semesterRepository;
     private final CourseClassRepository courseClassRepository;
-    private final CurrentSemesterHolder currentSemesterHolder;
 
     @Override
     @Transactional
@@ -58,7 +60,6 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ"));
         semester.setStartDate(startDate);
-        currentSemesterHolder.clearAfterCommit();
         return mapToResponse(semester);
     }
 
@@ -76,22 +77,36 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
 
             // Nếu có một học kỳ khác đang mở, ném lỗi chặn lại
             throw new AppException(
-                ResponseCode.ACTION_NOT_ALLOWED,
+                ResponseCode.ACTIVE_SEMESTER_CONFLICT,
                 String.format("Không thể kích hoạt! Học kỳ '%s' đang hoạt động. Vui lòng thực hiện Tổng kết/Chốt sổ và Đóng học kỳ này trước.", currentActive.getName())
             );
         }
 
         // Lấy học kỳ cần kích hoạt
-        Semester semester = semesterRepository.findById(semesterId)
+        Semester semester = semesterRepository.findByIdForUpdate(semesterId)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ"));
 
+        if (semester.isActive()) {
+            return mapToResponse(semester);
+        }
         if (semester.isFinalized()) {
             throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Học kỳ này đã được chốt sổ, không thể kích hoạt lại.");
         }
 
         // Kích hoạt học kỳ được chọn
         semester.setActive(true);
-        currentSemesterHolder.clearAfterCommit();
+        try {
+            semesterRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+                if (cause instanceof ConstraintViolationException violation
+                        && SINGLE_ACTIVE_INDEX.equals(violation.getConstraintName())) {
+                    throw new AppException(ResponseCode.ACTIVE_SEMESTER_CONFLICT,
+                            "Một học kỳ khác vừa được kích hoạt. Hãy kiểm tra lại danh sách học kỳ.");
+                }
+            }
+            throw exception;
+        }
 
         log.info("[SemesterManagement] Activated semester id={}, name={}", semester.getId(), semester.getName());
         return mapToResponse(semester);
@@ -100,7 +115,7 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
     @Override
     @Transactional
     public void deactivateAllSemesters() {
-        Optional<Semester> activeOpt = semesterRepository.findByActiveTrue();
+        Optional<Semester> activeOpt = semesterRepository.findActiveForUpdate();
 
         if (activeOpt.isEmpty()) {
             throw new AppException(
@@ -119,15 +134,14 @@ public class SemesterManagementServiceImpl implements SemesterManagementService 
             );
         }
 
-        semesterRepository.deactivateAllSemesters();
-        currentSemesterHolder.clearAfterCommit();
+        activeSemester.setActive(false);
         log.info("[SemesterManagement] Deactivated all semesters");
     }
 
     @Override
     @Transactional
     public void deleteSemester(Long semesterId) {
-        Semester semester = semesterRepository.findById(semesterId)
+        Semester semester = semesterRepository.findByIdForUpdate(semesterId)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ để xóa"));
 
         if (semester.isActive()) {

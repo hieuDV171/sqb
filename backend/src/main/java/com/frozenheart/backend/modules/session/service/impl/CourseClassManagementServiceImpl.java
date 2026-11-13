@@ -10,7 +10,7 @@ import com.frozenheart.backend.core.entity.user.*;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.session.dto.*;
 import com.frozenheart.backend.modules.session.repository.SemesterRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
@@ -45,7 +45,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
     private final UserProfileRepository userProfileRepository;
     private final UserGamificationRepository userGamificationRepository;
     private final UserPushSettingRepository userPushSettingRepository;
-    private final CurrentSemesterHolder currentSemesterHolder;
+    private final CurrentSemesterService currentSemesterService;
     private final ExcelParserService excelParserService;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
@@ -129,10 +129,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
             semester = semesterRepository.findById(request.semesterId())
                     .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy học kỳ"));
         } else {
-            semester = currentSemesterHolder.getCurrentSemester();
-            if (semester == null) {
-                throw new AppException(ResponseCode.NO_ACTIVE_SEMESTER, "Không có học kỳ nào đang mở trong hệ thống");
-            }
+            semester = currentSemesterService.requireCurrentSemester();
         }
 
         String cleanClassCode = request.classCode().trim();
@@ -181,7 +178,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 throw new AppException(ResponseCode.ACCESS_DENIED, "Chỉ quản trị viên được chọn học kỳ cho danh sách lớp chung");
             }
         } else {
-            Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+            Semester activeSemester = currentSemesterService.findCurrentSemester();
             if (activeSemester == null) {
                 return Collections.emptyList();
             }
@@ -203,7 +200,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         } else if (includeHistory) {
             classes = courseClassRepository.findByLecturerIdFetchAll(currentUserId);
         } else {
-            Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+            Semester activeSemester = currentSemesterService.findCurrentSemester();
             if (activeSemester == null) {
                 return Collections.emptyList();
             }
@@ -553,11 +550,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         // GIAI ĐOẠN 2: LỚP HỌC PHẦN & GÁN SINH VIÊN (Class Enrollment)
         // =========================================================================
 
-        // 1. Học kỳ: Lấy từ CurrentSemesterHolder (Không tạo mới)
-        Semester semester = currentSemesterHolder.getCurrentSemester();
-        if (semester == null) {
-            throw new AppException(ResponseCode.NO_ACTIVE_SEMESTER, "Không có học kỳ nào đang mở trong hệ thống");
-        }
+        Semester semester = currentSemesterService.requireCurrentSemester();
 
         // Kiểm tra tính nhất quán: Nếu trong file Excel có chứa thông tin học kỳ thì phải khớp với kỳ đang kích hoạt
         if (parsedData.semesterName() != null && !parsedData.semesterName().isBlank()) {
@@ -704,9 +697,6 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                         .collect(Collectors.toMap(
                                 row -> (Long) row[0],
                                 row -> ((Number) row[1]).intValue()));
-        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
-        Long activeSemesterId = activeSemester != null ? activeSemester.getId() : null;
-
         return classes.stream().map(cc -> {
             Subject s = cc.getSubject();
             Semester sem = cc.getSemester();
@@ -721,7 +711,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                     .subjectName(s != null ? s.getName() : null)
                     .semesterId(sem != null ? sem.getId() : null)
                     .semesterName(sem != null ? sem.getName() : null)
-                    .activeSemester(sem != null && Objects.equals(sem.getId(), activeSemesterId))
+                    .activeSemester(sem != null && sem.isActive())
                     .lecturerId(lecturer != null ? lecturer.getId() : null)
                     .lecturerName(lecturerName)
                     .totalStudents(studentCountMap.getOrDefault(cc.getId(), 0))
@@ -734,7 +724,6 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
         Subject s = cc.getSubject();
         Semester sem = cc.getSemester();
         User lecturer = cc.getLecturer();
-        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
         String lecturerName = (lecturer != null)
                 ? userProfileRepository.findById(lecturer.getId()).map(UserProfile::getFullName).orElse("")
                 : "";
@@ -747,8 +736,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .subjectName(s != null ? s.getName() : null)
                 .semesterId(sem != null ? sem.getId() : null)
                 .semesterName(sem != null ? sem.getName() : null)
-                .activeSemester(sem != null && activeSemester != null
-                        && Objects.equals(sem.getId(), activeSemester.getId()))
+                .activeSemester(sem != null && sem.isActive())
                 .lecturerId(lecturer != null ? lecturer.getId() : null)
                 .lecturerName(lecturerName)
                 .totalStudents(cc.getId() != null

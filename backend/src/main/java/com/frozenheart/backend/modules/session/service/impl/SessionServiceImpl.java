@@ -49,7 +49,7 @@ import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest.QuestionProposeDto;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.UpdateSubmissionSessionRequest;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -90,7 +90,7 @@ public class SessionServiceImpl implements SessionService {
     private final MetricService metricService;
     private final UserCourseClassRepository userCourseClassRepository;
     private final UserProfileRepository userProfileRepository;
-    private final CurrentSemesterHolder currentSemesterHolder;
+    private final CurrentSemesterService currentSemesterService;
     private final ReactRepository reactRepository;
 
     @Transactional
@@ -650,7 +650,7 @@ public class SessionServiceImpl implements SessionService {
     @Transactional(readOnly = true)
     public List<CourseClassOptionResponse> getMyEnrolledCourseClasses() {
         Long userId = JwtPayload.getCurrentUserPayload().getUserId();
-        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
+        Semester activeSemester = currentSemesterService.findCurrentSemester();
         List<UserCourseClass> enrollments = userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId);
 
         return enrollments.stream()
@@ -686,10 +686,7 @@ public class SessionServiceImpl implements SessionService {
         CourseClass courseClass = courseClassRepository.findByIdFetchAll(courseClassId)
                 .orElseThrow(() -> new AppException(ResponseCode.COURSE_CLASS_NOT_FOUND));
 
-        Semester activeSemester = currentSemesterHolder.getCurrentSemester();
-        if (activeSemester == null) {
-            throw new AppException(ResponseCode.NO_ACTIVE_SEMESTER, "Không có học kỳ nào đang mở trong hệ thống");
-        }
+        Semester activeSemester = currentSemesterService.requireCurrentSemester();
         if (!Objects.equals(courseClass.getSemester().getId(), activeSemester.getId())) {
             throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
                     "Chỉ có thể đề xuất câu hỏi cho lớp học phần thuộc học kỳ hiện tại");

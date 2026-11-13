@@ -1,10 +1,12 @@
 package com.frozenheart.backend.modules.gamification.service.impl;
 
 import com.frozenheart.backend.core.dto.event.PointAddedEvent;
+import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.RedisKeyUtil;
 import com.frozenheart.backend.modules.gamification.dto.LeaderboardPeriod;
 import com.frozenheart.backend.modules.gamification.repository.PointHistoryRepository;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,7 +32,7 @@ class LeaderboardServiceImplTest {
     @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
-    private CurrentSemesterHolder currentSemesterHolder;
+    private CurrentSemesterService currentSemesterService;
     @Mock
     private PointHistoryRepository pointHistoryRepository;
     private LeaderboardServiceImpl leaderboardService;
@@ -38,7 +41,7 @@ class LeaderboardServiceImplTest {
     void setUp() {
         leaderboardService = new LeaderboardServiceImpl(
                 redisTemplate,
-                currentSemesterHolder,
+                currentSemesterService,
                 pointHistoryRepository);
     }
 
@@ -55,7 +58,7 @@ class LeaderboardServiceImplTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<RedisScript<Long>> scriptCaptor = ArgumentCaptor.forClass(RedisScript.class);
         verify(redisTemplate).execute(scriptCaptor.capture(), eq(keys), eq("25"), eq("25"));
-        verifyNoInteractions(currentSemesterHolder);
+        verifyNoInteractions(currentSemesterService);
     }
 
     @Test
@@ -69,6 +72,23 @@ class LeaderboardServiceImplTest {
         verify(redisTemplate).execute(scriptCaptor.capture(), eq(keys), eq("25"), eq("50"));
         assertEquals(Long.class, scriptCaptor.getValue().getResultType());
         assertTrue(scriptCaptor.getValue().getScriptAsString().contains("tonumber(ARGV[2])"));
+    }
+
+    @Test
+    void skipsAnAwardRecordedWithoutASemester() {
+        leaderboardService.handlePointAddedEvent(new PointAddedEvent(25L, 0.25, 7L, null));
+
+        verifyNoInteractions(currentSemesterService, redisTemplate);
+    }
+
+    @Test
+    void rebuildWithNoSemesterDoesNotTouchRedisOrPointHistory() {
+        when(currentSemesterService.requireCurrentSemester())
+                .thenThrow(new AppException(ResponseCode.NO_ACTIVE_SEMESTER));
+
+        assertEquals(ResponseCode.NO_ACTIVE_SEMESTER, assertThrows(AppException.class,
+                () -> leaderboardService.rebuildLeaderboard(LeaderboardPeriod.SEMESTER, null)).getResponseCode());
+        verifyNoInteractions(redisTemplate, pointHistoryRepository);
     }
 
     @Test

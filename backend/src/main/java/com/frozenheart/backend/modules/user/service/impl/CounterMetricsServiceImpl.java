@@ -13,7 +13,7 @@ import com.frozenheart.backend.modules.gamification.repository.CoinTransactionRe
 import com.frozenheart.backend.modules.gamification.repository.PointHistoryRepository;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
@@ -43,7 +43,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
     private final PostRepository postRepository;
     private final PointHistoryRepository pointHistoryRepository;
     private final UserRepository userRepository;
-    private final CurrentSemesterHolder currentSemesterHolder;
+    private final CurrentSemesterService currentSemesterService;
     private final BadgeService badgeService;
 
     private final ApplicationEventPublisher eventPublisher;
@@ -87,15 +87,13 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
 
         UserPointRewardDto reward = new UserPointRewardDto(userId, pointsDelta, approvedDelta, reason, targetType,
                 targetId, subject);
-        awardPointsAndApprovedQuestionsBatch(List.of(reward));
+        awardPointsAndApprovedQuestionsBatch(List.of(reward), currentSemesterService.findCurrentSemester());
     }
 
     @Override
     @Transactional
-    public void awardPointsAndApprovedQuestionsBatch(List<UserPointRewardDto> rewards) {
-        if (rewards != null && !rewards.isEmpty()) {
-            awardPointsBatch(rewards, currentSemesterHolder.getCurrentSemester(), CoinTransactionType.QUESTION_APPROVED);
-        }
+    public void awardPointsAndApprovedQuestionsBatch(List<UserPointRewardDto> rewards, Semester semester) {
+        awardPointsBatch(rewards, semester, CoinTransactionType.QUESTION_APPROVED);
     }
 
     @Override
@@ -262,8 +260,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         });
 
         User userRef = userRepository.getReferenceById(userId);
-        Semester currentSemester = currentSemesterHolder.getCurrentSemester();
-
+        Semester semester = currentSemesterService.findCurrentSemester();
         PointHistory history = PointHistory.builder()
                 .user(userRef)
                 .points(pointsDelta)
@@ -271,7 +268,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 .targetType(targetType)
                 .targetId(targetId)
                 .subject(subject)
-                .semester(currentSemester)
+                .semester(semester)
                 .createdAt(Instant.now())
                 .build();
         pointHistoryRepository.save(history);
@@ -280,6 +277,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 .userId(userId)
                 .points(pointsDelta)
                 .subjectId(subject != null ? subject.getId() : null)
+                .semesterId(semester != null ? semester.getId() : null)
                 .build());
 
         // Tự động kiểm tra huy hiệu Public Points
@@ -288,14 +286,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
 
     @Override
     @Transactional
-    public void awardSecretPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId) {
-        awardSecretPoints(userId, pointsDelta, reason, targetType, targetId, null);
-    }
-
-    @Override
-    @Transactional
     public void awardSecretPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId,
-            Subject subject) {
+            Subject subject, Semester semester) {
         if (userId == null || pointsDelta <= 0)
             return;
 
@@ -314,7 +306,6 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         });
 
         User userRef = userRepository.getReferenceById(userId);
-        Semester currentSemester = currentSemesterHolder.getCurrentSemester();
         PointHistory history = PointHistory.builder()
                 .user(userRef)
                 .points(pointsDelta)
@@ -322,7 +313,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 .targetType(targetType)
                 .targetId(targetId)
                 .subject(subject)
-                .semester(currentSemester)
+                .semester(semester)
                 .createdAt(Instant.now())
                 .build();
         pointHistoryRepository.save(history);
@@ -332,14 +323,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
 
     @Override
     @Transactional
-    public void deductPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId) {
-        deductPublicPoints(userId, pointsDelta, reason, targetType, targetId, null);
-    }
-
-    @Override
-    @Transactional
     public void deductPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId,
-            Subject subject) {
+            Subject subject, Semester semester) {
         if (userId == null || pointsDelta <= 0)
             return;
 
@@ -355,7 +340,6 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     mapToCoinTargetType(targetType), targetId);
 
             User userRef = userRepository.getReferenceById(userId);
-            Semester currentSemester = currentSemesterHolder.getCurrentSemester();
             PointHistory history = PointHistory.builder()
                     .user(userRef)
                     .points(-pointsDelta)
@@ -363,7 +347,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     .targetType(targetType)
                     .targetId(targetId)
                     .subject(subject)
-                    .semester(currentSemester)
+                    .semester(semester)
                     .createdAt(Instant.now())
                     .build();
             pointHistoryRepository.save(history);
@@ -373,18 +357,18 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                             .userId(userId)
                             .points(-pointsDelta)
                             .subjectId(subject != null ? subject.getId() : null)
+                            .semesterId(semester != null ? semester.getId() : null)
                             .build());
         });
     }
 
     @Override
     @Transactional
-    public void finalizeSemesterPoints() {
+    public void finalizeSemesterPoints(Semester semester) {
         List<UserGamification> gamifications = userGamificationRepository.findAll();
         List<UserGamification> toSave = new ArrayList<>();
         List<User> usersToGrantBadges = new ArrayList<>();
         List<CoinTransaction> coinTransactionsToSave = new ArrayList<>();
-        Semester currentSemester = currentSemesterHolder.getCurrentSemester();
 
         for (UserGamification g : gamifications) {
             if (g.getSecretPoints() > 0) {
@@ -406,7 +390,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .type(CoinTransactionType.GAME_REWARD)
                         .description("Kết chuyển điểm bí mật cuối kỳ sang xu")
                         .targetType(CoinTransactionTargetType.SEMESTER)
-                        .targetId(currentSemester != null ? currentSemester.getId() : null)
+                        .targetId(semester.getId())
                         .createdAt(Instant.now())
                         .build();
                 coinTransactionsToSave.add(coinTx);
@@ -417,6 +401,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                                 .userId(g.getUserId())
                                 .points(currentSecret)
                                 .subjectId(null)
+                                .semesterId(semester.getId())
                                 .build());
             }
         }

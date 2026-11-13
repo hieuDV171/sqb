@@ -438,3 +438,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Thêm trực tiếp và chấp nhận lời mời phát `GROUP_MEMBERS_ADDED` sau commit khi có thành viên mới hoặc tham gia lại. Lời mời còn chờ chưa làm tăng số thành viên. Dùng hàng đợi cá nhân và kiểm tra PIN hiện có, gồm cả người vừa tham gia.
 - Client tải lại danh sách hội thoại, thành viên và gợi ý của nhóm. Tiêu đề chat và hộp thành viên lấy số lượng từ cùng truy vấn thành viên khi đã tải. Với người tham gia lại đang mở nhóm, sự kiện làm mới truy vấn lịch sử từng báo lỗi hoặc còn chờ.
+
+### [ADR-045] Đọc học kỳ hiện tại từ PostgreSQL
+
+- `CurrentSemesterService` đọc trực tiếp trạng thái học kỳ. Index `idx_semesters_single_active` trong changeset 07-02 bảo đảm tối đa một dòng `active = true`. Kích hoạt flush trong giao dịch để ánh xạ xung đột đúng index thành HTTP 409. Đóng kỳ lấy cùng khóa hàng với chốt sổ và Game 3, rồi cập nhật đúng dòng đã kiểm tra.
+- Khi chưa có kỳ hoạt động, API xem bảng xếp hạng và danh sách lớp theo kỳ hiện tại trả rỗng. Thao tác đồng bộ bảng xếp hạng, tạo lớp theo kỳ hiện tại, nhập lớp và đề xuất yêu cầu một kỳ hoạt động. Lớp lịch sử đọc trạng thái từ học kỳ đã join trong truy vấn lớp.
+- Sổ điểm và `PointAddedEvent` dùng cùng ID học kỳ. Game 1 lấy kỳ của lớp theo lô, Game 2 và thưởng duyệt lấy kỳ của phiên, Game 3 và chốt sổ dùng kỳ đã xác định trong giao dịch. Game 5 và Game 6 lấy kỳ tại lúc xử lý. Listener Redis bỏ qua sự kiện không có kỳ và chỉ dùng kỳ ghi trên sự kiện.

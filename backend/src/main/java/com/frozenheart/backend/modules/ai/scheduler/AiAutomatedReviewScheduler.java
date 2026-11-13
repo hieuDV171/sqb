@@ -8,6 +8,7 @@ import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
+import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
@@ -124,7 +125,7 @@ public class AiAutomatedReviewScheduler {
         List<Long> finalizedQuestionIds = new ArrayList<>();
         List<Session> allSessionsToUpdate = new ArrayList<>();
         Map<Session, List<Question>> finalizedQuestionsBySession = new LinkedHashMap<>();
-        List<UserPointRewardDto> rewardsToBatch = new ArrayList<>();
+        Map<Semester, List<UserPointRewardDto>> rewardsBySemester = new LinkedHashMap<>();
         List<Post> autoPostsToSave = new ArrayList<>();
         List<Notification> autoNotificationsToSave = new ArrayList<>();
 
@@ -168,7 +169,8 @@ public class AiAutomatedReviewScheduler {
                 User proposer = session.getProposer();
                 double totalPoints = approvedInSession * Point.APPROVED_QUESTION.getPoints();
 
-                rewardsToBatch.add(UserPointRewardDto.builder()
+                rewardsBySemester.computeIfAbsent(session.getCourseClass().getSemester(), _ -> new ArrayList<>())
+                        .add(UserPointRewardDto.builder()
                         .userId(proposer.getId())
                         .pointsDelta(totalPoints)
                         .approvedDelta(approvedInSession)
@@ -236,9 +238,8 @@ public class AiAutomatedReviewScheduler {
         if (!autoNotificationsToSave.isEmpty()) {
             notificationRepository.saveAll(autoNotificationsToSave);
         }
-        if (!rewardsToBatch.isEmpty()) {
-            counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewardsToBatch);
-        }
+        rewardsBySemester.forEach((semester, rewards) ->
+                counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewards, semester));
 
         log.info("Automated AI review fallback workflow completed successfully.");
     }

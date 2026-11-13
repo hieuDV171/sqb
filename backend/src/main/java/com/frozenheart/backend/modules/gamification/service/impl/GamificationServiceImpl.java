@@ -46,7 +46,7 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 
 import com.frozenheart.backend.core.entity.media.MediaTarget;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.ai.client.LocalAiClient;
 import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
 
@@ -106,7 +106,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final QuestionErrorReportRepository errorReportRepository;
     private final CounterMetricsService counterMetricsService;
     private final AnonymizerUtil anonymizerUtil;
-    private final CurrentSemesterHolder currentSemesterHolder;
+    private final CurrentSemesterService currentSemesterService;
     private final StringRedisTemplate redisTemplate;
     private final LeaderboardService leaderboardService;
     private final SemesterRepository semesterRepository;
@@ -391,6 +391,7 @@ public class GamificationServiceImpl implements GamificationService {
 
             List<Prediction> predictions = predictionRepository.findByGameTypeAndTargetTypeAndTargetIdFetchGambler(
                     GameType.GAME_6_LLM_IDENTIFICATION, PredictionTargetType.GAME6_SESSION, activeSession.getId());
+            List<UserPointRewardDto> rewards = new ArrayList<>();
 
             for (Prediction pred : predictions) {
                 pred.setStatus(PredictionStatus.RESOLVED);
@@ -414,14 +415,18 @@ public class GamificationServiceImpl implements GamificationService {
                 pred.setCorrect(isCorrect);
 
                 if (isCorrect) {
-                    counterMetricsService.awardPublicPoints(
+                    rewards.add(new UserPointRewardDto(
                             pred.getGambler().getId(),
                             Point.GAME6_AWARD.getPoints(),
+                            0,
                             PointHistoryReason.GAME_6_WIN,
                             PointHistoryTargetType.GAME6_SESSION,
                             activeSession.getId(),
-                            null);
+                            null));
                 }
+            }
+            if (!rewards.isEmpty()) {
+                counterMetricsService.awardGamePointsBatch(rewards, currentSemesterService.findCurrentSemester());
             }
 
             activeSession.setStatus(MinigameLlmSessionStatus.RESOLVED);
@@ -745,7 +750,7 @@ public class GamificationServiceImpl implements GamificationService {
         List<Prediction> game2Preds = predictionRepository.findPendingForTargets(
                 GameType.GAME_2_APPROVED_QUESTIONS, PredictionTargetType.SESSION, byId.keySet(), PredictionStatus.PENDING);
 
-        List<UserPointRewardDto> rewards = new ArrayList<>();
+        Map<Semester, List<UserPointRewardDto>> rewardsBySemester = new LinkedHashMap<>();
         Instant now = Instant.now();
         for (Prediction pred : game2Preds) {
             Session session = byId.get(pred.getTargetId());
@@ -773,7 +778,8 @@ public class GamificationServiceImpl implements GamificationService {
             pred.setCorrect(exact);
             if (exact) {
                 Subject subject = session.getCourseClass().getSubject();
-                rewards.add(new UserPointRewardDto(
+                rewardsBySemester.computeIfAbsent(session.getCourseClass().getSemester(), _ -> new ArrayList<>())
+                        .add(new UserPointRewardDto(
                         pred.getGambler().getId(),
                         Point.GAME2_AWARD.getPoints(),
                         0,
@@ -783,9 +789,7 @@ public class GamificationServiceImpl implements GamificationService {
                         subject));
             }
         }
-        if (!rewards.isEmpty()) {
-            counterMetricsService.awardGamePointsBatch(rewards, currentSemesterHolder.getCurrentSemester());
-        }
+        rewardsBySemester.forEach((semester, rewards) -> counterMetricsService.awardGamePointsBatch(rewards, semester));
     }
 
     // =========================================================================
@@ -830,6 +834,7 @@ public class GamificationServiceImpl implements GamificationService {
             }
         }
 
+        List<UserPointRewardDto> rewards = new ArrayList<>();
         for (Prediction p : preds) {
             p.setStatus(PredictionStatus.RESOLVED);
             p.setResolvedAt(Instant.now());
@@ -857,14 +862,26 @@ public class GamificationServiceImpl implements GamificationService {
 
             p.setCorrect(isCorrect);
             if (isCorrect) {
-                counterMetricsService.awardPublicPoints(
+                rewards.add(new UserPointRewardDto(
                         p.getGambler().getId(),
                         Point.GAME1_AWARD.getPoints(),
+                        0,
                         PointHistoryReason.GAME_1_WIN,
                         PointHistoryTargetType.COURSE_CLASS,
                         classId,
-                        null);
+                        null));
             }
+        }
+        if (!rewards.isEmpty()) {
+            Set<Long> winningClassIds = rewards.stream().map(UserPointRewardDto::targetId).collect(Collectors.toSet());
+            Map<Long, Semester> semestersByClass = courseClassRepository.findByIdInFetchSemester(winningClassIds).stream()
+                    .collect(Collectors.toMap(CourseClass::getId, CourseClass::getSemester));
+            Map<Semester, List<UserPointRewardDto>> rewardsBySemester = new LinkedHashMap<>();
+            for (UserPointRewardDto reward : rewards) {
+                Semester semester = semestersByClass.get(reward.targetId());
+                rewardsBySemester.computeIfAbsent(semester, _ -> new ArrayList<>()).add(reward);
+            }
+            rewardsBySemester.forEach((semester, batch) -> counterMetricsService.awardGamePointsBatch(batch, semester));
         }
 
         log.info("[Game1] Resolved {} predictions for target date {}", preds.size(), targetDay);
@@ -882,6 +899,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND));
 
         if (Boolean.TRUE.equals(request.isComfirmed()) && question.getStatus() == QuestionStatus.APPROVED) {
+            Semester semester = currentSemesterService.findCurrentSemester();
             Subject subject = (question.getSession() != null && question.getSession().getCourseClass() != null)
                     ? question.getSession().getCourseClass().getSubject() : null;
 
@@ -891,7 +909,7 @@ public class GamificationServiceImpl implements GamificationService {
                     PointHistoryReason.GAME_5_REPORT_ERROR_APPROVED,
                     PointHistoryTargetType.QUESTION,
                     questionId,
-                    subject);
+                    subject, semester);
 
             if (question.getSession() != null && question.getSession().getProposer() != null) {
                 Long authorId = question.getSession().getProposer().getId();
@@ -901,7 +919,7 @@ public class GamificationServiceImpl implements GamificationService {
                         PointHistoryReason.GAME_5_QUESTION_ERROR_PENALTY,
                         PointHistoryTargetType.QUESTION,
                         questionId,
-                        subject);
+                        subject, semester);
 
                 String subjectName = (subject != null) ? subject.getName() : "Chung";
                 Notification authorNotif = Notification.builder()
@@ -949,7 +967,7 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         game3ResolutionService.resolveBeforeSemesterClose(current, Instant.now());
-        counterMetricsService.finalizeSemesterPoints();
+        counterMetricsService.finalizeSemesterPoints(current);
 
         // Gửi thông báo tổng kết Game 5 (Recap) cho những người báo lỗi chính xác trong kỳ
         sendGame5SemesterRecapNotifications(current.getId());
@@ -965,6 +983,7 @@ public class GamificationServiceImpl implements GamificationService {
             predsBySubject.computeIfAbsent(p.getTargetId(), _ -> new ArrayList<>()).add(p);
         }
 
+        List<UserPointRewardDto> game4Rewards = new ArrayList<>();
         for (Map.Entry<Long, List<Prediction>> entry : predsBySubject.entrySet()) {
             Long subjectId = entry.getKey();
             List<Prediction> preds = entry.getValue();
@@ -993,15 +1012,19 @@ public class GamificationServiceImpl implements GamificationService {
                 p.setCorrect(isWinner);
 
                 if (isWinner) {
-                    counterMetricsService.awardPublicPoints(
+                    game4Rewards.add(new UserPointRewardDto(
                             p.getGambler().getId(),
                             Point.GAME4_AWARD.getPoints(),
+                            0,
                             PointHistoryReason.GAME_4_TOP3_WINNER,
                             PointHistoryTargetType.SUBJECT,
                             subjectId,
-                            subjectRef);
+                            subjectRef));
                 }
             }
+        }
+        if (!game4Rewards.isEmpty()) {
+            counterMetricsService.awardGamePointsBatch(game4Rewards, current);
         }
 
         // Migrate các câu APPROVED sang legacy_questions kèm imageUrls
@@ -1066,7 +1089,6 @@ public class GamificationServiceImpl implements GamificationService {
         }
 
         current.setFinalized(true);
-        currentSemesterHolder.clearAfterCommit();
 
         leaderboardService.scheduleOldSemesterCleanup(current.getId());
 
@@ -1174,8 +1196,15 @@ public class GamificationServiceImpl implements GamificationService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
         int pageLimit = Math.clamp(limit != null ? limit : 20, 1, 50);
 
-        String redisKey = RedisKeyUtil.buildLeaderboardKey(period, currentSemesterHolder.getCurrentSemester().getId(),
-                subjectId);
+        if (period == LeaderboardPeriod.SUBJECT && subjectId == null) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Cần subjectId cho BXH SUBJECT");
+        }
+        Semester semester = currentSemesterService.findCurrentSemester();
+        if (semester == null) {
+            return buildEmptyResponse(MyRankDto.builder().rank(0).totalPoints(0.0)
+                    .topPercent(100.0).totalParticipants(0).build());
+        }
+        String redisKey = RedisKeyUtil.buildLeaderboardKey(period, semester.getId(), subjectId);
         ZSetOperations<String, String> zSetOps = redisTemplate.opsForZSet();
 
         Long totalParticipants = zSetOps.zCard(redisKey);
@@ -1439,7 +1468,7 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     @Transactional
     public void publishMonthlyLeaderboardHonorPost() {
-        Semester current = currentSemesterHolder.getCurrentSemester();
+        Semester current = currentSemesterService.findCurrentSemester();
         if (current == null) {
             log.warn("[HonorPost] Không tìm thấy học kỳ hiện tại, bỏ qua tạo post vinh danh đầu tháng.");
             return;

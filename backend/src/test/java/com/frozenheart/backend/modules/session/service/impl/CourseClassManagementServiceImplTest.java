@@ -13,7 +13,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.session.dto.ExcelParsedClassData;
 import com.frozenheart.backend.modules.session.dto.ExcelStudentRow;
 import com.frozenheart.backend.modules.session.dto.AssignStudentsRequest;
@@ -73,7 +73,7 @@ class CourseClassManagementServiceImplTest {
     @Mock
     private UserPushSettingRepository userPushSettingRepository;
     @Mock
-    private CurrentSemesterHolder currentSemesterHolder;
+    private CurrentSemesterService currentSemesterService;
     @Mock
     private ExcelParserService excelParserService;
     @Mock
@@ -169,7 +169,7 @@ class CourseClassManagementServiceImplTest {
         when(excelParserService.parseCourseClassExcel(file)).thenReturn(parsedData);
         when(userRepository.findExistingEmailsByEmailIn(any())).thenReturn(Set.of(row.email()));
         when(userProfileRepository.findAllByStudentLecturerCodeIn(any())).thenReturn(List.of(studentProfile));
-        when(currentSemesterHolder.getCurrentSemester()).thenReturn(semester);
+        when(currentSemesterService.requireCurrentSemester()).thenReturn(semester);
         when(subjectRepository.findByCode("IT4788")).thenReturn(Optional.of(subject));
         when(courseClassRepository.findByClassCodeAndSemesterId(parsedData.classCode(), semester.getId()))
                 .thenReturn(Optional.of(existingClass));

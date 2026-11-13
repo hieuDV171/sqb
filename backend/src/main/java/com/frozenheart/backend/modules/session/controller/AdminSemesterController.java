@@ -72,8 +72,9 @@ public class AdminSemesterController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Kích hoạt học kỳ thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
-            @ApiResponse(responseCode = "403", description = "Thao tác không được phép: Đang có học kỳ khác mở chưa đóng, hoặc học kỳ đã chốt sổ (ACTION_NOT_ALLOWED)"),
-            @ApiResponse(responseCode = "404", description = "Không tìm thấy học kỳ (RESOURCE_NOT_FOUND)")
+            @ApiResponse(responseCode = "403", description = "Học kỳ đã chốt sổ hoặc không có quyền quản trị"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy học kỳ (RESOURCE_NOT_FOUND)"),
+            @ApiResponse(responseCode = "409", description = "Đã có học kỳ khác hoạt động (ACTIVE_SEMESTER_CONFLICT)")
     })
     @PutMapping("/{semesterId}/activate")
     public ResponseEntity<GlobalResponse<SemesterResponse>> activateSemester(

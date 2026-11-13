@@ -194,6 +194,8 @@ class QuestionReviewServiceImplTest {
         Session session = question.getSession();
         session.setProposer(User.builder().id(9L).build());
         session.getCourseClass().setSubject(Subject.builder().id(10L).code("IT").name("Môn học").build());
+        Semester semester = Semester.builder().id(22L).build();
+        session.getCourseClass().setSemester(semester);
         when(sessionRepository.findByIdFetchCourseClassProposerAndReviewer(30L)).thenReturn(Optional.of(session));
         when(questionRepository.findBySessionId(30L)).thenReturn(List.of(question));
         when(userRepository.getReferenceById(7L)).thenReturn(User.builder().id(7L).build());
@@ -206,7 +208,7 @@ class QuestionReviewServiceImplTest {
         verify(sessionRepository, times(2)).lockReviewSessions(List.of(30L), false);
         verify(sessionRepository).save(session);
         verify(gamificationService).onSessionsFinalized(Map.of(session, List.of(question)));
-        verify(counterMetricsService).awardPointsAndApprovedQuestionsBatch(anyList());
+        verify(counterMetricsService).awardPointsAndApprovedQuestionsBatch(anyList(), org.mockito.ArgumentMatchers.same(semester));
         verify(notificationRepository).save(any());
         verify(questionRepository, never()).saveAll(anyList());
     }

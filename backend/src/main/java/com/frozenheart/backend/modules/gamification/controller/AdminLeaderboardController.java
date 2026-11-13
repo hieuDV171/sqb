@@ -27,7 +27,8 @@ public class AdminLeaderboardController {
 
     @Operation(summary = "Tái tạo Bảng xếp hạng trong Redis (Admin)", description = "Quản trị viên kích hoạt đồng bộ và tính toán lại toàn bộ điểm số trên Redis ZSet cho bảng xếp hạng.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Tái tạo bảng xếp hạng thành công")
+            @ApiResponse(responseCode = "200", description = "Tái tạo bảng xếp hạng thành công"),
+            @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc chưa có học kỳ hoạt động (NO_ACTIVE_SEMESTER)")
     })
     @PostMapping("/rebuild")
     public ResponseEntity<GlobalResponse<Void>> rebuildLeaderboard(

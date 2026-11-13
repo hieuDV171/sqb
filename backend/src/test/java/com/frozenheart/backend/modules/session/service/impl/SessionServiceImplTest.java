@@ -26,7 +26,7 @@ import com.frozenheart.backend.modules.session.dto.ProposeSessionRequest;
 import com.frozenheart.backend.modules.session.dto.ProposeSessionResponse;
 import com.frozenheart.backend.modules.session.dto.SubmissionProjection;
 import com.frozenheart.backend.modules.session.dto.SubmissionsResponse;
-import com.frozenheart.backend.modules.session.component.CurrentSemesterHolder;
+import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.session.repository.QuestionMediaRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -86,7 +86,7 @@ class SessionServiceImplTest {
     @Mock
     private UserProfileRepository userProfileRepository;
     @Mock
-    private CurrentSemesterHolder currentSemesterHolder;
+    private CurrentSemesterService currentSemesterService;
     @Mock
     private ReactRepository reactRepository;
 
@@ -113,7 +113,7 @@ class SessionServiceImplTest {
 
         when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(proposer));
         when(courseClassRepository.findByIdFetchAll(courseClassId)).thenReturn(Optional.of(courseClass));
-        when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
+        when(currentSemesterService.requireCurrentSemester()).thenReturn(activeSemester);
         when(anonymizerUtil.encodeUserId(userId)).thenReturn("ABC123");
         when(sessionRepository.save(any(Session.class))).thenAnswer(invocation -> {
             Session session = invocation.getArgument(0);
@@ -213,7 +213,7 @@ class SessionServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(proposer));
         CourseClass oldCourseClass = courseClass(courseClassId, oldSemester, subject);
         when(courseClassRepository.findByIdFetchAll(courseClassId)).thenReturn(Optional.of(oldCourseClass));
-        when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
+        when(currentSemesterService.requireCurrentSemester()).thenReturn(activeSemester);
 
         ProposeSessionRequest request = new ProposeSessionRequest(
                 "Phiên sai học kỳ",
@@ -244,7 +244,7 @@ class SessionServiceImplTest {
         Subject oldSubject = Subject.builder().id(11L).code("IT4788").name("Môn học kỳ cũ").build();
         Subject activeSubject = Subject.builder().id(12L).code("IT4999").name("Môn học kỳ hiện tại").build();
 
-        when(currentSemesterHolder.getCurrentSemester()).thenReturn(activeSemester);
+        when(currentSemesterService.findCurrentSemester()).thenReturn(activeSemester);
         when(userCourseClassRepository.findByUserIdFetchCourseClassAndSubject(userId))
                 .thenReturn(List.of(
                         enrollment(21L, oldSemester, oldSubject),

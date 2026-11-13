@@ -540,7 +540,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .targetType(PointHistoryTargetType.SESSION)
                 .targetId(session.getId())
                 .subject(subject)
-                .build()));
+                .build()), session.getCourseClass().getSemester());
     }
 
     public static void createPostAndAddFeed(List<Post> postsToSave, Session s, User proposer, Subject subject,

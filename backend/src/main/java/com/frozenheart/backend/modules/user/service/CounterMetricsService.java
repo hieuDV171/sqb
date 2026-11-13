@@ -18,7 +18,7 @@ public interface CounterMetricsService {
 
     void awardPointsAndApprovedQuestions(Long userId, double pointsDelta, int approvedDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject);
 
-    void awardPointsAndApprovedQuestionsBatch(List<UserPointRewardDto> rewards);
+    void awardPointsAndApprovedQuestionsBatch(List<UserPointRewardDto> rewards, Semester semester);
 
     void awardGamePointsBatch(List<UserPointRewardDto> rewards, Semester semester);
 
@@ -26,15 +26,11 @@ public interface CounterMetricsService {
 
     void awardPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject);
 
-    void awardSecretPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId);
+    void awardSecretPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject, Semester semester);
 
-    void awardSecretPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject);
+    void deductPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject, Semester semester);
 
-    void deductPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId);
-
-    void deductPublicPoints(Long userId, double pointsDelta, PointHistoryReason reason, PointHistoryTargetType targetType, Long targetId, Subject subject);
-
-    void finalizeSemesterPoints();
+    void finalizeSemesterPoints(Semester semester);
 
     void incrementBadgesCount(Long userId, int delta);
 
