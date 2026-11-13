@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1794547953456-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: ai_chat_messages
+            constraintName: fk_ai_chat_messages_on_session
+        - dropUniqueConstraint:
+            constraintName: uc_ai_chat_sessions_sessionid
+            tableName: ai_chat_sessions
+  - changeSet:
+      id: 1794547953456-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: ai_chat_sessions
+            constraintName: fk_ai_chat_sessions_on_user
+  - changeSet:
+      id: 1794547953456-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropTable:
+            cascadeConstraints: true
+            tableName: ai_chat_messages
+  - changeSet:
+      id: 1794547953456-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropTable:
+            cascadeConstraints: true
+            tableName: ai_chat_sessions
+  - changeSet:
+      id: 1794547953456-13
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropSequence:
+            sequenceName: ai_chat_messages_seq
+  - changeSet:
+      id: 1794547953456-14
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropSequence:
+            sequenceName: ai_chat_sessions_seq
+

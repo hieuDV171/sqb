@@ -54,9 +54,12 @@ public interface BlockRepository extends JpaRepository<UserBlock, UserBlockId> {
             SELECT b
             FROM UserBlock b
             WHERE b.blocker.id = :blockerId
-              AND b.createdAt < :cursor
-            ORDER BY b.createdAt DESC
+              AND (:firstPage = true
+                  OR (:withoutTimestamp = false AND (b.createdAt < :cursor OR b.createdAt IS NULL OR (b.createdAt = :cursor AND b.blocked.id < :cursorId)))
+                  OR (:withoutTimestamp = true AND b.createdAt IS NULL AND b.blocked.id < :cursorId))
+            ORDER BY b.createdAt DESC NULLS LAST, b.blocked.id DESC
             """)
     List<UserBlock> findBlockedUsersCursor(@Param("blockerId") Long blockerId, @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId, @Param("firstPage") boolean firstPage, @Param("withoutTimestamp") boolean withoutTimestamp,
             Pageable pageable);
 }

@@ -1,7 +1,6 @@
 package com.frozenheart.backend.core.entity.user;
 
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
-import com.frozenheart.backend.core.entity.ai.AiChatSession;
 import com.frozenheart.backend.core.entity.conversation.Conversation;
 import com.frozenheart.backend.core.entity.conversation.Message;
 import com.frozenheart.backend.core.entity.conversation.UserDeletedMessageOnlyMe;
@@ -198,9 +197,5 @@ public class User {
     @Singular
     @OneToMany(mappedBy = "user")
     private Set<UserDevice> devices;
-
-    @Singular
-    @OneToMany(mappedBy = "user")
-    private Set<AiChatSession> aiChatSessions;
 
 }

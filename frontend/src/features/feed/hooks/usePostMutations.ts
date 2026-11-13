@@ -11,6 +11,7 @@ export function usePostMutations() {
     mutationFn: (data: CreatePostRequest) => postService.createPost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
+      queryClient.invalidateQueries({ queryKey: ['lecture-videos'] });
       queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
         type: 'success',
@@ -32,6 +33,7 @@ export function usePostMutations() {
       postService.updatePost(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
+      queryClient.invalidateQueries({ queryKey: ['lecture-videos'] });
       queryClient.invalidateQueries({ queryKey: ['post-detail', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
@@ -53,6 +55,7 @@ export function usePostMutations() {
     mutationFn: (id: number) => postService.deletePost(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
+      queryClient.invalidateQueries({ queryKey: ['lecture-videos'] });
       queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       addToast({
         type: 'success',

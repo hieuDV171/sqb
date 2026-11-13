@@ -117,8 +117,8 @@ export const postService = {
     after?: number,
     limit: number = 2
   ): Promise<GlobalResponse<CursorResponse<VideoPostItemDto>>> => {
-    return (await axiosClient.get<GlobalResponse<CursorResponse<VideoPostItemDto>>>('/video-posts', {
+    return axiosClient.get<unknown, GlobalResponse<CursorResponse<VideoPostItemDto>>>('/video-posts', {
       params: { subject_id: subjectId, after, limit },
-    })) as unknown as GlobalResponse<CursorResponse<VideoPostItemDto>>;
+    });
   },
 };

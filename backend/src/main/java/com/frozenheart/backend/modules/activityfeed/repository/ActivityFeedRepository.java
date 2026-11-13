@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.activityfeed.repository;
 
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
+import com.frozenheart.backend.modules.post.repository.PostRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,13 @@ import java.util.Optional;
 @Repository
 public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long> {
 
+    String LECTURE_VIDEO_FILTER = """
+            AND (f.actionType IS NULL OR f.actionType <> 'PUBLISHED_LECTURE_VIDEO' OR EXISTS (
+                SELECT 1 FROM Post p
+                WHERE f.targetType = 'POST' AND p.id = f.targetId
+                  AND p.postType = 'LEARNING_VIDEO' AND p.deletedAt IS NULL AND
+            """ + PostRepository.LECTURE_VIDEO_ACCESS + "AND " + PostRepository.POST_VISIBILITY_ACCESS + "))\n";
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT f FROM ActivityFeed f JOIN FETCH f.user
@@ -27,7 +35,12 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
     Optional<ActivityFeed> findBadgeAwardForUpdate(@Param("feedId") Long feedId);
 
     @EntityGraph(attributePaths = { "user" })
-    List<ActivityFeed> findByIdLessThanOrderByIdDesc(Long after, Pageable pageable);
+    @Query("""
+            SELECT f FROM ActivityFeed f WHERE f.id < :cursor
+              AND (f.actionType IS NULL OR f.actionType <> 'PUBLISHED_LECTURE_VIDEO')
+            ORDER BY f.id DESC
+            """)
+    List<ActivityFeed> findAnonymousFeeds(@Param("cursor") Long cursor, Pageable pageable);
 
     @EntityGraph(attributePaths = { "user" })
     @Query("""
@@ -44,6 +57,7 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
                       com.frozenheart.backend.core.entity.activityfeed.ActionType.REACHED_MILESTONE
                   )
               )
+            """ + LECTURE_VIDEO_FILTER + """
             ORDER BY f.id DESC
             """)
     List<ActivityFeed> findPersonalizedFeeds(
@@ -51,6 +65,8 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
             @Param("networkUserIds") Collection<Long> networkUserIds,
             @Param("blockedUserIds") Collection<Long> blockedUserIds,
             @Param("hasBlocked") boolean hasBlocked,
+            @Param("viewerId") Long viewerId,
+            @Param("admin") boolean admin,
             Pageable pageable);
 
     @EntityGraph(attributePaths = { "user" })
@@ -67,7 +83,11 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
             @Param("hasBlocked") boolean hasBlocked,
             Pageable pageable);
 
-    int countByCreatedAtAfter(Instant since);
+    @Query("""
+            SELECT COUNT(f) FROM ActivityFeed f WHERE f.createdAt > :since
+              AND (f.actionType IS NULL OR f.actionType <> 'PUBLISHED_LECTURE_VIDEO')
+            """)
+    int countAnonymousNewFeeds(@Param("since") Instant since);
 
     @Query("""
             SELECT COUNT(f)
@@ -83,12 +103,14 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
                       com.frozenheart.backend.core.entity.activityfeed.ActionType.REACHED_MILESTONE
                   )
               )
-            """)
+            """ + LECTURE_VIDEO_FILTER)
     int countPersonalizedNewFeeds(
             @Param("since") Instant since,
             @Param("networkUserIds") Collection<Long> networkUserIds,
             @Param("blockedUserIds") Collection<Long> blockedUserIds,
-            @Param("hasBlocked") boolean hasBlocked);
+            @Param("hasBlocked") boolean hasBlocked,
+            @Param("viewerId") Long viewerId,
+            @Param("admin") boolean admin);
 
     int countByIdGreaterThan(Long afterId);
 }

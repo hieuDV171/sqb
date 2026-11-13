@@ -9,6 +9,7 @@ import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
@@ -85,10 +86,11 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             boolean hasBlocked = (blockedIds != null && !blockedIds.isEmpty());
             Collection<Long> safeBlockedIds = hasBlocked ? blockedIds : Collections.singleton(0L);
 
+            boolean admin = UserRole.ADMIN.name().equalsIgnoreCase(payloadOpt.orElseThrow().getRole());
             feeds = activityFeedRepository.findPersonalizedFeeds(cursor, networkIds, safeBlockedIds, hasBlocked,
-                    pageable);
+                    currentUserId, admin, pageable);
         } else {
-            feeds = activityFeedRepository.findByIdLessThanOrderByIdDesc(cursor, pageable);
+            feeds = activityFeedRepository.findAnonymousFeeds(cursor, pageable);
         }
 
         boolean hasNext = false;
@@ -212,10 +214,11 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 boolean hasBlocked = (blockedIds != null && !blockedIds.isEmpty());
                 Collection<Long> safeBlockedIds = hasBlocked ? blockedIds : Collections.singleton(0L);
 
+                boolean admin = UserRole.ADMIN.name().equalsIgnoreCase(payloadOpt.orElseThrow().getRole());
                 count = activityFeedRepository.countPersonalizedNewFeeds(sinceTime, networkIds, safeBlockedIds,
-                        hasBlocked);
+                        hasBlocked, currentUserId, admin);
             } else {
-                count = activityFeedRepository.countByCreatedAtAfter(sinceTime);
+                count = activityFeedRepository.countAnonymousNewFeeds(sinceTime);
             }
         }
         return NewFeedCountResponseDto.builder()

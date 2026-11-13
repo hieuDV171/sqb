@@ -1,6 +1,7 @@
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -46,9 +47,11 @@ interface ListQuery {
   isError: boolean;
   isFetchNextPageError: boolean;
   isFetchingNextPage: boolean;
+  isFetching: boolean;
+  data?: { pages: readonly unknown[] };
   hasNextPage: boolean;
   refetch: () => Promise<unknown>;
-  fetchNextPage: () => Promise<unknown>;
+  fetchNextPage: (options: { cancelRefetch: boolean }) => Promise<unknown>;
 }
 
 export function ConnectionList({ query, count, searching = false, empty, children }: {
@@ -87,15 +90,7 @@ export function ConnectionList({ query, count, searching = false, empty, childre
         <EmptyState icon={Users} title={searching ? 'Chưa có kết quả khớp' : empty}
           description={searching ? 'Hãy thử từ khóa khác hoặc tải thêm kết quả nếu còn.' : undefined} />
       )}
-      {(query.hasNextPage || query.isFetchNextPageError) && (
-        <div className="grid justify-items-center gap-2">
-          {query.isFetchNextPageError && <p role="alert" className="text-sm text-destructive">Không thể tải trang tiếp theo.</p>}
-          <Button variant="outline" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>
-            {query.isFetchingNextPage && <Loader2 className="motion-safe:animate-spin" aria-hidden="true" />}
-            {query.isFetchingNextPage ? 'Đang tải…' : query.isFetchNextPageError ? 'Thử tải lại' : 'Tải thêm'}
-          </Button>
-        </div>
-      )}
+      <InfiniteListFooter query={query} auto={count > 0 || !searching} />
     </div>
   );
 }

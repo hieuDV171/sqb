@@ -1,3 +1,4 @@
+import { CursorPagination, type PageCursor } from '@/components/ui/cursor-pagination';
 import { useState, useMemo } from 'react';
 import {
   FileText,
@@ -26,7 +27,7 @@ export function LecturerExamsPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
 
   // Pagination cursor state
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
+  const [cursor, setCursor] = useState<PageCursor>({});
 
   // Fetch exams query
   const {
@@ -37,7 +38,7 @@ export function LecturerExamsPage() {
     refetch,
   } = useMyExams({
     subjectId: selectedSubjectId,
-    after: cursor,
+    ...cursor,
     limit: 10,
   });
 
@@ -69,7 +70,7 @@ export function LecturerExamsPage() {
 
   const handleSubjectFilterChange = (subjectId?: number) => {
     setSelectedSubjectId(subjectId);
-    setCursor(undefined);
+    setCursor({});
   };
 
   const handleExamCreated = (newExamId: number) => {
@@ -319,29 +320,8 @@ export function LecturerExamsPage() {
         </div>
       )}
 
-      {/* Pagination Footer */}
-      {examListData?.pagination?.hasNext && (
-        <div className="flex justify-center pt-4">
-          <button
-            type="button"
-            onClick={() => {
-              const lastItem = exams[exams.length - 1];
-              if (lastItem) setCursor(lastItem.examId);
-            }}
-            disabled={isFetching}
-            className="px-6 py-2.5 rounded-xl font-semibold text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            {isFetching ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Đang tải thêm...
-              </>
-            ) : (
-              'Xem thêm các đề thi cũ hơn'
-            )}
-          </button>
-        </div>
-      )}
+      <CursorPagination pagination={examListData?.pagination} cursor={cursor}
+        busy={isFetching} onChange={setCursor} />
 
       {/* Generate Exam Modal */}
       <GenerateExamModal

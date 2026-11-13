@@ -42,32 +42,48 @@ export const userService = {
 
   // ==================== FRIENDSHIPS ====================
   getMyFriends: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<FriendListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<FriendListResponseDto>>('/friendships', {
-      params: { after, limit },
-    })) as any;
+    return axiosClient.get<unknown, GlobalResponse<FriendListResponseDto>>('/friendships', {
+      params: {
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+        after: typeof cursor === 'number' ? cursor : undefined,
+        limit,
+      },
+    });
   },
 
   getReceivedFriendRequests: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<FriendRequestReceivedListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<FriendRequestReceivedListResponseDto>>(
+    return axiosClient.get<unknown, GlobalResponse<FriendRequestReceivedListResponseDto>>(
       '/friendships/requests/received',
-      { params: { after, limit } }
-    )) as any;
+      {
+        params: {
+          cursor: typeof cursor === 'string' ? cursor : undefined,
+          after: typeof cursor === 'number' ? cursor : undefined,
+          limit,
+        },
+      }
+    );
   },
 
   getSentFriendRequests: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<FriendRequestSentListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<FriendRequestSentListResponseDto>>(
+    return axiosClient.get<unknown, GlobalResponse<FriendRequestSentListResponseDto>>(
       '/friendships/requests/sent',
-      { params: { after, limit } }
-    )) as any;
+      {
+        params: {
+          cursor: typeof cursor === 'string' ? cursor : undefined,
+          after: typeof cursor === 'number' ? cursor : undefined,
+          limit,
+        },
+      }
+    );
   },
 
   sendFriendRequest: async (
@@ -108,21 +124,29 @@ export const userService = {
 
   // ==================== FOLLOWS ====================
   getFollowing: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<FollowingListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<FollowingListResponseDto>>('/follows/following', {
-      params: { after, limit },
-    })) as any;
+    return axiosClient.get<unknown, GlobalResponse<FollowingListResponseDto>>('/follows/following', {
+      params: {
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+        after: typeof cursor === 'number' ? cursor : undefined,
+        limit,
+      },
+    });
   },
 
   getFollowers: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<FollowerListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<FollowerListResponseDto>>('/follows/followers', {
-      params: { after, limit },
-    })) as any;
+    return axiosClient.get<unknown, GlobalResponse<FollowerListResponseDto>>('/follows/followers', {
+      params: {
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+        after: typeof cursor === 'number' ? cursor : undefined,
+        limit,
+      },
+    });
   },
 
   getUserRelationshipStats: async (
@@ -159,11 +183,15 @@ export const userService = {
   },
 
   getBlockedUsers: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<BlockedListResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<BlockedListResponseDto>>('/blocks', {
-      params: { after, limit },
-    })) as any;
+    return axiosClient.get<unknown, GlobalResponse<BlockedListResponseDto>>('/blocks', {
+      params: {
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+        after: typeof cursor === 'number' ? cursor : undefined,
+        limit,
+      },
+    });
   },
 };

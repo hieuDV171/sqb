@@ -1,34 +1,12 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { reviewService } from '../services/reviewService';
+import type { GetReviewableSessionsParams } from '../types/review.types';
 
-interface UseReviewableSessionsParams {
-  course_class_id?: number;
-  limit?: number;
-}
-
-export const useReviewableSessions = ({
-  course_class_id,
-  limit = 10,
-}: UseReviewableSessionsParams = {}) => {
-  return useInfiniteQuery({
-    queryKey: ['reviewableSessions', { course_class_id, limit }],
-    queryFn: async ({ pageParam }) => {
-      const res = await reviewService.getReviewableSessions({
-        after: pageParam,
-        limit,
-        course_class_id,
-      });
-      return res.data;
-    },
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (lastPage, _pages, previous) => {
-      const after = lastPage.pagination?.after;
-      if (lastPage.pagination?.hasNext && after != null && after !== previous) {
-        return after;
-      }
-      return undefined;
-    },
-    staleTime: 30 * 1000,
+export function useReviewableSessions(params: GetReviewableSessionsParams = {}) {
+  return useQuery({
+    queryKey: ['reviewableSessions', params],
+    queryFn: async () => (await reviewService.getReviewableSessions(params)).data,
+    staleTime: 30_000,
     refetchOnMount: 'always',
   });
-};
+}

@@ -1,3 +1,4 @@
+import { CursorPagination, type PageCursor } from '@/components/ui/cursor-pagination';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Bot, BrainCircuit, ChevronDown, Database, History, RefreshCw, Send, ShieldAlert, Target, Users } from 'lucide-react';
@@ -193,7 +194,8 @@ export function PredictionArenaTab() {
   const selectedLlmQuestionIds = game6Choices?.sessionId === game6?.sessionId ? game6Choices?.ids ?? [] : [];
   const submitGame6 = useSubmitGame6();
 
-  const historyQuery = useMyPredictions();
+  const [historyCursor, setHistoryCursor] = useState<PageCursor>({});
+  const historyQuery = useMyPredictions(historyCursor, activeGame === 'history');
   const predictions = historyQuery.data?.contents ?? [];
 
   function submitGame1(event: FormEvent) {
@@ -381,6 +383,8 @@ export function PredictionArenaTab() {
             : historyQuery.isError ? <ErrorState title="Không thể tải lịch sử dự đoán" onRetry={() => void historyQuery.refetch()} />
             : predictions.length === 0 ? <EmptyState icon={History} title="Bạn chưa có lượt dự đoán nào" />
             : <ul className="divide-y divide-border">{predictions.map((item) => <HistoryRow key={item.predictionId} item={item} />)}</ul>}
+          <CursorPagination pagination={historyQuery.data?.pagination} cursor={historyCursor}
+            busy={historyQuery.isFetching} onChange={setHistoryCursor} />
         </GamePanel>
       )}
     </div>

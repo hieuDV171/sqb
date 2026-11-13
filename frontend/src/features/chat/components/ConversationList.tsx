@@ -3,7 +3,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   useConversations,
   useHiddenConversations,
@@ -14,6 +14,7 @@ import {
 import { useChatStore } from '../stores/useChatStore';
 import { chatService } from '../services/chatService';
 import { ConversationItem } from './ConversationItem';
+import type { ConversationListResponseDto } from '../types/chat.types';
 import {
   Search,
   Users,
@@ -24,6 +25,15 @@ import {
   LockOpen,
   Loader2,
 } from 'lucide-react';
+
+function flattenConversations(data?: { pages: ConversationListResponseDto[] }) {
+  const seen = new Set<number>();
+  return data?.pages.flatMap((page) => page.items).filter(({ conversationId }) => {
+    if (seen.has(conversationId)) return false;
+    seen.add(conversationId);
+    return true;
+  }) ?? [];
+}
 
 interface ConversationListProps {
   onSelectConversation: (conversationId: number) => void;
@@ -64,15 +74,8 @@ export function ConversationList({
   const leaveGroupMutation = useLeaveGroup();
 
   // Xử lý danh sách hội thoại phẳng
-  const allConversations = useMemo(() => {
-    if (!normalData?.pages) return [];
-    return normalData.pages.flatMap((page) => page.items);
-  }, [normalData]);
-
-  const hiddenConversations = useMemo(() => {
-    if (!hiddenData?.pages) return [];
-    return hiddenData.pages.flatMap((page) => page.items);
-  }, [hiddenData]);
+  const allConversations = useMemo(() => flattenConversations(normalData), [normalData]);
+  const hiddenConversations = useMemo(() => flattenConversations(hiddenData), [hiddenData]);
 
   // Lọc theo Tab và Search
   const filteredList = useMemo(() => {
@@ -107,10 +110,12 @@ export function ConversationList({
     }
   };
 
+  const listRoot = useRef<HTMLDivElement>(null);
   const { sentinel, supportsAutoLoad } = useInfiniteScroll(
     !locked && current.hasNextPage && !current.isFetching && !current.isFetchNextPageError && filteredList.length > 0,
     current.fetchNextPage,
     current.data?.pages.length ?? 0,
+    listRoot,
   );
 
   return (
@@ -167,7 +172,7 @@ export function ConversationList({
         </Button>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2">
+      <div ref={listRoot} className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2">
         {locked ? (
           <div className="space-y-3 p-6 text-center">
             <FolderLock aria-hidden="true" className="mx-auto size-7 text-warning" />

@@ -23,7 +23,7 @@ public interface GamificationService {
 
     Game6ActiveSessionResponse processAndGenerateGame6WeeklySession();
 
-    MyPredictionsResponse getMyPredictions(Long after, Integer limit);
+    MyPredictionsResponse getMyPredictions(Long after, Long before, Integer limit);
 
     void onSessionsFinalized(Map<Session, List<Question>> sessions);
 

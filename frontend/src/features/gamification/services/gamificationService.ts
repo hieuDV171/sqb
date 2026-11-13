@@ -198,9 +198,9 @@ export const gamificationService = {
     after?: number;
     limit?: number;
   }): Promise<GlobalResponse<CosmeticShopResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<CosmeticShopResponseDto>>('/cosmetics/shop', {
+    return axiosClient.get<unknown, GlobalResponse<CosmeticShopResponseDto>>('/cosmetics/shop', {
       params,
-    })) as any;
+    });
   },
 
   /**
@@ -302,11 +302,12 @@ export const gamificationService = {
    */
   getMyPredictions: async (params?: {
     after?: number;
+    before?: number;
     limit?: number;
   }): Promise<GlobalResponse<MyPredictionsResponse>> => {
-    return (await axiosClient.get<GlobalResponse<MyPredictionsResponse>>('/games/my-predictions', {
+    return axiosClient.get<unknown, GlobalResponse<MyPredictionsResponse>>('/games/my-predictions', {
       params,
-    })) as any;
+    });
   },
 
   /**

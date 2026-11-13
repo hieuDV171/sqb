@@ -17,6 +17,7 @@ import java.util.List;
 public class BlockedListResponseDto {
     private List<BlockedUserDto> items;
     private CursorPaginationDto pagination;
+    private String nextCursor;
 
     private int totalBlocked;
 }

@@ -46,13 +46,15 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
         mediaUrl: data.mediaUrl,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey: ['comment-replies', targetType, targetId] });
 
       if (targetType === 'SESSION') {
         void queryClient.invalidateQueries({ queryKey: ['practice-catalog'] });
         void queryClient.invalidateQueries({ queryKey: ['my-submissions'] });
       }
       if (targetType === 'POST') {
+        void queryClient.invalidateQueries({ queryKey: ['lecture-videos'] });
         void queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
         queryClient.setQueriesData<InfiniteData<CursorResponse<ActivityFeedItemDto>>>(
           { queryKey: ['activity-feeds'] },
@@ -178,8 +180,10 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
     },
     onSettled: () => {
       // 5. Luôn làm mới ngầm sau cùng để đối soát với server
-      queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey: ['comment-replies', targetType, targetId] });
       if (targetType === 'POST') {
+        void queryClient.invalidateQueries({ queryKey: ['lecture-videos'] });
         void queryClient.invalidateQueries({ queryKey: ['activity-feeds'] });
         void queryClient.invalidateQueries({ queryKey: ['post-detail', targetId] });
         void queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
@@ -191,14 +195,27 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
     comments,
     isLoading: commentsQuery.isLoading,
     isLoadingError: commentsQuery.isLoadingError,
-    isFetchNextPageError: commentsQuery.isFetchNextPageError,
-    isFetchingNextPage: commentsQuery.isFetchingNextPage,
-    hasNextPage: commentsQuery.hasNextPage,
-    fetchNextPage: commentsQuery.fetchNextPage,
+    commentsQuery,
     createComment: createCommentMutation.mutateAsync,
     isCreating: createCommentMutation.isPending,
     deleteComment: deleteCommentMutation.mutate,
     isDeleting: deleteCommentMutation.isPending,
     refetch: commentsQuery.refetch,
   };
+}
+
+
+export function useCommentReplies(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId: number, parentCommentId: number, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: ['comment-replies', targetType, targetId, parentCommentId],
+    queryFn: async ({ pageParam }) => (await commentService.getComments({
+      parentCommentId, sort: 'newest', after: pageParam,
+    })).data,
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (page, _pages, _previous, params) => {
+      const after = page.pagination?.after;
+      return page.pagination?.hasNext && after != null && !params.includes(after) ? after : undefined;
+    },
+    enabled,
+  });
 }

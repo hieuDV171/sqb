@@ -42,18 +42,20 @@ export const examService = {
   getMyExams: async (params?: {
     subjectId?: number;
     after?: number;
+    before?: number;
     limit?: number;
   }): Promise<GlobalResponse<ExamListResponse>> => {
-    return (await axiosClient.get<GlobalResponse<ExamListResponse>>(
+    return axiosClient.get<unknown, GlobalResponse<ExamListResponse>>(
       '/exams/my-exams',
       {
         params: {
           subject_id: params?.subjectId,
           after: params?.after,
+          before: params?.before,
           limit: params?.limit ?? 10,
         },
       }
-    )) as any;
+    );
   },
 
   /**

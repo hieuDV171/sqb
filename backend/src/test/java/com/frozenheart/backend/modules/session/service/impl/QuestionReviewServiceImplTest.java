@@ -104,10 +104,12 @@ class QuestionReviewServiceImplTest {
                 org.mockito.ArgumentMatchers.eq(7L),
                 org.mockito.ArgumentMatchers.eq(20L),
                 org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(""),
                 any(Pageable.class)))
                 .thenReturn(List.of(session));
 
-        var response = service.getReviewableSessions(null, 10, 20L, "createdAt,desc");
+        var response = service.getReviewableSessions(null, null, 10, 20L, "createdAt,desc", null);
 
         assertEquals(1, response.items().size());
         assertEquals("IT4788-01", response.items().getFirst().classCode());
@@ -116,6 +118,8 @@ class QuestionReviewServiceImplTest {
                 org.mockito.ArgumentMatchers.eq(7L),
                 org.mockito.ArgumentMatchers.eq(20L),
                 org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(""),
                 any(Pageable.class));
     }
 

@@ -17,6 +17,7 @@ import java.util.List;
 public class FollowingListResponseDto {
     private List<FollowingUserDto> items;
     private CursorPaginationDto pagination;
+    private String nextCursor;
 
     private int totalFollowing;
 }

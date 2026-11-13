@@ -1,3 +1,4 @@
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, Mail, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,12 +77,7 @@ export function GroupInvitationsModal({ invitations, onClose, onJoined }: GroupI
               ))}
             </ul>
           )}
-          {invitations.hasNextPage && (
-            <Button variant="ghost" className="mt-2 w-full" disabled={invitations.isFetchingNextPage}
-              onClick={() => void invitations.fetchNextPage()}>
-              {invitations.isFetchingNextPage ? 'Đang tải…' : invitations.isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm lời mời'}
-            </Button>
-          )}
+          <InfiniteListFooter query={invitations} label="Xem thêm lời mời" />
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

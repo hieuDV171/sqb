@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.conversation.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.TimestampCursor;
 import com.frozenheart.backend.core.entity.conversation.*;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -32,7 +33,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -55,41 +55,38 @@ public class ConversationServiceImpl implements ConversationService {
 
         @Override
         @Transactional(readOnly = true)
-        public ConversationListResponseDto getConversations(Long after, Integer limit) {
+        public ConversationListResponseDto getConversations(Long after, String cursor, Integer limit) {
                 final boolean isHidden = false; // Tăng tính dễ đọc
-                return fetchConversationsInternal(after, limit, isHidden);
+                return fetchConversationsInternal(after, cursor, limit, isHidden);
         }
 
         @Override
         @Transactional(readOnly = true)
-        public ConversationListResponseDto getHiddenConversations(Long after, Integer limit) {
+        public ConversationListResponseDto getHiddenConversations(Long after, String cursor, Integer limit) {
                 hiddenChatAccess.requireUnlocked(JwtPayload.getCurrentUserPayload());
                 final boolean isHidden = true;
-                return fetchConversationsInternal(after, limit, isHidden);
+                return fetchConversationsInternal(after, cursor, limit, isHidden);
         }
 
-        private ConversationListResponseDto fetchConversationsInternal(Long after, Integer limit, boolean isHidden) {
+        private ConversationListResponseDto fetchConversationsInternal(Long after, String cursor, Integer limit, boolean isHidden) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
-
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
                 List<Conversation> conversations = conversationRepository.findUserConversationsCursor(
-                                currentUserId, isHidden, cursor, pageable);
+                                currentUserId, isHidden, position.timestamp(), position.id(),
+                                position.firstPage(), position.timestamp() == null, pageable);
 
-                boolean hasNext = false;
-                Long nextCursor = null;
-
-                if (conversations.size() > pageSize) {
-                        hasNext = true;
+                boolean hasNext = conversations.size() > pageSize;
+                String nextCursor = null;
+                Long legacyAfter = null;
+                if (hasNext) {
                         conversations = conversations.subList(0, pageSize);
-                        Instant lastMessageAt = conversations.getLast().getLastMessageAt();
-                        nextCursor = lastMessageAt != null
-                                        ? lastMessageAt.toEpochMilli()
-                                        : null;
+                        Conversation last = conversations.getLast();
+                        Instant lastMessageAt = last.getLastMessageAt();
+                        nextCursor = TimestampCursor.encode(lastMessageAt, last.getId());
+                        legacyAfter = lastMessageAt == null ? null : lastMessageAt.toEpochMilli();
                 }
 
                 if (conversations.isEmpty()) {
@@ -180,13 +177,14 @@ public class ConversationServiceImpl implements ConversationService {
                 int totalConversations = conversationRepository.countUserConversations(currentUserId, isHidden);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return ConversationListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalConversations(totalConversations)
                                 .build();
         }

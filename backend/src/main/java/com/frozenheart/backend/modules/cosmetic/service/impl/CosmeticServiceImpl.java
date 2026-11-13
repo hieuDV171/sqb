@@ -144,11 +144,6 @@ public class CosmeticServiceImpl implements CosmeticService {
         // Lấy số dư tiền tệ qua UserCurrencyService
         double userPoints = userCurrencyService.getBalance(currentUserId);
 
-        // Lấy danh sách ID các item đã sở hữu để đánh dấu isOwned
-        List<UserCosmetic> ownedItems = userCosmeticRepository.findInventoryCursor(currentUserId, null, null, null,
-                PageRequest.of(0, 500));
-        Set<Long> ownedIds = ownedItems.stream().map(uc -> uc.getCosmetic().getId()).collect(Collectors.toSet());
-
         Instant now = Instant.now();
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
@@ -157,10 +152,20 @@ public class CosmeticServiceImpl implements CosmeticService {
         CosmeticSortBy sort = (sortBy != null) ? sortBy : CosmeticSortBy.NEWEST;
         Long cursor = (after != null && after > 0) ? after : null;
 
+        CosmeticItem anchor = cursor == null || sort == CosmeticSortBy.NEWEST ? null
+                : cosmeticItemRepository.findById(cursor)
+                        .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE));
+        Double price = anchor == null ? null : anchor.getPrice();
+        int rarity = anchor == null || anchor.getRarity() == null ? 0 : switch (anchor.getRarity()) {
+            case LEGENDARY -> 4;
+            case EPIC -> 3;
+            case RARE -> 2;
+            case COMMON -> 1;
+        };
         switch (sort) {
-            case PRICE_ASC -> shopItems = cosmeticItemRepository.findShopItemsPriceAsc(type, now, pageable);
-            case PRICE_DESC -> shopItems = cosmeticItemRepository.findShopItemsPriceDesc(type, now, pageable);
-            case RARITY -> shopItems = cosmeticItemRepository.findShopItemsRarity(type, now, pageable);
+            case PRICE_ASC -> shopItems = cosmeticItemRepository.findShopItemsPriceAsc(type, now, cursor, price, pageable);
+            case PRICE_DESC -> shopItems = cosmeticItemRepository.findShopItemsPriceDesc(type, now, cursor, price, pageable);
+            case RARITY -> shopItems = cosmeticItemRepository.findShopItemsRarity(type, now, cursor, rarity, pageable);
             default -> shopItems = cosmeticItemRepository.findShopItemsNewest(type, now, cursor, pageable);
         }
 
@@ -173,6 +178,9 @@ public class CosmeticServiceImpl implements CosmeticService {
             nextCursor = shopItems.getLast().getId();
         }
 
+        List<Long> ids = shopItems.stream().map(CosmeticItem::getId).toList();
+        Set<Long> ownedIds = ids.isEmpty() ? Set.of()
+                : Set.copyOf(userCosmeticRepository.findOwnedItemIds(currentUserId, ids));
         List<ShopItemDto> items = shopItems.stream().map(c -> mapToShopItemDto(c, ownedIds))
                 .collect(Collectors.toList());
 

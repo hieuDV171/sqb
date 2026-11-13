@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useActivityFeed, type FeedFilter } from '@/features/feed/hooks/useActivityFeed';
 import { useNewFeedCount } from '@/features/feed/hooks/useNewFeedCount';
+import { useLectureVideos } from '@/features/feed/hooks/useLectureVideos';
 import { PullToRefreshFeed } from '@/features/feed/components/PullToRefreshFeed';
 import { FeedFilterTabs } from '@/features/feed/components/FeedFilterTabs';
 import { CreatePostBox } from '@/features/feed/components/CreatePostBox';
 import { ActivityFeedRenderer } from '@/features/feed/components/ActivityFeedRenderer';
 import { FeedCardSkeleton } from '@/features/feed/components/FeedCardSkeleton';
+import { LectureVideoList } from '@/features/feed/components/LectureVideoList';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Button } from '@/components/ui/button';
@@ -15,6 +17,7 @@ import { sessionService } from '@/features/session/services/sessionService';
 import type { SubjectItem } from '@/types/post.types';
 import { MessageSquarePlus, Loader2, Sparkles } from 'lucide-react';
 import { Navigate, useSearchParams } from 'react-router-dom';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export function FeedRoute() {
   const [searchParams] = useSearchParams();
@@ -31,6 +34,9 @@ export function FeedPage() {
   const [currentFilter, setCurrentFilter] = useState<FeedFilter>('ALL');
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
+  const role = useAuthStore((state) => state.user?.role);
+  const showVideos = currentFilter === 'VIDEOS';
+  const videos = useLectureVideos(selectedSubjectId, showVideos);
 
   const {
     items,
@@ -48,8 +54,11 @@ export function FeedPage() {
   const { newCount, triggerRefresh } = useNewFeedCount();
 
   useEffect(() => {
-    sessionService.getMyEnrolledSubjects().then((res) => {
-      if (res?.data) {
+    let current = true;
+    const loadSubjects = showVideos && (role === 'LECTURER' || role === 'ADMIN')
+      ? sessionService.getAllSubjects : sessionService.getMyEnrolledSubjects;
+    loadSubjects().then((res) => {
+      if (current && res?.data) {
         setSubjects(
           res.data.map((s) => ({
             id: s.subjectId,
@@ -58,12 +67,14 @@ export function FeedPage() {
           }))
         );
       }
-    }).catch(() => setSubjects([]));
-  }, []);
+    }).catch(() => { if (current) setSubjects([]); });
+    return () => { current = false; };
+  }, [role, showVideos]);
 
   const handleRefreshAll = async () => {
     await triggerRefresh();
-    await refetch();
+    if (showVideos) await videos.refetch();
+    else await refetch();
   };
 
   // Additional local filter by subject if selected in right sidebar
@@ -73,7 +84,7 @@ export function FeedPage() {
         return item.content.subjectCode === selectedCode;
       })
     : items;
-  const canAutoLoad = displayedItems.length > 0 && hasNextPage && !isError && !isFetching;
+  const canAutoLoad = !showVideos && displayedItems.length > 0 && hasNextPage && !isError && !isFetching;
   const { sentinel, supportsAutoLoad } = useInfiniteScroll(canAutoLoad, fetchNextPage, data?.pages.length ?? 0);
 
   return (
@@ -103,58 +114,62 @@ export function FeedPage() {
               currentFilter={currentFilter}
               onFilterChange={setCurrentFilter}
               onManualRefresh={handleRefreshAll}
-              isRefreshing={isLoading}
+              isRefreshing={showVideos ? videos.isFetching : isLoading}
             />
 
-            {/* 4-State UI Stream */}
-            {isLoading ? (
-              <div className="space-y-4">
-                <FeedCardSkeleton />
-                <FeedCardSkeleton />
-                <FeedCardSkeleton />
-              </div>
-            ) : isError && !isFetchNextPageError ? (
-              <ErrorState
-                title="Không thể tải dòng hoạt động"
-                message="Đã có lỗi xảy ra khi đồng bộ bảng tin từ máy chủ. Vui lòng thử lại."
-                onRetry={() => refetch()}
-              />
-            ) : displayedItems.length === 0 ? (
-              <EmptyState
-                icon={MessageSquarePlus}
-                title="Chưa có hoạt động nào"
-                description={
-                  hasNextPage
-                    ? 'Chưa có hoạt động phù hợp trong các mục đã tải. Bạn có thể xem thêm hoạt động cũ hơn.'
-                    : selectedSubjectId
-                    ? 'Chưa có hoạt động hoặc bài viết nào cho môn học này.'
-                    : 'Bảng tin hiện chưa có bài viết mới. Hãy là người đầu tiên chia sẻ câu hỏi hoặc tài liệu!'
-                }
-                actionLabel={selectedSubjectId ? 'Xem tất cả môn học' : undefined}
-                onAction={selectedSubjectId ? () => setSelectedSubjectId(undefined) : undefined}
-              />
-            ) : (
-              <div className="space-y-4">
-                {displayedItems.map((item) => (
-                  <ActivityFeedRenderer key={item.feedId} item={item} />
-                ))}
+            {showVideos ? (
+              <LectureVideoList videos={videos} subjectId={selectedSubjectId} subjects={subjects} onSubjectChange={setSelectedSubjectId} />
+            ) : <>
+              {/* 4-State UI Stream */}
+              {isLoading ? (
+                <div className="space-y-4">
+                  <FeedCardSkeleton />
+                  <FeedCardSkeleton />
+                  <FeedCardSkeleton />
+                </div>
+              ) : isError && !isFetchNextPageError ? (
+                <ErrorState
+                  title="Không thể tải dòng hoạt động"
+                  message="Đã có lỗi xảy ra khi đồng bộ bảng tin từ máy chủ. Vui lòng thử lại."
+                  onRetry={() => refetch()}
+                />
+              ) : displayedItems.length === 0 ? (
+                <EmptyState
+                  icon={MessageSquarePlus}
+                  title="Chưa có hoạt động nào"
+                  description={
+                    hasNextPage
+                      ? 'Chưa có hoạt động phù hợp trong các mục đã tải. Bạn có thể xem thêm hoạt động cũ hơn.'
+                      : selectedSubjectId
+                      ? 'Chưa có hoạt động hoặc bài viết nào cho môn học này.'
+                      : 'Bảng tin hiện chưa có bài viết mới. Hãy là người đầu tiên chia sẻ câu hỏi hoặc tài liệu!'
+                  }
+                  actionLabel={selectedSubjectId ? 'Xem tất cả môn học' : undefined}
+                  onAction={selectedSubjectId ? () => setSelectedSubjectId(undefined) : undefined}
+                />
+              ) : (
+                <div className="space-y-4">
+                  {displayedItems.map((item) => (
+                    <ActivityFeedRenderer key={item.feedId} item={item} />
+                  ))}
 
-              </div>
-            )}
-            {hasNextPage && (!isError || isFetchNextPageError) && (
-              <div ref={sentinel} className="grid min-h-px justify-items-center gap-2">
-                {isFetchNextPageError && <p role="alert" className="text-sm text-destructive">Không thể tải thêm hoạt động.</p>}
-                {isFetchingNextPage && (
-                  <p role="status" className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> Đang tải thêm hoạt động…
-                  </p>
-                )}
-                <Button variant="outline" onClick={() => void fetchNextPage({ cancelRefetch: false })} disabled={isFetching}
-                  className={supportsAutoLoad && displayedItems.length > 0 && !isFetchNextPageError ? 'sr-only focus-visible:not-sr-only' : 'my-4 min-h-11'}>
-                  {isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm hoạt động cũ hơn'}
-                </Button>
-              </div>
-            )}
+                </div>
+              )}
+              {hasNextPage && (!isError || isFetchNextPageError) && (
+                <div ref={sentinel} className="grid min-h-px justify-items-center gap-2">
+                  {isFetchNextPageError && <p role="alert" className="text-sm text-destructive">Không thể tải thêm hoạt động.</p>}
+                  {isFetchingNextPage && (
+                    <p role="status" className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                      <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> Đang tải thêm hoạt động…
+                    </p>
+                  )}
+                  <Button variant="outline" onClick={() => void fetchNextPage({ cancelRefetch: false })} disabled={isFetching}
+                    className={supportsAutoLoad && displayedItems.length > 0 && !isFetchNextPageError ? 'sr-only focus-visible:not-sr-only' : 'my-4 min-h-11'}>
+                    {isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm hoạt động cũ hơn'}
+                  </Button>
+                </div>
+              )}
+            </>}
           </PullToRefreshFeed>
         </section>
 

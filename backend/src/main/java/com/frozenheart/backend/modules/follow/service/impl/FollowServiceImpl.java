@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.follow.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.TimestampCursor;
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
 import com.frozenheart.backend.core.entity.socialinteraction.UserFollow;
@@ -25,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -119,27 +119,26 @@ public class FollowServiceImpl implements FollowService {
 
         @Override
         @Transactional(readOnly = true)
-        public FollowingListResponseDto getFollowing(Long after, Integer limit) {
+        public FollowingListResponseDto getFollowing(Long after, String cursor, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
 
-                List<UserFollow> followList = followRepository.findFollowingCursor(currentUserId, cursor, pageable);
+                List<UserFollow> followList = followRepository.findFollowingCursor(currentUserId, position.timestamp(), position.id(), position.firstPage(), position.timestamp() == null, pageable);
 
                 boolean hasNext = false;
-                Long nextCursor = null;
+                Long legacyAfter = null;
+                String nextCursor = null;
 
                 if (followList.size() > pageSize) {
                         hasNext = true;
                         followList = followList.subList(0, pageSize);
-                        Instant lastCreatedAt = followList.getLast().getCreatedAt();
-                        nextCursor = lastCreatedAt != null
-                                        ? lastCreatedAt.toEpochMilli()
-                                        : null;
+                        var last = followList.getLast();
+                        Instant timestamp = last.getCreatedAt();
+                        nextCursor = TimestampCursor.encode(timestamp, last.getFollowedUser().getId());
+                        legacyAfter = timestamp == null ? null : timestamp.toEpochMilli();
                 }
 
                 List<Long> followedUserIds = followList.stream()
@@ -184,40 +183,40 @@ public class FollowServiceImpl implements FollowService {
                 int totalFollowing = followRepository.countByFollowerId(currentUserId);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return FollowingListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalFollowing(totalFollowing)
                                 .build();
         }
 
         @Override
         @Transactional(readOnly = true)
-        public FollowerListResponseDto getFollowers(Long after, Integer limit) {
+        public FollowerListResponseDto getFollowers(Long after, String cursor, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
 
-                List<UserFollow> followList = followRepository.findFollowersCursor(currentUserId, cursor, pageable);
+                List<UserFollow> followList = followRepository.findFollowersCursor(currentUserId, position.timestamp(), position.id(), position.firstPage(), position.timestamp() == null, pageable);
 
                 boolean hasNext = false;
-                Long nextCursor = null;
+                Long legacyAfter = null;
+                String nextCursor = null;
 
                 if (followList.size() > pageSize) {
                         hasNext = true;
                         followList = followList.subList(0, pageSize);
-                        Instant lastCreatedAt = followList.getLast().getCreatedAt();
-                        nextCursor = lastCreatedAt != null
-                                        ? lastCreatedAt.toEpochMilli()
-                                        : null;
+                        var last = followList.getLast();
+                        Instant timestamp = last.getCreatedAt();
+                        nextCursor = TimestampCursor.encode(timestamp, last.getFollower().getId());
+                        legacyAfter = timestamp == null ? null : timestamp.toEpochMilli();
                 }
 
                 List<Long> followerUserIds = followList.stream()
@@ -262,13 +261,14 @@ public class FollowServiceImpl implements FollowService {
                 int totalFollowers = followRepository.countByFollowedUserId(currentUserId);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return FollowerListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalFollowers(totalFollowers)
                                 .build();
         }

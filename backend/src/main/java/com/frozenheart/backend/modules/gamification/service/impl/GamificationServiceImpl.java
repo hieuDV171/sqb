@@ -4,6 +4,7 @@ import com.frozenheart.backend.core.constant.Point;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.dto.pagination.IdCursorPage;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
@@ -696,22 +697,14 @@ public class GamificationServiceImpl implements GamificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public MyPredictionsResponse getMyPredictions(Long after, Integer limit) {
+    public MyPredictionsResponse getMyPredictions(Long after, Long before, Integer limit) {
         Long userId = JwtPayload.getCurrentUserPayload().getUserId();
         int pageLimit = Math.clamp(limit != null ? limit : 10, 1, 50);
 
-        List<Prediction> predictions = predictionRepository.findByGamblerIdWithCursor(
-                userId, after, PageRequest.of(0, pageLimit + 1));
+        var page = IdCursorPage.load(after, before, pageLimit, Prediction::getId,
+                (next, previous, request) -> predictionRepository.findByGamblerIdWithCursor(userId, next, previous, request));
 
-        boolean hasNext = predictions.size() > pageLimit;
-        List<Prediction> pageItems = hasNext ? predictions.subList(0, pageLimit) : predictions;
-
-        Long nextCursor = null;
-        if (!pageItems.isEmpty() && hasNext) {
-            nextCursor = pageItems.getLast().getId();
-        }
-
-        List<GamePredictionResponse> dtoList = pageItems.stream()
+        List<GamePredictionResponse> dtoList = page.items().stream()
                 .map(p -> GamePredictionResponse.builder()
                         .predictionId(p.getId())
                         .gameType(p.getGameType())
@@ -729,10 +722,7 @@ public class GamificationServiceImpl implements GamificationService {
 
         return MyPredictionsResponse.builder()
                 .contents(dtoList)
-                .pagination(CursorPaginationDto.builder()
-                        .after(nextCursor)
-                        .hasNext(hasNext)
-                        .build())
+                .pagination(page.pagination())
                 .build();
     }
 

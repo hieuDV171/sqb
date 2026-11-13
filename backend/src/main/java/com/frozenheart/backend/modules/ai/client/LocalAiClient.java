@@ -37,19 +37,11 @@ public class LocalAiClient {
     }
 
     public LocalAiResponse generateCompletion(String systemPrompt, String userPrompt) {
-        return generateChatCompletion(systemPrompt, List.of(), userPrompt);
-    }
-
-    public LocalAiResponse generateChatCompletion(String systemPrompt, List<Map<String, String>> historyMessages, String userPrompt) {
         long startTime = System.currentTimeMillis();
         try {
             List<Map<String, String>> messages = new ArrayList<>();
             if (systemPrompt != null && !systemPrompt.isBlank()) {
                 messages.add(Map.of("role", "system", "content", systemPrompt));
-            }
-
-            if (historyMessages != null && !historyMessages.isEmpty()) {
-                messages.addAll(historyMessages);
             }
 
             if (userPrompt != null && !userPrompt.isBlank()) {

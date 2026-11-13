@@ -17,6 +17,7 @@ import java.util.List;
 public class FriendRequestSentListResponseDto {
     private List<FriendRequestSentDto> items;
     private CursorPaginationDto pagination;
+    private String nextCursor;
 
     private int totalSent;
 }

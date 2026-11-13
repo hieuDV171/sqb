@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.block.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.TimestampCursor;
 import com.frozenheart.backend.core.entity.socialinteraction.*;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -22,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -118,27 +118,26 @@ public class BlockServiceImpl implements BlockService {
 
         @Override
         @Transactional(readOnly = true)
-        public BlockedListResponseDto getBlockedUsers(Long after, Integer limit) {
+        public BlockedListResponseDto getBlockedUsers(Long after, String cursor, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
 
-                List<UserBlock> blockList = blockRepository.findBlockedUsersCursor(currentUserId, cursor, pageable);
+                List<UserBlock> blockList = blockRepository.findBlockedUsersCursor(currentUserId, position.timestamp(), position.id(), position.firstPage(), position.timestamp() == null, pageable);
 
                 boolean hasNext = false;
-                Long nextCursor = null;
+                Long legacyAfter = null;
+                String nextCursor = null;
 
                 if (blockList.size() > pageSize) {
                         hasNext = true;
                         blockList = blockList.subList(0, pageSize);
-                        Instant lastCreatedAt = blockList.getLast().getCreatedAt();
-                        nextCursor = lastCreatedAt != null
-                                        ? lastCreatedAt.toEpochMilli()
-                                        : null;
+                        var last = blockList.getLast();
+                        Instant timestamp = last.getCreatedAt();
+                        nextCursor = TimestampCursor.encode(timestamp, last.getBlocked().getId());
+                        legacyAfter = timestamp == null ? null : timestamp.toEpochMilli();
                 }
 
                 List<Long> blockedUserIds = blockList.stream()
@@ -168,13 +167,14 @@ public class BlockServiceImpl implements BlockService {
                 int totalBlocked = blockRepository.countByBlockerId(currentUserId);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return BlockedListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalBlocked(totalBlocked)
                                 .build();
         }

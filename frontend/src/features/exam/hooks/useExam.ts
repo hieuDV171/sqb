@@ -18,10 +18,11 @@ export const EXAM_KEYS = {
 export function useMyExams(params?: {
   subjectId?: number;
   after?: number;
+  before?: number;
   limit?: number;
 }) {
   return useQuery({
-    queryKey: EXAM_KEYS.list(params?.subjectId),
+    queryKey: [...EXAM_KEYS.list(params?.subjectId), params],
     queryFn: async () => {
       const res = await examService.getMyExams(params);
       return res.data;

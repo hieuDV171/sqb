@@ -34,11 +34,11 @@ export function PendingSessionFilterBar({
   return (
     <div className="grid gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2">
       <div className="min-w-0 space-y-2">
-        <Label htmlFor={searchId}>Tìm trong các phiên đã tải</Label>
+        <Label htmlFor={searchId}>Tìm phiên cần duyệt</Label>
         <div className="relative">
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input id={searchId} type="search" className="min-h-11 pl-9" placeholder="Tiêu đề, môn học hoặc mã phiên"
-            value={search} onChange={(event) => onSearchChange(event.target.value)} />
+            maxLength={120} value={search} onChange={(event) => onSearchChange(event.target.value)} />
         </div>
       </div>
       <div className="min-w-0 space-y-2">

@@ -85,7 +85,8 @@ class ActivityFeedServiceImplTest {
         var reaction = new React();
         reaction.setTargetId(200L);
         reaction.setReactionType(ReactionType.LOVE);
-        when(feedRepository.findPersonalizedFeeds(anyLong(), any(), any(), anyBoolean(), any())).thenReturn(List.of(event));
+        when(feedRepository.findPersonalizedFeeds(anyLong(), any(), any(), anyBoolean(), anyLong(), anyBoolean(), any()))
+                .thenReturn(List.of(event));
         when(postRepository.findPublicApprovalPostsBySessionIds(List.of(100L))).thenReturn(List.of(post));
         when(postRepository.findApprovalPostIdsForLecturer(List.of(200L), 7L))
                 .thenReturn(teachesSessionClass ? List.of(200L) : List.of());

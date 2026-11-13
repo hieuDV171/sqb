@@ -31,12 +31,13 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
         WHERE e.lecturer.id = :lecturerId
           AND (:after IS NULL OR e.id < :after)
           AND (:subjectId IS NULL OR e.subject.id = :subjectId)
-        ORDER BY e.id DESC
+          AND (:before IS NULL OR e.id > :before)
     """)
     List<Exam> findMyExamsCursor(
             @Param("lecturerId") Long lecturerId,
             @Param("subjectId") Long subjectId,
             @Param("after") Long after,
+            @Param("before") Long before,
             Pageable pageable
     );
 

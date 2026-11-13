@@ -48,11 +48,15 @@ export const chatService = {
    * GET /api/v1/conversations
    */
   getConversations: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<ConversationListResponseDto>> => {
     return await axiosClient.get<GlobalResponse<ConversationListResponseDto>, GlobalResponse<ConversationListResponseDto>>('/conversations', {
-      params: { after, limit },
+      params: {
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+        after: typeof cursor === 'number' ? cursor : undefined,
+        limit,
+      },
     });
   },
 
@@ -118,11 +122,15 @@ export const chatService = {
    * GET /api/v1/conversations/hidden
    */
   getHiddenConversations: async (
-    after?: number,
+    cursor?: string | number,
     limit: number = 20
   ): Promise<GlobalResponse<ConversationListResponseDto>> => {
     return await axiosClient.get<GlobalResponse<ConversationListResponseDto>, GlobalResponse<ConversationListResponseDto>>('/conversations/hidden', {
-      params: { after, limit },
+      params: {
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+        after: typeof cursor === 'number' ? cursor : undefined,
+        limit,
+      },
     });
   },
 

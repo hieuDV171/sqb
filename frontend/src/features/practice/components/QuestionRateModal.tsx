@@ -1,3 +1,4 @@
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import { useState, type FormEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -90,9 +91,7 @@ export function QuestionRateModal({ questionId, questionCode, sessionId, interac
                   {review.comment && <p className="whitespace-pre-wrap break-words text-muted-foreground">{review.comment}</p>}
                 </article>
               ))}
-              {ratings.hasNextPage && <Button variant="outline" className="min-h-11" disabled={ratings.isFetching} onClick={() => void ratings.fetchNextPage()}>
-                {ratings.isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm đánh giá'}
-              </Button>}
+              <InfiniteListFooter query={ratings} label="Xem thêm đánh giá" />
             </div>
           ) : (
             <form className="space-y-4" onSubmit={submit}>

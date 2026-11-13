@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface ConversationService {
 
-    ConversationListResponseDto getConversations(Long after, Integer limit);
+    ConversationListResponseDto getConversations(Long after, String cursor, Integer limit);
 
     ConversationDetailDto createDirectConversation(CreateDirectConversationDto request);
 
@@ -22,7 +22,7 @@ public interface ConversationService {
 
     void lockHiddenChat();
 
-    ConversationListResponseDto getHiddenConversations(Long after, Integer limit);
+    ConversationListResponseDto getHiddenConversations(Long after, String cursor, Integer limit);
 
     // --- Group Management (5.5.3) ---
     ConversationDetailDto updateGroupInfo(Long conversationId, UpdateGroupInfoDto request);

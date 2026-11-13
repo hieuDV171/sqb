@@ -59,8 +59,10 @@ public class QuestionInteractionController {
         return ResponseEntity.ok(GlobalResponse.success(null));
     }
 
+    @Deprecated
     @Operation(summary = "Lấy danh sách phiên đề xuất của chính mình theo ID người dùng",
-            description = "Chỉ người có ID trùng với userId được truy cập. Dùng /sessions/practice-catalog để tìm bộ câu hỏi luyện tập theo môn.")
+            deprecated = true,
+            description = "API tương thích cho client cũ, chỉ truy cập được khi ID trùng với userId. Dùng GET /sessions/my-submissions để xem phiên của mình hoặc GET /sessions/practice-catalog để tìm bộ câu hỏi luyện tập theo môn.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên thành công"),
             @ApiResponse(responseCode = "403", description = "Không được xem danh sách phiên của tài khoản khác")

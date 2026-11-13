@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -13,6 +14,7 @@ interface GroupCandidatePickerProps {
 }
 
 export function GroupCandidatePicker({ conversationId, selected, onSelectionChange, disabled }: GroupCandidatePickerProps) {
+  const listRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   useEffect(() => {
@@ -35,7 +37,7 @@ export function GroupCandidatePicker({ conversationId, selected, onSelectionChan
           placeholder="Tìm theo tên"
           className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-9 text-base focus-visible:outline-2 focus-visible:outline-ring" />
       </label>
-      <div aria-busy={waiting} className="max-h-52 overflow-y-auto rounded-xl border border-border p-1">
+      <div ref={listRef} aria-busy={waiting} className="max-h-52 overflow-y-auto rounded-xl border border-border p-1">
         {waiting ? (
           <p role="status" className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-4 animate-spin" /> Đang tải danh sách…
@@ -71,12 +73,7 @@ export function GroupCandidatePicker({ conversationId, selected, onSelectionChan
             );
           })
         )}
-        {!waiting && candidates.hasNextPage && (
-          <Button type="button" variant="ghost" className="w-full" disabled={candidates.isFetchingNextPage}
-            onClick={() => void candidates.fetchNextPage()}>
-            {candidates.isFetchingNextPage ? 'Đang tải…' : candidates.isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm người'}
-          </Button>
-        )}
+        {!waiting && <InfiniteListFooter query={candidates} label="Xem thêm người" scrollRoot={listRef} />}
       </div>
     </fieldset>
   );

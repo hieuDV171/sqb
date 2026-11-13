@@ -144,18 +144,27 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
         List<Long> lockReviewSessions(@Param("ids") Collection<Long> ids,
                                       @Param("pendingOnly") boolean pendingOnly);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester JOIN FETCH s.proposer " +
-                        "WHERE s.status IN (com.frozenheart.backend.core.entity.session.SessionStatus.PENDING, " +
-                        "com.frozenheart.backend.core.entity.session.SessionStatus.REVIEWING) " +
-                        "AND (:lecturerId IS NULL OR cc.lecturer.id = :lecturerId) " +
-                        "AND (:courseClassId IS NULL OR cc.id = :courseClassId) " +
-                        "AND (:after IS NULL OR s.id < :after) " +
-                        "ORDER BY s.id DESC")
+        @Query("""
+                SELECT s FROM Session s JOIN FETCH s.courseClass cc
+                JOIN FETCH cc.subject subject JOIN FETCH cc.semester semester JOIN FETCH s.proposer
+                WHERE s.status IN ('PENDING', 'REVIEWING')
+                  AND (:lecturerId IS NULL OR cc.lecturer.id = :lecturerId)
+                  AND (:courseClassId IS NULL OR cc.id = :courseClassId)
+                  AND (:after IS NULL OR s.id < :after)
+                  AND (:before IS NULL OR s.id > :before)
+                  AND (:keyword = '' OR LOCATE(LOWER(:keyword), LOWER(s.title)) > 0
+                    OR LOCATE(LOWER(:keyword), LOWER(s.sessionCode)) > 0
+                    OR LOCATE(LOWER(:keyword), LOWER(subject.code)) > 0
+                    OR LOCATE(LOWER(:keyword), LOWER(subject.name)) > 0
+                    OR LOCATE(LOWER(:keyword), LOWER(cc.classCode)) > 0
+                    OR LOCATE(LOWER(:keyword), LOWER(semester.name)) > 0
+                    OR LOCATE(:keyword, CAST(s.id AS String)) > 0)
+                """)
         List<Session> findReviewableSessionsFetchCourseClassAndProposerWithCursor(
                         @Param("lecturerId") Long lecturerId,
                         @Param("courseClassId") Long courseClassId,
-                        @Param("after") Long after,
-                        Pageable pageable);
+                        @Param("after") Long after, @Param("before") Long before,
+                        @Param("keyword") String keyword, Pageable pageable);
 
         @Modifying
         @Query("UPDATE Session s SET s.reactCount = s.reactCount + :delta WHERE s.id = :sessionId")

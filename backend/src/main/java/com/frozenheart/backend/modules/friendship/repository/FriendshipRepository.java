@@ -89,10 +89,13 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Friendsh
       FROM Friendship f
       WHERE (f.sender.id = :userId OR f.receiver.id = :userId)
         AND f.status = 'ACCEPTED'
-        AND f.acceptedAt < :cursor
-      ORDER BY f.acceptedAt DESC
+        AND (:firstPage = true
+            OR (:withoutTimestamp = false AND (f.acceptedAt < :cursor OR f.acceptedAt IS NULL OR (f.acceptedAt = :cursor AND CASE WHEN f.id.senderId = :userId THEN f.id.receiverId ELSE f.id.senderId END < :cursorId)))
+            OR (:withoutTimestamp = true AND f.acceptedAt IS NULL AND CASE WHEN f.id.senderId = :userId THEN f.id.receiverId ELSE f.id.senderId END < :cursorId))
+      ORDER BY f.acceptedAt DESC NULLS LAST, CASE WHEN f.id.senderId = :userId THEN f.id.receiverId ELSE f.id.senderId END DESC
       """)
   List<Friendship> findAcceptedFriendsCursor(@Param("userId") Long userId, @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId, @Param("firstPage") boolean firstPage, @Param("withoutTimestamp") boolean withoutTimestamp,
       Pageable pageable);
 
   @EntityGraph(attributePaths = { "sender" })
@@ -101,10 +104,13 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Friendsh
       FROM Friendship f
       WHERE f.receiver.id = :userId
         AND f.status = 'PENDING'
-        AND f.createdAt < :cursor
-      ORDER BY f.createdAt DESC
+        AND (:firstPage = true
+            OR (:withoutTimestamp = false AND (f.createdAt < :cursor OR f.createdAt IS NULL OR (f.createdAt = :cursor AND f.id.senderId < :cursorId)))
+            OR (:withoutTimestamp = true AND f.createdAt IS NULL AND f.id.senderId < :cursorId))
+      ORDER BY f.createdAt DESC NULLS LAST, f.id.senderId DESC
       """)
   List<Friendship> findReceivedRequests(@Param("userId") Long userId, @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId, @Param("firstPage") boolean firstPage, @Param("withoutTimestamp") boolean withoutTimestamp,
       Pageable pageable);
 
   @EntityGraph(attributePaths = { "receiver" })
@@ -113,8 +119,11 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Friendsh
       FROM Friendship f
       WHERE f.sender.id = :userId
         AND f.status = 'PENDING'
-        AND f.createdAt < :cursor
-      ORDER BY f.createdAt DESC
+        AND (:firstPage = true
+            OR (:withoutTimestamp = false AND (f.createdAt < :cursor OR f.createdAt IS NULL OR (f.createdAt = :cursor AND f.id.receiverId < :cursorId)))
+            OR (:withoutTimestamp = true AND f.createdAt IS NULL AND f.id.receiverId < :cursorId))
+      ORDER BY f.createdAt DESC NULLS LAST, f.id.receiverId DESC
       """)
-  List<Friendship> findSentRequests(@Param("userId") Long userId, @Param("cursor") Instant cursor, Pageable pageable);
+  List<Friendship> findSentRequests(@Param("userId") Long userId, @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId, @Param("firstPage") boolean firstPage, @Param("withoutTimestamp") boolean withoutTimestamp, Pageable pageable);
 }

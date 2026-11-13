@@ -8,5 +8,5 @@ public interface BlockService {
 
     UnblockResponseDto unblockUser(Long targetUserId);
 
-    BlockedListResponseDto getBlockedUsers(Long after, Integer limit);
+    BlockedListResponseDto getBlockedUsers(Long after, String cursor, Integer limit);
 }

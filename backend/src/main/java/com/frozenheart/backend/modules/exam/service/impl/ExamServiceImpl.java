@@ -2,7 +2,7 @@ package com.frozenheart.backend.modules.exam.service.impl;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
-import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.IdCursorPage;
 import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.session.*;
@@ -25,7 +25,6 @@ import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -210,15 +209,13 @@ public class ExamServiceImpl implements ExamService {
 
     @Override
     @Transactional(readOnly = true)
-    public ExamListResponse getMyExams(Long subjectId, Long after, int limit) {
+    public ExamListResponse getMyExams(Long subjectId, Long after, Long before, int limit) {
         Long lecturerId = JwtPayload.getCurrentUserPayload().getUserId();
 
         int safePageSize = Math.clamp(limit, 1, 20);
-        List<Exam> exams = examRepository.findMyExamsCursor(lecturerId, subjectId, after,
-                PageRequest.of(0, safePageSize + 1));
-
-        boolean hasNext = exams.size() > safePageSize;
-        List<Exam> pageContent = hasNext ? exams.subList(0, safePageSize) : exams;
+        var page = IdCursorPage.load(after, before, safePageSize, Exam::getId,
+                (next, previous, request) -> examRepository.findMyExamsCursor(lecturerId, subjectId, next, previous, request));
+        List<Exam> pageContent = page.items();
 
         List<Long> examIds = pageContent.stream().map(Exam::getId).distinct().toList();
         List<ExamQuestion> examQuestions = examQuestionRepository.findByExamsIdWithQuestionAndTopic(examIds);
@@ -260,14 +257,9 @@ public class ExamServiceImpl implements ExamService {
                     .build();
         }).collect(Collectors.toList());
 
-        Long nextAfter = pageContent.isEmpty() ? null : pageContent.getLast().getId();
-
         return ExamListResponse.builder()
                 .items(items)
-                .pagination(CursorPaginationDto.builder()
-                        .after(nextAfter)
-                        .hasNext(hasNext)
-                        .build())
+                .pagination(page.pagination())
                 .build();
     }
 

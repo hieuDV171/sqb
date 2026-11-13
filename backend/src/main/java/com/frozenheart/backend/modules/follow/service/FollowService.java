@@ -8,9 +8,9 @@ public interface FollowService {
 
     UnfollowResponseDto unfollowUser(Long targetUserId);
 
-    FollowingListResponseDto getFollowing(Long after, Integer limit);
+    FollowingListResponseDto getFollowing(Long after, String cursor, Integer limit);
 
-    FollowerListResponseDto getFollowers(Long after, Integer limit);
+    FollowerListResponseDto getFollowers(Long after, String cursor, Integer limit);
 
     RelationshipStatsResponseDto getRelationshipStats(Long userId);
 }

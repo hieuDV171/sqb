@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.friendship.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.TimestampCursor;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipId;
@@ -27,7 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -220,28 +220,27 @@ public class FriendshipServiceImpl implements FriendshipService {
 
         @Override
         @Transactional(readOnly = true)
-        public FriendListResponseDto getMyFriends(Long after, Integer limit) {
+        public FriendListResponseDto getMyFriends(Long after, String cursor, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
 
-                List<Friendship> friendsList = friendshipRepository.findAcceptedFriendsCursor(currentUserId, cursor,
+                List<Friendship> friendsList = friendshipRepository.findAcceptedFriendsCursor(currentUserId, position.timestamp(), position.id(), position.firstPage(), position.timestamp() == null,
                                 pageable);
 
                 boolean hasNext = false;
-                Long nextCursor = null;
+                Long legacyAfter = null;
+                String nextCursor = null;
 
                 if (friendsList.size() > pageSize) {
                         hasNext = true;
                         friendsList = friendsList.subList(0, pageSize);
-                        Instant lastAcceptedAt = friendsList.getLast().getAcceptedAt();
-                        nextCursor = lastAcceptedAt != null
-                                        ? lastAcceptedAt.toEpochMilli()
-                                        : null;
+                        var last = friendsList.getLast();
+                        Instant timestamp = last.getAcceptedAt();
+                        nextCursor = TimestampCursor.encode(timestamp, Objects.equals(last.getId().getSenderId(), currentUserId) ? last.getId().getReceiverId() : last.getId().getSenderId());
+                        legacyAfter = timestamp == null ? null : timestamp.toEpochMilli();
                 }
 
                 List<Long> friendUserIds = friendsList.stream()
@@ -274,41 +273,41 @@ public class FriendshipServiceImpl implements FriendshipService {
                 int totalFriends = friendshipRepository.countTotalFriends(currentUserId);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return FriendListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalFriends(totalFriends)
                                 .build();
         }
 
         @Override
         @Transactional(readOnly = true)
-        public FriendRequestReceivedListResponseDto getReceivedFriendRequests(Long after, Integer limit) {
+        public FriendRequestReceivedListResponseDto getReceivedFriendRequests(Long after, String cursor, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
 
-                List<Friendship> requestsList = friendshipRepository.findReceivedRequests(currentUserId, cursor,
+                List<Friendship> requestsList = friendshipRepository.findReceivedRequests(currentUserId, position.timestamp(), position.id(), position.firstPage(), position.timestamp() == null,
                                 pageable);
 
                 boolean hasNext = false;
-                Long nextCursor = null;
+                Long legacyAfter = null;
+                String nextCursor = null;
 
                 if (requestsList.size() > pageSize) {
                         hasNext = true;
                         requestsList = requestsList.subList(0, pageSize);
-                        Instant lastCreatedAt = requestsList.getLast().getCreatedAt();
-                        nextCursor = lastCreatedAt != null
-                                        ? lastCreatedAt.toEpochMilli()
-                                        : null;
+                        var last = requestsList.getLast();
+                        Instant timestamp = last.getCreatedAt();
+                        nextCursor = TimestampCursor.encode(timestamp, last.getId().getSenderId());
+                        legacyAfter = timestamp == null ? null : timestamp.toEpochMilli();
                 }
 
                 List<Long> requesterIds = requestsList.stream()
@@ -345,40 +344,40 @@ public class FriendshipServiceImpl implements FriendshipService {
                                 FriendshipStatus.PENDING);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return FriendRequestReceivedListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalPending(totalPending)
                                 .build();
         }
 
         @Override
         @Transactional(readOnly = true)
-        public FriendRequestSentListResponseDto getSentFriendRequests(Long after, Integer limit) {
+        public FriendRequestSentListResponseDto getSentFriendRequests(Long after, String cursor, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
 
-                Instant cursor = (after != null && after > 0)
-                                ? Instant.ofEpochMilli(after)
-                                : Instant.now().plus(36500, ChronoUnit.DAYS);
+                TimestampCursor position = TimestampCursor.parse(cursor, after);
 
-                List<Friendship> requestsList = friendshipRepository.findSentRequests(currentUserId, cursor, pageable);
+                List<Friendship> requestsList = friendshipRepository.findSentRequests(currentUserId, position.timestamp(), position.id(), position.firstPage(), position.timestamp() == null, pageable);
 
                 boolean hasNext = false;
-                Long nextCursor = null;
+                Long legacyAfter = null;
+                String nextCursor = null;
 
                 if (requestsList.size() > pageSize) {
                         hasNext = true;
                         requestsList = requestsList.subList(0, pageSize);
-                        Instant lastCreatedAt = requestsList.getLast().getCreatedAt();
-                        nextCursor = lastCreatedAt != null
-                                        ? lastCreatedAt.toEpochMilli()
-                                        : null;
+                        var last = requestsList.getLast();
+                        Instant timestamp = last.getCreatedAt();
+                        nextCursor = TimestampCursor.encode(timestamp, last.getId().getReceiverId());
+                        legacyAfter = timestamp == null ? null : timestamp.toEpochMilli();
                 }
 
                 List<Long> receiverIds = requestsList.stream()
@@ -414,13 +413,14 @@ public class FriendshipServiceImpl implements FriendshipService {
                 int totalSent = friendshipRepository.countBySenderIdAndStatus(currentUserId, FriendshipStatus.PENDING);
 
                 CursorPaginationDto pagination = CursorPaginationDto.builder()
-                                .after(nextCursor)
+                                .after(legacyAfter)
                                 .hasNext(hasNext)
                                 .build();
 
                 return FriendRequestSentListResponseDto.builder()
                                 .items(items)
                                 .pagination(pagination)
+                                .nextCursor(nextCursor)
                                 .totalSent(totalSent)
                                 .build();
         }

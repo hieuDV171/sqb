@@ -58,12 +58,15 @@ public interface FollowRepository extends JpaRepository<UserFollow, UserFollowId
       SELECT f
       FROM UserFollow f
       WHERE f.follower.id = :followerId
-        AND f.createdAt < :cursor
-      ORDER BY f.createdAt DESC
+        AND (:firstPage = true
+            OR (:withoutTimestamp = false AND (f.createdAt < :cursor OR f.createdAt IS NULL OR (f.createdAt = :cursor AND f.followedUser.id < :cursorId)))
+            OR (:withoutTimestamp = true AND f.createdAt IS NULL AND f.followedUser.id < :cursorId))
+      ORDER BY f.createdAt DESC NULLS LAST, f.followedUser.id DESC
       """)
   List<UserFollow> findFollowingCursor(
       @Param("followerId") Long followerId,
       @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId, @Param("firstPage") boolean firstPage, @Param("withoutTimestamp") boolean withoutTimestamp,
       Pageable pageable);
 
   @EntityGraph(attributePaths = { "follower" })
@@ -71,11 +74,14 @@ public interface FollowRepository extends JpaRepository<UserFollow, UserFollowId
       SELECT f
       FROM UserFollow f
       WHERE f.followedUser.id = :followedUserId
-        AND f.createdAt < :cursor
-      ORDER BY f.createdAt DESC
+        AND (:firstPage = true
+            OR (:withoutTimestamp = false AND (f.createdAt < :cursor OR f.createdAt IS NULL OR (f.createdAt = :cursor AND f.follower.id < :cursorId)))
+            OR (:withoutTimestamp = true AND f.createdAt IS NULL AND f.follower.id < :cursorId))
+      ORDER BY f.createdAt DESC NULLS LAST, f.follower.id DESC
       """)
   List<UserFollow> findFollowersCursor(
       @Param("followedUserId") Long followedUserId,
       @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId, @Param("firstPage") boolean firstPage, @Param("withoutTimestamp") boolean withoutTimestamp,
       Pageable pageable);
 }

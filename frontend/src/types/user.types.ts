@@ -103,6 +103,7 @@ export interface FriendDto {
 }
 
 export interface FriendListResponseDto {
+  nextCursor?: string | null;
   items: FriendDto[];
   pagination: CursorPaginationDto;
   totalFriends: number;
@@ -116,6 +117,7 @@ export interface FriendRequestReceivedDto {
 }
 
 export interface FriendRequestReceivedListResponseDto {
+  nextCursor?: string | null;
   items: FriendRequestReceivedDto[];
   pagination: CursorPaginationDto;
   totalPending: number;
@@ -129,6 +131,7 @@ export interface FriendRequestSentDto {
 }
 
 export interface FriendRequestSentListResponseDto {
+  nextCursor?: string | null;
   items: FriendRequestSentDto[];
   pagination: CursorPaginationDto;
   totalSent: number;
@@ -162,6 +165,7 @@ export interface FollowingUserDto {
 }
 
 export interface FollowingListResponseDto {
+  nextCursor?: string | null;
   items: FollowingUserDto[];
   pagination: CursorPaginationDto;
   totalFollowing: number;
@@ -181,6 +185,7 @@ export interface FollowerUserDto {
 }
 
 export interface FollowerListResponseDto {
+  nextCursor?: string | null;
   items: FollowerUserDto[];
   pagination: CursorPaginationDto;
   totalFollowers: number;
@@ -221,6 +226,7 @@ export interface BlockedUserDto {
 }
 
 export interface BlockedListResponseDto {
+  nextCursor?: string | null;
   items: BlockedUserDto[];
   pagination: CursorPaginationDto;
   totalBlocked: number;

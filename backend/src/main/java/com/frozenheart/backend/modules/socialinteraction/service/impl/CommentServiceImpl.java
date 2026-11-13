@@ -128,7 +128,7 @@ public class CommentServiceImpl implements CommentService {
                     .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận cha"));
             String parentType = parent.getTargetType();
             Long parentTargetId = parent.getTargetId();
-            validateSessionAccess(parent);
+            validateDiscussionAccess(parent);
             if (isOldest) {
                 Long cursor = (after != null && after > 0) ? after : 0L;
                 commentsList = commentRepository.findByParentCommentIdAndTargetTypeAndTargetIdAndIdGreaterThanOrderByIdAsc(
@@ -213,7 +213,7 @@ public class CommentServiceImpl implements CommentService {
         if (comment.getUser() == null || !Objects.equals(comment.getUser().getId(), currentUserId)) {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền sửa bình luận này");
         }
-        validateSessionAccess(comment);
+        validateDiscussionAccess(comment);
 
         List<String> oldMediaKeys = (comment.getMediaUrls() != null)
                 ? comment.getMediaUrls().stream().map(MediaItem::url).filter(Objects::nonNull).toList()
@@ -265,7 +265,7 @@ public class CommentServiceImpl implements CommentService {
         if (!isOwner && !isAdmin) {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền xóa bình luận này");
         }
-        if (!isAdmin) validateSessionAccess(comment);
+        if (!isAdmin) validateDiscussionAccess(comment);
 
         List<String> mediaToDelete = (comment.getMediaUrls() != null)
                 ? comment.getMediaUrls().stream().map(MediaItem::url).filter(Objects::nonNull).toList()
@@ -293,8 +293,10 @@ public class CommentServiceImpl implements CommentService {
 
     // --- Helper Methods ---
 
-    private void validateSessionAccess(Comment comment) {
-        if (InteractionTargetType.SESSION.name().equals(comment.getTargetType())) {
+    private void validateDiscussionAccess(Comment comment) {
+        if (InteractionTargetType.POST.name().equals(comment.getTargetType())) {
+            targetValidator.validateTargetExists(InteractionTargetType.POST, comment.getTargetId());
+        } else if (InteractionTargetType.SESSION.name().equals(comment.getTargetType())) {
             targetValidator.validateTargetExists(InteractionTargetType.SESSION, comment.getTargetId());
         }
     }

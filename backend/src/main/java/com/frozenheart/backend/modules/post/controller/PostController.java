@@ -133,7 +133,7 @@ public class PostController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Lấy danh sách video bài giảng", description = "Lấy danh sách các video học tập (LEARNING_VIDEO) đã được Giảng viên đăng tải, có thể lọc theo mã môn học.")
+    @Operation(summary = "Lấy danh sách video bài giảng", description = "Trả video của môn người xem đã đăng ký học, video do người xem đăng hoặc toàn bộ video nếu là Admin. Có thể lọc theo ID môn học.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách video thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")

@@ -1,3 +1,4 @@
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import { useRef, useState } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Check, Eye, Loader2, Package, ShoppingBag } from 'lucide-react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useBuyCosmetic, useEquipCosmetic, useMyInventory, useShop, useUnequipCosmetic } from '../hooks/useGamification';
+import { useBuyCosmetic, useEquipCosmetic, useMyInventory, useShopPages, useUnequipCosmetic } from '../hooks/useGamification';
 import type { CosmeticType, CosmeticRarity, CosmeticSortBy, InventoryItemDto, ShopItemDto } from '../types/gamification.types';
 import { getRarityColor } from '../types/gamification.types';
 import { FittingRoomPreview } from './FittingRoomPreview';
@@ -47,20 +48,20 @@ export function ShopInventoryTab() {
   const [previewId, setPreviewId] = useState<number>();
   const [purchase, setPurchase] = useState<ShopItemDto | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const shop = useShop({ type, sortBy: sort, limit: 30 });
-  const inventory = useMyInventory({ type, rarity, limit: 30 });
+  const isShop = view === 'shop';
+  const shop = useShopPages({ type, sortBy: sort, limit: 30 }, isShop);
+  const inventory = useMyInventory({ type, rarity, limit: 30 }, true);
   const buy = useBuyCosmetic();
   const equip = useEquipCosmetic();
   const unequip = useUnequipCosmetic();
 
-  const isShop = view === 'shop';
   const query = isShop ? shop : inventory;
-  const items = (isShop ? shop.data?.items : inventory.data?.inventory) ?? [];
-  const equipped = inventory.data?.currentlyEquipped;
-  const coins = shop.data?.userPoints;
+  const items = (isShop ? shop.data?.pages.flatMap((page) => page.items) : inventory.data?.pages.flatMap((page) => page.inventory)) ?? [];
+  const equipped = inventory.data?.pages[0]?.currentlyEquipped;
+  const coins = shop.data?.pages[0]?.userPoints;
   const preview = items.find((item) => item.cosmeticId === previewId);
   const busy = buy.isPending || equip.isPending || unequip.isPending;
-  const canConfirm = purchase !== null && !shop.isError && coins !== undefined && coins >= purchase.price;
+  const canConfirm = purchase !== null && !shop.isLoadingError && coins !== undefined && coins >= purchase.price;
 
   function itemAction(item: CosmeticItem) {
     if ('price' in item) {
@@ -121,7 +122,7 @@ export function ShopInventoryTab() {
         <div className="min-w-0 xl:order-1">
           {query.isPending ? (
             <Skeleton aria-label="Đang tải vật phẩm" className="h-52 rounded-2xl" />
-          ) : query.isError ? (
+          ) : query.isLoadingError ? (
             <ErrorState title={isShop ? 'Không thể tải cửa hàng' : 'Không thể tải tủ đồ'} onRetry={() => void query.refetch()} />
           ) : items.length === 0 ? (
             <EmptyState icon={Package} title={isShop ? 'Không có vật phẩm phù hợp' : 'Không có vật phẩm trong tủ đồ này'}
@@ -166,6 +167,7 @@ export function ShopInventoryTab() {
               })}
             </ul>
           )}
+          <InfiniteListFooter query={query} label="Tải thêm vật phẩm" />
         </div>
       </div>
 

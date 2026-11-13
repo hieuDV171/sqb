@@ -10,7 +10,7 @@ import com.frozenheart.backend.modules.session.dto.SessionDetailReviewResponse;
 
 public interface QuestionReviewService {
 
-    ReviewableSessionsResponse getReviewableSessions(Long after, Integer limit, Long courseClassId, String sortBy);
+    ReviewableSessionsResponse getReviewableSessions(Long after, Long before, Integer limit, Long courseClassId, String sortBy, String keyword);
 
     SessionDetailReviewResponse getSessionDetailForReview(Long sessionId);
 

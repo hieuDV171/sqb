@@ -42,6 +42,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -89,6 +90,33 @@ class PostServiceImplTest {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void lectureVideoListUsesViewerAndSubjectBeforeApplyingPageLimit() {
+        setCurrentUser(7L);
+        when(postRepository.findVisibleLectureVideos(7L, false, 12L, 45L, PageRequest.of(0, 3)))
+                .thenReturn(List.of(post(44L, 9L), post(40L, 9L), post(39L, 9L)));
+
+        var response = service.getVideoPosts(12L, 45L, 2);
+
+        assertEquals(2, response.items().size());
+        assertEquals(40L, response.pagination().after());
+        assertTrue(response.pagination().hasNext());
+    }
+
+    @Test
+    void lectureVideoDetailRejectsViewerWhoHasNotEnrolled() {
+        setCurrentUser(7L);
+        Post video = post(42L, 9L);
+        video.setPostType(PostType.LEARNING_VIDEO);
+        when(postRepository.findByIdAndDeletedAtIsNull(42L)).thenReturn(Optional.of(video));
+
+        AppException error = assertThrows(AppException.class, () -> service.getPostById(42L));
+
+        assertEquals(ResponseCode.ACCESS_DENIED, error.getResponseCode());
+        verify(postRepository).canViewLectureVideo(42L, 7L, false);
+        verifyNoInteractions(reactRepository, userProfileRepository);
     }
 
     @ParameterizedTest(name = "GET detail preserves reaction {0}")

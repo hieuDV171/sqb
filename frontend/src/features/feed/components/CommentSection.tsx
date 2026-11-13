@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
+import type { CommentResponseDto } from '@/types/post.types';
+import React, { useRef, useState } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useComments } from '../hooks/useComments';
+import { useComments, useCommentReplies } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -26,16 +28,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
     comments,
     isLoading,
     isLoadingError,
-    isFetchNextPageError,
     refetch,
     isCreating,
     createComment,
     deleteComment,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
+    commentsQuery,
   } = useComments(targetType, targetId);
 
+  const commentsRoot = useRef<HTMLDivElement>(null);
   const [inputContent, setInputContent] = useState('');
   const [replyingToCommentId, setReplyingToCommentId] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState('');
@@ -173,7 +173,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                   Chưa có bình luận nào. Hãy là người đầu tiên trao đổi!
               </div>
           ) : (
-              <div className="space-y-3">
+              <div ref={commentsRoot} className="max-h-[min(65vh,36rem)] space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {comments.map((comment) => (
                       <div key={comment.commentId} className="group/item">
                           <div className="flex gap-2.5 items-start">
@@ -299,55 +299,49 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                       </div>
                                   )}
 
-                                  {/* Nested Replies Rendering */}
-                                  {comment.replies &&
-                                      comment.replies.length > 0 && (
-                                          <div className="mt-2.5 ml-5 space-y-2 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
-                                              {comment.replies.map((reply) => (
-                                                  <div
-                                                      key={reply.commentId}
-                                                      className="flex gap-2 items-start"
-                                                  >
-                                                      <UserAvatar
-                                                          avatarUrl={reply.author?.avatarUrl}
-                                                          name={reply.author?.fullName}
-                                                          className="mt-0.5 size-5 text-[10px]"
-                                                          decorative
-                                                      />
-                                                      <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200">
-                                                          <span className="font-semibold text-slate-900 dark:text-white mr-1.5">
-                                                              {
-                                                                  reply.author
-                                                                      ?.fullName
-                                                              }
-                                                          </span>
-                                                          <span>
-                                                              {reply.content}
-                                                          </span>
-                                                      </div>
-                                                  </div>
-                                              ))}
-                                          </div>
-                                      )}
+                                  <CommentReplies key={comment.commentId} comment={comment}
+                                    targetType={targetType} targetId={targetId} />
                               </div>
                           </div>
                       </div>
                   ))}
 
-                  {hasNextPage && (
-                      <button
-                          type="button"
-                          onClick={() => fetchNextPage()}
-                          disabled={isFetchingNextPage}
-                          className="w-full py-1.5 text-center text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                      >
-                          {isFetchingNextPage
-                              ? "Đang tải thêm..."
-                              : isFetchNextPageError ? "Thử tải lại bình luận" : "Xem các bình luận trước đó"}
-                      </button>
-                  )}
+                  <InfiniteListFooter query={commentsQuery} label="Xem các bình luận trước đó" scrollRoot={commentsRoot} />
               </div>
           )}
       </section>
   );
 };
+
+function CommentReplies({ comment, targetType, targetId }: CommentSectionProps & { comment: CommentResponseDto }) {
+  const [open, setOpen] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const query = useCommentReplies(targetType, targetId, comment.commentId, open);
+  const previews = comment.replies ?? [];
+  const replies = open && query.data ? query.data.pages.flatMap((page) => page.items) : previews;
+  const total = comment.replyCount ?? previews.length;
+  if (total === 0 && !open) return null;
+
+  return (
+    <div className="mt-2 ml-5 space-y-2 border-l-2 border-border pl-3">
+      <div ref={listRef} className={open ? 'max-h-64 space-y-2 overflow-y-auto overscroll-contain' : 'space-y-2'}>
+        {replies.map((reply) => (
+          <div key={reply.commentId} className="flex items-start gap-2 text-xs">
+            <UserAvatar avatarUrl={reply.author?.avatarUrl} name={reply.author?.fullName} decorative className="size-5" />
+            <p className="whitespace-pre-wrap rounded-xl bg-muted px-2.5 py-1.5">
+              <strong className="mr-1.5">{reply.author?.fullName}</strong>{reply.content}
+            </p>
+          </div>
+        ))}
+        {open && query.isPending && <p role="status" className="text-sm text-muted-foreground">Đang tải phản hồi…</p>}
+        {open && query.isLoadingError && <Button type="button" variant="outline" onClick={() => void query.refetch()}>Thử tải lại phản hồi</Button>}
+        {open && <InfiniteListFooter query={query} scrollRoot={listRef} label="Xem thêm phản hồi" />}
+      </div>
+      {(open || total > previews.length) && (
+        <Button type="button" variant="ghost" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? 'Thu gọn phản hồi' : `Xem tất cả ${total} phản hồi`}
+        </Button>
+      )}
+    </div>
+  );
+}

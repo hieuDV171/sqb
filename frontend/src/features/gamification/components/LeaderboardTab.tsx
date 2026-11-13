@@ -1,3 +1,4 @@
+import { CursorPagination, type PageCursor } from '@/components/ui/cursor-pagination';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, Medal, Award, Search, Target, Trophy } from 'lucide-react';
@@ -55,10 +56,11 @@ function RankedAvatar({ entry, large = false }: { entry: LeaderboardEntryDto; la
 export function LeaderboardTab() {
   const [period, setPeriod] = useState<LeaderboardPeriod>('SEMESTER');
   const [subjectId, setSubjectId] = useState<number>();
+  const [cursor, setCursor] = useState<PageCursor>({});
   const [search, setSearch] = useState('');
   const subjects = useGamificationSubjects(period === 'SUBJECT');
   const subject = subjects.data?.find((item) => item.subjectId === subjectId) ?? subjects.data?.[0];
-  const leaderboard = useLeaderboard({ period, subjectId: period === 'SUBJECT' ? subject?.subjectId : undefined, limit: 50 });
+  const leaderboard = useLeaderboard({ period, subjectId: period === 'SUBJECT' ? subject?.subjectId : undefined, ...cursor, limit: 50 });
   const entries = leaderboard.data?.entries ?? [];
   const myRank = leaderboard.data?.myRank;
   const leaders = podiumPlaces.flatMap((place) => {
@@ -78,7 +80,7 @@ export function LeaderboardTab() {
           <div role="group" aria-label="Phạm vi xếp hạng" className="flex flex-wrap gap-1 rounded-xl bg-surface-subtle p-1">
             {scopes.map(({ value, label }) => (
               <Button key={value} type="button" aria-pressed={period === value}
-                variant={period === value ? 'secondary' : 'ghost'} className="min-h-11" onClick={() => setPeriod(value)}>
+                variant={period === value ? 'secondary' : 'ghost'} className="min-h-11" onClick={() => { if (value !== period) { setPeriod(value); setCursor({}); } }}>
                 {label}
               </Button>
             ))}
@@ -88,7 +90,7 @@ export function LeaderboardTab() {
               <FilterSelect label="Môn học" value={subject ? String(subject.subjectId) : ''}
                 disabled={!subjects.data?.length}
                 options={(subjects.data ?? []).map((item) => ({ value: String(item.subjectId), label: `${item.code} · ${item.name}` }))}
-                onChange={(value) => setSubjectId(Number(value))} />
+                onChange={(value) => { setSubjectId(Number(value)); setCursor({}); }} />
             </div>
           )}
         </div>
@@ -192,6 +194,8 @@ export function LeaderboardTab() {
               )}
             </div>
           )}
+          <CursorPagination pagination={leaderboard.data?.pagination} cursor={cursor}
+            busy={leaderboard.isFetching} onChange={setCursor} />
         </>
       )}
     </section>

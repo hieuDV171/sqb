@@ -16,5 +16,7 @@ public class ConversationListResponseDto {
 
     private CursorPaginationDto pagination;
 
+    private String nextCursor;
+
     private int totalConversations;
 }

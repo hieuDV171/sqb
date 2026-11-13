@@ -32,8 +32,9 @@ public class ConversationController {
         @GetMapping("/conversations")
         public ResponseEntity<GlobalResponse<ConversationListResponseDto>> getConversations(
                         @Parameter(description = "Con trỏ timestamp tin nhắn cuối để lấy tiếp", example = "1728200000000") @RequestParam(value = "after", required = false) Long after,
-                        @Parameter(description = "Số lượng hội thoại mỗi trang (mặc định 20, tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit) {
-                ConversationListResponseDto response = conversationService.getConversations(after, limit);
+                        @Parameter(description = "Số lượng hội thoại mỗi trang (mặc định 20, tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit,
+                        @Parameter(description = "Con trỏ đầy đủ từ next_cursor của trang trước") @RequestParam(required = false) String cursor) {
+                ConversationListResponseDto response = conversationService.getConversations(after, cursor, limit);
                 return ResponseEntity.ok(GlobalResponse.success(response));
         }
 
@@ -143,8 +144,9 @@ public class ConversationController {
         @GetMapping("/conversations/hidden")
         public ResponseEntity<GlobalResponse<ConversationListResponseDto>> getHiddenConversations(
                         @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000") @RequestParam(value = "after", required = false) Long after,
-                        @Parameter(description = "Số lượng hội thoại mỗi trang (mặc định 20, tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit) {
-                ConversationListResponseDto response = conversationService.getHiddenConversations(after, limit);
+                        @Parameter(description = "Số lượng hội thoại mỗi trang (mặc định 20, tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit,
+                        @Parameter(description = "Con trỏ đầy đủ từ next_cursor của trang trước") @RequestParam(required = false) String cursor) {
+                ConversationListResponseDto response = conversationService.getHiddenConversations(after, cursor, limit);
                 return ResponseEntity.ok(GlobalResponse.success(response));
         }
 

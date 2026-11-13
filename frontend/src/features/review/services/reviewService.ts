@@ -24,6 +24,8 @@ export const reviewService = {
       {
         params: {
           after: params?.after,
+          before: params?.before,
+          q: params?.q,
           limit: params?.limit || 10,
           course_class_id: params?.course_class_id,
         },

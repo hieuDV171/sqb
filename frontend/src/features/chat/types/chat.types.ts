@@ -41,6 +41,7 @@ export interface ConversationDto {
 }
 
 export interface ConversationListResponseDto {
+  nextCursor?: string | null;
   items: ConversationDto[];
   pagination: CursorPagination;
   totalConversations: number;

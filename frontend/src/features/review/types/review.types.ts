@@ -1,4 +1,5 @@
-import type { CursorPaginationDto, QuestionOption, SessionStatus } from '@/features/session/types/session.types';
+import type { QuestionOption, SessionStatus } from '@/features/session/types/session.types';
+import type { CursorPagination } from "@/types/response.types";
 
 // ==========================================
 // 16.1 GET /api/v1/lecturer/sessions/reviewable
@@ -29,11 +30,13 @@ export interface ReviewableSessionItemDto {
 
 export interface ReviewableSessionsResponse {
   items: ReviewableSessionItemDto[];
-  pagination: CursorPaginationDto;
+  pagination: CursorPagination;
 }
 
 export interface GetReviewableSessionsParams {
   after?: number;
+  before?: number;
+  q?: string;
   limit?: number;
   course_class_id?: number;
 }

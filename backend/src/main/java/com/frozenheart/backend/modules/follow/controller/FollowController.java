@@ -58,9 +58,10 @@ public class FollowController {
     public ResponseEntity<GlobalResponse<FollowingListResponseDto>> getFollowing(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        FollowingListResponseDto response = followService.getFollowing(after, limit);
+        FollowingListResponseDto response = followService.getFollowing(after, cursor, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
@@ -73,9 +74,10 @@ public class FollowController {
     public ResponseEntity<GlobalResponse<FollowerListResponseDto>> getFollowers(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        FollowerListResponseDto response = followService.getFollowers(after, limit);
+        FollowerListResponseDto response = followService.getFollowers(after, cursor, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 

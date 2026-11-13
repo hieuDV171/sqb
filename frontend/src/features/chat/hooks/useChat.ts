@@ -65,7 +65,8 @@ export function useGroupCandidates(conversationId: number | undefined, search: s
     queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId, search],
     queryFn: async ({ pageParam }) => (await chatService.getGroupCandidates(conversationId, search, pageParam)).data,
     initialPageParam: undefined as number | undefined,
-    getNextPageParam: ({ pagination }) => pagination.after ?? undefined,
+    getNextPageParam: ({ pagination }, _pages, _previous, params) =>
+      pagination.hasNext && pagination.after != null && !params.includes(pagination.after) ? pagination.after : undefined,
   });
 }
 
@@ -74,7 +75,8 @@ export function useGroupInvitations() {
     queryKey: CHAT_QUERY_KEYS.groupInvitations,
     queryFn: async ({ pageParam }) => (await chatService.getGroupInvitations(pageParam)).data,
     initialPageParam: undefined as number | undefined,
-    getNextPageParam: ({ pagination }) => pagination.after ?? undefined,
+    getNextPageParam: ({ pagination }, _pages, _previous, params) =>
+      pagination.hasNext && pagination.after != null && !params.includes(pagination.after) ? pagination.after : undefined,
     refetchInterval: 20_000,
   });
 }
@@ -106,14 +108,13 @@ export function useConversations(limit: number = 20) {
   return useInfiniteQuery({
     queryKey: CHAT_QUERY_KEYS.conversations,
     queryFn: async ({ pageParam }) => {
-      const res = await chatService.getConversations(pageParam as number | undefined, limit);
+      const res = await chatService.getConversations(pageParam, limit);
       return res.data;
     },
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (lastPage) => {
-      return lastPage.pagination.hasNext && lastPage.pagination.after
-        ? lastPage.pagination.after
-        : undefined;
+    initialPageParam: undefined as string | number | undefined,
+    getNextPageParam: (lastPage, _pages, _previous, params) => {
+      const cursor = lastPage.nextCursor ?? lastPage.pagination.after;
+      return lastPage.pagination.hasNext && cursor != null && !params.includes(cursor) ? cursor : undefined;
     },
   });
 }
@@ -126,7 +127,7 @@ export function useHiddenConversations(enabled: boolean = false, limit: number =
     queryKey: CHAT_QUERY_KEYS.hiddenConversations,
     queryFn: async ({ pageParam }) => {
       try {
-        const res = await chatService.getHiddenConversations(pageParam as number | undefined, limit);
+        const res = await chatService.getHiddenConversations(pageParam, limit);
         res.data.items.forEach(({ conversationId }) => useChatStore.getState().rememberHidden(conversationId, true));
         return res.data;
       } catch (error) {
@@ -134,11 +135,10 @@ export function useHiddenConversations(enabled: boolean = false, limit: number =
         throw error;
       }
     },
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (lastPage) => {
-      return lastPage.pagination.hasNext && lastPage.pagination.after
-        ? lastPage.pagination.after
-        : undefined;
+    initialPageParam: undefined as string | number | undefined,
+    getNextPageParam: (lastPage, _pages, _previous, params) => {
+      const cursor = lastPage.nextCursor ?? lastPage.pagination.after;
+      return lastPage.pagination.hasNext && cursor != null && !params.includes(cursor) ? cursor : undefined;
     },
     enabled,
     retry: (attempt, error) => !isHiddenChatLocked(error) && attempt < 1,

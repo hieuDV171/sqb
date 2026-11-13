@@ -59,9 +59,10 @@ public class BlockController {
     public ResponseEntity<GlobalResponse<BlockedListResponseDto>> getBlockedUsers(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        BlockedListResponseDto response = blockService.getBlockedUsers(after, limit);
+        BlockedListResponseDto response = blockService.getBlockedUsers(after, cursor, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 }

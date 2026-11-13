@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gamificationService } from '@/features/gamification';
 import type {
   LeaderboardPeriod,
@@ -169,20 +169,31 @@ export function useShop(params?: {
   });
 }
 
-export function useMyInventory(params?: {
-  type?: CosmeticType;
-  rarity?: CosmeticRarity;
-  onlyUnlocked?: boolean;
-  after?: number;
-  limit?: number;
-}) {
-  return useQuery({
-    queryKey: GAMIFICATION_KEYS.inventory(params ?? {}),
-    queryFn: async () => {
-      const res = await gamificationService.getMyInventory(params);
-      return res.data;
+export function useShopPages(params: { type?: CosmeticType; sortBy?: CosmeticSortBy; limit?: number }, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: [...GAMIFICATION_KEYS.shop(), 'pages', params],
+    queryFn: async ({ pageParam }) => (await gamificationService.getShop({ ...params, after: pageParam })).data,
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (page, _pages, _last, params) => {
+      const after = page.pagination?.after;
+      return page.pagination?.hasNext && after != null && !params.includes(after) ? after : undefined;
     },
-    staleTime: 30 * 1000,
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useMyInventory(params: { type?: CosmeticType; rarity?: CosmeticRarity; limit?: number }, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: GAMIFICATION_KEYS.inventory(params),
+    queryFn: async ({ pageParam }) => (await gamificationService.getMyInventory({ ...params, after: pageParam })).data,
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (page, _pages, _last, params) => {
+      const after = page.pagination?.after;
+      return page.pagination?.hasNext && after != null && !params.includes(after) ? after : undefined;
+    },
+    enabled,
+    staleTime: 30_000,
   });
 }
 
@@ -415,9 +426,10 @@ export function useSubmitGame6() {
   });
 }
 
-export function useMyPredictions(params?: { after?: number; limit?: number }) {
+export function useMyPredictions(params?: { after?: number; before?: number; limit?: number }, enabled = true) {
   return useQuery({
-    queryKey: GAMIFICATION_KEYS.myPredictions(),
+    queryKey: [...GAMIFICATION_KEYS.myPredictions(), params],
+    enabled,
     queryFn: async () => {
       const res = await gamificationService.getMyPredictions(params);
       return res.data;

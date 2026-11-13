@@ -1,7 +1,8 @@
+import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import { getAvatarInitial } from '@/lib/avatar';
-import { useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { useCreateDirectConversation } from '../hooks/useChat';
-import { userService } from '@/services/userService';
+import { useMyFriends } from '@/features/profile/hooks/useConnections';
 import {
   MessageSquarePlus,
   Search,
@@ -9,7 +10,7 @@ import {
   Loader2,
   ArrowRight,
 } from 'lucide-react';
-import type { FriendDto } from '@/types/user.types';
+
 
 interface NewDirectChatModalProps {
   isOpen: boolean;
@@ -23,25 +24,11 @@ export function NewDirectChatModal({
   onCreated,
 }: NewDirectChatModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [friends, setFriends] = useState<FriendDto[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
+  const listRef = useRef<HTMLDivElement>(null);
+  const query = useMyFriends(isOpen);
+  const friends = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const isLoading = query.isPending;
   const createDirectMutation = useCreateDirectConversation();
-
-  useEffect(() => {
-    if (isOpen) {
-      setSearchTerm('');
-      setIsLoading(true);
-      userService
-        .getMyFriends(undefined, 50)
-        .then((res) => {
-          if (res?.data?.items) {
-            setFriends(res.data.items);
-          }
-        })
-        .finally(() => setIsLoading(false));
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -51,6 +38,7 @@ export function NewDirectChatModal({
       {
         onSuccess: (res) => {
           onCreated?.(res.data.conversationId);
+          setSearchTerm('');
           onClose();
         },
       }
@@ -85,7 +73,7 @@ export function NewDirectChatModal({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => { setSearchTerm(''); onClose(); }}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -107,15 +95,19 @@ export function NewDirectChatModal({
         </div>
 
         {/* Friend List */}
-        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+        <div ref={listRef} className="flex-1 overflow-y-auto space-y-1.5 pr-1">
           {isLoading ? (
             <div className="py-12 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
               Đang tải danh sách bạn bè...
             </div>
+          ) : query.isLoadingError ? (
+            <button type="button" className="min-h-11 w-full text-sm text-destructive"
+              onClick={() => void query.refetch()}>Không thể tải bạn bè. Thử lại</button>
           ) : filteredFriends.length === 0 ? (
             <div className="py-12 text-center text-xs text-slate-400">
-              {searchTerm ? 'Không tìm thấy bạn bè phù hợp' : 'Bạn chưa có người bạn nào'}
+              {searchTerm ? (query.hasNextPage ? 'Chưa có bạn bè phù hợp trong các mục đã tải' : 'Không tìm thấy bạn bè phù hợp')
+                : 'Bạn chưa có người bạn nào'}
             </div>
           ) : (
             filteredFriends.map((friend) => (
@@ -152,6 +144,8 @@ export function NewDirectChatModal({
               </div>
             ))
           )}
+          <InfiniteListFooter query={query} label="Tải thêm bạn bè"
+            auto={filteredFriends.length > 0 || searchTerm.trim() === ''} scrollRoot={listRef} />
         </div>
       </div>
     </div>

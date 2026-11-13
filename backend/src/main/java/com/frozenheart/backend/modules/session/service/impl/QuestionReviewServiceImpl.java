@@ -11,15 +11,13 @@ import java.util.stream.Collectors;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.frozenheart.backend.core.constant.Point;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
-import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.IdCursorPage;
 import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
@@ -100,25 +98,18 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReviewableSessionsResponse getReviewableSessions(Long after, Integer limit, Long courseClassId, String sortBy) {
+    public ReviewableSessionsResponse getReviewableSessions(Long after, Long before, Integer limit, Long courseClassId, String sortBy, String keyword) {
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 10;
-        Pageable pageable = PageRequest.of(0, pageSize + 1);
         JwtPayload payload = requireReviewerPayload();
         Long lecturerId = UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole())
                 ? null
                 : payload.getUserId();
 
-        List<Session> sessions = sessionRepository.findReviewableSessionsFetchCourseClassAndProposerWithCursor(
-                lecturerId, courseClassId, after, pageable);
-
-        boolean hasNext = false;
-        Long nextCursor = null;
-
-        if (sessions.size() > pageSize) {
-            hasNext = true;
-            sessions = sessions.subList(0, pageSize);
-            nextCursor = sessions.getLast().getId();
-        }
+        String search = keyword == null ? "" : keyword.strip();
+        var page = IdCursorPage.load(after, before, pageSize, Session::getId,
+                (next, previous, request) -> sessionRepository.findReviewableSessionsFetchCourseClassAndProposerWithCursor(
+                        lecturerId, courseClassId, next, previous, search, request));
+        List<Session> sessions = page.items();
 
         List<Long> proposerIds = sessions.stream()
                 .filter(s -> s.getProposer() != null)
@@ -165,10 +156,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         return ReviewableSessionsResponse.builder()
                 .items(items)
-                .pagination(CursorPaginationDto.builder()
-                        .after(nextCursor)
-                        .hasNext(hasNext)
-                        .build())
+                .pagination(page.pagination())
                 .build();
     }
 

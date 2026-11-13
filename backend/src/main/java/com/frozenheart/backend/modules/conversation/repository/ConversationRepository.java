@@ -38,13 +38,21 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
       WHERE p.user.id = :userId
         AND p.leftAt IS NULL
         AND ((:isHidden = FALSE AND p.hiddenAt IS NULL) OR (:isHidden = TRUE AND p.hiddenAt IS NOT NULL))
-        AND (c.lastMessageAt IS NULL OR c.lastMessageAt < :cursor)
+        AND (
+          (:firstPage = true)
+          OR (:withoutMessage = true AND c.lastMessageAt IS NULL AND c.id < :cursorId)
+          OR (:withoutMessage = false AND (c.lastMessageAt IS NULL OR c.lastMessageAt < :cursor
+            OR (c.lastMessageAt = :cursor AND c.id < :cursorId)))
+        )
       ORDER BY c.lastMessageAt DESC NULLS LAST, c.id DESC
       """)
   List<Conversation> findUserConversationsCursor(
       @Param("userId") Long userId,
       @Param("isHidden") boolean isHidden,
       @Param("cursor") Instant cursor,
+      @Param("cursorId") Long cursorId,
+      @Param("firstPage") boolean firstPage,
+      @Param("withoutMessage") boolean withoutMessage,
       Pageable pageable);
 
   @Query("""

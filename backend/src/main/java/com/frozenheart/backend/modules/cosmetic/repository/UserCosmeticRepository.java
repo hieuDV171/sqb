@@ -11,10 +11,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
 public interface UserCosmeticRepository extends JpaRepository<UserCosmetic, UserCosmeticId> {
+
+    @Query("SELECT uc.id.cosmeticId FROM UserCosmetic uc WHERE uc.id.userId = :userId AND uc.id.cosmeticId IN :ids")
+    List<Long> findOwnedItemIds(@Param("userId") Long userId, @Param("ids") Collection<Long> ids);
 
     @Query("""
         SELECT uc

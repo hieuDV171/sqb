@@ -100,9 +100,10 @@ public class FriendshipController {
     public ResponseEntity<GlobalResponse<FriendListResponseDto>> getMyFriends(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp trang sau", example = "1728200000000")
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng bạn bè mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        FriendListResponseDto response = friendshipService.getMyFriends(after, limit);
+        FriendListResponseDto response = friendshipService.getMyFriends(after, cursor, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
@@ -115,9 +116,10 @@ public class FriendshipController {
     public ResponseEntity<GlobalResponse<FriendRequestReceivedListResponseDto>> getReceivedFriendRequests(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng lời mời mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        FriendRequestReceivedListResponseDto response = friendshipService.getReceivedFriendRequests(after, limit);
+        FriendRequestReceivedListResponseDto response = friendshipService.getReceivedFriendRequests(after, cursor, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
@@ -130,9 +132,10 @@ public class FriendshipController {
     public ResponseEntity<GlobalResponse<FriendRequestSentListResponseDto>> getSentFriendRequests(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng lời mời mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
-        FriendRequestSentListResponseDto response = friendshipService.getSentFriendRequests(after, limit);
+        FriendRequestSentListResponseDto response = friendshipService.getSentFriendRequests(after, cursor, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 }

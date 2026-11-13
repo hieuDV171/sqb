@@ -160,6 +160,10 @@ public class PostServiceImpl implements PostService {
         boolean isAuthor = Objects.equals(currentUserId, authorId);
         boolean isAdmin = UserRole.ADMIN.name().equalsIgnoreCase(roleStr);
 
+        if (post.getPostType() == PostType.LEARNING_VIDEO && !isAuthor && !isAdmin
+                && !postRepository.canViewLectureVideo(id, currentUserId, false)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn chưa đăng ký học môn của video này");
+        }
         if (!isAuthor && !isAdmin && authorId != null) {
             // 1. Kiểm tra quan hệ Chặn giữa 2 người dùng
             if (blockRepository.isBlockedBetween(currentUserId, authorId)) {
@@ -295,18 +299,14 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public CursorResponse<VideoPostItemDto> getVideoPosts(Long subjectId, Long after, Integer limit) {
+        JwtPayload viewer = JwtPayload.getCurrentUserPayload();
+        boolean admin = UserRole.ADMIN.name().equalsIgnoreCase(viewer.getRole());
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 3) : 1;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
         Long cursor = (after != null && after > 0) ? after : Long.MAX_VALUE;
 
-        List<Post> postsList;
-        if (subjectId != null) {
-            postsList = postRepository.findByPostTypeAndSubjectIdAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
-                    PostType.LEARNING_VIDEO, subjectId, cursor, pageable);
-        } else {
-            postsList = postRepository.findByPostTypeAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
-                    PostType.LEARNING_VIDEO, cursor, pageable);
-        }
+        List<Post> postsList = postRepository.findVisibleLectureVideos(
+                viewer.getUserId(), admin, subjectId, cursor, pageable);
 
         boolean hasNext = false;
         Long nextCursor = null;
@@ -387,8 +387,8 @@ public class PostServiceImpl implements PostService {
             }
 
             // Truy vấn trực tiếp tại DB theo allowedVisibilities để đảm bảo phân trang cursor chính xác
-            postsList = postRepository.findByPosterIdAndVisibilityInAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
-                    userId, allowedVisibilities, cursor, pageable);
+            postsList = postRepository.findVisibleProfilePosts(userId, currentUserId,
+                    UserRole.ADMIN.name().equalsIgnoreCase(viewer.getRole()), allowedVisibilities, cursor, pageable);
         }
 
         boolean hasNext = false;

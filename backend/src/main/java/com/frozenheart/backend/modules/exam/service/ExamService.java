@@ -11,7 +11,7 @@ public interface ExamService {
 
     ExamDetailResponse getExamDetail(Long examId);
 
-    ExamListResponse getMyExams(Long subjectId, Long after, int limit);
+    ExamListResponse getMyExams(Long subjectId, Long after, Long before, int limit);
 
     ExportResponse exportExam(Long examId, String format, Boolean includeAnswerKey, String paperSize);
 }

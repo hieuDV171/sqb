@@ -23,9 +23,9 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
 
     List<Prediction> findByGamblerId(Long gamblerId);
 
-    @Query("SELECT p FROM Prediction p WHERE p.gambler.id = :gamblerId AND (:after IS NULL OR p.id < :after) ORDER BY p.id DESC")
+    @Query("SELECT p FROM Prediction p WHERE p.gambler.id = :gamblerId AND (:after IS NULL OR p.id < :after) AND (:before IS NULL OR p.id > :before)")
     List<Prediction> findByGamblerIdWithCursor(@Param("gamblerId") Long gamblerId, @Param("after") Long after,
-            Pageable pageable);
+            @Param("before") Long before, Pageable pageable);
 
     @Query("SELECT p FROM Prediction p JOIN FETCH p.gambler WHERE p.gameType = :gameType AND p.status = :status")
     List<Prediction> findByGameTypeAndStatusFetchGambler(@Param("gameType") GameType gameType,

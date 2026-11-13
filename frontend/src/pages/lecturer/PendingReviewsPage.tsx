@@ -1,5 +1,6 @@
+import { CursorPagination, type PageCursor } from '@/components/ui/cursor-pagination';
 import { useSearchParams } from 'react-router-dom';
-import { ClipboardCheck, Loader2, RefreshCw } from 'lucide-react';
+import { ClipboardCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -17,16 +18,28 @@ export function PendingReviewsPage() {
   const classId = Number(params.get('classId'));
   const selectedClassId = Number.isSafeInteger(classId) && classId > 0 ? classId : undefined;
   const search = params.get('q') ?? '';
-  const sessions = useReviewableSessions({ course_class_id: selectedClassId });
-  const items = sessions.data?.pages.flatMap((page) => page.items) ?? [];
-  const term = search.trim().toLocaleLowerCase('vi-VN');
-  const visible = items.filter((item) => [
-    item.title, item.topic, item.subjectCode, item.classCode, item.semesterName,
-    item.author?.fullName, String(item.sessionId),
-  ].some((value) => value?.toLocaleLowerCase('vi-VN').includes(term)));
+  const readCursor = (key: 'after' | 'before') => {
+    const value = Number(params.get(key));
+    return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+  };
+  const before = readCursor('before');
+  const cursor: PageCursor = before === undefined ? { after: readCursor('after') } : { before };
+  const sessions = useReviewableSessions({ course_class_id: selectedClassId, q: search.trim(), ...cursor });
+  const visible = sessions.data?.items ?? [];
+
+  function changePage(page: PageCursor) {
+    const next = new URLSearchParams(params);
+    next.delete('before');
+    next.delete('after');
+    if (page.before !== undefined) next.set('before', String(page.before));
+    if (page.after !== undefined) next.set('after', String(page.after));
+    setParams(next);
+  }
 
   function updateFilter(key: 'q' | 'classId', value?: string) {
     const next = new URLSearchParams(params);
+    next.delete('before');
+    next.delete('after');
     if (value) next.set(key, value);
     else next.delete(key);
     setParams(next, { replace: true });
@@ -70,36 +83,23 @@ export function PendingReviewsPage() {
         <ErrorState title="Không thể tải phiên cần duyệt" onRetry={() => void sessions.refetch()} />
       ) : (
         <section aria-label="Danh sách phiên cần duyệt" className="space-y-3">
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            {term ? `${visible.length} kết quả trong ${items.length} phiên đã tải` : `${items.length} phiên đã tải`}
-          </p>
           {sessions.isRefetchError && (
             <p role="status" className="text-sm text-destructive">Không tải được danh sách mới nhất. Dùng nút Làm mới để thử lại.</p>
           )}
           {visible.length === 0 ? (
             <EmptyState
-              title={term ? 'Không tìm thấy phiên trong các mục đã tải' : 'Chưa có phiên cần duyệt'}
-              description={term && sessions.hasNextPage
-                ? 'Hãy tải thêm phiên để tiếp tục tìm.'
-                : 'Thử đổi từ khóa hoặc chọn lớp học phần khác.'}
+              title={search.trim() ? 'Không tìm thấy phiên phù hợp' : 'Chưa có phiên cần duyệt'}
+              description="Thử đổi từ khóa hoặc chọn lớp học phần khác."
             />
           ) : (
             visible.map((session) => (
               <PendingSessionCard key={session.sessionId} session={session} queueSearch={params.toString()} />
             ))
           )}
-          {sessions.isFetchNextPageError && (
-            <p className="text-sm text-destructive" role="alert">Không thể tải trang tiếp theo.</p>
-          )}
-          {sessions.hasNextPage && (
-            <Button variant="outline" className="min-h-11" disabled={sessions.isFetching}
-              onClick={() => void sessions.fetchNextPage()}>
-              {sessions.isFetchingNextPage && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
-              {sessions.isFetchingNextPage ? 'Đang tải…' : sessions.isFetchNextPageError ? 'Thử tải thêm' : 'Tải thêm phiên'}
-            </Button>
-          )}
         </section>
       )}
+      <CursorPagination pagination={sessions.data?.pagination} cursor={cursor}
+        busy={sessions.isFetching} onChange={changePage} />
     </div>
   );
 }

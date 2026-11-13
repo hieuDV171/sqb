@@ -14,9 +14,9 @@ public interface FriendshipService {
 
     void unfriend(Long friendId);
 
-    FriendListResponseDto getMyFriends(Long after, Integer limit);
+    FriendListResponseDto getMyFriends(Long after, String cursor, Integer limit);
 
-    FriendRequestReceivedListResponseDto getReceivedFriendRequests(Long after, Integer limit);
+    FriendRequestReceivedListResponseDto getReceivedFriendRequests(Long after, String cursor, Integer limit);
 
-    FriendRequestSentListResponseDto getSentFriendRequests(Long after, Integer limit);
+    FriendRequestSentListResponseDto getSentFriendRequests(Long after, String cursor, Integer limit);
 }

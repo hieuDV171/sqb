@@ -2,7 +2,7 @@
 
 > **Dự án:** School Social Network & Crowdsourced Question Bank (SQB)  
 > **Phiên bản:** 1.0.0-SNAPSHOT  
-> **Trạng thái:** Backend đã hoàn thiện 100% 129 Endpoints, WebSocket STOMP và 23 Modules.  
+> **Trạng thái:** Backend cung cấp 126 endpoint REST, WebSocket STOMP và 23 module.
 > **Tài liệu đặc tả API đi kèm:** [BACKEND_API_SPECIFICATION.md](file:///c:/Users/ADMIN/IdeaProjects/sqb/BACKEND_API_SPECIFICATION.md)
 
 ---
@@ -71,7 +71,7 @@ Hệ thống Backend được xây dựng theo mô hình **Modular Monolith** k�
 ## 3. CÁC CƠ CHẾ HẠ TẦNG DÙNG CHUNG (CROSS-CUTTING CONCERNS)
 
 ### 3.1. Envelope Phản hồi Chuẩn hóa (Global Response Envelope)
-Toàn bộ 129 endpoints đều bọc dữ liệu trong cấu trúc `GlobalResponse<T>`:
+Toàn bộ 126 endpoints đều bọc dữ liệu trong cấu trúc `GlobalResponse<T>`:
 ```json
 {
   "code": 200,
@@ -449,3 +449,19 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Các luồng tạo thông báo nội bộ lưu qua `NotificationWriter`. Sau khi commit, dịch vụ gửi `NOTIFICATIONS_CHANGED` tới hàng đợi cá nhân `/user/queue/notifications`. Khi lưu theo lô, mỗi tài khoản nhận một tín hiệu cho lô đó. Định tuyến dùng ID tài khoản đã xác thực và payload chỉ có loại sự kiện.
 - Frontend dùng lại kết nối STOMP của ứng dụng để tải lại danh sách và số chưa đọc khi có tín hiệu hoặc khi kết nối lại. REST vẫn cung cấp dữ liệu phân trang và trạng thái đã đọc. Luồng Firebase Cloud Messaging tiếp tục phục vụ thông báo đẩy theo cài đặt của người dùng.
+
+### [ADR-047] Ngừng cung cấp trợ lý chat AI cho Admin
+
+- Gỡ ba API gửi câu hỏi, đọc lịch sử và liệt kê phiên tại `/admin/ai/chat`, cùng mã xử lý riêng cho chức năng này. Mã của tính năng có thể tra trong lịch sử Git.
+- Gỡ mapping của `ai_chat_sessions` và `ai_chat_messages` khỏi JPA. Hai bảng và dữ liệu vẫn còn cho đến khi áp dụng changeset do người vận hành tạo. Scheduler duyệt tự động và luồng tinh chỉnh, áp dụng đề xuất AI cho câu hỏi tiếp tục sử dụng dịch vụ AI hiện tại.
+
+### [ADR-048] Quyền xem video bài giảng theo môn học
+
+- Người dùng xem được bài `LEARNING_VIDEO` nếu đã ghi danh vào một lớp học phần của môn, là người đăng hoặc là Admin. Ghi danh được xét theo môn, gồm cả lớp ở kỳ trước. API danh sách và Bảng tin áp dụng quyền trước khi phân trang.
+- Chi tiết, bài viết hồ sơ, kết quả tìm kiếm và tương tác trên bài giảng cũng kiểm tra quyền. Quyền này kiểm soát dữ liệu do API cung cấp. Tệp trên URL công khai của R2 vẫn truy cập được nếu đã có URL.
+
+### [ADR-049] Con trỏ phân trang cho hội thoại và danh sách quản lý
+
+- Hội thoại thường và kho ẩn sắp xếp theo thời điểm tin cuối giảm dần, dùng ID hội thoại khi trùng thời điểm và xếp nhóm chưa có tin xuống cuối. API trả `next_cursor` chứa thời điểm đầy đủ và ID. Danh sách bạn bè, lời mời kết bạn, theo dõi và chặn dùng cùng định dạng với ID của người ở đầu kia. Các API vẫn nhận `after` dạng mili giây để tương thích client cũ.
+- Lịch sử dự đoán, Đề thi và Phiên cần duyệt nhận `before` hoặc `after`. Chiều ngược lấy các ID liền trước theo thứ tự tăng dần rồi đảo khi trả kết quả. Backend áp dụng cùng bộ lọc và quyền ở cả hai chiều, trả con trỏ cùng `has_prev` và `has_next`. Bảng xếp hạng tiếp tục dùng con trỏ theo thứ hạng.
+- Cửa hàng giữ `after` là ID vật phẩm. Khi sắp theo giá hoặc độ hiếm, backend dùng giá hoặc thứ tự độ hiếm của vật phẩm mốc cùng ID để tiếp tục. Thứ tự độ hiếm từ cao xuống thấp là LEGENDARY, EPIC, RARE, COMMON. Trạng thái sở hữu được truy vấn một lần theo ID các vật phẩm trên trang.
