@@ -23,7 +23,7 @@ public class BadgeController {
 
     private final BadgeService badgeService;
 
-    @Operation(summary = "Lấy danh sách tất cả huy hiệu đang hoạt động trong hệ thống", description = "Trả về danh sách các huy hiệu có trạng thái active = true, sắp xếp theo ID tăng dần.")
+    @Operation(summary = "Lấy danh mục huy hiệu", description = "Bao gồm huy hiệu đã ngừng trao với active = false, sắp xếp theo ID tăng dần.")
     @ApiResponse(responseCode = "200", description = "Lấy danh sách huy hiệu thành công")
     @GetMapping
     public ResponseEntity<GlobalResponse<List<BadgeResponseDto>>> getAllBadges() {

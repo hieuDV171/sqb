@@ -20,7 +20,6 @@ public interface BadgeRepository extends JpaRepository<Badge, Long> {
 
     boolean existsByName(String name);
 
-    List<Badge> findByActiveTrueOrderByIdAsc();
 
     List<Badge> findByActiveTrueAndBadgeTriggerEvent(BadgeTriggerEvent badgeTriggerEvent);
 

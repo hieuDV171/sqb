@@ -35,4 +35,7 @@ public class UserBadgeResponseDto {
 
     @Schema(description = "Thời điểm người dùng đạt được huy hiệu", example = "2026-10-05T12:00:00Z")
     private Instant earnedAt;
+
+    @Schema(description = "Huy hiệu còn được trao hay đã ngừng trao")
+    private boolean active;
 }

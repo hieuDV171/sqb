@@ -19,6 +19,7 @@ public class UserBadge {
     private UserBadgeId id;
 
     private Instant earnedAt;
+    private Instant revokedAt;
     // --------------------------
     @MapsId("userId")
     @ManyToOne(fetch = FetchType.LAZY)

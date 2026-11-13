@@ -58,6 +58,10 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
     void incrementBadgesCountForUsers(@Param("userIds") Collection<Long> userIds);
 
     @Modifying
+    @Query("UPDATE UserProfile up SET up.badgesCount = CASE WHEN up.badgesCount > 0 THEN up.badgesCount - 1 ELSE 0 END WHERE up.userId IN :userIds")
+    void decrementBadgesCountForUsers(@Param("userIds") Collection<Long> userIds);
+
+    @Modifying
     @Query("UPDATE UserProfile up SET up.friendsCount = up.friendsCount + :delta WHERE up.userId = :userId")
     void incrementFriendsCount(@Param("userId") Long userId, @Param("delta") int delta);
 

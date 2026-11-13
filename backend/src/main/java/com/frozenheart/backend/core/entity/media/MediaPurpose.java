@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 public enum MediaPurpose {
     AVATAR("avatars"),
     COVER("covers"),
+    BADGE_ICON("badge-icons"),
     QUESTION("questions"),
     POST("posts"),
     COMMENT("comments"),

@@ -95,6 +95,14 @@ export interface UserBadgeResponseDto {
   badgeTier: BadgeTier;
   iconUrl?: string;
   earnedAt: string;
+  active?: boolean;
+}
+
+export interface BadgeAccount {
+  userId: number;
+  fullName: string;
+  email?: string | null;
+  role: 'STUDENT' | 'LECTURER' | 'ADMIN';
 }
 
 export interface CreateBadgeRequestDto {

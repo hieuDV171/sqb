@@ -1,6 +1,7 @@
 export type MediaPurpose =
   | 'AVATAR'
   | 'COVER'
+  | 'BADGE_ICON'
   | 'QUESTION'
   | 'POST'
   | 'COMMENT'

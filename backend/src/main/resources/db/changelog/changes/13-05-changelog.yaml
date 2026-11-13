@@ -1,0 +1,12 @@
+databaseChangeLog:
+- changeSet:
+    id: 1794570579164-1
+    author: ADMIN (generated)
+    changes:
+    - addColumn:
+        columns:
+        - column:
+            name: revoked_at
+            type: TIMESTAMP WITH TIME ZONE
+        tableName: user_badges
+

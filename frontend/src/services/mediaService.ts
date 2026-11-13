@@ -25,7 +25,7 @@ async function compressImageIfNeeded(file: File, purpose: MediaPurpose = 'QUESTI
   // Cấu hình kích thước trần theo mục đích
   let maxDimension = 1920;
   let quality = 0.82;
-  if (purpose === 'AVATAR') {
+  if (purpose === 'AVATAR' || purpose === 'BADGE_ICON') {
     maxDimension = 512;
     quality = 0.85;
   } else if (purpose === 'COVER') {

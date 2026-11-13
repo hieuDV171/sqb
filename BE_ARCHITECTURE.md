@@ -477,3 +477,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Giảng viên phụ trách lớp và Admin xem bản tinh chỉnh cùng kết quả BTProp trong phiên đang mở. Cảnh báo hoặc kết quả chưa kiểm chứng cần xác nhận tự rà soát. BE khóa phiên khi áp dụng, kiểm tra bản đề xuất còn chờ và câu hỏi chưa được sửa sau khi tạo bản AI. Tệp ảnh đáp án lấy từ câu hỏi gốc theo khóa lựa chọn.
 - Admin được trao thủ công mọi huy hiệu đang hoạt động. Vô hiệu hóa giữ các lượt đã trao. Danh mục và màn Admin lấy số người đạt theo lô; JSON tiêu chí ghi duy nhất trường phân loại `type`.
 - Hồ sơ dùng tải trực tiếp cho ảnh đại diện và ảnh bìa. Đề xuất phiên dùng presign và kiểm tra tồn tại theo lô trước khi nộp. Khi lưu nghiệp vụ, BE xác nhận tệp vĩnh viễn. API thống kê quan hệ giữ tương thích và được đánh dấu deprecated.
+
+### [ADR-052] Ngừng trao và thu hồi huy hiệu
+
+- `Badge.active` điều khiển việc xét và trao mới. GV/SV thấy huy hiệu đã ngừng trao ở danh mục và bộ sưu tập. Admin có thể kích hoạt lại qua API cập nhật huy hiệu hiện có.
+- `UserBadge.revokedAt` ghi nhận lượt bị thu hồi và giữ cặp khóa người dùng/huy hiệu. Luồng tự động bỏ qua mọi cặp khóa đã có, kể cả lượt bị thu hồi. Admin trao lại bằng cách đặt `revokedAt` về null và ghi thời điểm trao mới. Thu hồi cập nhật số đếm hồ sơ và ẩn sự kiện cũ khỏi Bảng tin, trong khi thông báo đã gửi và ảnh của sự kiện lịch sử vẫn được lưu.
+- Màn Admin tìm người trao và người đang giữ huy hiệu bằng truy vấn phân trang theo ID. Form lấy danh mục môn học qua `/subjects`; BE kiểm tra ID và dùng mã môn chính thức. Biểu tượng tải trực tiếp lên R2 qua `BADGE_ICON` và được xác nhận vĩnh viễn khi lưu huy hiệu.

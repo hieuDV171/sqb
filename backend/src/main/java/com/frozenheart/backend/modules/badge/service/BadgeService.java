@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.badge.service;
 
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
+import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.modules.badge.dto.*;
 
@@ -25,6 +26,10 @@ public interface BadgeService {
     void deleteBadge(Long badgeId);
 
     void grantManualBadge(Long badgeId, ManualGrantBadgeRequestDto request);
+
+    void revokeBadge(Long badgeId, List<Long> userIds);
+
+    CursorResponse<BadgeAccountResponse> searchBadgeAccounts(Long badgeId, boolean holders, String query, Long after);
 
     void checkAndGrantBadges(User user, BadgeTriggerEvent badgeTriggerEvent, Object context);
 

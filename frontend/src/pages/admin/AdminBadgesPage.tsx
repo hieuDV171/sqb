@@ -9,8 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BadgeIcon } from '@/features/gamification/components/BadgesTab';
+import { BadgeAccountPicker } from '@/features/gamification/components/BadgeAccountPicker';
 import { gamificationService } from '@/features/gamification/services/gamificationService';
-import type { BadgeCriteria, BadgeResponseDto, BadgeTier, BadgeTriggerEvent } from '@/features/gamification/types/gamification.types';
+import type { BadgeAccount, BadgeCriteria, BadgeResponseDto, BadgeTier, BadgeTriggerEvent } from '@/features/gamification/types/gamification.types';
+import { adminService } from '@/services/adminService';
+import { mediaService } from '@/services/mediaService';
 import { toast } from '@/stores/useToastStore';
 
 const tiers: Record<BadgeTier, string> = { BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch kim', DIAMOND: 'Kim cương' };
@@ -21,7 +24,10 @@ const triggers: Record<BadgeTriggerEvent, string> = {
 };
 const selectStyle = 'min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm';
 const adminKey = ['admin-badges'] as const;
-type Action = { mode: 'edit' | 'grant' | 'disable'; badge: BadgeResponseDto } | { mode: 'create'; badge?: undefined };
+type Action = { mode: 'edit' | 'grant' | 'revoke' | 'disable' | 'enable'; badge: BadgeResponseDto } | { mode: 'create'; badge?: undefined };
+const titles = { create: 'Tạo huy hiệu', edit: 'Chỉnh sửa huy hiệu', grant: 'Trao huy hiệu', revoke: 'Thu hồi huy hiệu', disable: 'Vô hiệu hóa huy hiệu?', enable: 'Kích hoạt lại huy hiệu?' };
+const submitLabels = { create: 'Lưu huy hiệu', edit: 'Lưu huy hiệu', grant: 'Xác nhận trao', revoke: 'Xác nhận thu hồi', disable: 'Vô hiệu hóa', enable: 'Kích hoạt lại' };
+const successMessages = { create: 'Đã tạo huy hiệu.', edit: 'Đã lưu huy hiệu.', grant: 'Đã xử lý yêu cầu trao huy hiệu.', revoke: 'Đã thu hồi huy hiệu.', disable: 'Đã vô hiệu hóa huy hiệu.', enable: 'Đã kích hoạt lại huy hiệu.' };
 
 export function AdminBadgesPage() {
   const [action, setAction] = useState<Action | null>(null);
@@ -47,10 +53,11 @@ export function AdminBadgesPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => setAction({ mode: 'edit', badge })}>Chỉnh sửa</Button>
-              {badge.active && <>
+              {(badge.totalEarnedUsers ?? 0) > 0 && <Button variant="outline" onClick={() => setAction({ mode: 'revoke', badge })}>Thu hồi</Button>}
+              {badge.active ? <>
                 <Button variant="outline" onClick={() => setAction({ mode: 'grant', badge })}>Trao huy hiệu</Button>
                 <Button variant="destructive" onClick={() => setAction({ mode: 'disable', badge })}>Vô hiệu hóa</Button>
-              </>}
+              </> : <Button variant="outline" onClick={() => setAction({ mode: 'enable', badge })}>Kích hoạt lại</Button>}
             </div>
           </li>)}
         </ul>
@@ -65,16 +72,28 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
   const { mode, badge } = action;
   const [trigger, setTrigger] = useState<BadgeTriggerEvent>(badge?.badgeTriggerEvent ?? 'MANUAL_GRANT');
   const [bySubject, setBySubject] = useState(badge?.criteria?.type === 'SUBJECT_MASTERY');
+  const [subjectId, setSubjectId] = useState(String(badge?.criteria?.subjectId ?? ''));
+  const [iconUrl, setIconUrl] = useState(badge?.iconUrl ?? '');
+  const [selected, setSelected] = useState<BadgeAccount[]>([]);
   const [validationError, setValidationError] = useState('');
+  const subjectCriteria = trigger === 'APPROVED_QUESTIONS' && bySubject;
+  const editing = mode === 'edit' || mode === 'create';
+  const assigning = mode === 'grant' || mode === 'revoke';
+  const subjects = useQuery({ queryKey: ['subjects', 'admin'], enabled: editing && subjectCriteria,
+    queryFn: () => adminService.getAllSubjects().then(({ data }) => data) });
+  const upload = useMutation({
+    mutationFn: (file: File) => mediaService.uploadMedia(file, 'BADGE_ICON'),
+    onSuccess: ({ url }) => setIconUrl(url),
+    onError: (error) => setValidationError(error.message || 'Không thể tải ảnh.'),
+  });
   const mutation = useMutation({
     mutationFn: async (form: FormData) => {
       if (mode === 'disable') return gamificationService.deleteBadge(badge!.badgeId);
-      if (mode === 'grant') {
-        const ids = String(form.get('users')).trim().split(/[\s,]+/).map(Number);
-        const userIds = [...new Set(ids)];
-        if (!userIds.length || userIds.length > 100 || userIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
-          throw new Error('Nhập từ 1 đến 100 ID tài khoản hợp lệ.');
-        }
+      if (mode === 'enable') return gamificationService.updateBadge(badge!.badgeId, { active: true });
+      if (assigning) {
+        const userIds = selected.map((account) => account.userId);
+        if (!userIds.length) throw new Error('Hãy chọn ít nhất một tài khoản.');
+        if (mode === 'revoke') return gamificationService.revokeBadge(badge!.badgeId, userIds);
         return gamificationService.grantManualBadge(badge!.badgeId, { userIds, reason: String(form.get('reason')).trim() || undefined });
       }
       const field = (name: string) => String(form.get(name) ?? '').trim();
@@ -83,45 +102,46 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
       let criteria: BadgeCriteria;
       const amount = Number(field('amount'));
       if (trigger !== 'MANUAL_GRANT' && (!Number.isSafeInteger(amount) || amount < 1)) throw new Error('Nhập ngưỡng lớn hơn 0.');
-      if (trigger === 'APPROVED_QUESTIONS' && bySubject) {
-        const subjectId = Number(field('subjectId'));
-        if (!Number.isSafeInteger(subjectId) || subjectId <= 0) throw new Error('Nhập ID môn học hợp lệ.');
-        criteria = { type: 'SUBJECT_MASTERY', subjectId, subjectCode: field('subjectCode') || undefined, approvedQuestionsCount: amount };
+      if (subjectCriteria) {
+        const subject = subjects.data?.find((item) => String(item.subjectId) === subjectId);
+        if (!subject) throw new Error('Hãy chọn môn học.');
+        criteria = { type: 'SUBJECT_MASTERY', subjectId: subject.subjectId, subjectCode: subject.code, approvedQuestionsCount: amount };
       } else if (trigger === 'STUDY_STREAK') criteria = { type: 'STREAK', streakDays: amount };
       else if (trigger === 'LEADERBOARD_RANK') criteria = { type: 'LEADERBOARD_RANK', targetRank: amount, period: field('period') };
       else if (trigger === 'MANUAL_GRANT') criteria = { type: 'MANUAL_GRANT', description: field('criteriaDescription') };
       else criteria = { type: 'COUNTER_THRESHOLD', threshold: amount, targetRole: field('role') };
 
       const data = { name, description: field('description'), badgeTier: field('tier') as BadgeTier,
-        badgeTriggerEvent: trigger, iconUrl: field('icon'), criteria };
+        badgeTriggerEvent: trigger, iconUrl, criteria };
       return mode === 'edit' ? gamificationService.updateBadge(badge!.badgeId, { ...data, active: form.has('active') })
         : gamificationService.createBadge(data);
     },
     onSuccess: () => {
-      void client.invalidateQueries({ predicate: ({ queryKey }) => ['admin-badges', 'gamification', 'badge-detail'].includes(String(queryKey[0])) });
-      toast.success(mode === 'grant' ? 'Đã xử lý yêu cầu trao huy hiệu.' : mode === 'disable' ? 'Đã vô hiệu hóa huy hiệu.' : 'Đã lưu huy hiệu.');
+      void client.invalidateQueries({ predicate: ({ queryKey }) => ['admin-badges', 'admin-badge-accounts', 'gamification', 'badge-detail', 'userProfile', 'activity-feeds'].includes(String(queryKey[0])) });
+      toast.success(successMessages[mode]);
       onClose();
     },
     onError: (error) => setValidationError(error.message || 'Không thể lưu. Hãy thử lại.'),
   });
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mutation.isPending || upload.isPending) return;
     setValidationError('');
     mutation.mutate(new FormData(event.currentTarget));
   }
   const original = trigger === badge?.badgeTriggerEvent ? badge?.criteria : undefined;
-  const subjectCriteria = trigger === 'APPROVED_QUESTIONS' && bySubject;
+  const busy = mutation.isPending || upload.isPending;
 
   return (
-    <Dialog.Root open onOpenChange={(open) => { if (!open && !mutation.isPending) onClose(); }}>
+    <Dialog.Root open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
         <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-lg -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
-          <Dialog.Title className="text-lg font-bold">{mode === 'create' ? 'Tạo huy hiệu' : mode === 'edit' ? 'Chỉnh sửa huy hiệu' : mode === 'grant' ? 'Trao huy hiệu' : 'Vô hiệu hóa huy hiệu?'}</Dialog.Title>
+          <Dialog.Title className="text-lg font-bold">{titles[mode]}</Dialog.Title>
           {badge && <Dialog.Description className="my-2 text-sm text-muted-foreground">{badge.name}</Dialog.Description>}
           <form className="mt-3 space-y-3" onSubmit={submit}>
-            <fieldset disabled={mutation.isPending} className="space-y-3">
-              {(mode === 'create' || mode === 'edit') && <>
+            <fieldset disabled={busy} className="space-y-3">
+              {editing && <>
                 <label className="block space-y-1 text-sm">Tên huy hiệu<Input name="name" defaultValue={badge?.name} maxLength={100} required /></label>
                 <label className="block space-y-1 text-sm">Mô tả<Textarea name="description" defaultValue={badge?.description} maxLength={500} /></label>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -129,9 +149,14 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
                   <label className="block space-y-1 text-sm">Sự kiện xét thưởng<select className={selectStyle} value={trigger} onChange={(event) => setTrigger(event.target.value as BadgeTriggerEvent)}>{Object.entries(triggers).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
                 </div>
                 {trigger === 'APPROVED_QUESTIONS' && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={bySubject} onChange={(event) => setBySubject(event.target.checked)} /> Giới hạn theo môn học</label>}
-                {subjectCriteria && <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block space-y-1 text-sm">ID môn học<Input name="subjectId" type="number" min={1} step={1} defaultValue={String(original?.subjectId ?? '')} required /></label>
-                  <label className="block space-y-1 text-sm">Mã môn học<Input name="subjectCode" defaultValue={String(original?.subjectCode ?? '')} /></label>
+                {subjectCriteria && <div className="space-y-2">
+                  <label className="block space-y-1 text-sm">Môn học
+                    <select className={selectStyle} value={subjectId} onChange={(event) => setSubjectId(event.target.value)} required disabled={!subjects.data}>
+                      <option value="">{subjects.isPending ? 'Đang tải môn học…' : 'Chọn môn học'}</option>
+                      {subjects.data?.map((subject) => <option key={subject.subjectId} value={subject.subjectId}>{subject.code} · {subject.name}</option>)}
+                    </select>
+                  </label>
+                  {subjects.isError && <Button type="button" size="sm" variant="outline" onClick={() => void subjects.refetch()}>Tải lại danh sách môn học</Button>}
                 </div>}
                 {trigger !== 'MANUAL_GRANT' && <label key={`${trigger}-${subjectCriteria}`} className="block space-y-1 text-sm">
                   {trigger === 'STUDY_STREAK' ? 'Số ngày liên tiếp' : trigger === 'LEADERBOARD_RANK' ? 'Thứ hạng tối đa' : 'Ngưỡng đạt'}
@@ -140,21 +165,38 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
                 {trigger === 'MANUAL_GRANT' && <label className="block space-y-1 text-sm">Điều kiện trao<Input name="criteriaDescription" defaultValue={String(original?.description ?? '')} /></label>}
                 {trigger === 'LEADERBOARD_RANK' && <label className="block space-y-1 text-sm">Phạm vi<select name="period" className={selectStyle} defaultValue={String(original?.period ?? 'SEMESTER')}><option value="SEMESTER">Học kỳ</option><option value="SUBJECT">Môn học</option></select></label>}
                 {!subjectCriteria && trigger !== 'MANUAL_GRANT' && trigger !== 'STUDY_STREAK' && trigger !== 'LEADERBOARD_RANK' && <label className="block space-y-1 text-sm">Vai trò xét thưởng<select name="role" className={selectStyle} defaultValue={String(original?.targetRole ?? 'ALL')}><option value="ALL">Tất cả</option><option value="STUDENT">Sinh viên</option><option value="LECTURER">Giảng viên</option><option value="ADMIN">Admin</option></select></label>}
-                <label className="block space-y-1 text-sm">URL biểu tượng<Input name="icon" defaultValue={badge?.iconUrl} /></label>
+                <div className="space-y-2">
+                  <label className="block space-y-1 text-sm">Ảnh biểu tượng
+                    <Input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (!file) return;
+                      setValidationError('');
+                      upload.mutate(file);
+                    }} />
+                  </label>
+                  {upload.isPending && <p role="status" className="text-sm text-muted-foreground">Đang tải ảnh…</p>}
+                  {iconUrl && <div className="flex items-center gap-2">
+                    <BadgeIcon badge={{ iconUrl, badgeId: 0, name: '', description: '', badgeTier: badge?.badgeTier ?? 'BRONZE' }} />
+                    <Button type="button" size="sm" variant="outline" onClick={() => setIconUrl('')}>Gỡ ảnh</Button>
+                  </div>}
+                </div>
                 {mode === 'edit' && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={badge?.active} /> Đang hoạt động</label>}
               </>}
-              {mode === 'grant' && <>
-                <label className="block space-y-1 text-sm">ID tài khoản<Textarea name="users" required aria-describedby="badge-user-help" /></label>
-                <p id="badge-user-help" className="text-sm text-muted-foreground">Phân cách bằng dấu phẩy, khoảng trắng hoặc xuống dòng.</p>
-                <label className="block space-y-1 text-sm">Lý do trao<Textarea name="reason" maxLength={255} /></label>
+              {assigning && badge && <>
+                <BadgeAccountPicker badgeId={badge.badgeId} holders={mode === 'revoke'} selected={selected} onChange={setSelected} />
+                {mode === 'grant' ? <label className="block space-y-1 text-sm">Lý do trao<Textarea name="reason" maxLength={255} /></label>
+                  : <p className="text-sm text-muted-foreground">Chỉ Admin mới có thể trao lại huy hiệu đã thu hồi.</p>}
               </>}
               {mode === 'disable' && <p className="text-sm text-muted-foreground">Người đã đạt vẫn giữ huy hiệu. Hệ thống dừng trao mới.</p>}
+              {mode === 'enable' && <p className="text-sm text-muted-foreground">Hệ thống tiếp tục xét và trao huy hiệu theo tiêu chí đã lưu.</p>}
             </fieldset>
             {validationError && <p role="alert" className="text-sm text-destructive">{validationError}</p>}
             <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>Quay lại</Button>
-              <Button type="submit" variant={mode === 'disable' ? 'destructive' : 'default'} disabled={mutation.isPending}>
-                {mutation.isPending ? 'Đang lưu…' : mode === 'disable' ? 'Vô hiệu hóa' : mode === 'grant' ? 'Xác nhận trao' : 'Lưu huy hiệu'}
+              <Button type="button" variant="outline" disabled={busy} onClick={onClose}>Quay lại</Button>
+              <Button type="submit" variant={mode === 'disable' || mode === 'revoke' ? 'destructive' : 'default'}
+                disabled={busy || (assigning && !selected.length) || (editing && subjectCriteria && !subjects.data)}>
+                {mutation.isPending ? 'Đang lưu…' : submitLabels[mode]}
               </Button>
             </div>
           </form>

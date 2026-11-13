@@ -25,6 +25,8 @@ import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.entity.media.MediaPurpose;
 import com.frozenheart.backend.core.entity.media.MediaType;
+import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.media.dto.MediaUploadResponse;
 import com.frozenheart.backend.modules.media.dto.PresignMediaRequest;
@@ -59,6 +61,12 @@ public class MediaServiceImpl implements MediaService {
         }
 
         validateFileSize(purpose, file.getSize(), file.getOriginalFilename());
+        if (purpose == MediaPurpose.BADGE_ICON) {
+            if (!UserRole.ADMIN.name().equals(JwtPayload.getCurrentUserPayload().getRole())) {
+                throw new AppException(ResponseCode.ACCESS_DENIED);
+            }
+            validateBadgeImage(file);
+        }
 
         try {
             String originalFilename = file.getOriginalFilename();
@@ -201,6 +209,24 @@ public class MediaServiceImpl implements MediaService {
         return (clean != null && !clean.isBlank()) ? clean : null;
     }
 
+    private void validateBadgeImage(MultipartFile file) {
+        try (InputStream stream = file.getInputStream()) {
+            byte[] header = stream.readNBytes(12);
+            boolean valid = header.length == 12 && switch (Objects.toString(file.getContentType(), "")) {
+                case "image/png" -> Arrays.equals(Arrays.copyOf(header, 8), new byte[] {(byte) 137, 80, 78, 71, 13, 10, 26, 10});
+                case "image/jpeg" -> header[0] == (byte) 255 && header[1] == (byte) 216 && header[2] == (byte) 255;
+                case "image/gif" -> header[0] == 'G' && header[1] == 'I' && header[2] == 'F';
+                case "image/webp" -> header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                        && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P';
+                default -> false;
+            };
+            if (valid) return;
+        } catch (java.io.IOException e) {
+            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Không đọc được ảnh biểu tượng.");
+        }
+        throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Chọn ảnh PNG, JPEG, GIF hoặc WebP hợp lệ.");
+    }
+
     private boolean isObjectExists(String urlOrKey) {
         String objectKey = extractObjectKey(urlOrKey);
         if (objectKey == null) return false;
@@ -290,6 +316,9 @@ public class MediaServiceImpl implements MediaService {
         long currentTimestamp = Instant.now().toEpochMilli();
 
         for (PresignFileItem item : request.files()) {
+            if (item.purpose() == MediaPurpose.BADGE_ICON) {
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Biểu tượng huy hiệu sử dụng API upload trực tiếp.");
+            }
             validateFileSize(item.purpose(), item.fileSize(), item.fileName());
 
             try {
@@ -327,7 +356,7 @@ public class MediaServiceImpl implements MediaService {
 
     private void validateFileSize(MediaPurpose purpose, long fileSize, String fileName) {
         long maxAllowedBytes = switch (purpose != null ? purpose : MediaPurpose.QUESTION) {
-            case AVATAR -> 2 * 1024 * 1024L;     // 2 MB
+            case AVATAR, BADGE_ICON -> 2 * 1024 * 1024L;     // 2 MB
             case COVER -> 4 * 1024 * 1024L;      // 4 MB
             case DOCUMENT -> 15 * 1024 * 1024L;  // 15 MB
             default -> 5 * 1024 * 1024L;         // 5 MB (QUESTION, POST, COMMENT, CHAT)

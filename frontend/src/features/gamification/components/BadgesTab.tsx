@@ -90,11 +90,12 @@ export function BadgesTab() {
                       <span className="line-clamp-2 text-sm text-muted-foreground">{badge.description}</span>
                     </span>
                   </span>
-                  <span className="mt-auto flex items-center justify-between gap-2">
+                  <span className="mt-auto flex flex-wrap items-center justify-between gap-2">
                     <span className={`flex items-center gap-1.5 text-xs font-medium ${userBadge ? 'text-success' : 'text-muted-foreground'}`}>
                       {userBadge ? <Award aria-hidden="true" className="size-4 shrink-0" /> : <Lock aria-hidden="true" className="size-4 shrink-0" />}
-                      {userBadge ? `Đã đạt ${new Date(userBadge.earnedAt).toLocaleDateString('vi-VN')}` : 'Chưa đạt'}
+                      {userBadge ? `Đã đạt ${new Date(userBadge.earnedAt).toLocaleDateString('vi-VN')}` : badge.active === false ? 'Ngừng trao' : 'Chưa đạt'}
                     </span>
+                    {userBadge && badge.active === false && <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">Ngừng trao</span>}
                     {earnedCount != null && (
                       <span title="Số người đã đạt" className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
                         <Users aria-hidden="true" className="size-4" />
@@ -138,14 +139,14 @@ export function BadgeDetailsDialog({ badge, earnedAt, onClose }: { badge: BadgeI
                 </Dialog.Close>
               </div>
               <Dialog.Description className="text-sm leading-relaxed text-muted-foreground">{displayed.description}</Dialog.Description>
-              {details.data?.active === false && <p className="text-sm text-muted-foreground">Huy hiệu đã ngừng trao.</p>}
+              {displayed.active === false && <p className="text-sm text-muted-foreground">Huy hiệu đã ngừng trao.</p>}
               {details.isPending && <p role="status" className="text-sm text-muted-foreground">Đang tải chi tiết…</p>}
               {details.isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
                 Không thể tải chi tiết huy hiệu. <Button variant="outline" size="sm" onClick={() => void details.refetch()}>Thử lại</Button>
               </div>}
               <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3 text-sm">
                 <span className={earnedAt ? 'text-success' : 'text-muted-foreground'}>
-                  {earnedAt ? `Đã đạt ${new Date(earnedAt).toLocaleDateString('vi-VN')}` : 'Chưa đạt'}
+                  {earnedAt ? `Đã đạt ${new Date(earnedAt).toLocaleDateString('vi-VN')}` : displayed.active === false ? 'Không còn xét thưởng' : 'Chưa đạt'}
                 </span>
                 {totalEarned != null && <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                   <Users aria-hidden="true" className="size-4" /> {totalEarned.toLocaleString('vi-VN')} người đã đạt

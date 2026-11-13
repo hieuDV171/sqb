@@ -1,10 +1,13 @@
 package com.frozenheart.backend.modules.badge.controller;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
+import com.frozenheart.backend.core.dto.pagination.CursorResponse;
+import com.frozenheart.backend.modules.badge.dto.BadgeAccountResponse;
 import com.frozenheart.backend.modules.badge.dto.BadgeResponseDto;
 import com.frozenheart.backend.modules.badge.dto.CreateBadgeRequestDto;
 import com.frozenheart.backend.modules.badge.dto.ManualGrantBadgeRequestDto;
 import com.frozenheart.backend.modules.badge.dto.UpdateBadgeRequestDto;
+import com.frozenheart.backend.modules.badge.dto.RevokeBadgeRequest;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -87,5 +90,21 @@ public class AdminBadgeController {
     ) {
         badgeService.grantManualBadge(badgeId, request);
         return ResponseEntity.ok(GlobalResponse.success(null));
+    }
+
+    @Operation(summary = "Tìm tài khoản để trao hoặc thu hồi huy hiệu")
+    @GetMapping("/{badgeId}/accounts")
+    public GlobalResponse<CursorResponse<BadgeAccountResponse>> searchBadgeAccounts(@PathVariable Long badgeId,
+            @RequestParam(defaultValue = "false") boolean holders,
+            @RequestParam(defaultValue = "") String query,
+            @RequestParam(required = false) Long after) {
+        return GlobalResponse.success(badgeService.searchBadgeAccounts(badgeId, holders, query, after));
+    }
+
+    @Operation(summary = "Thu hồi huy hiệu của các tài khoản đã chọn")
+    @PostMapping("/{badgeId}/revoke")
+    public GlobalResponse<Void> revokeBadge(@PathVariable Long badgeId, @Valid @RequestBody RevokeBadgeRequest request) {
+        badgeService.revokeBadge(badgeId, request.userIds());
+        return GlobalResponse.success();
     }
 }

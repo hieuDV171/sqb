@@ -1,5 +1,5 @@
 import { axiosClient } from '@/api/axiosClient';
-import type { GlobalResponse } from '@/types/response.types';
+import type { CursorResponse, GlobalResponse } from '@/types/response.types';
 import type {
   LeaderboardResponse,
   LeaderboardPeriod,
@@ -7,6 +7,7 @@ import type {
   CheckInStatusResponse,
   RebuildLeaderboardRequest,
   BadgeResponseDto,
+  BadgeAccount,
   UserBadgeResponseDto,
   CreateBadgeRequestDto,
   UpdateBadgeRequestDto,
@@ -166,6 +167,13 @@ export const gamificationService = {
   ): Promise<GlobalResponse<void>> => {
     return (await axiosClient.post<GlobalResponse<void>>(`/admin/badges/${badgeId}/grant`, data)) as any;
   },
+
+  searchBadgeAccounts: (badgeId: number, holders: boolean, query: string, after?: number, signal?: AbortSignal) =>
+    axiosClient.get<unknown, GlobalResponse<CursorResponse<BadgeAccount>>>(`/admin/badges/${badgeId}/accounts`,
+      { params: { holders, query, after }, signal, skipToast: true }),
+
+  revokeBadge: (badgeId: number, userIds: number[]) =>
+    axiosClient.post<unknown, GlobalResponse<void>>(`/admin/badges/${badgeId}/revoke`, { userIds }, { skipToast: true }),
 
   // ==========================================
   // 3. COSMETICS & SHOP

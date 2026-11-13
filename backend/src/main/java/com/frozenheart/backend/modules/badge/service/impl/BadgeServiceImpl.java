@@ -2,17 +2,20 @@ package com.frozenheart.backend.modules.badge.service.impl;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
+import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.activityfeed.ActionType;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.badge.Badge;
+import com.frozenheart.backend.core.entity.badge.BadgeCriteria;
+import com.frozenheart.backend.core.entity.badge.criteria.SubjectMasteryCriteria;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.badge.UserBadge;
-import com.frozenheart.backend.core.entity.badge.UserBadgeId;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
-import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
+import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.badge.dto.*;
 import com.frozenheart.backend.modules.badge.repository.BadgeRepository;
@@ -20,19 +23,21 @@ import com.frozenheart.backend.modules.badge.repository.UserBadgeRepository;
 import com.frozenheart.backend.modules.badge.service.BadgeEvaluationService;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -58,12 +63,12 @@ public class BadgeServiceImpl implements BadgeService {
     private final ActivityFeedService activityFeedService;
     private final MediaService mediaService;
     private final ApplicationEventPublisher eventPublisher;
-    private final EntityManager entityManager;
+    private final SubjectRepository subjectRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<BadgeResponseDto> getAllBadges() {
-        return mapBadgeList(badgeRepository.findByActiveTrueOrderByIdAsc());
+        return getAdminBadges();
     }
 
     @Override
@@ -82,7 +87,7 @@ public class BadgeServiceImpl implements BadgeService {
     @Override
     @Transactional(readOnly = true)
     public List<UserBadgeResponseDto> getUserBadges(Long userId) {
-        return userBadgeRepository.findByUserIdOrderByEarnedAtDesc(userId).stream()
+        return userBadgeRepository.findCurrentByUserId(userId).stream()
                 .map(this::mapToUserBadgeResponseDto)
                 .toList();
     }
@@ -101,6 +106,7 @@ public class BadgeServiceImpl implements BadgeService {
         if (badgeRepository.existsByName(request.getName())) {
             throw new AppException(ResponseCode.BADGE_NAME_ALREADY_EXISTS);
         }
+        normalizeSubject(request.getCriteria());
 
         if (request.getIconUrl() != null && !request.getIconUrl().isBlank()) {
             mediaService.confirmMediaPermanent(List.of(request.getIconUrl()));
@@ -125,7 +131,7 @@ public class BadgeServiceImpl implements BadgeService {
     @Override
     @Transactional
     public BadgeResponseDto updateBadge(Long badgeId, UpdateBadgeRequestDto request) {
-        Badge badge = badgeRepository.findById(badgeId)
+        Badge badge = badgeRepository.findByIdForGrant(badgeId)
                 .orElseThrow(() -> new AppException(ResponseCode.BADGE_NOT_FOUND));
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -148,18 +154,15 @@ public class BadgeServiceImpl implements BadgeService {
         if (request.getActive() != null) {
             badge.setActive(request.getActive());
         }
-        if (request.getIconUrl() != null) {
-            String oldIcon = badge.getIconUrl();
+        if (request.getCriteria() != null) {
+            normalizeSubject(request.getCriteria());
+            badge.setCriteria(request.getCriteria());
+        }
+        if (request.getIconUrl() != null && !Objects.equals(request.getIconUrl(), badge.getIconUrl())) {
             if (!request.getIconUrl().isBlank()) {
                 mediaService.confirmMediaPermanent(List.of(request.getIconUrl()));
             }
             badge.setIconUrl(request.getIconUrl());
-            if (oldIcon != null && !oldIcon.isBlank() && !oldIcon.equals(request.getIconUrl())) {
-                eventPublisher.publishEvent(MediaCleanupEvent.of(oldIcon));
-            }
-        }
-        if (request.getCriteria() != null) {
-            badge.setCriteria(request.getCriteria());
         }
 
         Badge updated = badgeRepository.save(badge);
@@ -169,7 +172,7 @@ public class BadgeServiceImpl implements BadgeService {
     @Override
     @Transactional
     public void deleteBadge(Long badgeId) {
-        Badge badge = badgeRepository.findById(badgeId)
+        Badge badge = badgeRepository.findByIdForGrant(badgeId)
                 .orElseThrow(() -> new AppException(ResponseCode.BADGE_NOT_FOUND));
         // Soft delete để bảo toàn toàn vẹn dữ liệu cho sinh viên đã đạt huy hiệu trong
         // quá khứ
@@ -192,21 +195,55 @@ public class BadgeServiceImpl implements BadgeService {
         if (users.size() != requestedUserIds.size() || users.stream().anyMatch(user -> !user.isActive())) {
             throw new AppException(ResponseCode.USER_NOT_FOUND, "Có tài khoản không tồn tại hoặc đã bị vô hiệu hóa.");
         }
-        Set<Long> alreadyGrantedIds = userBadgeRepository.findGrantedUserIds(badgeId, requestedUserIds);
-        List<User> recipients = users.stream().filter(user -> !alreadyGrantedIds.contains(user.getId())).toList();
-        if (recipients.isEmpty()) return;
         Instant now = Instant.now();
+        Set<Long> awardedIds = Set.copyOf(userBadgeRepository.grantAwards(badgeId, requestedUserIds, now));
+        if (awardedIds.isEmpty()) return;
+        List<User> recipients = users.stream().filter(user -> awardedIds.contains(user.getId())).toList();
         String reason = request.getReason() != null && !request.getReason().isBlank() ? request.getReason() : badge.getDescription();
-        recipients.forEach(user -> entityManager.persist(newAward(user, badge, now)));
-        userProfileRepository.incrementBadgesCountForUsers(recipients.stream().map(User::getId).toList());
+        userProfileRepository.incrementBadgesCountForUsers(awardedIds);
         var metadata = badgeFeedMetadata(badge, reason);
         activityFeedService.logActivities(recipients.stream().map(user -> ActivityFeed.builder().user(user)
                 .actionType(ActionType.EARNED_BADGE).targetType(ActivityFeedTargetType.BADGE).targetId(badgeId)
                 .metaData(metadata).createdAt(now).build()).toList());
         notificationWriter.createAll(recipients.stream().map(user -> badgeNotification(user, badge, reason, now)).toList());
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, awardedIds.stream().toList()));
 
         log.info("[BadgeService] Đã trao huy hiệu '{}' (ID: {}) thành công theo lô cho {} người dùng",
                 badge.getName(), badge.getId(), recipients.size());
+    }
+
+    @Override
+    @Transactional
+    public void revokeBadge(Long badgeId, List<Long> userIds) {
+        badgeRepository.findByIdForGrant(badgeId).orElseThrow(() -> new AppException(ResponseCode.BADGE_NOT_FOUND));
+        Set<Long> current = userBadgeRepository.findCurrentUserIds(badgeId, userIds);
+        if (current.isEmpty()) return;
+        userBadgeRepository.revokeAwards(badgeId, current, Instant.now());
+        userProfileRepository.decrementBadgesCountForUsers(current);
+        eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, current.stream().toList()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CursorResponse<BadgeAccountResponse> searchBadgeAccounts(Long badgeId, boolean holders, String query, Long after) {
+        if (!badgeRepository.existsById(badgeId)) throw new AppException(ResponseCode.BADGE_NOT_FOUND);
+        String term = query.strip().toLowerCase(Locale.ROOT);
+        if (term.length() > 100) throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Từ khóa tối đa 100 ký tự.");
+        int limit = 20;
+        var rows = userBadgeRepository.searchAccounts(badgeId, holders, term, after == null ? 0L : after,
+                PageRequest.of(0, limit + 1));
+        boolean hasNext = rows.size() > limit;
+        var items = hasNext ? rows.subList(0, limit) : rows;
+        Long next = hasNext ? items.getLast().userId() : null;
+        return new CursorResponse<>(items, new CursorPaginationDto(null, next, false, hasNext));
+    }
+
+    private void normalizeSubject(BadgeCriteria criteria) {
+        if (!(criteria instanceof SubjectMasteryCriteria subjectCriteria)) return;
+        if (subjectCriteria.getSubjectId() == null) throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Hãy chọn môn học.");
+        var subject = subjectRepository.findById(subjectCriteria.getSubjectId())
+                .orElseThrow(() -> new AppException(ResponseCode.SUBJECT_NOT_FOUND));
+        subjectCriteria.setSubjectCode(subject.getCode());
     }
 
     @Override
@@ -308,22 +345,15 @@ public class BadgeServiceImpl implements BadgeService {
 
     private void grantBadgeToUser(User user, Badge badge, String customReason) {
         Instant now = Instant.now();
-        UserBadge userBadge = newAward(user, badge, now);
-        if (userBadgeRepository.existsById(userBadge.getId())) {
+        if (userBadgeRepository.insertAutomaticAward(user.getId(), badge.getId(), now) == 0) {
             return;
         }
-        userBadgeRepository.save(userBadge);
         userProfileRepository.incrementBadgesCount(user.getId(), 1);
         String reason = customReason != null ? customReason : badge.getDescription();
         activityFeedService.logActivity(user, ActionType.EARNED_BADGE, ActivityFeedTargetType.BADGE, badge.getId(),
                 badgeFeedMetadata(badge, reason));
         notificationWriter.create(badgeNotification(user, badge, reason, now));
         log.info("[BadgeService] Trao huy hiệu '{}' (ID: {}) cho User {} thành công!", badge.getName(), badge.getId(), user.getId());
-    }
-
-    private UserBadge newAward(User user, Badge badge, Instant now) {
-        return UserBadge.builder().id(UserBadgeId.builder().userId(user.getId()).badgeId(badge.getId()).build())
-                .user(user).badge(badge).earnedAt(now).build();
     }
 
     private ActivityFeedMetaData badgeFeedMetadata(Badge badge, String reason) {
@@ -390,6 +420,7 @@ public class BadgeServiceImpl implements BadgeService {
                 .badgeTier(badge.getBadgeTier())
                 .iconUrl(badge.getIconUrl())
                 .earnedAt(userBadge.getEarnedAt())
+                .active(badge.isActive())
                 .build();
     }
 }

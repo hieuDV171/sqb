@@ -25,7 +25,9 @@ export function ProfileBadges({ userId }: { userId: number }) {
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {badges.data.map((badge) => <li key={badge.badgeId}>
               <button type="button" onClick={() => setSelected(badge)} className="flex w-full items-center gap-3 rounded-xl border border-border p-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-                <BadgeIcon badge={badge} /><span className="min-w-0 wrap-break-word font-semibold">{badge.name}</span>
+                <BadgeIcon badge={badge} /><span className="min-w-0 wrap-break-word font-semibold">{badge.name}
+                  {badge.active === false && <span className="block text-xs font-medium text-muted-foreground">Ngừng trao</span>}
+                </span>
               </button>
             </li>)}
           </ul>
