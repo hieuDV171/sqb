@@ -47,6 +47,7 @@ export function NotificationItem({ notification, now, onItemClick }: Notificatio
           icon: Trophy,
           bg: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
         };
+      case 'BADGE_REVOKED':
       case 'QUESTION_ERROR_PENALTY':
         return {
           icon: AlertTriangle,

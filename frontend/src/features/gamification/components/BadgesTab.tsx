@@ -44,7 +44,12 @@ export function BadgesTab() {
   const catalog = new Map((all.data ?? []).map((badge) => [badge.badgeId, badge]));
   const items = ((mode === 'my' ? mine.data : all.data) ?? []).filter((badge) => !tier || badge.badgeTier === tier);
   const loading = mine.isPending || (mode === 'all' && all.isPending);
-  const error = mine.isError || (mode === 'all' && all.isError);
+  const error = mine.isLoadingError || (mode === 'all' && all.isLoadingError);
+  const refreshError = mine.isRefetchError || (mode === 'all' && all.isRefetchError);
+  const retry = () => {
+    if (mine.isError) void mine.refetch();
+    if (mode === 'all' && all.isError) void all.refetch();
+  };
 
   return (
     <section aria-labelledby="badges-title" className="space-y-4">
@@ -62,11 +67,13 @@ export function BadgesTab() {
         </div>
       </div>
 
+      {refreshError && !error && (
+        <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          Không thể cập nhật huy hiệu. <Button variant="outline" size="sm" onClick={retry}>Thử lại</Button>
+        </div>
+      )}
       {error ? (
-        <ErrorState title="Không thể tải huy hiệu" onRetry={() => {
-          if (mine.isError) void mine.refetch();
-          if (mode === 'all' && all.isError) void all.refetch();
-        }} />
+        <ErrorState title="Không thể tải huy hiệu" onRetry={retry} />
       ) : loading ? (
         <Skeleton aria-label="Đang tải huy hiệu" className="h-40 rounded-2xl" />
       ) : items.length === 0 ? (
@@ -120,6 +127,8 @@ export function BadgeDetailsDialog({ badge, earnedAt, onClose }: { badge: BadgeI
   const details = useQuery({
     queryKey: ['badge-detail', badge.badgeId],
     queryFn: () => gamificationService.getBadgeById(badge.badgeId).then(({ data }) => data),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
   const displayed = details.data ?? badge;
   const totalEarned = details.data?.totalEarnedUsers;

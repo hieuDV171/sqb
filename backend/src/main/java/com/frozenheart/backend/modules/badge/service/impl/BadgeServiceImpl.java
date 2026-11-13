@@ -215,11 +215,19 @@ public class BadgeServiceImpl implements BadgeService {
     @Override
     @Transactional
     public void revokeBadge(Long badgeId, List<Long> userIds) {
-        badgeRepository.findByIdForGrant(badgeId).orElseThrow(() -> new AppException(ResponseCode.BADGE_NOT_FOUND));
+        Badge badge = badgeRepository.findByIdForGrant(badgeId)
+                .orElseThrow(() -> new AppException(ResponseCode.BADGE_NOT_FOUND));
         Set<Long> current = userBadgeRepository.findCurrentUserIds(badgeId, userIds);
         if (current.isEmpty()) return;
-        userBadgeRepository.revokeAwards(badgeId, current, Instant.now());
+        Instant now = Instant.now();
+        userBadgeRepository.revokeAwards(badgeId, current, now);
         userProfileRepository.decrementBadgesCountForUsers(current);
+        var recipients = userRepository.findAllById(current).stream().filter(User::isActive).toList();
+        notificationWriter.createAll(recipients.stream()
+                .map(user -> badgeNotification(user, badge, NotificationType.BADGE_REVOKED,
+                        "Huy hiệu đã bị thu hồi: " + badge.getName(),
+                        "Huy hiệu này đã được gỡ khỏi bộ sưu tập của bạn.", now))
+                .toList());
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, current.stream().toList()));
     }
 
@@ -366,16 +374,20 @@ public class BadgeServiceImpl implements BadgeService {
     }
 
     private Notification badgeNotification(User user, Badge badge, String reason, Instant now) {
-        String body = reason;
-        if (reason != null && reason.codePointCount(0, reason.length()) > 255) {
-            body = reason.substring(0, reason.offsetByCodePoints(0, 254)) + "…";
+        return badgeNotification(user, badge, NotificationType.EARNED_BADGE,
+                "Chúc mừng bạn đã nhận được huy hiệu mới: " + badge.getName(), reason, now);
+    }
+
+    private Notification badgeNotification(User user, Badge badge, NotificationType type, String title, String body, Instant now) {
+        if (body != null && body.codePointCount(0, body.length()) > 255) {
+            body = body.substring(0, body.offsetByCodePoints(0, 254)) + "…";
         }
         return Notification.builder()
                 .receiver(user)
                 .actor(null)
-                .type(NotificationType.EARNED_BADGE)
+                .type(type)
                 .category(NotificationCategory.GAMIFICATION)
-                .title("Chúc mừng bạn đã nhận được huy hiệu mới: " + badge.getName())
+                .title(title)
                 .body(body)
                 .iconUrl(badge.getIconUrl())
                 .targetType(NotificationTargetType.BADGE)

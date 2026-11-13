@@ -123,6 +123,8 @@ export function useAllBadges() {
       return res.data || [];
     },
     staleTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -134,6 +136,8 @@ export function useMyBadges() {
       return res.data || [];
     },
     staleTime: 60 * 1000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 
