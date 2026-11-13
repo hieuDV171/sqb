@@ -179,6 +179,7 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
                   <p className="text-sm text-muted-foreground">
                     {amountLabel ? 'Áp dụng tiêu chí đã lưu từ sự kiện xét thưởng tiếp theo.' : 'Admin chọn người nhận ở mục Trao huy hiệu sau khi lưu.'}
                   </p>
+                  {amountLabel && <p className="text-sm text-muted-foreground">Để hỗ trợ một loại điều kiện mới, cần bổ sung logic đánh giá trực tiếp ở backend.</p>}
                   {trigger === 'APPROVED_QUESTIONS' && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={bySubject} onChange={(event) => setBySubject(event.target.checked)} /> Giới hạn theo môn học</label>}
                   {subjectCriteria && <div className="space-y-2">
                     <FilterSelect label="Môn học" value={subjectId} options={[
