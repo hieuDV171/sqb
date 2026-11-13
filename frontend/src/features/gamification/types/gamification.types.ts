@@ -110,6 +110,7 @@ export interface UpdateBadgeRequestDto {
   name?: string;
   description?: string;
   badgeTier?: BadgeTier;
+  badgeTriggerEvent?: BadgeTriggerEvent;
   iconUrl?: string;
   criteria?: BadgeCriteria;
   active?: boolean;

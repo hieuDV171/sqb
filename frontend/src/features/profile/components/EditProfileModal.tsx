@@ -70,9 +70,9 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
 
     setUploading(purpose);
     try {
-      const uploaded = await mediaService.uploadViaPresign(file, purpose);
-      if (purpose === 'AVATAR') setAvatarUrl(uploaded.publicUrl);
-      else setCoverUrl(uploaded.publicUrl);
+      const uploaded = await mediaService.uploadMedia(file, purpose);
+      if (purpose === 'AVATAR') setAvatarUrl(uploaded.url);
+      else setCoverUrl(uploaded.url);
     } catch (failure) {
       setError(readError(failure, 'Không thể tải ảnh lên. Hãy thử lại.'));
     } finally {

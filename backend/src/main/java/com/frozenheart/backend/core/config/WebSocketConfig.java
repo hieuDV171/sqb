@@ -1,5 +1,6 @@
 package com.frozenheart.backend.core.config;
 
+import com.frozenheart.backend.core.security.AccountWebSocketSessions;
 import com.frozenheart.backend.core.security.WebSocketAuthInterceptor;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatOutboundGuard;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
@@ -27,6 +29,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final HiddenChatOutboundGuard hiddenChatOutboundGuard;
     private final JsonMapper jsonMapper;
+    private final AccountWebSocketSessions accountWebSocketSessions;
 
     @Override
     public boolean configureMessageConverters(List<MessageConverter> converters) {
@@ -64,5 +67,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientOutboundChannel(ChannelRegistration registration) {
         registration.interceptors(hiddenChatOutboundGuard);
+    }
+
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.addDecoratorFactory(accountWebSocketSessions::decorate);
     }
 }

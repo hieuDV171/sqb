@@ -152,18 +152,18 @@ export const mediaService = {
   },
 
   /**
-   * Upload trực tiếp dạng Multipart qua Backend controller (Fallback)
+   * Upload trực tiếp dạng multipart qua Backend.
    */
   uploadMedia: async (
     file: File,
     purpose: MediaPurpose = 'QUESTION'
-  ): Promise<GlobalResponse<MediaUploadResponse>> => {
+  ): Promise<MediaUploadResponse> => {
     const processedFile = await compressImageIfNeeded(file, purpose);
 
     const formData = new FormData();
     formData.append('file', processedFile);
 
-    const response = await axiosClient.post<GlobalResponse<MediaUploadResponse>>(
+    const response = await axiosClient.post<unknown, GlobalResponse<MediaUploadResponse>>(
       `/medias/upload?purpose=${purpose}`,
       formData,
       {
@@ -173,7 +173,7 @@ export const mediaService = {
       }
     );
 
-    if (response?.data?.data) {
+    if (response.data?.url) {
       return response.data;
     }
     throw new Error('Không nhận được thông tin tệp tải lên từ máy chủ');
@@ -187,14 +187,9 @@ export const mediaService = {
     const validUrls = urls.filter((u) => u && !u.startsWith('blob:') && !u.startsWith('data:'));
     if (validUrls.length === 0) return [];
 
-    try {
-      const response = await axiosClient.post<GlobalResponse<MediaVerifyResponse>>('/medias/verify', {
-        urls: validUrls,
-      });
-      return response.data?.data?.missingUrls || [];
-    } catch {
-      // Giả lập an toàn khi offline / server mock: không chặn oan sinh viên
-      return [];
-    }
+    const response = await axiosClient.post<unknown, GlobalResponse<MediaVerifyResponse>>('/medias/verify', {
+      urls: validUrls,
+    });
+    return response.data.missingUrls;
   },
 };

@@ -11,6 +11,8 @@ import com.frozenheart.backend.core.security.TokenType;
 
 import lombok.*;
 
+import java.time.Instant;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,6 +27,7 @@ public class JwtPayload {
     private String sessionId;
     private TokenType tokenType;
     private AccountState accountState;
+    private Instant issuedAt;
 
     public static JwtPayload getCurrentUserPayload() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

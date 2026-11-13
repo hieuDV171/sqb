@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { AccountDeletionSettings } from '@/features/profile/components/AccountDeletionSettings';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -150,6 +151,8 @@ export function AccountSettingsPage() {
           <Button variant="outline" onClick={() => setIsChangePasswordOpen(true)}>Đổi mật khẩu</Button>
         </CardContent>
       </Card>
+
+      {user && <AccountDeletionSettings key={user.id} userId={user.id} />}
 
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}

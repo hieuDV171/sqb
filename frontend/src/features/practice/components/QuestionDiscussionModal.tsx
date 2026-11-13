@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { commentService } from '@/features/feed/services/commentService';
+import { EditComment } from '@/features/feed/components/EditComment';
 import type { CommentResponseDto } from '@/types/post.types';
 import { updatePracticeQuestion } from '../hooks/updatePracticeQuestion';
 
@@ -158,6 +159,7 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
                     <p className="text-slate-700 dark:text-slate-300 leading-relaxed break-words">
                       {c.content}
                     </p>
+                    <EditComment comment={c} />
                   </div>
                 </div>
               </div>

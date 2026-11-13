@@ -10,6 +10,7 @@ import { useReviewDetail } from '@/features/review/hooks/useReviewDetail';
 import { useReviewMutations } from '@/features/review/hooks/useReviewMutations';
 import { ReviewQuestionCard } from '@/features/review/components/ReviewQuestionCard';
 import { EditQuestionModal } from '@/features/review/components/EditQuestionModal';
+import { AiRefinementDialog } from '@/features/review/components/AiRefinementDialog';
 import { CompleteReviewDialog } from '@/features/review/components/CompleteReviewDialog';
 import type { DuplicateWarning, SessionQuestionReviewDto } from '@/features/review/types/review.types';
 
@@ -39,6 +40,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
   const review = useReviewDetail(sessionId);
   const { approve, reject, edit, complete } = useReviewMutations(sessionId);
   const [editing, setEditing] = useState<SessionQuestionReviewDto | null>(null);
+  const [refining, setRefining] = useState<SessionQuestionReviewDto | null>(null);
   const [confirmation, setConfirmation] = useState<'approve' | 'complete' | null>(null);
 
   const questions = review.data?.items ?? [];
@@ -175,6 +177,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                       await reject.mutateAsync({ questionIds: [id], rejectionCode, reason });
                     }}
                     onEdit={setEditing}
+                    onRefine={setRefining}
                     readOnly={!canReview}
                     disabled={actionsDisabled}
                   />
@@ -192,6 +195,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 setEditing(null);
               }} />
           )}
+          {refining && <AiRefinementDialog question={refining} sessionId={sessionId} onClose={() => setRefining(null)} />}
           {canReview && confirmation && (
             <CompleteReviewDialog mode={confirmation} pendingCount={pendingIds.length}
               isRefreshing={review.isFetching || review.isRefetchError}

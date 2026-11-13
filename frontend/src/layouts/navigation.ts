@@ -2,6 +2,7 @@ import type React from 'react';
 import type { UserRole } from '@/stores/useAuthStore';
 import {
   Bell,
+  Award,
   BookOpen,
   CalendarRange,
   ClipboardCheck,
@@ -117,6 +118,7 @@ export const ROLE_NAV_SECTIONS: Record<UserRole, NavSection[]> = {
       label: 'Vận hành',
       items: [
         { label: 'Quản lý tài khoản', shortLabel: 'Tài khoản', path: '/admin/users', icon: Users },
+        { label: 'Quản lý huy hiệu', shortLabel: 'Huy hiệu', path: '/admin/badges', icon: Award },
         { label: 'Báo cáo vi phạm', shortLabel: 'Báo cáo', path: '/admin/reports', icon: ShieldAlert },
         { label: 'Lớp học phần', shortLabel: 'Lớp học', path: '/lecturer/course-classes', icon: School },
       ],

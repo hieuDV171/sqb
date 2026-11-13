@@ -118,7 +118,7 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("Hệ Thống Mạng Xã Hội Học Tập & Ngân Hàng Đề Thi - SQB HUST")
+                        .title("Hệ Thống Mạng Xã Hội Học Tập & Ngân Hàng Đề Thi - SQB")
                         .description(description)
                         .version("1.0.0")
                         .contact(new Contact()

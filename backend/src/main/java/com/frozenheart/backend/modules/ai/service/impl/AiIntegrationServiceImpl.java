@@ -2,7 +2,9 @@ package com.frozenheart.backend.modules.ai.service.impl;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,7 +80,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
             {
               "content": "...",
               "options": [
-                { "key": "A", "content": "...", "isCorrect": true, "mediaUrl": null, "mediaId": null }
+                { "key": "A", "text": "...", "is_correct": true, "media_url": null, "media_id": null }
               ],
               "explanation": "...",
               "refusal_reason": null
@@ -91,15 +93,15 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
     public AiRefineResponse refineQuestion(Long questionId, AiRefineRequest request, EditActorType actorType) {
         PromptSanitizerUtil.validatePrompt(request.prompt());
 
-        Long currentUserId = null;
-        if (!EditActorType.SYSTEM.equals(actorType)) {
-            currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-        }
+        JwtPayload reviewer = EditActorType.SYSTEM.equals(actorType) ? null : JwtPayload.getCurrentUserPayload();
+        if (reviewer != null) assertReviewerRole(reviewer);
 
+        Instant startedAt = Instant.now();
         Question question = questionRepository.findByIdFetchSessionAndCourseClass(questionId)
                 .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
 
-        User actor = currentUserId != null ? userRepository.getReferenceById(currentUserId) : null;
+        if (reviewer != null) assertCanRefine(question, reviewer);
+        User actor = reviewer != null ? userRepository.getReferenceById(reviewer.getUserId()) : null;
 
         String userPrompt = buildUserPrompt(question, request.prompt());
 
@@ -108,12 +110,13 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
         String rawAiResponse = aiResponse.content();
 
         AiRefineResponse.SuggestedQuestionDto suggested = parseJsonTag(rawAiResponse);
+        if (suggested.options() != null) preserveOptionMedia(question, suggested.options());
 
         AiRefineResponse.BtpropAuditDto hallucinationAudit = btpropHallucinationCheckerService.audit(question,
                 suggested);
 
         AiMetadataDto metadata = AiMetadataDto.builder()
-                .model(aiResponse.model() != null ? aiResponse.model() : Ai.modelName)
+                .model(aiResponse.model() != null ? aiResponse.model() : Objects.toString(Ai.modelName, ""))
                 .tokensUsed(aiResponse.totalTokens())
                 .processingTimeMs(aiResponse.processingTimeMs())
                 .build();
@@ -147,7 +150,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
                 .afterState(afterStateMap)
                 .hallucinationAudit(auditMap)
                 .aiMetadata(metadataMap)
-                .createdAt(Instant.now())
+                .createdAt(startedAt)
                 .build();
 
         QuestionEditLog savedLog = questionEditLogRepository.save(logEntity);
@@ -164,11 +167,8 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
     @Transactional
     public AiApplyResponse applyAiRefinement(Long questionId, AiApplyRequest request) {
 
-        String role = JwtPayload.getCurrentUserPayload().getRole();
-
-        if (UserRole.STUDENT.name().equals(role)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED, "Sinh viên táy máy cái gì?");
-        }
+        JwtPayload reviewer = JwtPayload.getCurrentUserPayload();
+        assertReviewerRole(reviewer);
 
         var sessionIds = questionRepository.findSessionIdsForReview(List.of(questionId));
         if (!sessionIds.isEmpty()) {
@@ -182,39 +182,53 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
         if (question == null || !questionId.equals(question.getId())) {
             throw new AppException(ResponseCode.QUESTION_NOT_FOUND);
         }
-        if (question.getSession() != null && question.getSession().getStatus() == SessionStatus.RESOLVED) {
-            throw new AppException(ResponseCode.SESSION_REVIEW_FINALIZED, "Phiên đã chốt kết quả duyệt");
+        assertCanRefine(question, reviewer);
+        if (editLog.getStatus() != QuestionEditLogStatus.PROPOSED) {
+            throw new AppException(ResponseCode.ACTION_ALREADY_PERFORMED, "Bản AI này đã được xử lý.");
         }
 
         if (Boolean.TRUE.equals(request.approve())) {
-            editLog.setStatus(QuestionEditLogStatus.APPLIED);
-
-            if (editLog.getAfterState() != null) {
-                Map<String, Object> afterMap = editLog.getAfterState();
-                String newContent = (String) afterMap.get("content");
-                String newExplanation = (String) afterMap.get("explanation");
-
-                if (newContent != null && !newContent.isBlank()) {
-                    question.setContent(newContent);
-                }
-                if (newExplanation != null) {
-                    question.setExplanation(newExplanation);
-                }
-
-                if (afterMap.get("options") instanceof List<?> rawOptions) {
-                    List<QuestionOption> options = jsonMapper.convertValue(rawOptions,
-                            new TypeReference<>() {
-                            });
-                    if (!options.isEmpty()) {
-                        question.setOptions(options);
-                    }
-                }
-                question.setUpdatedAt(Instant.now());
-
-                Question saved = questionRepository.save(question);
-                eventPublisher.publishEvent(
-                        EntitySearchSyncEvent.upsert(EntityType.QUESTION, saved.getId()));
+            Map<String, Object> after = editLog.getAfterState();
+            if (after == null || !(after.get("content") instanceof String content) || content.isBlank()
+                    || (after.get("refusal_reason") instanceof String refusal && !refusal.isBlank())
+                    || !(after.get("options") instanceof List<?> rawOptions)) {
+                throw new AppException(ResponseCode.AI_RESPONSE_FORMAT_INVALID, "Bản AI không có nội dung hợp lệ để áp dụng.");
             }
+            List<QuestionOption> options;
+            try {
+                options = rawOptions.stream().map(option -> option instanceof QuestionOption questionOption
+                        ? copyOptionText(questionOption) : readAiOption(option)).toList();
+            } catch (ClassCastException | IllegalArgumentException e) {
+                throw new AppException(ResponseCode.INVALID_QUESTION_FORMAT, "Đáp án do AI đề xuất không hợp lệ.");
+            }
+            preserveOptionMedia(question, options);
+            if (options.size() < 2 || options.stream().anyMatch(option -> option == null || option.getKey() == null
+                    || (option.getText() == null || option.getText().isBlank()) && option.getMediaUrl() == null)
+                    || options.stream().map(QuestionOption::getKey).distinct().count() != options.size()
+                    || options.stream().noneMatch(option -> Boolean.TRUE.equals(option.getIsCorrect()))) {
+                throw new AppException(ResponseCode.INVALID_QUESTION_FORMAT, "Đáp án do AI đề xuất không hợp lệ.");
+            }
+            Map<String, Object> audit = editLog.getHallucinationAudit();
+            if (needsAuditAcknowledgement(audit) && !Boolean.TRUE.equals(request.auditAcknowledged())) {
+                throw new AppException(ResponseCode.HALLUCINATION_DETECTED, "Cần xác nhận đã tự rà soát kết quả BTProp.");
+            }
+            if (editLog.getCreatedAt() != null && question.getUpdatedAt() != null
+                    && question.getUpdatedAt().isAfter(editLog.getCreatedAt())) {
+                throw new AppException(ResponseCode.STALE_DATA_DETECTED, "Câu hỏi đã được cập nhật. Hãy tạo bản AI mới.");
+            }
+            editLog.setStatus(QuestionEditLogStatus.APPLIED);
+            question.setContent(content);
+            question.setExplanation((String) after.get("explanation"));
+            question.setOptions(options);
+            Instant now = Instant.now();
+            question.setUpdatedAt(now);
+            if (question.getSession().getStatus() == SessionStatus.PENDING) {
+                question.getSession().setStatus(SessionStatus.REVIEWING);
+                question.getSession().setReviewer(userRepository.getReferenceById(reviewer.getUserId()));
+                question.getSession().setReviewedAt(now);
+            }
+            Question saved = questionRepository.save(question);
+            eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.QUESTION, saved.getId()));
         } else {
             editLog.setStatus(QuestionEditLogStatus.DISCARDED);
         }
@@ -236,6 +250,30 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
                 .confidenceScore(confidence)
                 .hallucination(isHallucinated)
                 .build();
+    }
+
+    private void assertCanRefine(Question question, JwtPayload reviewer) {
+        var session = question.getSession();
+        if (session == null || (!UserRole.ADMIN.name().equals(reviewer.getRole())
+                && (session.getCourseClass() == null
+                || session.getCourseClass().getLecturer() == null
+                || !Objects.equals(session.getCourseClass().getLecturer().getId(), reviewer.getUserId())))) {
+            throw new AppException(ResponseCode.REVIEW_PERMISSION_DENIED, "Bạn chỉ có thể tinh chỉnh câu hỏi thuộc lớp được phân công.");
+        }
+        if (session.getStatus() == SessionStatus.RESOLVED) {
+            throw new AppException(ResponseCode.SESSION_REVIEW_FINALIZED, "Phiên đã chốt kết quả duyệt");
+        }
+    }
+
+    private void assertReviewerRole(JwtPayload reviewer) {
+        if (!UserRole.ADMIN.name().equals(reviewer.getRole()) && !UserRole.LECTURER.name().equals(reviewer.getRole())) {
+            throw new AppException(ResponseCode.REVIEW_PERMISSION_DENIED);
+        }
+    }
+
+    private boolean needsAuditAcknowledgement(Map<String, Object> audit) {
+        return audit == null || audit.isEmpty() || Boolean.TRUE.equals(audit.get("is_hallucinated"))
+                || audit.get("violations") instanceof List<?> violations && !violations.isEmpty();
     }
 
     private String buildUserPrompt(Question question, String lecturerPrompt) {
@@ -299,8 +337,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
 
             List<QuestionOption> options = null;
             if (map.get("options") instanceof List<?> rawOpts) {
-                options = jsonMapper.convertValue(rawOpts, new TypeReference<>() {
-                });
+                options = rawOpts.stream().map(this::readAiOption).toList();
             }
 
             return AiRefineResponse.SuggestedQuestionDto.builder()
@@ -318,6 +355,36 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
                     .explanation(null)
                     .refusalReason("AI trả về định dạng JSON không hợp lệ.")
                     .build();
+        }
+    }
+
+    private QuestionOption readAiOption(Object raw) {
+        if (!(raw instanceof Map<?, ?> option)) throw new IllegalArgumentException("Invalid option");
+        var result = new QuestionOption();
+        result.setKey((String) option.get("key"));
+        result.setText((String) (option.containsKey("text") ? option.get("text") : option.get("content")));
+        result.setIsCorrect((Boolean) (option.containsKey("is_correct") ? option.get("is_correct") : option.get("isCorrect")));
+        return result;
+    }
+
+    private QuestionOption copyOptionText(QuestionOption original) {
+        var copy = new QuestionOption();
+        copy.setKey(original.getKey());
+        copy.setText(original.getText());
+        copy.setIsCorrect(original.getIsCorrect());
+        return copy;
+    }
+
+    private void preserveOptionMedia(Question question, List<QuestionOption> suggestions) {
+        if (question.getOptions() == null) return;
+        Map<String, QuestionOption> originals = new HashMap<>();
+        question.getOptions().forEach(option -> originals.put(option.getKey(), option));
+        for (QuestionOption suggestion : suggestions) {
+            QuestionOption original = originals.get(suggestion.getKey());
+            if (original != null) {
+                suggestion.setMediaId(original.getMediaId());
+                suggestion.setMediaUrl(original.getMediaUrl());
+            }
         }
     }
 }

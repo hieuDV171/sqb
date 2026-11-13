@@ -37,7 +37,7 @@ public class OpenApiSnakeCaseTest {
                 .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE)
                 .build();
         var converters = new ArrayList<MessageConverter>();
-        new WebSocketConfig(null, null, mapper).configureMessageConverters(converters);
+        new WebSocketConfig(null, null, mapper, null).configureMessageConverters(converters);
         var stomp = new CompositeMessageConverter(converters);
         var send = assertInstanceOf(SendWsMessageRequestDto.class, stomp.fromMessage(
                 MessageBuilder.withPayload("""

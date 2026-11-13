@@ -73,11 +73,12 @@ public class AdminBadgeController {
         return ResponseEntity.ok(GlobalResponse.success(null));
     }
 
-    @Operation(summary = "Cấp phát huy hiệu thủ công cho người dùng", description = "Quản trị viên trao tặng huy hiệu trực tiếp cho danh sách user_ids mà không cần qua điều kiện trigger tự động.")
+    @Operation(summary = "Cấp phát huy hiệu thủ công cho người dùng", description = "Quản trị viên có thể trao mọi huy hiệu đang hoạt động cho danh sách user_ids, kể cả huy hiệu có xét thưởng tự động. Người đã đạt huy hiệu được bỏ qua.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cấp phát huy hiệu thành công"),
             @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
-            @ApiResponse(responseCode = "404", description = "Huy hiệu không tồn tại (BADGE_NOT_FOUND)")
+            @ApiResponse(responseCode = "403", description = "Huy hiệu đã ngừng hoạt động hoặc không có quyền quản trị"),
+            @ApiResponse(responseCode = "404", description = "Huy hiệu hoặc tài khoản nhận không tồn tại")
     })
     @PostMapping("/{badgeId}/grant")
     public ResponseEntity<GlobalResponse<Void>> grantManualBadge(

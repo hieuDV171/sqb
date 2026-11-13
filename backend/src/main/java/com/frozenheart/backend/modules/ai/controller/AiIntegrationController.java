@@ -33,7 +33,8 @@ public class AiIntegrationController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "AI tinh chỉnh câu hỏi thành công"),
             @ApiResponse(responseCode = "400", description = "Dữ liệu yêu cầu không hợp lệ"),
-            @ApiResponse(responseCode = "403", description = "Lời nhắc vi phạm chính sách hoặc chứa dấu hiệu Prompt Injection (CONTENT_VIOLATES_POLICY)"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền duyệt lớp hoặc lời nhắc vi phạm chính sách"),
+            @ApiResponse(responseCode = "409", description = "Phiên đã chốt kết quả duyệt"),
             @ApiResponse(responseCode = "404", description = "Câu hỏi không tồn tại (QUESTION_NOT_FOUND)")
     })
     @PostMapping("/questions/{questionId}/ai-refine")
@@ -48,8 +49,11 @@ public class AiIntegrationController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Áp dụng kết quả chỉnh sửa AI thành công"),
             @ApiResponse(responseCode = "400", description = "Không tìm thấy nhật ký chỉnh sửa AI (INVALID_PARAMETER_VALUE)"),
-            @ApiResponse(responseCode = "403", description = "Không có quyền thực hiện thao tác này (ACCESS_DENIED)"),
-            @ApiResponse(responseCode = "404", description = "Câu hỏi liên kết không tồn tại (QUESTION_NOT_FOUND)")
+            @ApiResponse(responseCode = "403", description = "Không có quyền duyệt lớp"),
+            @ApiResponse(responseCode = "404", description = "Câu hỏi liên kết không tồn tại (QUESTION_NOT_FOUND)"),
+            @ApiResponse(responseCode = "409", description = "Phiên đã chốt hoặc bản AI đã được xử lý"),
+            @ApiResponse(responseCode = "412", description = "Câu hỏi đã thay đổi sau khi yêu cầu tinh chỉnh"),
+            @ApiResponse(responseCode = "422", description = "Cần xác nhận đã tự rà soát cảnh báo BTProp")
     })
     @PostMapping("/questions/{questionId}/ai-apply")
     public ResponseEntity<GlobalResponse<AiApplyResponse>> applyAiRefinement(

@@ -2,10 +2,12 @@ package com.frozenheart.backend.modules.activityfeed.service;
 
 import com.frozenheart.backend.core.dto.pagination.CursorResponse;
 import com.frozenheart.backend.core.entity.activityfeed.ActionType;
+import com.frozenheart.backend.core.entity.activityfeed.ActivityFeed;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.modules.activityfeed.dto.*;
+import java.util.List;
 
 public interface ActivityFeedService {
 
@@ -14,4 +16,5 @@ public interface ActivityFeedService {
     NewFeedCountResponseDto getNewFeedCount(Long since);
 
     void logActivity(User actor, ActionType actionType, ActivityFeedTargetType targetType, Long targetId, ActivityFeedMetaData metaData);
+    void logActivities(List<ActivityFeed> activities);
 }

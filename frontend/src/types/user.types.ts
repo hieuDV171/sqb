@@ -55,6 +55,11 @@ export interface ProfileResponse {
   relationships?: Relationship | null;
 }
 
+export interface AccountDeletionResponse {
+  scheduledFor: string | null;
+  canCancel: boolean;
+}
+
 export interface UpdateProfileRequest {
   fullName?: string;
   avatarUrl?: string;

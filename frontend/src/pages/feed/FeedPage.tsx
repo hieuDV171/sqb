@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useActivityFeed, type FeedFilter } from '@/features/feed/hooks/useActivityFeed';
 import { useNewFeedCount } from '@/features/feed/hooks/useNewFeedCount';
 import { useLectureVideos } from '@/features/feed/hooks/useLectureVideos';
@@ -34,6 +34,9 @@ export function FeedPage() {
   const [currentFilter, setCurrentFilter] = useState<FeedFilter>('ALL');
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const refreshInFlight = useRef(false);
   const role = useAuthStore((state) => state.user?.role);
   const showVideos = currentFilter === 'VIDEOS';
   const videos = useLectureVideos(selectedSubjectId, showVideos);
@@ -43,6 +46,7 @@ export function FeedPage() {
     data,
     isLoading,
     isError,
+    isLoadingError,
     isFetchNextPageError,
     refetch,
     hasNextPage,
@@ -51,7 +55,7 @@ export function FeedPage() {
     isFetching,
   } = useActivityFeed(currentFilter);
 
-  const { newCount, triggerRefresh } = useNewFeedCount();
+  const { newCount, markRefreshed } = useNewFeedCount(!showVideos);
 
   useEffect(() => {
     let current = true;
@@ -71,10 +75,20 @@ export function FeedPage() {
     return () => { current = false; };
   }, [role, showVideos]);
 
-  const handleRefreshAll = async () => {
-    await triggerRefresh();
-    if (showVideos) await videos.refetch();
-    else await refetch();
+  const handleRefresh = async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    setIsRefreshing(true);
+    setRefreshFailed(false);
+    const startedAt = Date.now();
+    try {
+      const result = showVideos ? await videos.refetch() : await refetch();
+      if (result.isError) setRefreshFailed(true);
+      else if (!showVideos) markRefreshed(startedAt);
+    } finally {
+      refreshInFlight.current = false;
+      setIsRefreshing(false);
+    }
   };
 
   // Additional local filter by subject if selected in right sidebar
@@ -108,14 +122,15 @@ export function FeedPage() {
           <CreatePostBox />
 
           {/* Dynamic Pull-to-Refresh & Floating Action Pill */}
-          <PullToRefreshFeed onRefresh={handleRefreshAll} newCount={newCount}>
+          <PullToRefreshFeed onRefresh={handleRefresh} newCount={showVideos ? 0 : newCount}>
             {/* Feed Filter Tabs */}
             <FeedFilterTabs
               currentFilter={currentFilter}
-              onFilterChange={setCurrentFilter}
-              onManualRefresh={handleRefreshAll}
-              isRefreshing={showVideos ? videos.isFetching : isLoading}
+              onFilterChange={(filter) => { setRefreshFailed(false); setCurrentFilter(filter); }}
+              onManualRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
             />
+            {refreshFailed && <p role="status" className="mb-4 text-sm text-destructive">Không thể làm mới. Vui lòng thử lại.</p>}
 
             {showVideos ? (
               <LectureVideoList videos={videos} subjectId={selectedSubjectId} subjects={subjects} onSubjectChange={setSelectedSubjectId} />
@@ -127,7 +142,7 @@ export function FeedPage() {
                   <FeedCardSkeleton />
                   <FeedCardSkeleton />
                 </div>
-              ) : isError && !isFetchNextPageError ? (
+                ) : isLoadingError ? (
                 <ErrorState
                   title="Không thể tải dòng hoạt động"
                   message="Đã có lỗi xảy ra khi đồng bộ bảng tin từ máy chủ. Vui lòng thử lại."

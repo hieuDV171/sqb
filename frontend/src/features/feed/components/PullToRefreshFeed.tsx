@@ -132,7 +132,7 @@ export const PullToRefreshFeed: React.FC<PullToRefreshFeedProps> = ({
           >
             <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
             <span>
-              <strong>{newCount}</strong> bài viết mới
+              <strong>{newCount}</strong> hoạt động mới
             </span>
             <span className="text-white/60">•</span>
             <span className="flex items-center gap-1 group-hover:underline">

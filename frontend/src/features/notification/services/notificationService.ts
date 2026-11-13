@@ -1,12 +1,10 @@
 import { axiosClient } from '@/api/axiosClient';
-import type { GlobalResponse, CursorResponse } from '@/types/response.types';
+import type { GlobalResponse } from '@/types/response.types';
 import type {
   NotificationListResponseDto,
   ReadNotificationResponseDto,
   PushSettingsResponseDto,
   UpdatePushSettingsRequestDto,
-  ActivityFeedItemDto,
-  NewFeedCountResponseDto,
 } from '../types/notification.types';
 
 export const notificationService = {
@@ -74,40 +72,6 @@ export const notificationService = {
       '/settings/push',
       data,
       { preserveEnumKeys: true }
-    );
-  },
-
-  /**
-   * 14.1 Lấy dòng hoạt động cá nhân hóa
-   * GET /api/v1/activity-feeds
-   */
-  getActivityFeeds: async (params?: {
-    after?: number;
-    limit?: number;
-  }): Promise<GlobalResponse<CursorResponse<ActivityFeedItemDto>>> => {
-    return axiosClient.get<GlobalResponse<CursorResponse<ActivityFeedItemDto>>, GlobalResponse<CursorResponse<ActivityFeedItemDto>>>(
-      '/activity-feeds',
-      {
-        params: {
-          after: params?.after,
-          limit: params?.limit ?? 20,
-        },
-      }
-    );
-  },
-
-  /**
-   * 14.2 Đếm số lượng hoạt động mới
-   * GET /api/v1/activity-feeds/new-count
-   */
-  getNewFeedCount: async (
-    since?: number
-  ): Promise<GlobalResponse<NewFeedCountResponseDto>> => {
-    return axiosClient.get<GlobalResponse<NewFeedCountResponseDto>, GlobalResponse<NewFeedCountResponseDto>>(
-      '/activity-feeds/new-count',
-      {
-        params: { since },
-      }
     );
   },
 };

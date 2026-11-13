@@ -9,9 +9,16 @@ import type {
   RejectQuestionsRequest,
   EditQuestionRequest,
   EditQuestionResponse,
+  AiRefinement,
 } from '../types/review.types';
 
 export const reviewService = {
+  refineQuestion: (questionId: number, prompt: string) =>
+    axiosClient.post<unknown, GlobalResponse<AiRefinement>>(`/questions/${questionId}/ai-refine`, { prompt }, { skipToast: true }),
+
+  applyRefinement: (questionId: number, editLogId: number, approve: boolean, auditAcknowledged: boolean) =>
+    axiosClient.post<unknown, GlobalResponse<unknown>>(`/questions/${questionId}/ai-apply`,
+      { editLogId, approve, auditAcknowledged }, { skipToast: true }),
   /**
    * 16.1 Lấy danh sách phiên PENDING/REVIEWING có thể kiểm duyệt
    * GET /api/v1/lecturer/sessions/reviewable

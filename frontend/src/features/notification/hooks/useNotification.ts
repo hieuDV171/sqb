@@ -14,8 +14,6 @@ export const NOTIFICATION_KEYS = {
   lists: ['notifications', 'list'] as const,
   list: (limit: number) => [...NOTIFICATION_KEYS.lists, limit] as const,
   pushSettings: () => [...NOTIFICATION_KEYS.all, 'push-settings'] as const,
-  activityFeeds: (after?: number) => ['activity-feeds', after] as const,
-  newFeedCount: (since?: number) => ['activity-feeds', 'new-count', since] as const,
 };
 
 type NotificationPages = InfiniteData<NotificationListResponseDto>;
@@ -209,27 +207,5 @@ export function useUpdatePushSettings() {
     onError: () => {
       toast.error('Lỗi khi cập nhật cài đặt thông báo');
     },
-  });
-}
-
-export function useActivityFeeds(params?: { after?: number; limit?: number }) {
-  return useQuery({
-    queryKey: NOTIFICATION_KEYS.activityFeeds(params?.after),
-    queryFn: async () => {
-      const res = await notificationService.getActivityFeeds(params);
-      return res.data;
-    },
-  });
-}
-
-export function useNewFeedCount(since?: number) {
-  return useQuery({
-    queryKey: NOTIFICATION_KEYS.newFeedCount(since),
-    queryFn: async () => {
-      const res = await notificationService.getNewFeedCount(since);
-      return res.data;
-    },
-    enabled: !!since,
-    refetchInterval: 15000,
   });
 }

@@ -465,3 +465,15 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Hội thoại thường và kho ẩn sắp xếp theo thời điểm tin cuối giảm dần, dùng ID hội thoại khi trùng thời điểm và xếp nhóm chưa có tin xuống cuối. API trả `next_cursor` chứa thời điểm đầy đủ và ID. Danh sách bạn bè, lời mời kết bạn, theo dõi và chặn dùng cùng định dạng với ID của người ở đầu kia. Các API vẫn nhận `after` dạng mili giây để tương thích client cũ.
 - Lịch sử dự đoán, Đề thi và Phiên cần duyệt nhận `before` hoặc `after`. Chiều ngược lấy các ID liền trước theo thứ tự tăng dần rồi đảo khi trả kết quả. Backend áp dụng cùng bộ lọc và quyền ở cả hai chiều, trả con trỏ cùng `has_prev` và `has_next`. Bảng xếp hạng tiếp tục dùng con trỏ theo thứ hạng.
 - Cửa hàng giữ `after` là ID vật phẩm. Khi sắp theo giá hoặc độ hiếm, backend dùng giá hoặc thứ tự độ hiếm của vật phẩm mốc cùng ID để tiếp tục. Thứ tự độ hiếm từ cao xuống thấp là LEGENDARY, EPIC, RARE, COMMON. Trạng thái sở hữu được truy vấn một lần theo ID các vật phẩm trên trang.
+
+### [ADR-050] Xóa tài khoản sau 30 ngày
+
+- `DELETE /users/me` ghi hạn xóa vào `users.deletion_due_at` và trả lại cùng hạn khi gửi lại yêu cầu. Trong 30 ngày chờ, tài khoản vẫn hoạt động bình thường. Settings đọc trạng thái bằng `GET /users/me/deletion` và hủy bằng `DELETE /users/me/deletion` trước khi hết hạn.
+- Tác vụ nền kiểm tra mỗi phút và xử lý tài khoản đã đến hạn theo lô. Lập lịch, hủy và xử lý hết hạn đều khóa hàng `User`. Hồ sơ, điểm và thiết bị được đọc hoặc cập nhật theo lô. Khi xử lý thành công, tài khoản bị vô hiệu hóa, hồ sơ được ẩn danh và bản ghi tài khoản được giữ cho các dữ liệu tham chiếu.
+- Sau commit, backend phát sự kiện gỡ hồ sơ khỏi tìm kiếm, dọn ảnh đại diện và ảnh bìa, đóng kết nối STOMP trên tiến trình BE hiện tại. JWT cho REST và STOMP được đối chiếu với ID, email và trạng thái hoạt động của tài khoản. Refresh token mới cũng mang ID tài khoản. Token cũ được chuyển sang định dạng mới khi làm mới.
+
+### [ADR-051] Áp dụng bản AI trong phiên duyệt và quản trị huy hiệu
+
+- Giảng viên phụ trách lớp và Admin xem bản tinh chỉnh cùng kết quả BTProp trong phiên đang mở. Cảnh báo hoặc kết quả chưa kiểm chứng cần xác nhận tự rà soát. BE khóa phiên khi áp dụng, kiểm tra bản đề xuất còn chờ và câu hỏi chưa được sửa sau khi tạo bản AI. Tệp ảnh đáp án lấy từ câu hỏi gốc theo khóa lựa chọn.
+- Admin được trao thủ công mọi huy hiệu đang hoạt động. Vô hiệu hóa giữ các lượt đã trao. Danh mục và màn Admin lấy số người đạt theo lô; JSON tiêu chí ghi duy nhất trường phân loại `type`.
+- Hồ sơ dùng tải trực tiếp cho ảnh đại diện và ảnh bìa. Đề xuất phiên dùng presign và kiểm tra tồn tại theo lô trước khi nộp. Khi lưu nghiệp vụ, BE xác nhận tệp vĩnh viễn. API thống kê quan hệ giữ tương thích và được đánh dấu deprecated.

@@ -25,6 +25,14 @@ public interface UserBadgeRepository extends JpaRepository<UserBadge, UserBadgeI
     @Query("SELECT COUNT(ub) FROM UserBadge ub WHERE ub.id.badgeId = :badgeId")
     int countByBadgeId(@Param("badgeId") Long badgeId);
 
+    interface BadgeEarnedCount {
+        Long getBadgeId();
+        Long getEarnedCount();
+    }
+
+    @Query("SELECT ub.id.badgeId AS badgeId, COUNT(ub) AS earnedCount FROM UserBadge ub WHERE ub.id.badgeId IN :badgeIds GROUP BY ub.id.badgeId")
+    List<BadgeEarnedCount> countGroupedByBadgeId(@Param("badgeIds") Collection<Long> badgeIds);
+
     @Query("SELECT ub.id.userId FROM UserBadge ub WHERE ub.id.badgeId = :badgeId AND ub.id.userId IN :userIds")
     Set<Long> findGrantedUserIds(@Param("badgeId") Long badgeId, @Param("userIds") Collection<Long> userIds);
 

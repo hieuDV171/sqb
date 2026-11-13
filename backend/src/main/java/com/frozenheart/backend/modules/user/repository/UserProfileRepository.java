@@ -54,6 +54,10 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
     void incrementBadgesCount(@Param("userId") Long userId, @Param("delta") int delta);
 
     @Modifying
+    @Query("UPDATE UserProfile up SET up.badgesCount = up.badgesCount + 1 WHERE up.userId IN :userIds")
+    void incrementBadgesCountForUsers(@Param("userIds") Collection<Long> userIds);
+
+    @Modifying
     @Query("UPDATE UserProfile up SET up.friendsCount = up.friendsCount + :delta WHERE up.userId = :userId")
     void incrementFriendsCount(@Param("userId") Long userId, @Param("delta") int delta);
 

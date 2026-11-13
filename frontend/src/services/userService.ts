@@ -2,6 +2,7 @@ import { axiosClient } from '@/api/axiosClient';
 import type { GlobalResponse } from '@/types/response.types';
 import type {
   ProfileResponse,
+  AccountDeletionResponse,
   UpdateProfileRequest,
   FriendListResponseDto,
   FriendRequestReceivedListResponseDto,
@@ -36,9 +37,14 @@ export const userService = {
     return (await axiosClient.put<GlobalResponse<ProfileResponse>>('/users/me', data)) as any;
   },
 
-  deleteMyProfile: async (): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.delete<GlobalResponse<void>>('/users/me')) as any;
-  },
+  getAccountDeletion: (signal?: AbortSignal) =>
+    axiosClient.get<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me/deletion', { signal, skipToast: true }),
+
+  requestAccountDeletion: () =>
+    axiosClient.delete<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me', { skipToast: true }),
+
+  cancelAccountDeletion: () =>
+    axiosClient.delete<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me/deletion', { skipToast: true }),
 
   // ==================== FRIENDSHIPS ====================
   getMyFriends: async (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
+import { useQuery } from '@tanstack/react-query';
 import { Award, Lock, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -8,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAllBadges, useMyBadges } from '../hooks/useGamification';
 import { getTierColor, type BadgeResponseDto, type BadgeTier, type UserBadgeResponseDto } from '../types/gamification.types';
 import { FilterSelect } from '@/components/ui/filter-select';
+import { gamificationService } from '../services/gamificationService';
 
 const tierLabels: Record<BadgeTier, string> = {
   BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch kim', DIAMOND: 'Kim cương',
@@ -19,7 +21,7 @@ const tiers = [
 
 type BadgeItem = BadgeResponseDto | UserBadgeResponseDto;
 
-function BadgeIcon({ badge }: { badge: BadgeItem }) {
+export function BadgeIcon({ badge }: { badge: BadgeItem }) {
   const [failedUrl, setFailedUrl] = useState<string>();
   const iconUrl = badge.iconUrl?.trim();
   const { badgeBg, badgeBorder, textColor } = getTierColor(badge.badgeTier);
@@ -43,8 +45,6 @@ export function BadgesTab() {
   const items = ((mode === 'my' ? mine.data : all.data) ?? []).filter((badge) => !tier || badge.badgeTier === tier);
   const loading = mine.isPending || (mode === 'all' && all.isPending);
   const error = mine.isError || (mode === 'all' && all.isError);
-  const earned = selectedBadge && owned.get(selectedBadge.badgeId);
-  const totalEarned = selectedBadge ? catalog.get(selectedBadge.badgeId)?.totalEarnedUsers : undefined;
 
   return (
     <section aria-labelledby="badges-title" className="space-y-4">
@@ -109,25 +109,43 @@ export function BadgesTab() {
         </ul>
       )}
 
-      <Dialog.Root open={selectedBadge !== null} onOpenChange={(open) => { if (!open) setSelectedBadge(null); }}>
-        {selectedBadge && (
+      {selectedBadge && <BadgeDetailsDialog badge={selectedBadge} earnedAt={owned.get(selectedBadge.badgeId)?.earnedAt}
+        onClose={() => setSelectedBadge(null)} />}
+    </section>
+  );
+}
+
+export function BadgeDetailsDialog({ badge, earnedAt, onClose }: { badge: BadgeItem; earnedAt?: string; onClose: () => void }) {
+  const details = useQuery({
+    queryKey: ['badge-detail', badge.badgeId],
+    queryFn: () => gamificationService.getBadgeById(badge.badgeId).then(({ data }) => data),
+  });
+  const displayed = details.data ?? badge;
+  const totalEarned = details.data?.totalEarnedUsers;
+  return (
+      <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
           <Dialog.Portal>
             <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
             <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
               <div className="flex items-start gap-3">
-                <BadgeIcon badge={selectedBadge} />
+                <BadgeIcon badge={displayed} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-muted-foreground">{tierLabels[selectedBadge.badgeTier]}</p>
-                  <Dialog.Title className="wrap-break-word text-xl font-bold">{selectedBadge.name}</Dialog.Title>
+                  <p className="text-sm text-muted-foreground">{tierLabels[displayed.badgeTier]}</p>
+                  <Dialog.Title className="wrap-break-word text-xl font-bold">{displayed.name}</Dialog.Title>
                 </div>
                 <Dialog.Close render={<Button variant="ghost" size="icon" aria-label="Đóng chi tiết huy hiệu" />}>
                   <X aria-hidden="true" />
                 </Dialog.Close>
               </div>
-              <Dialog.Description className="text-sm leading-relaxed text-muted-foreground">{selectedBadge.description}</Dialog.Description>
+              <Dialog.Description className="text-sm leading-relaxed text-muted-foreground">{displayed.description}</Dialog.Description>
+              {details.data?.active === false && <p className="text-sm text-muted-foreground">Huy hiệu đã ngừng trao.</p>}
+              {details.isPending && <p role="status" className="text-sm text-muted-foreground">Đang tải chi tiết…</p>}
+              {details.isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+                Không thể tải chi tiết huy hiệu. <Button variant="outline" size="sm" onClick={() => void details.refetch()}>Thử lại</Button>
+              </div>}
               <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3 text-sm">
-                <span className={earned ? 'text-success' : 'text-muted-foreground'}>
-                  {earned ? `Đã đạt ${new Date(earned.earnedAt).toLocaleDateString('vi-VN')}` : 'Chưa đạt'}
+                <span className={earnedAt ? 'text-success' : 'text-muted-foreground'}>
+                  {earnedAt ? `Đã đạt ${new Date(earnedAt).toLocaleDateString('vi-VN')}` : 'Chưa đạt'}
                 </span>
                 {totalEarned != null && <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                   <Users aria-hidden="true" className="size-4" /> {totalEarned.toLocaleString('vi-VN')} người đã đạt
@@ -135,8 +153,6 @@ export function BadgesTab() {
               </div>
             </Dialog.Popup>
           </Dialog.Portal>
-        )}
       </Dialog.Root>
-    </section>
   );
 }

@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.auth.service.impl;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -331,7 +332,7 @@ public class AuthServiceImpl implements AuthService {
             extraClaims.put("tokenType", TokenType.ACCESS.name());
             extraClaims.put("accountState", AccountState.ACTIVE.name());
             accessToken = jwtService.generateAccessToken(extraClaims, email);
-            refreshToken = jwtService.generateRefreshToken(email, deviceId, sessionId);
+            refreshToken = jwtService.generateRefreshToken(email, userId, deviceId, sessionId);
         } else {
             extraClaims.put("tokenType", TokenType.ONBOARDING.name());
             extraClaims.put("accountState", accountState.name());
@@ -782,6 +783,14 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
+        // Legacy JWTs lack userId. Compare at the precision of their issued-at claim.
+        boolean tokenBelongsToAccount = payload.getUserId() != null
+                ? payload.getUserId().equals(user.getId())
+                : payload.getIssuedAt() != null && (user.getCreatedAt() == null
+                        || !payload.getIssuedAt().isBefore(user.getCreatedAt().truncatedTo(ChronoUnit.SECONDS)));
+        if (!tokenBelongsToAccount) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
         if (!user.isActive()) {
             throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE);
         }

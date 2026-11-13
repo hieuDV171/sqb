@@ -2,8 +2,10 @@ package com.frozenheart.backend.modules.badge.repository;
 
 import com.frozenheart.backend.core.entity.badge.Badge;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -21,6 +23,10 @@ public interface BadgeRepository extends JpaRepository<Badge, Long> {
     List<Badge> findByActiveTrueOrderByIdAsc();
 
     List<Badge> findByActiveTrueAndBadgeTriggerEvent(BadgeTriggerEvent badgeTriggerEvent);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM Badge b WHERE b.id = :id")
+    Optional<Badge> findByIdForGrant(@Param("id") Long id);
 
     @Query("""
         SELECT b

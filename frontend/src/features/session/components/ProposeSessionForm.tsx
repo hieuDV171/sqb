@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {
   BookOpen,
   Bot,
@@ -46,6 +46,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   ]);
 
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
+  const submitInFlight = useRef(false);
+  const [verifyingMedia, setVerifyingMedia] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
   // Game 2 Modal state
@@ -354,7 +356,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   };
 
   const handleSubmitSession = async (withGame2 = false) => {
-    if (!validateForm()) return;
+    if (submitInFlight.current || !validateForm()) return;
 
     const payload: ProposeSessionRequest = {
       title: title.trim(),
@@ -376,7 +378,27 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       })),
     };
 
+    submitInFlight.current = true;
     try {
+      const urls = payload.questions.flatMap((question) => [
+        ...(question.mediaUrls ?? []),
+        ...question.options.flatMap((option) => option.mediaUrl ? [option.mediaUrl] : []),
+      ]);
+      if (urls.length > 0) {
+        setVerifyingMedia(true);
+        try {
+          const missing = await mediaService.verifyMedias([...new Set(urls)]);
+          if (missing.length > 0) {
+            const affected = payload.questions.flatMap((question, index) =>
+              question.mediaUrls?.some((url) => missing.includes(url))
+              || question.options.some((option) => option.mediaUrl && missing.includes(option.mediaUrl)) ? [index + 1] : []);
+            toast.error(`Vui lòng tải lại ảnh đã hết hạn hoặc bị thiếu ở câu ${affected.join(', ')}.`);
+            return;
+          }
+        } finally {
+          setVerifyingMedia(false);
+        }
+      }
       const sessionRes = await proposeMutation.mutateAsync(payload);
 
       let game2Result = false;
@@ -404,7 +426,9 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
 
       setIsGame2ModalOpen(false);
     } catch {
-      // Handled by mutation
+      // Request errors are shown by the HTTP client or the mutation.
+    } finally {
+      submitInFlight.current = false;
     }
   };
 
@@ -922,7 +946,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
           {/* Direct Submit */}
           <Button
             onClick={() => handleSubmitSession(false)}
-            disabled={proposeMutation.isPending || Boolean(uploadingTarget) || isLoadingCourseClasses || courseClassQuery.isError}
+            disabled={verifyingMedia || proposeMutation.isPending || Boolean(uploadingTarget) || isLoadingCourseClasses || courseClassQuery.isError}
             className="min-h-11"
           >
             {proposeMutation.isPending ? (
@@ -930,7 +954,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             ) : (
               <Send aria-hidden="true" />
             )}
-            <span>{proposeMutation.isPending ? 'Đang nộp…' : 'Nộp phiên'}</span>
+            <span>{verifyingMedia ? 'Đang kiểm tra ảnh…' : proposeMutation.isPending ? 'Đang nộp…' : 'Nộp phiên'}</span>
           </Button>
 
           {/* Submit with Game 2 Prediction */}
@@ -941,7 +965,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                 setIsGame2ModalOpen(true);
               }
             }}
-            disabled={proposeMutation.isPending || Boolean(uploadingTarget) || isLoadingCourseClasses || courseClassQuery.isError}
+            disabled={verifyingMedia || proposeMutation.isPending || Boolean(uploadingTarget) || isLoadingCourseClasses || courseClassQuery.isError}
             className="min-h-11"
           >
             <Gamepad2 aria-hidden="true" />
@@ -1048,7 +1072,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
               <button
                 type="button"
                 onClick={() => handleSubmitSession(true)}
-                disabled={proposeMutation.isPending}
+                disabled={verifyingMedia || proposeMutation.isPending}
                 className="px-5 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/85 text-xs font-bold shadow-xs cursor-pointer"
               >
                 Xác nhận nộp & Đặt cược

@@ -89,22 +89,3 @@ export interface PushSettingsResponseDto {
 }
 
 export type UpdatePushSettingsRequestDto = PushSettingsResponseDto;
-
-// ==========================================
-// 3. ACTIVITY FEED (MODULE 14)
-// ==========================================
-
-export interface ActivityFeedItemDto {
-  activityId: number;
-  actorId: number;
-  actorName: string;
-  actorAvatarUrl?: string;
-  activityType: string;
-  summary: string;
-  targetUrl?: string;
-  createdAt: string;
-}
-
-export interface NewFeedCountResponseDto {
-  newCount: number;
-}

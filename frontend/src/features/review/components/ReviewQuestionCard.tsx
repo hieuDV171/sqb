@@ -17,11 +17,12 @@ interface ReviewQuestionCardProps {
   onReject: (questionId: number, code: RejectionReasonCode, reason?: string) => Promise<void>;
   onEdit: (question: SessionQuestionReviewDto) => void;
   readOnly: boolean;
+  onRefine: (question: SessionQuestionReviewDto) => void;
   disabled: boolean;
 }
 
 export function ReviewQuestionCard({
-  question, questionNumber, duplicateWarnings, onApprove, onReject, onEdit, readOnly, disabled,
+  question, questionNumber, duplicateWarnings, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
 }: ReviewQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const approved = question.status === 'APPROVED';
@@ -87,6 +88,7 @@ export function ReviewQuestionCard({
       )}
       {question.editLog && <p className="text-sm text-muted-foreground">Biên tập gần nhất · {question.editLog.actorName}</p>}
       {!readOnly && <footer className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+        <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onRefine(question)}>AI tinh chỉnh</Button>
         <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onEdit(question)}>
           <Pencil aria-hidden="true" /> Biên tập
         </Button>

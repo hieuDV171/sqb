@@ -11,6 +11,4 @@ public interface UserService {
 
     ProfileResponse updateMyProfile(UpdateProfileRequest request);
 
-    void deleteMyProfile();
-
 }

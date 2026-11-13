@@ -6,6 +6,7 @@ import { useComments, useCommentReplies } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { EditComment } from './EditComment';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import {
   Send,
@@ -260,6 +261,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                       )}
                                   </div>
 
+                                  <EditComment comment={comment} />
+
                                   {/* Reply Input Box */}
                                   {replyingToCommentId ===
                                       comment.commentId && (
@@ -328,9 +331,12 @@ function CommentReplies({ comment, targetType, targetId }: CommentSectionProps &
         {replies.map((reply) => (
           <div key={reply.commentId} className="flex items-start gap-2 text-xs">
             <UserAvatar avatarUrl={reply.author?.avatarUrl} name={reply.author?.fullName} decorative className="size-5" />
-            <p className="whitespace-pre-wrap rounded-xl bg-muted px-2.5 py-1.5">
-              <strong className="mr-1.5">{reply.author?.fullName}</strong>{reply.content}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="whitespace-pre-wrap rounded-xl bg-muted px-2.5 py-1.5">
+                <strong className="mr-1.5">{reply.author?.fullName}</strong>{reply.content}
+              </p>
+              <EditComment comment={reply} />
+            </div>
           </div>
         ))}
         {open && query.isPending && <p role="status" className="text-sm text-muted-foreground">Đang tải phản hồi…</p>}

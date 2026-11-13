@@ -81,7 +81,8 @@ public class FollowController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Xem thống kê quan hệ của một người dùng", description = "Xem số lượng bạn bè (friends_count), số người theo dõi (followers_count) và số người đang theo dõi (following_count) kèm trạng thái quan hệ với tài khoản hiện tại.")
+    @Deprecated
+    @Operation(summary = "Xem thống kê quan hệ của một người dùng", deprecated = true, description = "Giữ cho client cũ. Tích hợp mới dùng GET /users/{userId} để lấy hồ sơ kèm thống kê quan hệ.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy số liệu thống kê thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),

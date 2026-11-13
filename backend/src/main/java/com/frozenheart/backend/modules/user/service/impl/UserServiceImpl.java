@@ -7,7 +7,6 @@ import com.frozenheart.backend.modules.user.repository.FollowRepository;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
@@ -34,7 +33,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +42,6 @@ public class UserServiceImpl implements UserService {
     private final UserGamificationRepository userGamificationRepository;
     private final FollowRepository followRepository;
     private final FriendshipRepository friendshipRepository;
-    private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final MediaService mediaService;
 
@@ -230,62 +227,6 @@ public class UserServiceImpl implements UserService {
                 .createdAt(userProfile.getUser().getCreatedAt())
                 .relationships(null)
                 .build();
-    }
-
-    @Override
-    @Transactional
-    public void deleteMyProfile() {
-        Long userId = JwtPayload.getCurrentUserPayload().getUserId();
-
-        UserProfile userProfile = userProfileRepository.findByUserIdWithUser(userId)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
-
-        User user = userProfile.getUser();
-
-        user.setActive(false);
-        user.setEmail("Deleted_Account_" + UUID.randomUUID());
-        user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
-
-        List<String> mediaToDelete = new ArrayList<>();
-        if (userProfile.getAvatarUrl() != null && !userProfile.getAvatarUrl().isBlank()) {
-            mediaToDelete.add(userProfile.getAvatarUrl());
-        }
-        if (userProfile.getCoverUrl() != null && !userProfile.getCoverUrl().isBlank()) {
-            mediaToDelete.add(userProfile.getCoverUrl());
-        }
-
-        userProfile.setFullName("Tài khoản đã bị xóa");
-        userProfile.setAvatarUrl("");
-        userProfile.setCoverUrl("");
-        userProfile.setAvatarFrameUrl("");
-        userProfile.setBio("");
-        userProfile.setSchoolFaculty("");
-        userProfile.setMajor("");
-        userProfile.setStudentLecturerCode("");
-        userProfile.setTotalProposedQuestion(0);
-        userProfile.setTotalApprovedQuestions(0);
-        userProfile.setBadgesCount(0);
-        userProfile.setFriendsCount(0);
-        userProfile.setFollowersCount(0);
-        userProfile.setFollowingCount(0);
-
-        userGamificationRepository.findById(userId).ifPresent(g -> {
-            g.setPublicPoints(0.0);
-            g.setSecretPoints(0.0);
-            g.setCoinBalance(0.0);
-            g.setCurrentStreak(0);
-            userGamificationRepository.save(g);
-        });
-
-        user.setUpdatedAt(Instant.now());
-
-        userRepository.save(user);
-        userProfileRepository.save(userProfile);
-        eventPublisher.publishEvent(EntitySearchSyncEvent.delete(EntitySearchSyncEvent.EntityType.USER, userId));
-
-        if (!mediaToDelete.isEmpty()) {
-            eventPublisher.publishEvent(MediaCleanupEvent.of(mediaToDelete));
-        }
     }
 
     private double getPublicPoints(Long userId) {

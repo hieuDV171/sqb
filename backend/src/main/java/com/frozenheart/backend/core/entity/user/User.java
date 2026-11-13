@@ -18,6 +18,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.*;
 import com.frozenheart.backend.core.entity.session.Session;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Instant;
 import java.util.Set;
@@ -28,6 +29,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 public class User {
 
@@ -57,6 +59,8 @@ public class User {
     private Instant createdAt;
 
     private Instant updatedAt;
+
+    private Instant deletionDueAt;
 
     // ----------------------
 

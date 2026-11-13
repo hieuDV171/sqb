@@ -37,6 +37,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -121,7 +122,8 @@ class AuthServiceImplTest {
         assertEquals("onboarding-token", response.accessToken());
         assertEquals(null, response.refreshToken());
         verify(jwtService, never()).generateRefreshToken(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
         verify(cookieUtils).clearCookie("refreshToken");
         verify(userDeviceRepository, never()).lockFidForTransaction("untrusted-fid");
     }
@@ -141,7 +143,7 @@ class AuthServiceImplTest {
         when(userDeviceRepository.findByUserIdAndDeviceId(26L, deviceId)).thenReturn(Optional.of(device));
         when(userDeviceRepository.isFidBoundToAnotherDevice(fid, 26L, deviceId)).thenReturn(true);
         when(jwtService.generateAccessToken(anyMap(), eq(email))).thenReturn("access");
-        when(jwtService.generateRefreshToken(org.mockito.ArgumentMatchers.eq(email), org.mockito.ArgumentMatchers.eq(deviceId),
+        when(jwtService.generateRefreshToken(eq(email), eq(26L), eq(deviceId),
                 org.mockito.ArgumentMatchers.anyString())).thenReturn("refresh");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
@@ -151,6 +153,43 @@ class AuthServiceImplTest {
         assertEquals(TokenType.ACCESS, response.tokenType());
         assertNull(device.getFid());
         verify(userDeviceRepository).save(device);
+    }
+
+    @Test
+    void refreshTokenCannotBeUsedAfterItsEmailIsAssignedToAnotherAccount() {
+        String email = "student@sqb.edu.vn";
+        String token = "old-refresh-token";
+        var payload = JwtPayload.builder().username(email).userId(26L).deviceId("browser")
+                .tokenType(TokenType.REFRESH).build();
+        var newAccount = User.builder().id(27L).email(email).build();
+        when(cookieUtils.getCookieValue("refreshToken")).thenReturn(token);
+        when(jwtService.decodeToken(token)).thenReturn(payload);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("rt:" + email + ":browser")).thenReturn(token);
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(newAccount));
+
+        AppException exception = assertThrows(AppException.class, () -> service.refreshToken(null));
+
+        assertEquals(ResponseCode.TOKEN_INVALID_OR_EXPIRED, exception.getResponseCode());
+    }
+
+    @Test
+    void legacyRefreshTokenMustHaveBeenIssuedDuringTheCurrentAccountsLifetime() {
+        String email = "student@sqb.edu.vn";
+        String token = "legacy-refresh-token";
+        var issuedAt = Instant.parse("2026-11-01T10:00:00Z");
+        var payload = JwtPayload.builder().username(email).deviceId("browser").issuedAt(issuedAt)
+                .tokenType(TokenType.REFRESH).build();
+        var newAccount = User.builder().id(27L).email(email).createdAt(issuedAt.plusSeconds(1)).build();
+        when(cookieUtils.getCookieValue("refreshToken")).thenReturn(token);
+        when(jwtService.decodeToken(token)).thenReturn(payload);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("rt:" + email + ":browser")).thenReturn(token);
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(newAccount));
+
+        AppException exception = assertThrows(AppException.class, () -> service.refreshToken(null));
+
+        assertEquals(ResponseCode.TOKEN_INVALID_OR_EXPIRED, exception.getResponseCode());
     }
 
     @Test

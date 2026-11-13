@@ -1,9 +1,11 @@
 package com.frozenheart.backend.core.config;
 
+import com.frozenheart.backend.core.dto.event.AccountDeletedEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.security.AccountState;
+import com.frozenheart.backend.core.security.AccountWebSocketSessions;
 import com.frozenheart.backend.core.security.JwtService;
 import com.frozenheart.backend.core.security.TokenType;
 import com.frozenheart.backend.core.security.WebSocketAuthInterceptor;
@@ -23,6 +25,7 @@ import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -38,6 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ChatTypingStompTest {
@@ -64,15 +69,16 @@ class ChatTypingStompTest {
                 factory.registerSingleton("participants", participants);
                 factory.registerSingleton("userProfiles", mock(UserProfileRepository.class));
             });
-            context.register(WebSocketConfig.class, SynchronousChannels.class,
+            context.register(WebSocketConfig.class, AccountWebSocketSessions.class, SynchronousChannels.class,
                     HiddenChatOutboundGuard.class, ChatRealtimePublisher.class, TypingServiceConfig.class,
                     ChatWebSocketController.class);
             context.refresh();
-            var handler = context.getBean("subProtocolWebSocketHandler", WebSocketHandler.class);
+            var sessions = context.getBean(AccountWebSocketSessions.class);
+            var handler = sessions.decorate(context.getBean("subProtocolWebSocketHandler", WebSocketHandler.class));
             var senderFrames = new ArrayList<String>();
             var receiverFrames = new ArrayList<String>();
             var sender = connect(handler, "sender", senderFrames);
-            connect(handler, "receiver", receiverFrames);
+            var receiver = connect(handler, "receiver", receiverFrames);
 
             for (boolean typing : new boolean[] {true, false}) {
                 handler.handleMessage(sender, frame("""
@@ -94,6 +100,10 @@ class ChatTypingStompTest {
                 assertEquals(42L, event.get("conversation_id").asLong());
                 assertEquals(1L, event.get("user").get("user_id").asLong());
             }
+
+            sessions.onAccountsDeleted(new AccountDeletedEvent(List.of(1L)));
+            verify(sender).close(CloseStatus.POLICY_VIOLATION);
+            verify(receiver, never()).close(any());
         }
     }
 

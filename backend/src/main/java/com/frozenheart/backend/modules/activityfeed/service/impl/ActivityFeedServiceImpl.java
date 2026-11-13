@@ -250,6 +250,12 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
         activityFeedRepository.save(feed);
     }
 
+    @Override
+    @Transactional
+    public void logActivities(List<ActivityFeed> activities) {
+        activityFeedRepository.saveAll(activities);
+    }
+
     private boolean isApprovalActivity(ActivityFeed feed, Map<Long, Post> postMap) {
         if (feed.getActionType() == ActionType.SESSION_RESOLVED_APPROVED) return true;
         Post post = feed.getTargetType() == ActivityFeedTargetType.POST ? postMap.get(feed.getTargetId()) : null;

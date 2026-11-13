@@ -11,5 +11,8 @@ public record AiApplyRequest(
 
         @Schema(description = "true: Áp dụng chỉnh sửa vào câu hỏi gốc, false: Loại bỏ", example = "true")
         @NotNull(message = "approve không được để trống")
-        Boolean approve
+        Boolean approve,
+
+        @Schema(description = "Xác nhận đã tự rà soát khi BTProp cảnh báo hoặc chưa kiểm chứng được")
+        Boolean auditAcknowledged
 ) {}

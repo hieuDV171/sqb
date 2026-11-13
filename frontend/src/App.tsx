@@ -24,6 +24,7 @@ import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
 import { AdminLeaderboardsPage } from "./pages/admin/AdminLeaderboardsPage";
 import { AccountSettingsPage } from "./pages/settings/AccountSettingsPage";
+import { AdminBadgesPage } from "./pages/admin/AdminBadgesPage";
 import { NotificationsPage } from "./pages/notification/NotificationsPage";
 import { SearchPage } from "./pages/search/SearchPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
@@ -104,6 +105,7 @@ export default function App() {
           {/* Admin Restricted Routes */}
           <Route element={<RoleGuard allowedRoles={['ADMIN']} />}>
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/badges" element={<AdminBadgesPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
             <Route path="/admin/leaderboards" element={<AdminLeaderboardsPage />} />

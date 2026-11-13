@@ -72,6 +72,16 @@ export interface QuestionEditLogDto {
   createdAt: string;
 }
 
+export interface AiRefinement {
+  editLogId: number;
+  suggestedQuestion: { content?: string; options?: QuestionOption[]; explanation?: string; refusalReason?: string };
+  hallucinationAudit?: {
+    isHallucinated: boolean;
+    confidenceScore: number;
+    violations: { type: string; nodeStatement: string; detail: string; severity: string }[];
+  };
+}
+
 export interface SessionQuestionReviewDto {
   questionId: number;
   content: string;

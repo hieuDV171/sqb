@@ -15,6 +15,7 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -60,6 +61,7 @@ public class JwtService {
                 .sessionId(claims.get("sessionId", String.class))
                 .tokenType(readEnumClaim(claims, "tokenType", TokenType.class))
                 .accountState(readEnumClaim(claims, "accountState", AccountState.class))
+                .issuedAt(claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant())
                 .build();
     }
 
@@ -88,19 +90,20 @@ public class JwtService {
         return generateToken(extraClaims, subject, jwtProperties.getOnboardingTokenExpiration());
     }
 
-    public String generateRefreshToken(String subject, String deviceId, String sessionId) {
+    public String generateRefreshToken(String subject, Long userId, String deviceId, String sessionId) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("tokenType", TokenType.REFRESH.name());
+        extraClaims.put("userId", userId);
         extraClaims.put("deviceId", deviceId);
         extraClaims.put("sessionId", sessionId);
         return generateToken(extraClaims, subject, jwtProperties.getRefreshTokenExpiration());
     }
 
     public boolean isTokenValid(JwtPayload payload, UserDetails userDetails) {
-
-        final String tokenUsername = payload.getUsername();
-        return tokenUsername.equals(userDetails.getUsername());
-
+        return userDetails instanceof CustomUserDetails account
+                && account.isAccountNonLocked()
+                && Objects.equals(payload.getUsername(), account.getUsername())
+                && Objects.equals(payload.getUserId(), account.user().getId());
     }
 
 }
