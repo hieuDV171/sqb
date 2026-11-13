@@ -84,6 +84,7 @@ export function PostDetailPage() {
         />
       ) : (
         <PostFeedCard
+          isDetail
           item={feedItem}
           initiallyShowComments
           onDeleted={() => navigate('/feed', { replace: true })}

@@ -115,6 +115,8 @@ export interface VideoPostItemDto {
     visibility: PostVisibility;
     reactCount: number;
     commentCount: number;
+    reactedByMe: boolean;
+    myReaction: PostResponseDto['myReaction'];
     mediaUrls?: MediaItem[];
     author: AuthorDto;
     createdAt: string;

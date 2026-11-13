@@ -2,6 +2,11 @@ import { axiosClient } from '@/api/axiosClient';
 import type { GlobalResponse } from '@/types/response.types';
 import type { CursorResponse } from '@/types/user.types';
 import type { ActivityFeedItemDto, NewFeedCountResponseDto } from '../types/feed.types';
+import { normalizePostMedia, type ApiMedia } from '../utils/postMedia';
+
+type ApiFeedItem = Omit<ActivityFeedItemDto, 'content'> & {
+  content: Omit<ActivityFeedItemDto['content'], 'mediaUrls'> & { mediaUrls?: ApiMedia[] };
+};
 
 export const feedService = {
   /**
@@ -12,12 +17,19 @@ export const feedService = {
     after?: number,
     limit: number = 20
   ): Promise<GlobalResponse<CursorResponse<ActivityFeedItemDto>>> => {
-    return (await axiosClient.get<GlobalResponse<CursorResponse<ActivityFeedItemDto>>>(
-      '/activity-feeds',
-      {
-        params: { after, limit },
-      }
-    )) as any;
+    const response = await axiosClient.get<unknown, GlobalResponse<CursorResponse<ApiFeedItem>>>(
+      '/activity-feeds', { params: { after, limit } },
+    );
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        items: response.data.items.map((item) => ({
+          ...item,
+          content: { ...item.content, mediaUrls: normalizePostMedia(item.content.mediaUrls) },
+        })),
+      },
+    };
   },
 
   /**
@@ -25,11 +37,8 @@ export const feedService = {
    * GET /api/v1/activity-feeds/new-count
    */
   getNewFeedCount: async (since?: number): Promise<GlobalResponse<NewFeedCountResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<NewFeedCountResponseDto>>(
-      '/activity-feeds/new-count',
-      {
-        params: { since },
-      }
-    )) as any;
+    return axiosClient.get<unknown, GlobalResponse<NewFeedCountResponseDto>>(
+      '/activity-feeds/new-count', { params: { since } },
+    );
   },
 };

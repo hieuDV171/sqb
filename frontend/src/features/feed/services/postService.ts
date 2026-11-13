@@ -11,20 +11,15 @@ import type {
   MediaItem,
   UpdateLecturerNoteRequest,
 } from '@/types/post.types';
+import { normalizePostMedia, type ApiMedia } from '../utils/postMedia';
 
-type ApiMedia = Omit<MediaItem, 'objectKey' | 'mediaType'> &
-  Partial<Pick<MediaItem, 'objectKey' | 'mediaType'>> & { key?: string; type?: string };
 type ApiPost<T> = Omit<T, 'mediaUrls'> & { mediaUrls?: ApiMedia[] };
 
 function normalizeMedia<T>(post: T & { mediaUrls?: ApiMedia[] }): Omit<T, 'mediaUrls'> & { mediaUrls?: MediaItem[] } {
   const { mediaUrls, ...fields } = post;
   return {
     ...fields,
-    mediaUrls: mediaUrls?.map(({ key, type, ...media }) => ({
-      ...media,
-      objectKey: key || media.objectKey || media.url,
-      mediaType: type || media.mediaType || (/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(media.url) ? 'VIDEO' : 'IMAGE'),
-    })),
+    mediaUrls: normalizePostMedia(mediaUrls),
   };
 }
 

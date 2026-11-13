@@ -338,6 +338,10 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             if (post != null) {
                 contentMap.put("comment_count", post.getCommentCount());
                 contentMap.put("react_count", post.getReactCount());
+                if (post.getPostType() == PostType.LEARNING_VIDEO) {
+                    contentMap.put("post_type", post.getPostType().name());
+                    contentMap.put("description", post.getContent());
+                }
                 if (post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION) {
                     contentMap.put("post_type", post.getPostType().name());
                     contentMap.put("description", post.getContent());

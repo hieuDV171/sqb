@@ -1,7 +1,7 @@
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
 import type { PostResponseDto } from '@/types/post.types';
 import { PostCard } from './PostCard';
-import { LectureVideoCard } from './cards/LectureVideoCard';
+import { PostFeedCard } from '@/features/feed/components/PostFeedCard';
 import { ApprovedSessionCard } from './cards/ApprovedSessionCard';
 import { EarnedBadgeCard } from './cards/EarnedBadgeCard';
 import { ReachedMilestoneCard } from './cards/ReachedMilestoneCard';
@@ -19,7 +19,7 @@ export function ActivityFeedItemRenderer({
 }: ActivityFeedItemRendererProps) {
   switch (item.actionType) {
     case 'PUBLISHED_LECTURE_VIDEO':
-      return <LectureVideoCard item={item} />;
+      return <PostFeedCard item={{ ...item, targetType: 'POST' }} />;
 
     case 'SESSION_RESOLVED_APPROVED':
       return <ApprovedSessionCard item={item} />;

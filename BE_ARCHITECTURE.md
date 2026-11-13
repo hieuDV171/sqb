@@ -497,3 +497,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Trình duyệt tải từng phần 16 MiB qua URL PUT ký sẵn. API chỉ nhận JSON điều phối. Trần 2 GiB/tệp cấu hình được qua `LECTURE_VIDEO_MAX_FILE_SIZE`. Các giới hạn Spring multipart 15 MiB/tệp, 20 MiB/yêu cầu và Caddy 50 MB trên domain ứng dụng áp dụng cho request đi qua VPS.
 - Redis giữ phiên 24 giờ theo UUID và chủ sở hữu. Khóa theo phiên tuần tự hóa mở, hoàn tất, hủy và gắn video. Khi mất kết nối, R2 là nguồn xác định phần đã nhận. Server kiểm tra kích thước từng phần, sau đó kiểm tra lại đối tượng đã ghép bằng HEAD. Media mới lưu bằng JSONB hiện có.
 - Video đã ghép được đưa vào hàng đợi media tạm. Khi gắn vào bài giảng, BE xác nhận vĩnh viễn và đưa lại vào hàng tạm nếu giao dịch rollback. Phiên multipart bị bỏ dở được dọn theo quy tắc lifecycle của R2. CORS của bucket cần cho phép origin frontend gửi PUT với `Content-Type`. Video phát từ tệp đã tải, chưa có hàng đợi chuyển mã.
+
+### [ADR-055] Dùng chung thẻ và trình phát bài giảng
+
+- Bảng tin, tab Video học tập và chi tiết dùng `PostFeedCard` với API tương tác hiện có. `GET /video-posts` bổ sung cảm xúc của người xem bằng một truy vấn theo các ID bài trong trang sau khi áp dụng bộ lọc quyền và phân trang. Quyền xem và cấu trúc lưu bài giữ theo ADR-048 và ADR-054.
+- Trình phát dùng Video.js 10 Neutral, tải thư viện và nguồn MP4/WebM khi người xem bấm phát. Ba màn dùng chung nguồn media đã chuẩn hóa từ API và giao diện điều khiển tiếng Việt.

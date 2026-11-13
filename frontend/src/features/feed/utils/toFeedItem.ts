@@ -6,7 +6,7 @@ export function toFeedItem(post: PostResponseDto): ActivityFeedItemDto {
     feedId: post.postId,
     targetType: 'POST',
     targetId: post.postId,
-    actionType: 'CREATED_POST',
+    actionType: post.postType === 'LEARNING_VIDEO' ? 'PUBLISHED_LECTURE_VIDEO' : 'CREATED_POST',
     actor: post.author,
     createdAt: post.createdAt,
     content: {

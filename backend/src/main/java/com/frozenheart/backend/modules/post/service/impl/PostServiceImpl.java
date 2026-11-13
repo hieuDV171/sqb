@@ -319,19 +319,11 @@ public class PostServiceImpl implements PostService {
             nextCursor = postsList.getLast().getId();
         }
 
-        List<Long> posterIds = postsList.stream()
-                .map(Post::getPoster)
-                .filter(Objects::nonNull)
-                .map(User::getId)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Long, UserProfile> profileMap = posterIds.isEmpty() ? Map.of()
-                : userProfileRepository.findAllById(posterIds).stream()
-                        .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
+        Map<Long, UserProfile> profileMap = loadProfilesForPosts(postsList);
+        Map<Long, ReactionType> reactions = loadPostReactions(viewer.getUserId(), postsList);
 
         List<VideoPostItemDto> items = postsList.stream()
-                .map(post -> mapToVideoPostItemDto(post, profileMap))
+                .map(post -> mapToVideoPostItemDto(post, profileMap, reactions.get(post.getId())))
                 .collect(Collectors.toList());
 
         return CursorResponse.<VideoPostItemDto>builder()
@@ -403,15 +395,7 @@ public class PostServiceImpl implements PostService {
         }
 
         // Batch toàn bộ reaction và hồ sơ trước khi map DTO, tuyệt đối không query trong vòng lặp.
-        List<Long> postIds = postsList.stream().map(Post::getId).toList();
-        Map<Long, ReactionType> reactionByPostId = postIds.isEmpty() ? Collections.emptyMap()
-                : reactRepository.findUserReactsByTargetIds(
-                                currentUserId, InteractionTargetType.POST, postIds).stream()
-                        .filter(react -> react.getReactionType() != null)
-                        .collect(Collectors.toMap(
-                                React::getTargetId,
-                                React::getReactionType,
-                                (existing, ignored) -> existing));
+        Map<Long, ReactionType> reactionByPostId = loadPostReactions(currentUserId, postsList);
         Map<Long, UserProfile> profileByUserId = loadProfilesForPosts(postsList);
         Set<Long> editableNotePostIds = lecturerNoteAccess.findEditablePostIds(viewer, postsList);
 
@@ -528,28 +512,27 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toMap(UserProfile::getUserId, profile -> profile));
     }
 
-    private VideoPostItemDto mapToVideoPostItemDto(Post post, Map<Long, UserProfile> profileMap) {
-        AuthorDto authorDto;
-        if (post.getPoster() == null) {
-            authorDto = AuthorDto.getSystemAuthor();
-        } else {
-            UserProfile profile = profileMap.get(post.getPoster().getId());
-            authorDto = AuthorDto.builder()
-                    .userId(post.getPoster().getId())
-                    .fullName(profile != null ? profile.getFullName() : post.getPoster().getEmail())
-                    .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
-                    .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
-                    .build();
+    private Map<Long, ReactionType> loadPostReactions(Long viewerId, List<Post> posts) {
+        if (posts.isEmpty()) {
+            return Map.of();
         }
+        List<Long> ids = posts.stream().map(Post::getId).toList();
+        return reactRepository.findUserReactsByTargetIds(viewerId, InteractionTargetType.POST, ids).stream()
+                .filter(react -> react.getReactionType() != null)
+                .collect(Collectors.toMap(React::getTargetId, React::getReactionType, (existing, ignored) -> existing));
+    }
 
+    private VideoPostItemDto mapToVideoPostItemDto(Post post, Map<Long, UserProfile> profileMap, ReactionType reaction) {
         return VideoPostItemDto.builder()
                 .postId(post.getId())
                 .content(post.getContent())
                 .visibility(post.getVisibility())
                 .reactCount(post.getReactCount())
                 .commentCount(post.getCommentCount())
+                .reactedByMe(reaction != null)
+                .myReaction(reaction)
                 .mediaUrls(post.getMediaUrls())
-                .author(authorDto)
+                .author(mapUserToAuthorDto(post.getPoster(), profileMap))
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .subjectId(post.getSubject() != null ? post.getSubject().getId() : null)

@@ -99,12 +99,19 @@ class PostServiceImplTest {
         setCurrentUser(7L);
         when(postRepository.findVisibleLectureVideos(7L, false, 12L, 45L, PageRequest.of(0, 3)))
                 .thenReturn(List.of(post(44L, 9L), post(40L, 9L), post(39L, 9L)));
+        when(reactRepository.findUserReactsByTargetIds(7L, InteractionTargetType.POST, List.of(44L, 40L)))
+                .thenReturn(List.of(react(40L, ReactionType.LOVE)));
 
         var response = service.getVideoPosts(12L, 45L, 2);
 
         assertEquals(2, response.items().size());
         assertEquals(40L, response.pagination().after());
         assertTrue(response.pagination().hasNext());
+        assertFalse(response.items().getFirst().isReactedByMe());
+        assertNull(response.items().getFirst().getMyReaction());
+        assertTrue(response.items().getLast().isReactedByMe());
+        assertEquals(ReactionType.LOVE, response.items().getLast().getMyReaction());
+        verify(reactRepository).findUserReactsByTargetIds(7L, InteractionTargetType.POST, List.of(44L, 40L));
     }
 
     @Test

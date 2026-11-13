@@ -1,0 +1,13 @@
+.lecture-player {
+  aspect-ratio: 16 / 9;
+  --media-accent-color: var(--primary);
+  --media-accent-text-color: var(--primary-foreground);
+  --media-font-family: var(--font-sans);
+  --media-border-radius: var(--radius);
+  --media-object-fit: contain;
+}
+
+.lecture-player:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

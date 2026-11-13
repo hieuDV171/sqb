@@ -112,7 +112,7 @@ export function usePostReact() {
       }
       toast.error('Không thể cập nhật cảm xúc. Vui lòng kiểm tra kết nối mạng!');
     },
-    onSuccess: (res, data) => {
+    onSuccess: async (res, data) => {
       if (data.targetType === 'POST') {
         void queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       }
@@ -157,11 +157,14 @@ export function usePostReact() {
             : current
         );
       }
+      if (data.targetType === 'POST') {
+        await queryClient.invalidateQueries({ queryKey: ['lecture-videos'] });
+      }
     },
   });
 
   return {
-    toggleReact: toggleReactMutation.mutateAsync,
+    toggleReact: toggleReactMutation.mutate,
     isReacting: toggleReactMutation.isPending,
   };
 }

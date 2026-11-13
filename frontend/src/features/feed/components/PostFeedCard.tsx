@@ -9,6 +9,8 @@ import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { CommentSection } from './CommentSection';
 import { LecturerNoteModal } from './LecturerNoteModal';
+import { LectureVideo } from './LectureVideo';
+import { isVideoMedia } from '../utils/postMedia';
 import { ReportModal } from '@/features/report';
 import type { ActivityFeedItemDto } from '../types/feed.types';
 import type { ReactionType } from '../services/reactService';
@@ -29,6 +31,7 @@ import {
   ShieldAlert,
   ArrowRight,
   CheckCircle2,
+  Video,
 } from 'lucide-react';
 
 const REACTIONS = [
@@ -67,15 +70,17 @@ interface PostFeedCardProps {
   item: ActivityFeedItemDto;
   initiallyShowComments?: boolean;
   onDeleted?: () => void;
+  isDetail?: boolean;
 }
 
 export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   item,
   initiallyShowComments = false,
   onDeleted,
+  isDetail = false,
 }) => {
   const { user } = useAuthStore();
-  const { toggleReact } = usePostReact();
+  const { toggleReact, isReacting } = usePostReact();
   const { deletePost } = usePostMutations();
   const { addToast } = useToastStore();
 
@@ -95,6 +100,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const [isContentExpanded, setIsContentExpanded] = useState<boolean>(false);
 
   const isApprovalPost = content.postType === 'QUESTION_APPROVED_NOTIFICATION' || item.actionType === 'SESSION_RESOLVED_APPROVED';
+  const isLecture = content.postType === 'LEARNING_VIDEO' || item.actionType === 'PUBLISHED_LECTURE_VIDEO';
   const displayName = isApprovalPost && actor.userId != null ? 'Sinh viên ẩn danh' : actor.fullName;
   const isAuthor = !isApprovalPost && user?.id != null && user.id === actor.userId;
   const canEditLecturerNote = isApprovalPost && content.canEditLecturerNote === true;
@@ -152,8 +158,13 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
     }
   };
 
-  const textContent = content.description || content.title || '';
+  const textContent = content.description || content.title || (isLecture ? 'Video bài giảng' : '');
   const isLongText = textContent.length > 280;
+  const displayedText = isLongText && !isContentExpanded ? `${textContent.slice(0, 280)}...` : textContent;
+  const video = isLecture ? content.mediaUrls?.find(isVideoMedia) : undefined;
+  const lectureSource = video?.url || content.mediaUrl;
+  const otherMedia = content.mediaUrls?.filter((media) => media.url !== video?.url);
+  const videoTitle = textContent.trim().split('\n')[0].slice(0, 120) || 'Video bài giảng';
 
   return (
     <article className={`mb-4 rounded-2xl border bg-card p-4 shadow-[var(--card-shadow)] md:p-5 ${
@@ -298,15 +309,22 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
       {/* 2. Post Content */}
       <div className={isApprovalPost ? 'mb-3.5 space-y-3 rounded-xl border border-academic/20 bg-academic-soft p-4' : 'mb-3.5'}>
+        {isLecture && (
+          <Badge variant="outline" className="mb-2 border-academic/25 bg-academic-soft text-academic">
+            <Video aria-hidden="true" /> Video bài giảng
+          </Badge>
+        )}
         {isApprovalPost && (
           <Badge variant="outline" className="border-academic/25 text-academic">
             <CheckCircle2 aria-hidden="true" /> Đã duyệt vào ngân hàng
           </Badge>
         )}
-        <p className="whitespace-pre-wrap text-sm leading-6 text-foreground md:text-base md:leading-7">
-          {isLongText && !isContentExpanded
-            ? `${textContent.slice(0, 280)}...`
-            : textContent}
+        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground md:text-base md:leading-7">
+          {isLecture && !isDetail ? (
+            <Link to={`/posts/${targetId}`} className="font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+              {displayedText}
+            </Link>
+          ) : displayedText}
         </p>
         {isLongText && (
           <button
@@ -325,15 +343,24 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       </div>
 
       {/* 3. Media Attachments */}
-      {content.mediaUrls && content.mediaUrls.length > 0 && (
+      {isLecture && (
+        <div className="mb-3.5">
+          {lectureSource ? (
+            <LectureVideo key={lectureSource} src={lectureSource} poster={video?.thumbnailUrl} title={videoTitle} />
+          ) : (
+            <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">Video bài giảng hiện chưa có nguồn phát.</p>
+          )}
+        </div>
+      )}
+      {otherMedia && otherMedia.length > 0 && (
         <div
           className={`grid gap-2 mb-3.5 rounded-2xl overflow-hidden ${
-            content.mediaUrls.length === 1 ? 'grid-cols-1 max-h-[460px]' : 'grid-cols-2 max-h-[380px]'
+            otherMedia.length === 1 ? 'grid-cols-1 max-h-[460px]' : 'grid-cols-2 max-h-[380px]'
           }`}
         >
-          {content.mediaUrls.map((media, idx) => (
+          {otherMedia.map((media, idx) => (
             <div key={idx} className="relative min-h-48 overflow-hidden rounded-xl bg-muted">
-              {media.mediaType === 'VIDEO' ? (
+              {isVideoMedia(media) ? (
                 <video src={media.url} controls className="w-full h-full object-cover" />
               ) : (
                 <img
@@ -400,6 +427,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
                     <button
                       key={r.type}
                       type="button"
+                      disabled={isReacting}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSelectReaction(r.type);
@@ -424,6 +452,8 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
             <button
               type="button"
               onClick={handleMainButtonClick}
+              disabled={isReacting}
+              aria-pressed={myReaction !== null}
               className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors ${
                 currentReactionConfig
                   ? `${currentReactionConfig.color} font-bold ${currentReactionConfig.bgColor}`
@@ -449,6 +479,8 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           <button
             type="button"
             onClick={() => setShowComments(!showComments)}
+            aria-label={`${content.commentCount || 0} bình luận`}
+            aria-expanded={showComments}
             className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors hover:bg-muted hover:text-primary"
           >
             <MessageCircle className="w-4 h-4" />
@@ -460,6 +492,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
           <button
             type="button"
             onClick={handleShare}
+            aria-label="Chia sẻ liên kết"
             className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors hover:bg-muted hover:text-foreground"
           >
             <Share2 className="w-4 h-4" />
