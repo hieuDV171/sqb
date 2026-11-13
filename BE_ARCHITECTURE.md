@@ -483,6 +483,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - `Badge.active` điều khiển việc xét và trao mới. GV/SV thấy huy hiệu đã ngừng trao ở danh mục và bộ sưu tập. Admin có thể kích hoạt lại qua API cập nhật huy hiệu hiện có.
 - `UserBadge.revokedAt` ghi nhận lượt bị thu hồi và giữ cặp khóa người dùng/huy hiệu. Luồng tự động bỏ qua mọi cặp khóa đã có, kể cả lượt bị thu hồi. Admin trao lại bằng cách đặt `revokedAt` về null và ghi thời điểm trao mới. Thu hồi cập nhật số đếm hồ sơ, ẩn sự kiện cũ khỏi Bảng tin và tạo thông báo `BADGE_REVOKED` cho tài khoản đang hoạt động bằng `NotificationWriter`. STOMP báo thay đổi sau commit. Thông báo đã gửi và ảnh của sự kiện lịch sử vẫn được lưu.
 - Màn Admin tìm người trao và người đang giữ huy hiệu bằng truy vấn phân trang theo ID. Form lấy danh mục môn học qua `/subjects`; BE kiểm tra ID và dùng mã môn chính thức. Biểu tượng tải trực tiếp lên R2 qua `BADGE_ICON` và được xác nhận vĩnh viễn khi lưu huy hiệu.
+- `Badge.badgeTriggerEvent` chọn sự kiện xét thưởng và `Badge.criteria` lưu JSONB theo bộ đánh giá tương ứng. BE kiểm tra cặp cấu hình khi tạo, sửa tiêu chí hoặc kích hoạt lại. Cấu hình đã lưu được dùng từ sự kiện tiếp theo, dựa trên dữ liệu tích lũy của người phát sinh sự kiện. Huy hiệu thứ hạng chỉ xét Top 10 toàn trường khi chốt học kỳ. Tiêu chí thứ hạng theo môn đã lưu từ trước không được xét bằng kết quả toàn trường.
 
 ### [ADR-053] Triển khai Backend và AI sidecar độc lập
 

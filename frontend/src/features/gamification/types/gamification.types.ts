@@ -59,6 +59,10 @@ export interface RebuildLeaderboardRequest {
 
 export type BadgeTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
 
+export const badgeTierLabels: Record<BadgeTier, string> = {
+  BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch kim', DIAMOND: 'Kim cương',
+};
+
 export type BadgeTriggerEvent =
   | 'APPROVED_QUESTIONS'
   | 'PROPOSED_QUESTIONS'
@@ -69,11 +73,14 @@ export type BadgeTriggerEvent =
   | 'LEADERBOARD_RANK'
   | 'MANUAL_GRANT';
 
-export interface BadgeCriteria {
-  type?: string;
-  threshold?: number;
-  [key: string]: unknown;
-}
+export type BadgeTargetRole = 'ALL' | 'STUDENT' | 'LECTURER' | 'ADMIN';
+
+export type BadgeCriteria =
+  | { type: 'COUNTER_THRESHOLD'; threshold: number; targetRole?: BadgeTargetRole }
+  | { type: 'SUBJECT_MASTERY'; subjectId: number; subjectCode: string; approvedQuestionsCount: number }
+  | { type: 'STREAK'; streakDays: number }
+  | { type: 'LEADERBOARD_RANK'; targetRank: number; period: LeaderboardPeriod }
+  | { type: 'MANUAL_GRANT'; description?: string };
 
 export interface BadgeResponseDto {
   badgeId: number;

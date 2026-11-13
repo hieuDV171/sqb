@@ -4,6 +4,7 @@ import com.frozenheart.backend.core.entity.badge.Badge;
 import com.frozenheart.backend.core.entity.badge.CriteriaType;
 import com.frozenheart.backend.core.entity.badge.criteria.LeaderboardRankCriteria;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.modules.gamification.dto.LeaderboardPeriod;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,7 +17,7 @@ public class LeaderboardRankEvaluator implements BadgeEvaluator<LeaderboardRankC
 
     @Override
     public boolean evaluate(User user, Badge badge, LeaderboardRankCriteria criteria, Object context) {
-        if (user == null || criteria == null) {
+        if (user == null || criteria == null || criteria.getPeriod() == LeaderboardPeriod.SUBJECT) {
             return false;
         }
 

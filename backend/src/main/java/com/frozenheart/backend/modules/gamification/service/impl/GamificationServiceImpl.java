@@ -7,6 +7,7 @@ import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.IdCursorPage;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
+import com.frozenheart.backend.core.entity.badge.criteria.LeaderboardRankCriteria;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.prediction.*;
 import com.frozenheart.backend.core.entity.session.*;
@@ -1047,7 +1048,7 @@ public class GamificationServiceImpl implements GamificationService {
 
         // Redis receives point events after commit. Use the ledger to include awards in this transaction.
         List<LeaderboardAggregation> finalRanks = pointHistoryRepository.findFinalSemesterRanks(
-                current.getId(), PageRequest.of(0, 10));
+                current.getId(), PageRequest.of(0, LeaderboardRankCriteria.MAX_SEMESTER_RANK));
         try {
             if (!finalRanks.isEmpty()) {
                 Map<Long, Integer> userRankMap = new HashMap<>();

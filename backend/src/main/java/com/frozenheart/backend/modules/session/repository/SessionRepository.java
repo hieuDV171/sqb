@@ -209,6 +209,6 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         "WHERE s.id IN :ids")
         List<Session> findByIdInFetchAutomatedReviewDetails(@Param("ids") Collection<Long> ids);
 
-        int countByReviewerId(Long reviewerId);
+        int countByReviewerIdAndStatus(Long reviewerId, SessionStatus status);
 
 }

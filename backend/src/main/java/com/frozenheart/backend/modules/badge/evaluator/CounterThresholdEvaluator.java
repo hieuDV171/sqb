@@ -2,8 +2,8 @@ package com.frozenheart.backend.modules.badge.evaluator;
 
 import com.frozenheart.backend.core.entity.badge.*;
 import com.frozenheart.backend.core.entity.badge.criteria.CounterThresholdCriteria;
+import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.user.User;
-import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
@@ -46,16 +46,16 @@ public class CounterThresholdEvaluator implements BadgeEvaluator<CounterThreshol
             return false;
         }
 
-        UserProfile profile = userProfileRepository.findById(user.getId()).orElse(null);
-
         return switch (metric) {
-            case APPROVED_QUESTIONS -> profile != null && profile.getTotalApprovedQuestions() >= threshold;
-            case PROPOSED_QUESTIONS -> profile != null && profile.getTotalProposedQuestion() >= threshold;
+            case APPROVED_QUESTIONS -> userProfileRepository.findById(user.getId())
+                    .map(profile -> profile.getTotalApprovedQuestions() >= threshold).orElse(false);
+            case PROPOSED_QUESTIONS -> userProfileRepository.findById(user.getId())
+                    .map(profile -> profile.getTotalProposedQuestion() >= threshold).orElse(false);
             case ACCEPTED_FRIENDS -> friendshipRepository.countTotalFriends(user.getId()) >= threshold;
             case PUBLIC_POINTS -> userGamificationRepository.findById(user.getId())
                     .map(g -> g.getPublicPoints() >= threshold)
                     .orElse(false);
-            case REVIEWED_SESSIONS -> sessionRepository.countByReviewerId(user.getId()) >= threshold;
+            case REVIEWED_SESSIONS -> sessionRepository.countByReviewerIdAndStatus(user.getId(), SessionStatus.RESOLVED) >= threshold;
             default -> false;
         };
     }

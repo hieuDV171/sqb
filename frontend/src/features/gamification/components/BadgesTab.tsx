@@ -7,16 +7,13 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAllBadges, useMyBadges } from '../hooks/useGamification';
-import { getTierColor, type BadgeResponseDto, type BadgeTier, type UserBadgeResponseDto } from '../types/gamification.types';
+import { badgeTierLabels, getTierColor, type BadgeResponseDto, type UserBadgeResponseDto } from '../types/gamification.types';
 import { FilterSelect } from '@/components/ui/filter-select';
 import { gamificationService } from '../services/gamificationService';
 
-const tierLabels: Record<BadgeTier, string> = {
-  BRONZE: 'Đồng', SILVER: 'Bạc', GOLD: 'Vàng', PLATINUM: 'Bạch kim', DIAMOND: 'Kim cương',
-};
 const tiers = [
   { value: '', label: 'Tất cả cấp' },
-  ...Object.entries(tierLabels).map(([value, label]) => ({ value, label })),
+  ...Object.entries(badgeTierLabels).map(([value, label]) => ({ value, label })),
 ];
 
 type BadgeItem = BadgeResponseDto | UserBadgeResponseDto;
@@ -92,7 +89,7 @@ export function BadgesTab() {
                   <span className="flex items-start gap-3">
                     <BadgeIcon badge={badge} />
                     <span className="min-w-0 space-y-1">
-                      <span className="block text-xs font-medium text-muted-foreground">{tierLabels[badge.badgeTier]}</span>
+                      <span className="block text-xs font-medium text-muted-foreground">{badgeTierLabels[badge.badgeTier]}</span>
                       <span className="block wrap-break-word font-semibold">{badge.name}</span>
                       <span className="line-clamp-2 text-sm text-muted-foreground">{badge.description}</span>
                     </span>
@@ -140,7 +137,7 @@ export function BadgeDetailsDialog({ badge, earnedAt, onClose }: { badge: BadgeI
               <div className="flex items-start gap-3">
                 <BadgeIcon badge={displayed} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-muted-foreground">{tierLabels[displayed.badgeTier]}</p>
+                  <p className="text-sm text-muted-foreground">{badgeTierLabels[displayed.badgeTier]}</p>
                   <Dialog.Title className="wrap-break-word text-xl font-bold">{displayed.name}</Dialog.Title>
                 </div>
                 <Dialog.Close render={<Button variant="ghost" size="icon" aria-label="Đóng chi tiết huy hiệu" />}>

@@ -10,9 +10,13 @@ import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedMetaData;
 import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.badge.Badge;
 import com.frozenheart.backend.core.entity.badge.BadgeCriteria;
-import com.frozenheart.backend.core.entity.badge.criteria.SubjectMasteryCriteria;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.badge.UserBadge;
+import com.frozenheart.backend.core.entity.badge.criteria.CounterThresholdCriteria;
+import com.frozenheart.backend.core.entity.badge.criteria.LeaderboardRankCriteria;
+import com.frozenheart.backend.core.entity.badge.criteria.ManualGrantCriteria;
+import com.frozenheart.backend.core.entity.badge.criteria.StreakCriteria;
+import com.frozenheart.backend.core.entity.badge.criteria.SubjectMasteryCriteria;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
@@ -22,6 +26,7 @@ import com.frozenheart.backend.modules.badge.repository.BadgeRepository;
 import com.frozenheart.backend.modules.badge.repository.UserBadgeRepository;
 import com.frozenheart.backend.modules.badge.service.BadgeEvaluationService;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
+import com.frozenheart.backend.modules.gamification.dto.LeaderboardPeriod;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -106,7 +111,7 @@ public class BadgeServiceImpl implements BadgeService {
         if (badgeRepository.existsByName(request.getName())) {
             throw new AppException(ResponseCode.BADGE_NAME_ALREADY_EXISTS);
         }
-        normalizeSubject(request.getCriteria());
+        validateCriteria(request.getBadgeTriggerEvent(), request.getCriteria());
 
         if (request.getIconUrl() != null && !request.getIconUrl().isBlank()) {
             mediaService.confirmMediaPermanent(List.of(request.getIconUrl()));
@@ -134,6 +139,12 @@ public class BadgeServiceImpl implements BadgeService {
         Badge badge = badgeRepository.findByIdForGrant(badgeId)
                 .orElseThrow(() -> new AppException(ResponseCode.BADGE_NOT_FOUND));
 
+        if (request.getBadgeTriggerEvent() != null || request.getCriteria() != null || Boolean.TRUE.equals(request.getActive())) {
+            BadgeTriggerEvent trigger = request.getBadgeTriggerEvent() != null ? request.getBadgeTriggerEvent() : badge.getBadgeTriggerEvent();
+            BadgeCriteria criteria = request.getCriteria() != null ? request.getCriteria() : badge.getCriteria();
+            validateCriteria(trigger, criteria);
+        }
+
         if (request.getName() != null && !request.getName().isBlank()) {
             if (!badge.getName().equalsIgnoreCase(request.getName())
                     && badgeRepository.existsByName(request.getName())) {
@@ -155,7 +166,6 @@ public class BadgeServiceImpl implements BadgeService {
             badge.setActive(request.getActive());
         }
         if (request.getCriteria() != null) {
-            normalizeSubject(request.getCriteria());
             badge.setCriteria(request.getCriteria());
         }
         if (request.getIconUrl() != null && !Objects.equals(request.getIconUrl(), badge.getIconUrl())) {
@@ -246,7 +256,39 @@ public class BadgeServiceImpl implements BadgeService {
         return new CursorResponse<>(items, new CursorPaginationDto(null, next, false, hasNext));
     }
 
-    private void normalizeSubject(BadgeCriteria criteria) {
+    private void validateCriteria(BadgeTriggerEvent trigger, BadgeCriteria criteria) {
+        if (trigger == null || criteria == null) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Hãy chọn sự kiện và nhập tiêu chí xét thưởng.");
+        }
+        boolean matchesTrigger = switch (criteria) {
+            case CounterThresholdCriteria counter -> switch (trigger) {
+                case APPROVED_QUESTIONS, PROPOSED_QUESTIONS, REVIEWED_SESSIONS, ACCEPTED_FRIENDS, PUBLIC_POINTS -> true;
+                default -> false;
+            };
+            case SubjectMasteryCriteria subject -> trigger == BadgeTriggerEvent.APPROVED_QUESTIONS;
+            case StreakCriteria streak -> trigger == BadgeTriggerEvent.STUDY_STREAK;
+            case LeaderboardRankCriteria rank -> trigger == BadgeTriggerEvent.LEADERBOARD_RANK;
+            case ManualGrantCriteria manual -> trigger == BadgeTriggerEvent.MANUAL_GRANT;
+            default -> false;
+        };
+        if (!matchesTrigger) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Loại tiêu chí không khớp với sự kiện xét thưởng.");
+        }
+        int minimum = switch (criteria) {
+            case CounterThresholdCriteria counter -> counter.getThreshold();
+            case SubjectMasteryCriteria subject -> subject.getApprovedQuestionsCount();
+            case StreakCriteria streak -> streak.getStreakDays();
+            case LeaderboardRankCriteria rank -> rank.getTargetRank();
+            default -> 1;
+        };
+        if (minimum < 1) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Ngưỡng xét thưởng phải lớn hơn 0.");
+        }
+        if (criteria instanceof LeaderboardRankCriteria rank
+                && (rank.getPeriod() != LeaderboardPeriod.SEMESTER || rank.getTargetRank() > LeaderboardRankCriteria.MAX_SEMESTER_RANK)) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
+                    "Huy hiệu thứ hạng chỉ hỗ trợ Top 1–" + LeaderboardRankCriteria.MAX_SEMESTER_RANK + " toàn trường theo học kỳ.");
+        }
         if (!(criteria instanceof SubjectMasteryCriteria subjectCriteria)) return;
         if (subjectCriteria.getSubjectId() == null) throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Hãy chọn môn học.");
         var subject = subjectRepository.findById(subjectCriteria.getSubjectId())

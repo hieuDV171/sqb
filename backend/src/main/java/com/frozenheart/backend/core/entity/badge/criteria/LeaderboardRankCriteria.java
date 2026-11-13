@@ -18,6 +18,8 @@ import lombok.Setter;
 @JsonTypeName("LEADERBOARD_RANK")
 public class LeaderboardRankCriteria implements BadgeCriteria {
 
+    public static final int MAX_SEMESTER_RANK = 10;
+
     private int targetRank; // e.g. 1 for Top 1, 3 for Top 3, 10 for Top 10
     private LeaderboardPeriod period;   // e.g. SEMESTER, SUBJECT
 
