@@ -268,7 +268,8 @@ public class MediaServiceImpl implements MediaService {
                 .toList();
     }
 
-    private String buildPublicUrl(String objectKey) {
+    @Override
+    public String buildPublicUrl(String objectKey) {
         String publicUrl = r2Properties.getPublicUrl();
         if (publicUrl != null && !publicUrl.isBlank()) {
             String clean = publicUrl.trim();

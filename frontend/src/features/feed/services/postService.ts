@@ -8,8 +8,29 @@ import type {
   UpdatePostResponseDto,
   DeletePostResponseDto,
   VideoPostItemDto,
+  MediaItem,
   UpdateLecturerNoteRequest,
 } from '@/types/post.types';
+
+type ApiMedia = Omit<MediaItem, 'objectKey' | 'mediaType'> &
+  Partial<Pick<MediaItem, 'objectKey' | 'mediaType'>> & { key?: string; type?: string };
+type ApiPost<T> = Omit<T, 'mediaUrls'> & { mediaUrls?: ApiMedia[] };
+
+function normalizeMedia<T>(post: T & { mediaUrls?: ApiMedia[] }): Omit<T, 'mediaUrls'> & { mediaUrls?: MediaItem[] } {
+  const { mediaUrls, ...fields } = post;
+  return {
+    ...fields,
+    mediaUrls: mediaUrls?.map(({ key, type, ...media }) => ({
+      ...media,
+      objectKey: key || media.objectKey || media.url,
+      mediaType: type || media.mediaType || (/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(media.url) ? 'VIDEO' : 'IMAGE'),
+    })),
+  };
+}
+
+function serializeMedia(mediaUrls?: MediaItem[]) {
+  return mediaUrls?.map(({ objectKey, mediaType, ...media }) => ({ ...media, key: objectKey, type: mediaType }));
+}
 
 export const postService = {
   /**
@@ -17,10 +38,10 @@ export const postService = {
    * POST /api/v1/posts
    */
   createPost: async (data: CreatePostRequest): Promise<GlobalResponse<PostResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<PostResponseDto>>(
-      '/posts',
-      data
-    )) as unknown as GlobalResponse<PostResponseDto>;
+    const response = await axiosClient.post<unknown, GlobalResponse<ApiPost<PostResponseDto>>>(
+      '/posts', { ...data, mediaUrls: serializeMedia(data.mediaUrls) },
+    );
+    return { ...response, data: normalizeMedia(response.data) };
   },
 
   /**
@@ -32,11 +53,12 @@ export const postService = {
     limit: number = 10,
     signal?: AbortSignal,
   ): Promise<GlobalResponse<CursorResponse<PostResponseDto>>> => {
-    return axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>, GlobalResponse<CursorResponse<PostResponseDto>>>('/posts/me', {
+    const response = await axiosClient.get<unknown, GlobalResponse<CursorResponse<ApiPost<PostResponseDto>>>>('/posts/me', {
       params: { after, limit },
       signal,
       skipToast: true,
     });
+    return { ...response, data: { ...response.data, items: response.data.items.map(normalizeMedia) } };
   },
 
   /**
@@ -49,7 +71,7 @@ export const postService = {
     limit: number = 10,
     signal?: AbortSignal,
   ): Promise<GlobalResponse<CursorResponse<PostResponseDto>>> => {
-    return axiosClient.get<GlobalResponse<CursorResponse<PostResponseDto>>, GlobalResponse<CursorResponse<PostResponseDto>>>(
+    const response = await axiosClient.get<unknown, GlobalResponse<CursorResponse<ApiPost<PostResponseDto>>>>(
       `/users/${userId}/posts`,
       {
         params: { after, limit },
@@ -57,6 +79,7 @@ export const postService = {
         skipToast: true,
       }
     );
+    return { ...response, data: { ...response.data, items: response.data.items.map(normalizeMedia) } };
   },
 
   /**
@@ -64,9 +87,10 @@ export const postService = {
    * GET /api/v1/posts/{id}
    */
   getPostById: async (id: number): Promise<GlobalResponse<PostResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<PostResponseDto>>(`/posts/${id}`, {
+    const response = await axiosClient.get<unknown, GlobalResponse<ApiPost<PostResponseDto>>>(`/posts/${id}`, {
       skipToast: true,
-    })) as unknown as GlobalResponse<PostResponseDto>;
+    });
+    return { ...response, data: normalizeMedia(response.data) };
   },
 
   /**
@@ -79,7 +103,7 @@ export const postService = {
   ): Promise<GlobalResponse<UpdatePostResponseDto>> => {
     return (await axiosClient.put<GlobalResponse<UpdatePostResponseDto>>(
       `/posts/${id}`,
-      data
+      { ...data, mediaUrls: serializeMedia(data.mediaUrls) }
     )) as unknown as GlobalResponse<UpdatePostResponseDto>;
   },
 
@@ -117,8 +141,9 @@ export const postService = {
     after?: number,
     limit: number = 2
   ): Promise<GlobalResponse<CursorResponse<VideoPostItemDto>>> => {
-    return axiosClient.get<unknown, GlobalResponse<CursorResponse<VideoPostItemDto>>>('/video-posts', {
+    const response = await axiosClient.get<unknown, GlobalResponse<CursorResponse<ApiPost<VideoPostItemDto>>>>('/video-posts', {
       params: { subject_id: subjectId, after, limit },
     });
+    return { ...response, data: { ...response.data, items: response.data.items.map(normalizeMedia) } };
   },
 };

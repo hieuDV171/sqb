@@ -27,6 +27,7 @@ import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.LectureVideoUploadService;
 import com.frozenheart.backend.modules.post.dto.*;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
@@ -63,6 +64,7 @@ public class PostServiceImpl implements PostService {
     private final UserProfileRepository userProfileRepository;
     private final SubjectRepository subjectRepository;
     private final MediaService mediaService;
+    private final LectureVideoUploadService lectureVideoUploadService;
     private final ActivityFeedService activityFeedService;
     private final ApplicationEventPublisher eventPublisher;
     private final BlockRepository blockRepository;
@@ -104,15 +106,16 @@ public class PostServiceImpl implements PostService {
             postType = PostType.SOCIAL_POST;
         }
 
-        // Confirm media permanent
-        confirmMediaItemsPermanent(request.getMediaUrls());
+        List<MediaItem> media = lectureVideoUploadService.preparePostMedia(request.getMediaUrls(), null,
+                postType == PostType.LEARNING_VIDEO, currentUserId);
+        confirmMediaItemsPermanent(media);
 
         Instant now = Instant.now();
 
         Post post = new Post();
         post.setContent(request.getContent());
         post.setPostType(postType);
-        post.setMediaUrls(request.getMediaUrls());
+        post.setMediaUrls(media);
         post.setVisibility(request.getVisibility() != null ? request.getVisibility() : PostVisibility.PUBLIC);
         post.setPoster(currentUser);
         post.setSubject(subject);
@@ -125,14 +128,12 @@ public class PostServiceImpl implements PostService {
         eventPublisher
                 .publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.POST, savedPost.getId()));
 
-        boolean hasMedia = request.getMediaUrls() != null && !request.getMediaUrls().isEmpty();
+        boolean hasMedia = media != null && !media.isEmpty();
         metricService.incrementCounter("sqb.posts.created", "type", postType.name(), "has_media", String.valueOf(hasMedia));
 
         ActionType feedAction = (postType == PostType.LEARNING_VIDEO) ? ActionType.PUBLISHED_LECTURE_VIDEO
                 : ActionType.CREATED_POST;
-        String firstMediaUrl = (request.getMediaUrls() != null && !request.getMediaUrls().isEmpty())
-                ? request.getMediaUrls().getFirst().url()
-                : null;
+        String firstMediaUrl = hasMedia ? media.getFirst().url() : null;
         ActivityFeedMetaData feedMeta = ActivityFeedMetaData.builder()
                 .title(request.getContent())
                 .mediaUrl(firstMediaUrl)
@@ -207,12 +208,13 @@ public class PostServiceImpl implements PostService {
             throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền sửa bài viết này");
         }
 
-        // Confirm new media permanent
-        confirmMediaItemsPermanent(request.getMediaUrls());
+        List<MediaItem> media = lectureVideoUploadService.preparePostMedia(request.getMediaUrls(), post.getMediaUrls(),
+                post.getPostType() == PostType.LEARNING_VIDEO, currentUserId);
+        confirmMediaItemsPermanent(media);
 
         // Dọn dẹp media cũ bị gỡ bỏ khỏi bài viết
         List<String> oldKeys = extractMediaKeys(post.getMediaUrls());
-        List<String> newKeys = extractMediaKeys(request.getMediaUrls());
+        List<String> newKeys = extractMediaKeys(media);
         Set<String> newKeySet = new HashSet<>(newKeys);
         List<String> removedKeys = oldKeys.stream()
                 .filter(k -> !newKeySet.contains(k))
@@ -222,7 +224,7 @@ public class PostServiceImpl implements PostService {
         }
 
         post.setContent(request.getContent());
-        post.setMediaUrls(request.getMediaUrls());
+        post.setMediaUrls(media);
         if (request.getVisibility() != null) {
             post.setVisibility(request.getVisibility());
         }
@@ -448,7 +450,9 @@ public class PostServiceImpl implements PostService {
     }
 
     private void confirmMediaItemsPermanent(List<MediaItem> mediaItems) {
-        List<String> keys = extractMediaKeys(mediaItems);
+        List<String> keys = extractMediaKeys(mediaItems).stream()
+                .filter(key -> !lectureVideoUploadService.isLectureUploadKey(key))
+                .toList();
         if (!keys.isEmpty()) {
             mediaService.confirmMediaPermanent(keys);
         }

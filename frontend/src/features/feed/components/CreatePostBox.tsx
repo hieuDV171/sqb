@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { usePostMutations } from '../hooks/usePostMutations';
+import { useLectureVideoUpload } from '../hooks/useLectureVideoUpload';
 import { sessionService } from '@/features/session/services/sessionService';
 import { mediaService } from '@/services/mediaService';
 import { toast } from '@/stores/useToastStore';
@@ -38,6 +39,12 @@ export const CreatePostBox: React.FC = () => {
   const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const lectureVideo = useLectureVideoUpload();
+  const { upload } = lectureVideo;
+  const lectureReady = upload?.state === 'ready';
+  const lectureProgress = upload?.state === 'uploading'
+    ? Math.min(99, Math.floor(upload.loaded * 100 / upload.file.size))
+    : 0;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +96,7 @@ export const CreatePostBox: React.FC = () => {
     }
   }, [isLecturerOrAdmin, user?.role]);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, forceVideo = false) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -97,7 +104,7 @@ export const CreatePostBox: React.FC = () => {
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
         const { objectKey, publicUrl } = await mediaService.uploadViaPresign(file, 'POST');
-        const isVideo = forceVideo || file.type.startsWith('video/');
+        const isVideo = file.type.startsWith('video/');
         const mediaItem: MediaItem = {
           objectKey,
           url: publicUrl,
@@ -137,8 +144,7 @@ export const CreatePostBox: React.FC = () => {
         toast.error('Video bài giảng bắt buộc phải gắn với 1 môn học');
         return;
       }
-      const hasVideo = mediaList.some((m) => m.mediaType === 'VIDEO');
-      if (!hasVideo) {
+      if (!lectureReady) {
         toast.error('Vui lòng tải lên tệp video bài giảng');
         return;
       }
@@ -160,13 +166,14 @@ export const CreatePostBox: React.FC = () => {
         visibility: postType === 'LEARNING_VIDEO' ? 'PUBLIC' : visibility,
         postType: isLecturerOrAdmin ? postType : 'SOCIAL_POST',
         subjectId: postType === 'LEARNING_VIDEO' ? selectedSubjectId : undefined,
-        mediaUrls: mediaList,
+        mediaUrls: postType === 'LEARNING_VIDEO' && lectureReady ? [upload.media] : mediaList,
       });
 
       setContent('');
       setMediaList([]);
       setSelectedSubjectId(undefined);
       if (postType === 'LEARNING_VIDEO') {
+        lectureVideo.published();
         setPostType('SOCIAL_POST');
       }
     } catch {
@@ -182,6 +189,7 @@ export const CreatePostBox: React.FC = () => {
           <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-700/60 rounded-2xl">
             <button
               type="button"
+              disabled={isCreating}
               onClick={() => {
                 setPostType('SOCIAL_POST');
               }}
@@ -198,6 +206,7 @@ export const CreatePostBox: React.FC = () => {
 
             <button
               type="button"
+              disabled={isCreating}
               onClick={() => {
                 setPostType('LEARNING_VIDEO');
                 setVisibility('PUBLIC');
@@ -233,6 +242,7 @@ export const CreatePostBox: React.FC = () => {
           </div>
           <button
             type="button"
+            disabled={isCreating}
             onClick={() => setPostType('SOCIAL_POST')}
             className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
           >
@@ -281,7 +291,7 @@ export const CreatePostBox: React.FC = () => {
             />
 
             {/* Media Upload Previews */}
-            {mediaList.length > 0 && (
+            {postType === 'SOCIAL_POST' && mediaList.length > 0 && (
               <div className="flex flex-wrap gap-2.5 mt-3">
                 {mediaList.map((media, idx) => (
                   <div
@@ -326,7 +336,41 @@ export const CreatePostBox: React.FC = () => {
             {isUploadingMedia && (
               <div className="flex items-center gap-2 mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang tải tệp tin lên kho lưu trữ MinIO S3...</span>
+                <span>Đang tải tệp lên…</span>
+              </div>
+            )}
+
+            {postType === 'LEARNING_VIDEO' && lectureVideo.selectionError && (
+              <p role="alert" className="mt-3 text-sm text-destructive">{lectureVideo.selectionError}</p>
+            )}
+            {postType === 'LEARNING_VIDEO' && upload && (
+              <div className="mt-3 space-y-2 rounded-xl border border-border p-3 text-sm">
+                <p className="break-all font-medium">{upload.file.name}</p>
+                {upload.state === 'uploading' && (
+                  <div className="flex items-center gap-2">
+                    <progress aria-label="Tiến độ tải video" value={lectureProgress} max={100}
+                      className="h-2 min-w-0 flex-1 accent-indigo-600" />
+                    <span aria-hidden="true" className="tabular-nums">{lectureProgress}%</span>
+                  </div>
+                )}
+                <p role="status" className="text-muted-foreground">
+                  {upload.state === 'uploading' && 'Đang tải video lên…'}
+                  {upload.state === 'finalizing' && 'Đang xác minh video…'}
+                  {upload.state === 'ready' && 'Video đã tải xong.'}
+                </p>
+                {upload.state === 'failed' && <p role="alert" className="text-destructive">{upload.message}</p>}
+                <div className="flex flex-wrap items-center gap-2">
+                  {upload.state === 'failed' && upload.retryable && (
+                    <button type="button" onClick={lectureVideo.retry}
+                      className="min-h-11 rounded-lg px-3 font-semibold text-primary hover:bg-muted">
+                      Tải tiếp
+                    </button>
+                  )}
+                  <button type="button" onClick={lectureVideo.clear} disabled={isCreating}
+                    className="min-h-11 rounded-lg px-3 font-medium text-muted-foreground hover:bg-muted disabled:opacity-50">
+                    {lectureReady ? 'Gỡ video' : 'Hủy tải'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -354,17 +398,21 @@ export const CreatePostBox: React.FC = () => {
             <input
               type="file"
               ref={fileInputRef}
-              onChange={(e) => handleFileSelect(e, false)}
+              onChange={handleFileSelect}
               multiple
-              accept={postType === 'LEARNING_VIDEO' ? 'video/*' : 'image/*,video/*'}
+              accept="image/*,video/*"
               className="hidden"
             />
             {/* Input riêng cho video bài giảng */}
             <input
               type="file"
               ref={videoInputRef}
-              onChange={(e) => handleFileSelect(e, true)}
-              accept="video/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) lectureVideo.choose(file);
+                e.target.value = '';
+              }}
+              accept="video/mp4,video/webm,.mp4,.webm"
               className="hidden"
             />
 
@@ -372,8 +420,8 @@ export const CreatePostBox: React.FC = () => {
               <button
                 type="button"
                 onClick={() => videoInputRef.current?.click()}
-                disabled={isUploadingMedia || isCreating}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs md:text-sm font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors cursor-pointer"
+                disabled={isUploadingMedia || isCreating || !!upload}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs md:text-sm font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors cursor-pointer disabled:opacity-50"
               >
                 <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Tải tệp video bài giảng</span>
@@ -411,7 +459,7 @@ export const CreatePostBox: React.FC = () => {
               isCreating ||
               isUploadingMedia ||
               (postType === 'LEARNING_VIDEO'
-                ? !selectedSubjectId || !mediaList.some((m) => m.mediaType === 'VIDEO') || !content.trim()
+                ? !selectedSubjectId || !lectureReady || !content.trim()
                 : !content.trim() && mediaList.length === 0)
             }
             className={cn(

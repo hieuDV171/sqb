@@ -122,6 +122,7 @@ services:
       - R2_BUCKET=${R2_BUCKET}
       - R2_REGION=${R2_REGION:-auto}
       - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - LECTURE_VIDEO_MAX_FILE_SIZE=${LECTURE_VIDEO_MAX_FILE_SIZE:-2GB}
 
       # Application Secrets & Security
       - JWT_SECRET=${JWT_SECRET}

@@ -19,6 +19,8 @@ public interface MediaService {
 
     String extractObjectKey(String urlOrKey);
 
+    String buildPublicUrl(String objectKey);
+
     List<String> findMissingObjects(List<String> urlsOrKeys);
 
     PresignMediaResponse generatePresignedUrls(PresignMediaRequest request);

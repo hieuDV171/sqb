@@ -20,6 +20,7 @@ import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.LectureVideoUploadService;
 import com.frozenheart.backend.modules.post.dto.PostResponseDto;
 import com.frozenheart.backend.modules.post.dto.UpdateLecturerNoteRequest;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
@@ -70,6 +71,7 @@ class PostServiceImplTest {
     @Mock UserProfileRepository userProfileRepository;
     @Mock SubjectRepository subjectRepository;
     @Mock MediaService mediaService;
+    @Mock LectureVideoUploadService lectureVideoUploadService;
     @Mock ActivityFeedService activityFeedService;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock BlockRepository blockRepository;
@@ -83,7 +85,7 @@ class PostServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new PostServiceImpl(postRepository, userRepository, userProfileRepository, subjectRepository,
-                mediaService, activityFeedService, eventPublisher, blockRepository, friendshipRepository,
+                mediaService, lectureVideoUploadService, activityFeedService, eventPublisher, blockRepository, friendshipRepository,
                 reactRepository, metricService, new LecturerNoteAccess(postRepository), new ApprovalPostAuthor(anonymizer));
     }
 
