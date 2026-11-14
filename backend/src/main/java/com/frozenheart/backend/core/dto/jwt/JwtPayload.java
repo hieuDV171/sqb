@@ -25,6 +25,7 @@ public class JwtPayload {
     private String role;
     private String deviceId;
     private String sessionId;
+    private Long sessionEpoch;
     private TokenType tokenType;
     private AccountState accountState;
     private Instant issuedAt;

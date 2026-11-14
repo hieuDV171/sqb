@@ -1,9 +1,11 @@
 package com.frozenheart.backend.modules.socialinteraction.repository;
 
 import com.frozenheart.backend.core.entity.socialinteraction.Comment;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,6 +18,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @EntityGraph(attributePaths = {"user", "parentComment"})
     Optional<Comment> findByIdAndDeletedAtIsNull(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM Comment c WHERE c.id = :id")
+    Optional<Comment> findForModeration(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {"user"})
     List<Comment> findByTargetTypeAndTargetIdAndParentCommentIsNullAndIdLessThanOrderByIdDesc(
@@ -44,7 +50,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             FROM (
                 SELECT reply.parent_comment_id AS parent_id, reply.id,
                        row_number() OVER (PARTITION BY reply.parent_comment_id ORDER BY reply.id DESC) AS position,
-                       count(*) FILTER (WHERE reply.deleted_at IS NULL) OVER (PARTITION BY reply.parent_comment_id) AS reply_count
+                       count(*) FILTER (WHERE reply.deleted_at IS NULL AND reply.moderation_action_id IS NULL)
+                           OVER (PARTITION BY reply.parent_comment_id) AS reply_count
                 FROM comments reply JOIN comments parent ON parent.id = reply.parent_comment_id
                 WHERE parent.id IN (:parentIds)
                     AND reply.target_type = parent.target_type AND reply.target_id = parent.target_id

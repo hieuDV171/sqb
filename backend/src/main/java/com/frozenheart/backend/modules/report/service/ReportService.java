@@ -4,5 +4,7 @@ import com.frozenheart.backend.modules.report.dto.CreateReportRequestDto;
 import com.frozenheart.backend.modules.report.dto.ReportResponseDto;
 
 public interface ReportService {
-    ReportResponseDto createReport(CreateReportRequestDto request);
+    record Submission(ReportResponseDto report, boolean created) {}
+
+    Submission createReport(CreateReportRequestDto request);
 }

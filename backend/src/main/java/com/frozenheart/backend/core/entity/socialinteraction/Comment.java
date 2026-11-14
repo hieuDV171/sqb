@@ -44,6 +44,10 @@ public class Comment {
     // ----------------------------
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moderation_action_id", foreignKey = @ForeignKey(name = "fk_comments_moderation_action"))
+    private ModerationAction activeModerationAction;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_comment_id")
     private Comment parentComment;
 

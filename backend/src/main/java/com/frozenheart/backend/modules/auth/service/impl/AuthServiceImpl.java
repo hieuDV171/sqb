@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -99,7 +100,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         String email = request.email();
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForLogin(email)
                 .orElseThrow(() -> {
                     metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "user_not_found");
                     return new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không chính xác");
@@ -119,6 +120,13 @@ public class AuthServiceImpl implements AuthService {
         if (!user.isActive()) {
             metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "not_active");
             throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE, "Tài khoản đã bị khóa");
+        }
+        if (user.isSuspendedAt(Instant.now())) {
+            var action = user.getActiveModerationAction();
+            String reason = action == null ? "" : " Lý do: " + action.getReason();
+            throw new AppException(ResponseCode.ACCOUNT_SUSPENDED, "Tài khoản bị đình chỉ đến "
+                    + DateTimeFormatter.ofPattern("HH:mm dd/MM/uuuu")
+                            .withZone(ZoneId.of(Time.DEFAULT_TIMEZONE)).format(user.getSuspendedUntil()) + "." + reason);
         }
 
         metricService.incrementCounter("sqb.auth.login", "status", "success", "reason", "none");
@@ -317,12 +325,14 @@ public class AuthServiceImpl implements AuthService {
             String email,
             String deviceId,
             AccountState accountState,
-            String sessionId
+            String sessionId,
+            Long sessionEpoch
     ) {
 
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("userId", userId);
         extraClaims.put("deviceId", deviceId);
+        if (sessionEpoch != null) extraClaims.put("sessionEpoch", sessionEpoch);
 
         String accessToken;
         String refreshToken = null;
@@ -332,7 +342,8 @@ public class AuthServiceImpl implements AuthService {
             extraClaims.put("tokenType", TokenType.ACCESS.name());
             extraClaims.put("accountState", AccountState.ACTIVE.name());
             accessToken = jwtService.generateAccessToken(extraClaims, email);
-            refreshToken = jwtService.generateRefreshToken(email, userId, deviceId, sessionId);
+            refreshToken = sessionEpoch == null ? jwtService.generateRefreshToken(email, userId, deviceId, sessionId)
+                    : jwtService.generateRefreshToken(email, userId, deviceId, sessionId, sessionEpoch);
         } else {
             extraClaims.put("tokenType", TokenType.ONBOARDING.name());
             extraClaims.put("accountState", accountState.name());
@@ -354,7 +365,7 @@ public class AuthServiceImpl implements AuthService {
 
         AccountState accountState = AccountState.from(user.isVerified(), userProfile.isProfileCompleted());
         Map<String, String> rtAtResult = generateAtAndRt(userId, role, email, deviceId, accountState,
-                UUID.randomUUID().toString());
+                UUID.randomUUID().toString(), user.getSessionEpoch());
 
         String accessToken = rtAtResult.get("accessToken");
         String refreshToken = rtAtResult.get("refreshToken");
@@ -794,6 +805,9 @@ public class AuthServiceImpl implements AuthService {
         if (!user.isActive()) {
             throw new AppException(ResponseCode.ACCOUNT_NOT_ACTIVE);
         }
+        if (user.isSuspendedAt(Instant.now()) || !Objects.equals(payload.getSessionEpoch(), user.getSessionEpoch())) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
 
         UserProfile userProfile = userProfileRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
@@ -808,7 +822,7 @@ public class AuthServiceImpl implements AuthService {
         // Sinh cặp Token mới (Refresh Token Rotation - RTR)
         String sessionId = payload.getSessionId() != null ? payload.getSessionId() : UUID.randomUUID().toString();
         Map<String, String> rtAtResult = generateAtAndRt(
-                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE, sessionId);
+                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE, sessionId, user.getSessionEpoch());
         String newAccessToken = rtAtResult.get("accessToken");
         String newRefreshToken = rtAtResult.get("refreshToken");
 

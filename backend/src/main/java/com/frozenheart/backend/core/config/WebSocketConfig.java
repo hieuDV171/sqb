@@ -66,7 +66,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientOutboundChannel(ChannelRegistration registration) {
-        registration.interceptors(hiddenChatOutboundGuard);
+        registration.interceptors(accountWebSocketSessions, hiddenChatOutboundGuard);
     }
 
     @Override

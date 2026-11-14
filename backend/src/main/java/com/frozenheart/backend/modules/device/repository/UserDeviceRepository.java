@@ -51,7 +51,7 @@ public interface UserDeviceRepository extends JpaRepository<UserDevice, Long> {
 
     @Modifying
     @Query("UPDATE UserDevice d SET d.isActive = false, d.fid = null WHERE d.user.id IN :userIds")
-    void deactivateForDeletedAccounts(@Param("userIds") Collection<Long> userIds);
+    void deactivateForAccounts(@Param("userIds") Collection<Long> userIds);
 
     List<UserDevice> findByUserIdAndIsActiveTrue(Long userId);
 

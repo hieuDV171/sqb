@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { X, ShieldAlert, AlertTriangle, Loader2, Send, ImagePlus } from 'lucide-react';
+import { Dialog } from '@base-ui/react/dialog';
 import { Button } from '@/components/ui/button';
-import { mediaService } from '@/services/mediaService';
+import { reportErrorMessage, reportService } from '../services/reportService';
 import { useCreateReport } from '../hooks/useReport';
 import type { ViolationType, ReportTargetType } from '../types/report.types';
 
@@ -15,12 +16,12 @@ interface ReportModalProps {
 
 const evidenceImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const maxEvidenceBytes = 5 * 1024 * 1024;
-const pendingMediaLifetimeMs = 24 * 60 * 60 * 1000;
+const pendingMediaLifetimeMs = 23 * 60 * 60 * 1000;
 
 interface EvidenceImage {
   file: File;
   previewUrl: string;
-  upload?: { publicUrl: string; uploadedAt: number };
+  upload?: { key: string; uploadedAt: number };
 }
 
 export function ReportModal({
@@ -39,6 +40,7 @@ export function ReportModal({
   const [submitPhase, setSubmitPhase] = useState<'idle' | 'uploading' | 'sending'>('idle');
   const evidenceInput = useRef<HTMLInputElement>(null);
   const evidenceHelpId = useId();
+  const descriptionId = useId();
   const previewUrl = evidence?.previewUrl;
   const isSubmitting = submitPhase !== 'idle';
 
@@ -47,8 +49,6 @@ export function ReportModal({
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
-
-  if (!isOpen) return null;
 
   const violationOptions: { key: ViolationType; label: string; desc: string }[] = [
     {
@@ -91,6 +91,8 @@ export function ReportModal({
   const handleClose = () => {
     if (isSubmitting) return;
     clearEvidence();
+    setDescription('');
+    setViolationType('SPAM');
     onClose();
   };
 
@@ -114,18 +116,18 @@ export function ReportModal({
     if (isSubmitting) return;
 
     const uploaded = evidence?.upload;
-    let evidenceUrl = uploaded && Date.now() - uploaded.uploadedAt < pendingMediaLifetimeMs ? uploaded.publicUrl : undefined;
+    let evidenceKey = uploaded && Date.now() - uploaded.uploadedAt < pendingMediaLifetimeMs ? uploaded.key : undefined;
     try {
-      if (evidence && !evidenceUrl) {
+      if (evidence && !evidenceKey) {
         setSubmitPhase('uploading');
         setEvidenceError('');
         try {
           const uploadedAt = Date.now();
-          const { publicUrl } = await mediaService.uploadViaPresign(evidence.file, 'POST', { preserveOriginal: true });
-          evidenceUrl = publicUrl;
-          setEvidence({ ...evidence, upload: { publicUrl, uploadedAt } });
-        } catch {
-          setEvidenceError('Không thể tải ảnh lên. Hãy bấm Gửi báo cáo để thử lại.');
+          const { data: { key } } = await reportService.uploadEvidence(evidence.file);
+          evidenceKey = key;
+          setEvidence({ ...evidence, upload: { key, uploadedAt } });
+        } catch (error) {
+          setEvidenceError(reportErrorMessage(error, 'Không thể tải ảnh lên. Hãy bấm Gửi báo cáo để thử lại.'));
           return;
         }
       }
@@ -136,10 +138,11 @@ export function ReportModal({
         targetId,
         violationType,
         description: description.trim() || undefined,
-        evidenceUrls: evidenceUrl ? [evidenceUrl] : undefined,
+        evidenceKeys: evidenceKey ? [evidenceKey] : undefined,
       });
       onClose();
       setDescription('');
+      setViolationType('SPAM');
       clearEvidence();
     } catch {
       // Handled by mutation onError toast
@@ -162,8 +165,10 @@ export function ReportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-60 bg-black/60" />
+        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-60 mx-auto flex max-h-[calc(100dvh-2rem)] max-w-lg -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -171,12 +176,12 @@ export function ReportModal({
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-                Báo Cáo Vi Phạm
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <Dialog.Title className="text-base font-bold text-foreground">
+                Báo cáo vi phạm
+              </Dialog.Title>
+              <Dialog.Description className="line-clamp-2 text-sm text-muted-foreground">
                 Báo cáo {getTargetTypeText(targetType)} {targetTitle ? `"${targetTitle}"` : ''}
-              </p>
+              </Dialog.Description>
             </div>
           </div>
 
@@ -185,7 +190,7 @@ export function ReportModal({
             onClick={handleClose}
             disabled={isSubmitting}
             aria-label="Đóng báo cáo"
-            className="p-1.5 rounded-xl text-slate-400 enabled:hover:text-slate-600 dark:enabled:hover:text-slate-200 enabled:hover:bg-slate-100 dark:enabled:hover:bg-slate-800 transition-colors enabled:cursor-pointer disabled:opacity-50"
+            className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground enabled:hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -194,10 +199,8 @@ export function ReportModal({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
           {/* Violation Type Options */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5">
-              Lý do báo cáo vi phạm *
-            </label>
+          <fieldset>
+            <legend className="mb-2.5 text-sm font-semibold text-foreground">Lý do báo cáo vi phạm</legend>
             <div className="space-y-2">
               {violationOptions.map((opt) => (
                 <label
@@ -227,14 +230,15 @@ export function ReportModal({
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+            <label htmlFor={descriptionId} className="mb-1.5 block text-sm font-semibold text-foreground">
               Mô tả chi tiết bổ sung
             </label>
             <textarea
+              id={descriptionId}
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -249,7 +253,7 @@ export function ReportModal({
 
           <fieldset className="min-w-0 space-y-2">
             <legend className="text-xs font-bold uppercase tracking-wider text-foreground">Ảnh bằng chứng (tùy chọn)</legend>
-            <p id={evidenceHelpId} className="text-xs text-muted-foreground">JPG, PNG, WebP hoặc GIF. Tối đa 5 MB.</p>
+            <p id={evidenceHelpId} className="text-sm text-muted-foreground">JPG, PNG, WebP hoặc GIF, tối đa 5 MB. Chỉ ban quản trị có quyền xem.</p>
             <input
               ref={evidenceInput}
               type="file"
@@ -317,7 +321,8 @@ export function ReportModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

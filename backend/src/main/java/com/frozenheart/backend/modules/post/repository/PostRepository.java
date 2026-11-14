@@ -3,9 +3,11 @@ package com.frozenheart.backend.modules.post.repository;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.post.PostVisibility;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,27 +55,41 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Optional<Post> findByIdAndDeletedAtIsNull(Long id);
 
     @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
+    @Query("SELECT p FROM Post p WHERE p.id IN :ids AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL")
     List<Post> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Post p WHERE p.id = :id")
+    Optional<Post> findForModeration(@Param("id") Long id);
+
+    @Query("""
+            SELECT p FROM Post p WHERE p.id = :id AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
+              AND (p.postType IS NULL OR p.postType <> 'LEARNING_VIDEO' OR
+            """ + LECTURE_VIDEO_ACCESS + ") AND " + POST_VISIBILITY_ACCESS)
+    Optional<Post> findReportablePost(@Param("id") Long id, @Param("viewerId") Long viewerId,
+                                      @Param("admin") boolean admin);
 
     @Query("""
             SELECT p FROM Post p JOIN FETCH p.session s
             LEFT JOIN FETCH s.proposer
             LEFT JOIN FETCH p.notedLecturer
-            WHERE s.id IN :sessionIds AND p.deletedAt IS NULL AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
+            WHERE s.id IN :sessionIds AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
+              AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
               AND p.visibility = 'PUBLIC' AND s.status = 'RESOLVED'
             """)
     List<Post> findPublicApprovalPostsBySessionIds(@Param("sessionIds") Collection<Long> sessionIds);
 
     @Query("""
             SELECT p.id FROM Post p JOIN p.session s JOIN s.courseClass cc JOIN s.proposer student
-            WHERE p.id IN :postIds AND p.deletedAt IS NULL AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
+            WHERE p.id IN :postIds AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
+              AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'
               AND s.status = 'RESOLVED' AND student.role = 'STUDENT'
               AND cc.lecturer.id = :lecturerId
             """)
     List<Long> findApprovalPostIdsForLecturer(@Param("postIds") Collection<Long> postIds,
                                             @Param("lecturerId") Long lecturerId);
 
-    @Query("SELECT p FROM Post p JOIN FETCH p.poster u WHERE p.deletedAt IS NULL AND p.visibility != com.frozenheart.backend.core.entity.post.PostVisibility.ONLY_ME")
+    @Query("SELECT p FROM Post p JOIN FETCH p.poster u WHERE p.deletedAt IS NULL AND p.activeModerationAction IS NULL AND p.visibility != com.frozenheart.backend.core.entity.post.PostVisibility.ONLY_ME")
     List<Post> findAllPublicPostsForSearch();
 
     interface SearchPostCounters {
@@ -85,7 +101,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("""
             SELECT p.id AS postId, p.reactCount AS reactCount, p.commentCount AS commentCount
             FROM Post p
-            WHERE p.id IN :ids AND p.deletedAt IS NULL
+            WHERE p.id IN :ids AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
               AND (p.postType IS NULL OR p.postType <> 'LEARNING_VIDEO' OR
             """ + LECTURE_VIDEO_ACCESS + """
               )
@@ -95,7 +111,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                                                      @Param("viewerId") Long viewerId,
                                                      @Param("admin") boolean admin);
 
-    @Query("SELECT p FROM Post p JOIN FETCH p.poster u WHERE p.id = :id AND p.deletedAt IS NULL")
+    @Query("SELECT p FROM Post p LEFT JOIN FETCH p.poster WHERE p.id = :id AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL")
     Optional<Post> findByIdFetchPosterForSearch(@Param("id") Long id);
 
     interface PostInteractionTarget {
@@ -103,12 +119,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         PostType getPostType();
     }
 
-    @Query("SELECT p.id AS id, p.postType AS postType FROM Post p WHERE p.id = :postId")
+    @Query("SELECT p.id AS id, p.postType AS postType FROM Post p WHERE p.id = :postId AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL")
     Optional<PostInteractionTarget> findInteractionTarget(@Param("postId") Long postId);
 
     @Query("""
             SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Post p
-            WHERE p.id = :postId AND p.deletedAt IS NULL AND p.postType = 'LEARNING_VIDEO'
+            WHERE p.id = :postId AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL AND p.postType = 'LEARNING_VIDEO'
               AND
             """ + LECTURE_VIDEO_ACCESS + "AND " + POST_VISIBILITY_ACCESS)
     boolean canViewLectureVideo(@Param("postId") Long postId, @Param("viewerId") Long viewerId,
@@ -116,7 +132,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query("""
             SELECT p FROM Post p LEFT JOIN FETCH p.poster LEFT JOIN FETCH p.subject
-            WHERE p.postType = 'LEARNING_VIDEO' AND p.deletedAt IS NULL AND p.id < :after
+            WHERE p.postType = 'LEARNING_VIDEO' AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL AND p.id < :after
               AND (:subjectId IS NULL OR p.subject.id = :subjectId) AND
             """ + LECTURE_VIDEO_ACCESS + "AND " + POST_VISIBILITY_ACCESS + "ORDER BY p.id DESC")
     List<Post> findVisibleLectureVideos(@Param("viewerId") Long viewerId, @Param("admin") boolean admin,
@@ -124,6 +140,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                                         Pageable pageable);
 
     @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
+    @Query("""
+            SELECT p FROM Post p WHERE p.poster.id = :posterId AND p.id < :after
+              AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL ORDER BY p.id DESC
+            """)
     List<Post> findByPosterIdAndIdLessThanAndDeletedAtIsNullOrderByIdDesc(
             Long posterId,
             Long after,
@@ -133,7 +153,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @EntityGraph(attributePaths = {"poster", "subject", "notedLecturer", "session.proposer"})
     @Query("""
             SELECT p FROM Post p
-            WHERE p.poster.id = :posterId AND p.id < :after AND p.deletedAt IS NULL
+            WHERE p.poster.id = :posterId AND p.id < :after AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
               AND p.visibility IN :visibilities
               AND (p.postType IS NULL OR p.postType <> 'LEARNING_VIDEO' OR
             """ + LECTURE_VIDEO_ACCESS + """

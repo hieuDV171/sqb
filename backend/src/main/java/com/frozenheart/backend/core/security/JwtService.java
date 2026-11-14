@@ -59,6 +59,7 @@ public class JwtService {
                 .userId(claims.get("userId", Long.class))
                 .deviceId(claims.get("deviceId", String.class))
                 .sessionId(claims.get("sessionId", String.class))
+                .sessionEpoch(claims.get("sessionEpoch", Long.class))
                 .tokenType(readEnumClaim(claims, "tokenType", TokenType.class))
                 .accountState(readEnumClaim(claims, "accountState", AccountState.class))
                 .issuedAt(claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant())
@@ -91,11 +92,16 @@ public class JwtService {
     }
 
     public String generateRefreshToken(String subject, Long userId, String deviceId, String sessionId) {
+        return generateRefreshToken(subject, userId, deviceId, sessionId, null);
+    }
+
+    public String generateRefreshToken(String subject, Long userId, String deviceId, String sessionId, Long sessionEpoch) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("tokenType", TokenType.REFRESH.name());
         extraClaims.put("userId", userId);
         extraClaims.put("deviceId", deviceId);
         extraClaims.put("sessionId", sessionId);
+        if (sessionEpoch != null) extraClaims.put("sessionEpoch", sessionEpoch);
         return generateToken(extraClaims, subject, jwtProperties.getRefreshTokenExpiration());
     }
 
@@ -103,6 +109,7 @@ public class JwtService {
         return userDetails instanceof CustomUserDetails account
                 && account.isAccountNonLocked()
                 && Objects.equals(payload.getUsername(), account.getUsername())
+                && Objects.equals(payload.getSessionEpoch(), account.user().getSessionEpoch())
                 && Objects.equals(payload.getUserId(), account.user().getId());
     }
 

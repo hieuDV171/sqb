@@ -3,6 +3,7 @@ package com.frozenheart.backend.core.entity.post;
 import com.frozenheart.backend.core.entity.media.MediaItem;
 import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.Subject;
+import com.frozenheart.backend.core.entity.socialinteraction.ModerationAction;
 import com.frozenheart.backend.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.List;
 @Builder
 @Entity
 @Table(name = "posts")
+@org.hibernate.annotations.DynamicUpdate
 public class Post {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
@@ -59,6 +61,10 @@ public class Post {
     private Instant lecturerNoteAddedAt;
 
     // ---------------------------
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moderation_action_id", foreignKey = @ForeignKey(name = "fk_posts_moderation_action"))
+    private ModerationAction activeModerationAction;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")
     private Subject subject;

@@ -2,111 +2,59 @@ package com.frozenheart.backend.modules.report.service.impl;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
-import com.frozenheart.backend.core.entity.media.MediaItem;
 import com.frozenheart.backend.core.entity.socialinteraction.Report;
 import com.frozenheart.backend.core.entity.socialinteraction.ReportStatus;
-import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
-import com.frozenheart.backend.modules.media.service.MediaService;
-import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.report.constant.ReportTargetType;
 import com.frozenheart.backend.modules.report.dto.CreateReportRequestDto;
 import com.frozenheart.backend.modules.report.dto.ReportResponseDto;
 import com.frozenheart.backend.modules.report.repository.ReportRepository;
+import com.frozenheart.backend.modules.report.service.ReportEvidenceStorage;
 import com.frozenheart.backend.modules.report.service.ReportService;
-import com.frozenheart.backend.modules.socialinteraction.repository.CommentRepository;
+import com.frozenheart.backend.modules.report.service.ReportTargets;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.time.temporal.ChronoUnit;
 
 @Service
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
-
-    private final ReportRepository reportRepository;
-    private final UserRepository userRepository;
-    private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
-    private final MediaService mediaService;
+    private final ReportRepository reports;
+    private final UserRepository users;
+    private final ReportTargets targets;
+    private final ReportEvidenceStorage evidence;
 
     @Override
     @Transactional
-    public ReportResponseDto createReport(CreateReportRequestDto request) {
-        Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
-
-        validateTarget(request.getTargetType(), request.getTargetId(), currentUserId);
-
-        List<MediaItem> mediaItems = null;
-        if (request.getEvidenceUrls() != null && !request.getEvidenceUrls().isEmpty()) {
-            List<String> nonBlankUrls = request.getEvidenceUrls().stream()
-                    .filter(url -> url != null && !url.isBlank())
-                    .collect(Collectors.toList());
-
-            if (!nonBlankUrls.isEmpty()) {
-                mediaService.confirmMediaPermanent(nonBlankUrls);
-                mediaItems = nonBlankUrls.stream()
-                        .map(url -> MediaItem.of(url))
-                        .collect(Collectors.toList());
-            }
-        }
+    public Submission createReport(CreateReportRequestDto request) {
+        JwtPayload viewer = JwtPayload.getCurrentUserPayload();
+        // Serialize submissions by reporter, including concurrent retries and the rate-limit check.
+        var reporter = users.findByIdForUpdate(viewer.getUserId())
+                .filter(user -> user.isActive() && !user.isSuspendedAt(Instant.now()))
+                .orElseThrow(() -> new AppException(ResponseCode.ACCESS_DENIED));
+        var existing = reports.findFirstByReporterIdAndTargetTypeAndTargetIdAndStatusOrderByIdDesc(
+                reporter.getId(), request.getTargetType().name(), request.getTargetId(), ReportStatus.PENDING);
+        if (existing.isPresent()) return response(existing.get(), request, false);
 
         Instant now = Instant.now();
-        Report report = Report.builder()
-                .targetType(request.getTargetType().name())
-                .targetId(request.getTargetId())
-                .violationType(request.getViolationType())
-                .description(request.getDescription())
-                .evidenceUrls(mediaItems)
-                .status(ReportStatus.PENDING)
-                .reporter(currentUser)
-                .createdAt(now)
-                .build();
+        if (reports.countByReporterIdAndCreatedAtAfter(reporter.getId(), now.minus(1, ChronoUnit.HOURS)) >= 10) {
+            throw new AppException(ResponseCode.REPORT_RATE_LIMITED, "Bạn đã gửi nhiều báo cáo. Hãy thử lại sau.");
+        }
 
-        Report saved = reportRepository.save(report);
-
-        return ReportResponseDto.builder()
-                .reportId(saved.getId())
-                .targetType(request.getTargetType())
-                .targetId(saved.getTargetId())
-                .status(saved.getStatus())
-                .createdAt(saved.getCreatedAt())
-                .build();
+        var snapshot = targets.snapshotForSubmission(request.getTargetType(), request.getTargetId(), viewer);
+        String key = evidence.attach(reporter.getId(), request.getEvidenceKeys(), request.getEvidenceUrls());
+        Report saved = reports.save(Report.builder().reporter(reporter)
+                .targetType(request.getTargetType().name()).targetId(request.getTargetId())
+                .violationType(request.getViolationType()).description(request.getDescription())
+                .snapshot(snapshot).privateEvidenceKey(key).status(ReportStatus.PENDING).createdAt(now).build());
+        return response(saved, request, true);
     }
 
-    private void validateTarget(ReportTargetType targetType, Long targetId, Long currentUserId) {
-        if (targetType == null || targetId == null) {
-            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER, "Target type và target ID là bắt buộc");
-        }
-
-        switch (targetType) {
-            case USER -> {
-                if (Objects.equals(targetId, currentUserId)) {
-                    throw new AppException(ResponseCode.CANNOT_INTERACT_WITH_SELF, "Không thể tự báo cáo chính mình");
-                }
-                if (!userRepository.existsById(targetId)) {
-                    throw new AppException(ResponseCode.USER_NOT_FOUND, "Không tìm thấy người dùng được báo cáo");
-                }
-            }
-            case POST -> {
-                if (!postRepository.existsById(targetId)) {
-                    throw new AppException(ResponseCode.POST_NOT_FOUND, "Không tìm thấy bài viết được báo cáo");
-                }
-            }
-            case COMMENT -> {
-                if (!commentRepository.existsById(targetId)) {
-                    throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận được báo cáo");
-                }
-            }
-            default ->
-                throw new AppException(ResponseCode.REPORT_TARGET_NOT_FOUND, "Loại mục tiêu báo cáo không hợp lệ");
-        }
+    private static Submission response(Report report, CreateReportRequestDto request, boolean created) {
+        return new Submission(ReportResponseDto.builder().reportId(report.getId()).targetType(request.getTargetType())
+                .targetId(report.getTargetId()).status(report.getStatus()).createdAt(report.getCreatedAt()).build(), created);
     }
 }

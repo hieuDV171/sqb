@@ -251,6 +251,26 @@ public class SearchSyncServiceImpl implements SearchSyncService {
 
     @Override
     @Transactional(readOnly = true)
+    public void syncModeratedPost(Long postId) {
+        var post = postRepository.findByIdFetchPosterForSearch(postId)
+                .filter(item -> item.getVisibility() != PostVisibility.ONLY_ME);
+        try {
+            if (post.isEmpty()) {
+                client.delete(request -> request.index(PostSearchDoc.INDEX_NAME).id(postId.toString()));
+                return;
+            }
+            Post item = post.get();
+            UserProfile profile = item.getPoster() == null ? null
+                    : userProfileRepository.findByUserId(item.getPoster().getId()).orElse(null);
+            PostSearchDoc document = mapToPostDoc(item, profile);
+            client.index(request -> request.index(PostSearchDoc.INDEX_NAME).id(postId.toString()).document(document));
+        } catch (java.io.IOException failure) {
+            throw new java.io.UncheckedIOException(failure);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void syncSession(Long sessionId) {
         sessionRepository.findByIdFetchCourseClassAndProposerForSearch(sessionId).ifPresentOrElse(s -> {
             if (s.getStatus() == SessionStatus.RESOLVED) {
@@ -293,7 +313,8 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         try {
             BulkRequest.Builder br = new BulkRequest.Builder();
             for (Post p : posts) {
-                if (p.getDeletedAt() == null && p.getVisibility() != PostVisibility.ONLY_ME) {
+                if (p.getDeletedAt() == null && p.getActiveModerationAction() == null
+                        && p.getVisibility() != PostVisibility.ONLY_ME) {
                     UserProfile authorProfile = p.getPoster() != null ? profileMap.get(p.getPoster().getId()) : null;
                     PostSearchDoc doc = mapToPostDoc(p, authorProfile);
                     br.operations(op -> op.index(idx -> idx

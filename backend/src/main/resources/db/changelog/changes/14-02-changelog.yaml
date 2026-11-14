@@ -1,0 +1,190 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1794636931179-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createSequence:
+            incrementBy: 50
+            sequenceName: moderation_actions_seq
+            startValue: 1
+  - changeSet:
+      id: 1794636931179-3
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_moderation_actions
+                  name: id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: report_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: admin_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: target_type
+                  type: VARCHAR(30)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: target_id
+                  type: BIGINT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: type
+                  type: VARCHAR(30)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: reason
+                  type: VARCHAR(500)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: created_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: suspended_until
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: reversed_action_id
+                  type: BIGINT
+              - column:
+                  name: search_synced_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: moderation_actions
+  - changeSet:
+      id: 1794636931179-4
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: moderation_action_id
+                  type: BIGINT
+            tableName: comments
+  - changeSet:
+      id: 1794636931179-5
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: moderation_action_id
+                  type: BIGINT
+            tableName: posts
+  - changeSet:
+      id: 1794636931179-6
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: moderation_action_id
+                  type: BIGINT
+              - column:
+                  name: session_epoch
+                  type: BIGINT
+              - column:
+                  name: suspended_until
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+            tableName: users
+  - changeSet:
+      id: 1794636931179-7
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: outcome
+                  type: VARCHAR(30)
+              - column:
+                  name: private_evidence_key
+                  type: VARCHAR(255)
+              - column:
+                  name: snapshot
+                  type: JSONB
+            tableName: reports
+  - changeSet:
+      id: 1794636931179-13
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: moderation_action_id
+            baseTableName: comments
+            constraintName: FK_COMMENTS_MODERATION_ACTION
+            referencedColumnNames: id
+            referencedTableName: moderation_actions
+  - changeSet:
+      id: 1794636931179-14
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: admin_id
+            baseTableName: moderation_actions
+            constraintName: FK_MODERATION_ACTIONS_ON_ADMIN
+            referencedColumnNames: id
+            referencedTableName: users
+  - changeSet:
+      id: 1794636931179-15
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: report_id
+            baseTableName: moderation_actions
+            constraintName: FK_MODERATION_ACTIONS_ON_REPORT
+            referencedColumnNames: id
+            referencedTableName: reports
+  - changeSet:
+      id: 1794636931179-16
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: moderation_action_id
+            baseTableName: posts
+            constraintName: FK_POSTS_MODERATION_ACTION
+            referencedColumnNames: id
+            referencedTableName: moderation_actions
+  - changeSet:
+      id: 1794636931179-17
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addForeignKeyConstraint:
+            baseColumnNames: moderation_action_id
+            baseTableName: users
+            constraintName: FK_USERS_MODERATION_ACTION
+            referencedColumnNames: id
+            referencedTableName: moderation_actions
+  - changeSet:
+      id: 1794636931179-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - modifyDataType:
+            columnName: body
+            newDataType: VARCHAR(640)
+            tableName: notifications
+

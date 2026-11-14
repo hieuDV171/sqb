@@ -32,7 +32,7 @@ public record CustomUserDetails(User user) implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return user.isActive();
+        return user.isActive() && !user.isSuspendedAt(java.time.Instant.now());
     }
 
     @Override

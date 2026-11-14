@@ -29,6 +29,7 @@ public class Notification {
     private NotificationCategory category;
 
     private String title;
+    @Column(length = 640)
     private String body;
 
     private String iconUrl;

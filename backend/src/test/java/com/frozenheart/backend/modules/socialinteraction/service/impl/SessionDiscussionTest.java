@@ -83,7 +83,7 @@ class SessionDiscussionTest {
     void resolvedSessionWritesItsOwnCounterAndRejectsRepliesToAnotherTarget() {
         when(sessions.findByIdFetchProposer(41L)).thenReturn(Optional.of(Session.builder().status(SessionStatus.RESOLVED).build()));
         when(users.findById(viewer.getId())).thenReturn(Optional.of(viewer));
-        when(comments.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(Comment.builder().targetType("POST").targetId(41L).build()));
+        when(comments.findForModeration(50L)).thenReturn(Optional.of(Comment.builder().targetType("POST").targetId(41L).build()));
         when(comments.save(any(Comment.class))).thenAnswer(call -> call.getArgument(0));
 
         assertEquals(ResponseCode.INVALID_PARAMETER_VALUE, assertThrows(AppException.class,

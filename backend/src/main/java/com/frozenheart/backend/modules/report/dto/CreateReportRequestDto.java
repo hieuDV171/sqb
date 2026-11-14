@@ -4,6 +4,8 @@ import com.frozenheart.backend.core.entity.socialinteraction.ViolationType;
 import com.frozenheart.backend.modules.report.constant.ReportTargetType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -26,7 +28,11 @@ public class CreateReportRequestDto {
     private String description;
 
     @Schema(description = "Danh sách URL hình ảnh bằng chứng (nếu có)", example = "[\"https://sqb.s3.../evidence1.png\"]")
-    private List<String> evidenceUrls;
+    @Size(max = 1)
+    private List<@NotBlank @Size(max = 2048) String> evidenceUrls;
+
+    @Size(max = 1)
+    private List<@NotBlank @Size(max = 160) String> evidenceKeys;
 
     @Schema(description = "Loại đối tượng bị báo cáo (USER, POST, COMMENT)", example = "POST")
     @NotNull(message = "target_type không được để trống")
@@ -34,5 +40,6 @@ public class CreateReportRequestDto {
 
     @Schema(description = "ID của đối tượng bị báo cáo", example = "105")
     @NotNull(message = "target_id không được để trống")
+    @Positive
     private Long targetId;
 }

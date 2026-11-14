@@ -64,6 +64,8 @@ class ChatTypingStompTest {
             context.setServletContext(new MockServletContext());
             context.addBeanFactoryPostProcessor(factory -> {
                 factory.registerSingleton("jsonMapper", mapper);
+                factory.registerSingleton("jwtService", jwt);
+                factory.registerSingleton("userDetailsService", userDetails);
                 factory.registerSingleton("authInterceptor", new WebSocketAuthInterceptor(jwt, userDetails));
                 factory.registerSingleton("hiddenChatAccess", hidden);
                 factory.registerSingleton("participants", participants);

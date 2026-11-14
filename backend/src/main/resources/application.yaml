@@ -80,6 +80,8 @@ r2:
   bucket-name: ${R2_BUCKET}
   region: ${R2_REGION:auto}
   public-url: ${R2_PUBLIC_URL}
+  report-evidence-bucket: ${R2_REPORT_EVIDENCE_BUCKET:}
+  report-evidence-retention-days: ${REPORT_EVIDENCE_RETENTION_DAYS:90}
   lecture-video-max-file-size: ${LECTURE_VIDEO_MAX_FILE_SIZE:2GB}
 
 app:

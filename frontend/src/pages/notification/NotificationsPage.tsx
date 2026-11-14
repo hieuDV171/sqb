@@ -14,6 +14,7 @@ const filters = [
   ['ACADEMIC', 'Học thuật'],
   ['SOCIAL', 'Bạn bè và tương tác'],
   ['GAMIFICATION', 'Thành tích'],
+  ['SYSTEM', 'Hệ thống'],
 ] as const;
 type Filter = typeof filters[number][0];
 
@@ -21,6 +22,7 @@ const categories = {
   ACADEMIC: ['QUESTION_APPROVED', 'QUESTION_ERROR_PENALTY'],
   SOCIAL: ['FRIEND_REQUEST', 'NEW_COMMENT'],
   GAMIFICATION: ['EARNED_BADGE', 'BADGE_REVOKED', 'GAME5_SEMESTER_RECAP', 'LEADERBOARD_HONOR'],
+  SYSTEM: ['REPORT_REVIEWED', 'MODERATION_NOTICE'],
 };
 
 export function NotificationsPage() {

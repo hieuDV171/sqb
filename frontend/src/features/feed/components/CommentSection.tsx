@@ -7,6 +7,7 @@ import { mediaService } from '@/services/mediaService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { EditComment } from './EditComment';
+import { ReportCommentAction } from '@/features/report/components/ReportCommentAction';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import {
   Send,
@@ -262,6 +263,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                   </div>
 
                                   <EditComment comment={comment} />
+                                  <ReportCommentAction comment={comment} />
 
                                   {/* Reply Input Box */}
                                   {replyingToCommentId ===
@@ -336,6 +338,7 @@ function CommentReplies({ comment, targetType, targetId }: CommentSectionProps &
                 <strong className="mr-1.5">{reply.author?.fullName}</strong>{reply.content}
               </p>
               <EditComment comment={reply} />
+              <ReportCommentAction comment={reply} />
             </div>
           </div>
         ))}

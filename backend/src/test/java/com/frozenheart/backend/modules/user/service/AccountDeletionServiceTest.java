@@ -113,7 +113,7 @@ class AccountDeletionServiceTest {
         assertThat(profile.getAvatarUrl()).isEmpty();
         assertThat(points.getPublicPoints()).isZero();
         assertThat(points.getCoinBalance()).isZero();
-        verify(devices).deactivateForDeletedAccounts(List.of(1L));
+        verify(devices).deactivateForAccounts(List.of(1L));
         verify(events).publishEvent(new AccountDeletedEvent(List.of(1L)));
         verify(events).publishEvent(any(EntitySearchSyncEvent.class));
         verify(events).publishEvent(any(MediaCleanupEvent.class));

@@ -5,6 +5,8 @@ import type { CursorPagination } from '@/types/response.types';
 // ==========================================
 
 export type NotificationType =
+  | 'REPORT_REVIEWED'
+  | 'MODERATION_NOTICE'
   | 'FRIEND_REQUEST'
   | 'NEW_COMMENT'
   | 'QUESTION_APPROVED'

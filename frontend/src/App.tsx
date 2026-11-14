@@ -21,6 +21,7 @@ import { CourseClassesPage } from "./pages/lecturer/CourseClassesPage";
 import { CourseClassDetailPage } from "./pages/lecturer/CourseClassDetailPage";
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminReportsPage } from "./pages/admin/AdminReportsPage";
+import { AdminReportDetailPage } from "./pages/admin/AdminReportDetailPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
 import { AdminLeaderboardsPage } from "./pages/admin/AdminLeaderboardsPage";
 import { AccountSettingsPage } from "./pages/settings/AccountSettingsPage";
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/badges" element={<AdminBadgesPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />
+            <Route path="/admin/reports/:reportId" element={<AdminReportDetailPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
             <Route path="/admin/leaderboards" element={<AdminLeaderboardsPage />} />
           </Route>

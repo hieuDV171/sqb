@@ -56,6 +56,16 @@ public class Report {
     @Column(length = 500)
     private String resolutionNote;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private ReportOutcome outcome;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSONB")
+    private ReportSnapshot snapshot;
+
+    private String privateEvidenceKey;
+
     // ---------------------
 
     @ManyToOne(fetch = FetchType.LAZY)

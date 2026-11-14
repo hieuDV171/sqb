@@ -15,5 +15,7 @@ public class R2Properties {
     private String bucketName;
     private String region = "auto";
     private String publicUrl;
+    private String reportEvidenceBucket;
+    private int reportEvidenceRetentionDays = 90;
     private DataSize lectureVideoMaxFileSize = DataSize.ofGigabytes(2);
 }

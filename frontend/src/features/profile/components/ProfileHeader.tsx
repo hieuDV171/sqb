@@ -11,6 +11,7 @@ import { AvatarWithFrame } from './AvatarWithFrame';
 import { EditProfileModal } from './EditProfileModal';
 import { FollowListModal } from './FollowListModal';
 import { BlockUserModal } from './BlockUserModal';
+import { ReportModal } from '@/features/report';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +25,7 @@ import {
   Clock,
   BadgeCheck,
   Ellipsis,
+  Flag,
   UserMinus,
 } from 'lucide-react';
 
@@ -58,6 +60,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
   const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
   const [followModalTab, setFollowModalTab] = useState<'following' | 'followers'>('following');
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const isPeer = Boolean(currentRole && currentRole === profile.role);
   const profileKey = ['userProfile', profile.userId] as const;
@@ -244,6 +247,9 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
                     <Menu.Item className={`${actionItemClass} text-destructive`} onClick={() => setIsBlockModalOpen(true)}>
                       <ShieldAlert className="size-4" aria-hidden="true" /> Chặn người dùng
                     </Menu.Item>
+                    <Menu.Item className={actionItemClass} onClick={() => setIsReportOpen(true)}>
+                      <Flag className="size-4" aria-hidden="true" /> Báo cáo tài khoản
+                    </Menu.Item>
                   </ProfileActionMenu>
                 </>
               )}
@@ -283,6 +289,8 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
         <BlockUserModal isOpen={isBlockModalOpen} onClose={() => setIsBlockModalOpen(false)}
           targetUserId={profile.userId} targetUserName={profile.fullName} />
       )}
+      {!isOwnProfile && isReportOpen && <ReportModal isOpen onClose={() => setIsReportOpen(false)}
+        targetType="USER" targetId={profile.userId} targetTitle={profile.fullName} />}
     </>
   );
 }

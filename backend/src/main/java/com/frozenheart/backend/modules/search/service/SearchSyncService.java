@@ -20,6 +20,7 @@ public interface SearchSyncService {
     void syncUser(Long userId);
     void syncSubject(Long subjectId);
     void syncPost(Long postId);
+    void syncModeratedPost(Long postId);
     void syncSession(Long sessionId);
     void syncQuestion(Long questionId);
 

@@ -34,6 +34,13 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
         if (accessor != null) {
             checkClientDestination(accessor);
+            if (accessor.getCommand() == StompCommand.SEND || accessor.getCommand() == StompCommand.SUBSCRIBE) {
+                JwtPayload payload = JwtPayload.fromPrincipal(accessor.getUser());
+                if (payload == null || !jwtService.isTokenValid(payload,
+                        userDetailsService.loadUserByUsername(payload.getUsername()))) {
+                    throw new MessageDeliveryException("Unauthorized: Account session was revoked");
+                }
+            }
         }
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {

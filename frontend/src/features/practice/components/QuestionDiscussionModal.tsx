@@ -4,6 +4,7 @@ import { X, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { commentService } from '@/features/feed/services/commentService';
 import { EditComment } from '@/features/feed/components/EditComment';
+import { ReportCommentAction } from '@/features/report/components/ReportCommentAction';
 import type { CommentResponseDto } from '@/types/post.types';
 import { updatePracticeQuestion } from '../hooks/updatePracticeQuestion';
 
@@ -160,6 +161,7 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
                       {c.content}
                     </p>
                     <EditComment comment={c} />
+                    <ReportCommentAction comment={c} />
                   </div>
                 </div>
               </div>

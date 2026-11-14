@@ -78,7 +78,7 @@ public class AccountDeletionService {
         List<String> mediaToDelete = new ArrayList<>();
         userProfileRepository.findAllById(userIds).forEach(profile -> anonymizeProfile(profile, mediaToDelete));
         userGamificationRepository.findAllById(userIds).forEach(gamification -> resetGamification(gamification, cutoff));
-        userDeviceRepository.deactivateForDeletedAccounts(userIds);
+        userDeviceRepository.deactivateForAccounts(userIds);
 
         for (User user : users) {
             user.setActive(false);

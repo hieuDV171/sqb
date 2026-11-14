@@ -30,8 +30,15 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
             AND (f.actionType IS NULL OR f.actionType <> 'PUBLISHED_LECTURE_VIDEO' OR EXISTS (
                 SELECT 1 FROM Post p
                 WHERE f.targetType = 'POST' AND p.id = f.targetId
-                  AND p.postType = 'LEARNING_VIDEO' AND p.deletedAt IS NULL AND
+                  AND p.postType = 'LEARNING_VIDEO' AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL AND
             """ + PostRepository.LECTURE_VIDEO_ACCESS + "AND " + PostRepository.POST_VISIBILITY_ACCESS + "))\n";
+
+    String MODERATED_POST_FILTER = """
+            AND (f.targetType IS NULL OR f.targetType <> 'POST' OR EXISTS (
+                SELECT 1 FROM Post p WHERE p.id = f.targetId
+                  AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
+            ))
+            """;
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
@@ -45,7 +52,7 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
     @Query("""
             SELECT f FROM ActivityFeed f WHERE f.id < :cursor
               AND (f.actionType IS NULL OR f.actionType <> 'PUBLISHED_LECTURE_VIDEO')
-            """ + CURRENT_BADGE_AWARD_FILTER + """
+            """ + CURRENT_BADGE_AWARD_FILTER + MODERATED_POST_FILTER + """
             ORDER BY f.id DESC
             """)
     List<ActivityFeed> findAnonymousFeeds(@Param("cursor") Long cursor, Pageable pageable);
@@ -65,7 +72,7 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
                       com.frozenheart.backend.core.entity.activityfeed.ActionType.REACHED_MILESTONE
                   )
               )
-            """ + LECTURE_VIDEO_FILTER + CURRENT_BADGE_AWARD_FILTER + """
+            """ + LECTURE_VIDEO_FILTER + CURRENT_BADGE_AWARD_FILTER + MODERATED_POST_FILTER + """
             ORDER BY f.id DESC
             """)
     List<ActivityFeed> findPersonalizedFeeds(
@@ -83,7 +90,7 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
             FROM ActivityFeed f
             WHERE f.id < :cursor
               AND (:hasBlocked = false OR f.user.id NOT IN :blockedUserIds)
-            """ + CURRENT_BADGE_AWARD_FILTER + """
+            """ + CURRENT_BADGE_AWARD_FILTER + MODERATED_POST_FILTER + """
             ORDER BY f.id DESC
             """)
     List<ActivityFeed> findPublicFeedsExcludingBlocked(
@@ -95,7 +102,7 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
     @Query("""
             SELECT COUNT(f) FROM ActivityFeed f WHERE f.createdAt > :since
               AND (f.actionType IS NULL OR f.actionType <> 'PUBLISHED_LECTURE_VIDEO')
-            """ + CURRENT_BADGE_AWARD_FILTER)
+            """ + CURRENT_BADGE_AWARD_FILTER + MODERATED_POST_FILTER)
     int countAnonymousNewFeeds(@Param("since") Instant since);
 
     @Query("""
@@ -112,7 +119,7 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, Long
                       com.frozenheart.backend.core.entity.activityfeed.ActionType.REACHED_MILESTONE
                   )
               )
-            """ + LECTURE_VIDEO_FILTER + CURRENT_BADGE_AWARD_FILTER)
+            """ + LECTURE_VIDEO_FILTER + CURRENT_BADGE_AWARD_FILTER + MODERATED_POST_FILTER)
     int countPersonalizedNewFeeds(
             @Param("since") Instant since,
             @Param("networkUserIds") Collection<Long> networkUserIds,

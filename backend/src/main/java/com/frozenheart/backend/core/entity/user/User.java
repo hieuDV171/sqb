@@ -60,9 +60,18 @@ public class User {
 
     private Instant updatedAt;
 
+    private Instant suspendedUntil;
+    private Long sessionEpoch;
+
+    public boolean isSuspendedAt(Instant now) {
+        return suspendedUntil != null && suspendedUntil.isAfter(now);
+    }
+
     private Instant deletionDueAt;
 
-    // ----------------------
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moderation_action_id", foreignKey = @ForeignKey(name = "fk_users_moderation_action"))
+    private ModerationAction activeModerationAction;
 
     // ----------------------
 

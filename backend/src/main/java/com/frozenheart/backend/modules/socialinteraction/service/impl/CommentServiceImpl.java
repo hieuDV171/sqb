@@ -67,7 +67,8 @@ public class CommentServiceImpl implements CommentService {
 
         Comment parentComment = null;
         if (request.getParentCommentId() != null) {
-            parentComment = commentRepository.findByIdAndDeletedAtIsNull(request.getParentCommentId())
+            parentComment = commentRepository.findForModeration(request.getParentCommentId())
+                    .filter(item -> item.getDeletedAt() == null && item.getActiveModerationAction() == null)
                     .orElseThrow(
                             () -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận cha"));
             if (!request.getTargetType().name().equals(parentComment.getTargetType())
@@ -207,7 +208,8 @@ public class CommentServiceImpl implements CommentService {
 
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-        Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
+        Comment comment = commentRepository.findForModeration(commentId)
+                .filter(item -> item.getDeletedAt() == null && item.getActiveModerationAction() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận"));
 
         if (comment.getUser() == null || !Objects.equals(comment.getUser().getId(), currentUserId)) {
@@ -256,7 +258,8 @@ public class CommentServiceImpl implements CommentService {
         Long currentUserId = payload.getUserId();
         String roleStr = payload.getRole();
 
-        Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
+        Comment comment = commentRepository.findForModeration(commentId)
+                .filter(item -> item.getDeletedAt() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy bình luận"));
 
         boolean isOwner = comment.getUser() != null && Objects.equals(comment.getUser().getId(), currentUserId);
@@ -282,7 +285,7 @@ public class CommentServiceImpl implements CommentService {
         }
 
         // Decrement target comment counter
-        if (comment.getTargetType() != null && comment.getTargetId() != null) {
+        if (comment.getActiveModerationAction() == null && comment.getTargetType() != null && comment.getTargetId() != null) {
             try {
                 InteractionTargetType type = InteractionTargetType.valueOf(comment.getTargetType());
                 incrementTargetCommentCounter(type, comment.getTargetId(), -1);
@@ -302,7 +305,8 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private Map<Long, UserProfile> loadProfiles(Stream<Comment> comments) {
-        List<Long> userIds = comments.filter(comment -> comment.getDeletedAt() == null).map(Comment::getUser)
+        List<Long> userIds = comments.filter(comment -> comment.getDeletedAt() == null
+                && comment.getActiveModerationAction() == null).map(Comment::getUser)
                 .filter(Objects::nonNull).map(User::getId).distinct().toList();
         return userIds.isEmpty() ? Map.of() : userProfileRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(UserProfile::getUserId, profile -> profile));
@@ -320,7 +324,8 @@ public class CommentServiceImpl implements CommentService {
 
     private CommentResponseDto mapToCommentResponseDto(Comment comment, Map<Long, UserProfile> profileMap,
             int replyCount, List<CommentResponseDto> replies) {
-        boolean isDeleted = comment.getDeletedAt() != null;
+        boolean moderated = comment.getActiveModerationAction() != null && comment.getDeletedAt() == null;
+        boolean isDeleted = comment.getDeletedAt() != null || moderated;
 
         AuthorDto authorDto = null;
         if (!isDeleted && comment.getUser() != null) {
@@ -339,7 +344,8 @@ public class CommentServiceImpl implements CommentService {
             mediaUrl = first.url() != null ? first.url() : first.key();
         }
 
-        String contentStr = isDeleted ? "Bình luận này đã bị xóa" : comment.getContent();
+        String contentStr = moderated ? "Bình luận đã bị ẩn do kiểm duyệt"
+                : isDeleted ? "Bình luận này đã bị xóa" : comment.getContent();
 
         return CommentResponseDto.builder()
                 .commentId(comment.getId())

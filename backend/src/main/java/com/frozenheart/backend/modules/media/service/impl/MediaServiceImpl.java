@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.constant.Time;
+import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.media.MediaPurpose;
 import com.frozenheart.backend.core.entity.media.MediaType;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
@@ -34,6 +35,7 @@ import com.frozenheart.backend.modules.media.dto.PresignMediaResponse;
 import com.frozenheart.backend.modules.media.dto.PresignMediaRequest.PresignFileItem;
 import com.frozenheart.backend.modules.media.dto.PresignMediaResponse.PresignedUrlItem;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.report.service.ReportEvidenceStorage;
 
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -335,6 +337,11 @@ public class MediaServiceImpl implements MediaService {
 
                 // Ghi nhận objectKey vào hàng đợi pending trên Redis với timestamp UTC
                 redisTemplate.opsForZSet().add(REDIS_PENDING_MEDIA_KEY, objectKey, currentTimestamp);
+                if (item.purpose() == MediaPurpose.POST) {
+                    Long owner = JwtPayload.getCurrentUserPayload().getUserId();
+                    redisTemplate.opsForValue().set(ReportEvidenceStorage.LEGACY_OWNER_PREFIX + objectKey,
+                            owner.toString(), java.time.Duration.ofHours(23));
+                }
 
                 String publicUrl = buildPublicUrl(objectKey);
 

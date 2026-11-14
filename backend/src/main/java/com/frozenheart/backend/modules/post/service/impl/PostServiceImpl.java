@@ -155,6 +155,7 @@ public class PostServiceImpl implements PostService {
         String roleStr = payload.getRole();
 
         Post post = postRepository.findByIdAndDeletedAtIsNull(id)
+                .filter(item -> item.getActiveModerationAction() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.POST_NOT_FOUND));
 
         Long authorId = (post.getPoster() != null) ? post.getPoster().getId() : null;
@@ -202,6 +203,7 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
         Post post = postRepository.findByIdAndDeletedAtIsNull(id)
+                .filter(item -> item.getActiveModerationAction() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.POST_NOT_FOUND));
 
         if (post.getPoster() == null || !Objects.equals(post.getPoster().getId(), currentUserId)) {
@@ -246,6 +248,7 @@ public class PostServiceImpl implements PostService {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
 
         Post post = postRepository.findByIdAndDeletedAtIsNull(id)
+                .filter(item -> item.getActiveModerationAction() == null)
                 .orElseThrow(() -> new AppException(ResponseCode.POST_NOT_FOUND));
 
         if (!lecturerNoteAccess.findEditablePostIds(payload, List.of(post)).contains(id)) {

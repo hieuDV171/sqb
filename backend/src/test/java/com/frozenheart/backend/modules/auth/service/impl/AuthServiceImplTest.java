@@ -108,7 +108,7 @@ class AuthServiceImplTest {
                 "Chrome", "Windows", "1.0.0"
         );
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForLogin(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("temporary", "temporary-hash")).thenReturn(true);
         when(userProfileRepository.findByUserId(24L)).thenReturn(Optional.of(profile));
         when(userDeviceRepository.findByUserIdAndDeviceId(24L, "web-device")).thenReturn(Optional.empty());
@@ -137,7 +137,7 @@ class AuthServiceImplTest {
                 .role(UserRole.STUDENT).verified(true).active(true).build();
         UserProfile profile = UserProfile.builder().user(user).profileCompleted(true).build();
         UserDevice device = UserDevice.builder().user(user).deviceId(deviceId).build();
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForLogin(email)).thenReturn(Optional.of(user));
         when(userProfileRepository.findByUserId(26L)).thenReturn(Optional.of(profile));
         when(passwordEncoder.matches("password", "hash")).thenReturn(true);
         when(userDeviceRepository.findByUserIdAndDeviceId(26L, deviceId)).thenReturn(Optional.of(device));
