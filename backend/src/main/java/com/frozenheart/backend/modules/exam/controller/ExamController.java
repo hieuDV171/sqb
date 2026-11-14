@@ -41,10 +41,11 @@ public class ExamController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Xem chi tiết đề thi", description = "Lấy toàn bộ thông tin đề thi bao gồm danh sách câu hỏi theo thứ tự, các phương án đáp án, hình ảnh và thống kê tỷ lệ độ khó.")
+    @Operation(summary = "Xem chi tiết đề thi", description = "Giảng viên tạo đề và Admin có thể xem câu hỏi, phương án, hình ảnh và thống kê độ khó của đề.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy chi tiết đề thi thành công"),
-            @ApiResponse(responseCode = "400", description = "Không tìm thấy đề thi")
+            @ApiResponse(responseCode = "400", description = "Không tìm thấy đề thi"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền xem đề thi")
     })
     @GetMapping("/{examId}")
     public ResponseEntity<GlobalResponse<ExamDetailResponse>> getExamDetail(
@@ -76,10 +77,11 @@ public class ExamController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Xuất file đề thi (PDF / Excel)", description = "Biên dịch và kết xuất file đề thi ra định dạng PDF hoặc Excel (tùy chọn kèm bảng đáp án), lưu trữ trên S3/MinIO và trả về presigned URL tải về.")
+    @Operation(summary = "Xuất file đề thi (PDF / Excel)", description = "Giảng viên tạo đề và Admin có thể xuất PDF hoặc Excel, tùy chọn kèm đáp án, và nhận URL tải có thời hạn.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Xuất file đề thi thành công và trả về URL tải về"),
-            @ApiResponse(responseCode = "400", description = "Không tìm thấy đề thi")
+            @ApiResponse(responseCode = "400", description = "Không tìm thấy đề thi"),
+            @ApiResponse(responseCode = "403", description = "Không có quyền xuất đề thi")
     })
     @GetMapping("/{examId}/export")
     public ResponseEntity<GlobalResponse<ExportResponse>> exportExam(

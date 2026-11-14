@@ -30,6 +30,7 @@ import {
   type SessionStatus,
 } from '@/features/session';
 import { QuestionReviewResult } from '@/features/session/components/QuestionReviewResult';
+import { questionDifficultyLabels } from '@/lib/questionDifficulty';
 import { SubmissionReviewNotice } from '@/features/session/components/SubmissionReviewNotice';
 
 export function SubmissionDetailPage() {
@@ -316,6 +317,9 @@ export function SubmissionDetailPage() {
                       Độ tin cậy: {q.confidenceScore.toFixed(1)}/4.0
                     </span>
                   )}
+                  <span className="text-xs text-muted-foreground">
+                    Độ khó · {questionDifficultyLabels[q.difficulty ?? 'UNCLASSIFIED']}
+                  </span>
                 </div>
               </div>
 

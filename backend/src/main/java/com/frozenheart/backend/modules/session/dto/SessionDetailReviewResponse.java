@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
@@ -43,6 +44,9 @@ public record SessionDetailReviewResponse(
 
                 @Schema(description = "Lời giải thích đáp án", example = "Thuật toán SJF ưu tiên tiến trình có burst time ngắn nhất...")
                 String explanation,
+
+                @Schema(description = "Độ khó hiện tại của câu hỏi", example = "MEDIUM")
+                QuestionDifficulty difficulty,
 
                 @Schema(description = "Trạng thái câu hỏi (PENDING, APPROVED, REJECTED)", example = "PENDING")
                 String status,

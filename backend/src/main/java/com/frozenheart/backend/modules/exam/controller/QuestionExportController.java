@@ -23,10 +23,11 @@ public class QuestionExportController {
 
     private final DocumentExportService documentExportService;
 
-    @Operation(summary = "Giảng viên xuất toàn bộ câu hỏi môn học", description = "Xuất danh sách tất cả câu hỏi của một môn học ra định dạng PDF hoặc Excel (có kèm đáp án và lời giải hoặc chỉ đề bài), hỗ trợ cơ chế lưu cache S3/MinIO.")
+    @Operation(summary = "Xuất tài liệu ôn tập theo môn", description = "Xuất câu hỏi của môn ở mọi trạng thái và học kỳ ra PDF hoặc Excel, tùy chọn kèm đáp án và lời giải. Giảng viên chỉ xuất được môn được phân công trong học kỳ hiện tại. Admin có thể xuất mọi môn.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Xuất file câu hỏi thành công và trả về URL tải về"),
-            @ApiResponse(responseCode = "400", description = "Không tìm thấy câu hỏi nào thuộc môn học này")
+            @ApiResponse(responseCode = "400", description = "Không tìm thấy câu hỏi nào thuộc môn học này"),
+            @ApiResponse(responseCode = "403", description = "Giảng viên không được phân công môn này trong học kỳ hiện tại")
     })
     @GetMapping("/lecturer/questions/export")
     public ResponseEntity<GlobalResponse<ExportResponse>> exportQuestions(

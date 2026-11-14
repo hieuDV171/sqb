@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getRejectionReasonLabel } from '@/lib/rejectionReasons';
+import { questionDifficultyLabels } from '@/lib/questionDifficulty';
 import { DuplicateWarningBadge } from './DuplicateWarningBadge';
 import { RejectReasonPopover } from './RejectReasonPopover';
 import type { SessionQuestionReviewDto, DuplicateWarning, RejectionReasonCode } from '../types/review.types';
@@ -53,6 +54,10 @@ export function ReviewQuestionCard({
         </div>
         {duplicateWarnings.length > 0 && <DuplicateWarningBadge warnings={duplicateWarnings} />}
       </header>
+      <p className="text-sm text-muted-foreground">
+        {question.status === 'PENDING' ? 'Độ khó đề xuất' : 'Độ khó'} ·{' '}
+        <span className="font-semibold text-foreground">{questionDifficultyLabels[question.difficulty ?? 'UNCLASSIFIED']}</span>
+      </p>
       <p className="wrap-break-word whitespace-pre-wrap leading-relaxed">{question.content}</p>
       {!!question.imageUrls?.length && (
         <div className="flex flex-wrap gap-2">
@@ -96,7 +101,8 @@ export function ReviewQuestionCard({
           rejectionCode={question.rejectionCode} rejectionReason={question.rejectionReason}
           onConfirm={(code, reason) => onReject(question.questionId, code, reason)} />
         {!approved && (
-          <Button className="min-h-11" disabled={disabled} onClick={() => onApprove(question.questionId)}>
+          <Button className="min-h-11" disabled={disabled} onClick={() => onApprove(question.questionId)}
+            title="Phê duyệt với độ khó đang hiển thị">
             <CircleCheck aria-hidden="true" /> Phê duyệt
           </Button>
         )}

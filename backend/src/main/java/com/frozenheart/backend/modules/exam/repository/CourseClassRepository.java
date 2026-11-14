@@ -26,6 +26,8 @@ public interface CourseClassRepository extends JpaRepository<CourseClass, Long> 
 
     boolean existsBySemesterId(Long semesterId);
 
+    boolean existsByLecturerIdAndSubjectIdAndSemesterActiveTrue(Long lecturerId, Long subjectId);
+
     @Query("SELECT cc FROM CourseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester sem LEFT JOIN FETCH cc.lecturer l WHERE cc.id = :id")
     Optional<CourseClass> findByIdFetchAll(@Param("id") Long id);
 

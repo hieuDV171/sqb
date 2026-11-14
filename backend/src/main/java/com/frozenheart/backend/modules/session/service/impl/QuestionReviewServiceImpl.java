@@ -22,6 +22,7 @@ import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.Question;
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
@@ -236,6 +237,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                     .options(q.getOptions())
                     .correctAnswer(correctAnswerStr)
                     .explanation(q.getExplanation())
+                    .difficulty(Objects.requireNonNullElse(q.getDifficulty(), QuestionDifficulty.UNCLASSIFIED))
                     .status(q.getStatus() != null ? q.getStatus().name() : "PENDING")
                     .rejectionCode(q.getRejectionCode())
                     .rejectionReason(q.getRejectionReason())
@@ -324,6 +326,9 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         }
         if (request.explanation() != null) {
             question.setExplanation(request.explanation());
+        }
+        if (request.difficulty() != null) {
+            question.setDifficulty(request.difficulty());
         }
 
         if (Boolean.TRUE.equals(request.autoApprove())) {

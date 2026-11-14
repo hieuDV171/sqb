@@ -1,10 +1,11 @@
 import type { CursorPagination } from '@/types/response.types';
+import type { QuestionDifficulty } from '@/lib/questionDifficulty';
 
 // ==========================================
 // 1. DIFFICULTY & MATRIX TYPES
 // ==========================================
 
-export type DifficultyDto = 'UNCLASSIFIED' | 'EASY' | 'MEDIUM' | 'HARD';
+export type DifficultyDto = QuestionDifficulty;
 
 export interface DifficultyDistribution {
   easy?: number;

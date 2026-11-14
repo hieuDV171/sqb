@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.session.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.session.Question;
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Session;
@@ -175,6 +176,7 @@ class QuestionReviewServiceImplTest {
         setCurrentUser(7L, UserRole.LECTURER);
         Question question = questionAssignedTo(101L, 7L);
         question.setStatus(QuestionStatus.REJECTED);
+        question.setDifficulty(QuestionDifficulty.UNCLASSIFIED);
         question.setRejectionCode(QuestionRejectionCode.OTHER);
         question.setRejectionReason("Lý do cũ");
         when(questionRepository.findByIdInFetchSessionCourseClassAndProposer(List.of(101L)))
@@ -183,11 +185,30 @@ class QuestionReviewServiceImplTest {
         var response = service.approveQuestions(new ApproveQuestionsRequest(List.of(101L)));
 
         assertEquals(QuestionStatus.APPROVED, question.getStatus());
+        assertEquals(QuestionDifficulty.UNCLASSIFIED, question.getDifficulty());
         assertNull(question.getRejectionCode());
         assertNull(question.getRejectionReason());
         assertEquals(SessionStatus.REVIEWING, question.getSession().getStatus());
         assertEquals(0.0, response.pointsEarned());
         verifyNoInteractions(counterMetricsService, gamificationService, eventPublisher);
+    }
+
+    @Test
+    void lecturerCanChangeDifficultyAndApproveInTheSameEdit() {
+        setCurrentUser(7L, UserRole.LECTURER);
+        Question question = questionAssignedTo(101L, 7L);
+        question.setDifficulty(QuestionDifficulty.EASY);
+        when(questionRepository.findByIdInFetchSessionCourseClassAndProposer(List.of(101L)))
+                .thenReturn(List.of(question));
+
+        service.editQuestion(101L, EditQuestionRequest.builder()
+                .difficulty(QuestionDifficulty.HARD)
+                .autoApprove(true)
+                .build());
+
+        assertEquals(QuestionDifficulty.HARD, question.getDifficulty());
+        assertEquals(QuestionStatus.APPROVED, question.getStatus());
+        verify(questionRepository).save(question);
     }
 
     @Test

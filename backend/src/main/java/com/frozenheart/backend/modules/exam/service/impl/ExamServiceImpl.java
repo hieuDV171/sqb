@@ -202,9 +202,7 @@ public class ExamServiceImpl implements ExamService {
     @Override
     @Transactional(readOnly = true)
     public ExamDetailResponse getExamDetail(Long examId) {
-        Exam exam = examRepository.findWithDetailsById(examId)
-                .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy đề thi"));
-        return mapToDetailResponse(exam);
+        return mapToDetailResponse(loadExamForManagement(examId));
     }
 
     @Override
@@ -266,9 +264,23 @@ public class ExamServiceImpl implements ExamService {
     @Override
     @Transactional(readOnly = true)
     public ExportResponse exportExam(Long examId, String format, Boolean includeAnswerKey, String paperSize) {
+        Exam exam = loadExamForManagement(examId);
+        return documentExportService.exportExam(exam, format, includeAnswerKey, paperSize);
+    }
+
+    private Exam loadExamForManagement(Long examId) {
+        JwtPayload user = JwtPayload.getCurrentUserPayload();
+        boolean admin = UserRole.ADMIN.name().equals(user.getRole());
+        if (!admin && !UserRole.LECTURER.name().equals(user.getRole())) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền truy cập đề thi này");
+        }
+
         Exam exam = examRepository.findWithDetailsById(examId)
                 .orElseThrow(() -> new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy đề thi"));
-        return documentExportService.exportExam(exam, format, includeAnswerKey, paperSize);
+        if (!admin && (exam.getLecturer() == null || !exam.getLecturer().getId().equals(user.getUserId()))) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không có quyền truy cập đề thi này");
+        }
+        return exam;
     }
 
     // --- Helpers ---

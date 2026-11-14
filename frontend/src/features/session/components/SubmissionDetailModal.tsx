@@ -23,6 +23,7 @@ import type {
   SessionStatus,
 } from '../types/session.types';
 import { QuestionReviewResult } from './QuestionReviewResult';
+import { questionDifficultyLabels } from '@/lib/questionDifficulty';
 import { SubmissionReviewNotice } from './SubmissionReviewNotice';
 import { ErrorState } from '@/components/ui/error-state';
 import { Button } from '@/components/ui/button';
@@ -218,6 +219,9 @@ export const SubmissionDetailModal: React.FC<SubmissionDetailModalProps> = ({
                               Độ tự tin: {q.confidenceScore.toFixed(1)}/4.0
                             </span>
                           )}
+                          <span className="text-xs text-muted-foreground">
+                            Độ khó · {questionDifficultyLabels[q.difficulty ?? 'UNCLASSIFIED']}
+                          </span>
                         </div>
                       </div>
 

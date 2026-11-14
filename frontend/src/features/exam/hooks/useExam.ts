@@ -61,14 +61,8 @@ export function useGenerateExam() {
   return useMutation({
     mutationFn: (data: GenerateExamRequest) => examService.generateExam(data),
     onSuccess: () => {
-      toast.success('Sinh đề thi ngẫu nhiên thành công!');
-      queryClient.invalidateQueries({ queryKey: EXAM_KEYS.all });
-    },
-    onError: (err: any) => {
-      const msg =
-        err.response?.data?.message ||
-        'Không thể sinh đề thi. Vui lòng kiểm tra số lượng câu hỏi trong ngân hàng đề!';
-      toast.error(msg);
+      toast.success('Đã tạo đề thi.');
+      void queryClient.invalidateQueries({ queryKey: [...EXAM_KEYS.all, 'list'] });
     },
   });
 }
@@ -82,17 +76,7 @@ export function useExportExam() {
       examId: number;
       params?: ExportExamParams;
     }) => examService.exportExam(examId, params),
-    onSuccess: (res) => {
-      if (res.data?.downloadUrl) {
-        toast.success('Tạo liên kết tải đề thi thành công!');
-        window.open(res.data.downloadUrl, '_blank');
-      } else {
-        toast.error('Không tìm thấy đường dẫn tải về.');
-      }
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi xuất file đề thi.');
-    },
+    onSuccess: openExport,
   });
 }
 
@@ -100,18 +84,12 @@ export function useExportQuestions() {
   return useMutation({
     mutationFn: (params: ExportQuestionsParams) =>
       examService.exportQuestions(params),
-    onSuccess: (res) => {
-      if (res.data?.downloadUrl) {
-        toast.success('Xuất ngân hàng câu hỏi thành công!');
-        window.open(res.data.downloadUrl, '_blank');
-      } else {
-        toast.error('Không tìm thấy đường dẫn tải về.');
-      }
-    },
-    onError: (err: any) => {
-      toast.error(
-        err.response?.data?.message || 'Lỗi khi xuất ngân hàng câu hỏi.'
-      );
-    },
+    onSuccess: openExport,
   });
+}
+
+function openExport(response: { data: { downloadUrl: string } }) {
+  if (response.data?.downloadUrl) {
+    window.open(response.data.downloadUrl, '_blank', 'noopener,noreferrer');
+  }
 }

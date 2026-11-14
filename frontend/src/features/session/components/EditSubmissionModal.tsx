@@ -4,6 +4,7 @@ import {cn} from '@/lib/utils';
 import {mediaService} from '@/services/mediaService';
 import {toast} from '@/stores/useToastStore';
 import type {MySubmissionDetailResponse, QuestionUpdateDto, UpdateSubmissionSessionRequest,} from '@/features/session';
+import { QuestionDifficultySelect } from './QuestionDifficultySelect';
 
 interface EditSubmissionModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
           mediaUrl: opt.mediaUrl,
         })),
         explanation: q.explanation || '',
+        difficulty: q.difficulty ?? undefined,
         source: (q.source as any) || 'HOMO_SAPIENS',
         confidence: q.confidenceScore ?? 3.5,
       }));
@@ -366,6 +368,11 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                       placeholder="Nhập nội dung đề bài..."
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     />
+                  </div>
+
+                  <div className="max-w-xs">
+                    <QuestionDifficultySelect label="Độ khó đề xuất" value={q.difficulty} disabled={isSaving}
+                      onChange={(value) => handleUpdateQuestion(qIdx, 'difficulty', value)} />
                   </div>
 
                   {/* Options */}

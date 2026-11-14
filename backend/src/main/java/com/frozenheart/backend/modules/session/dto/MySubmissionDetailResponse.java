@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.session.dto;
 import java.time.Instant;
 import java.util.List;
 
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionSource;
@@ -86,6 +87,9 @@ public record MySubmissionDetailResponse(
 
             @Schema(description = "Lời giải thích chi tiết cho đáp án")
             String explanation,
+
+            @Schema(description = "Độ khó hiện tại của câu hỏi", example = "MEDIUM")
+            QuestionDifficulty difficulty,
 
             @Schema(description = "Nguồn gốc câu hỏi (HOMO_SAPIENS hoặc LLM)", example = "HOMO_SAPIENS")
             QuestionSource source,

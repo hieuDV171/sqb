@@ -1,4 +1,5 @@
 import type { QuestionOption, SessionStatus } from '@/features/session/types/session.types';
+import type { QuestionDifficulty } from '@/lib/questionDifficulty';
 import type { CursorPagination } from "@/types/response.types";
 
 // ==========================================
@@ -89,6 +90,7 @@ export interface SessionQuestionReviewDto {
   options: QuestionOption[];
   correctAnswer: string;
   explanation?: string;
+  difficulty?: QuestionDifficulty | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EDITING' | string;
   rejectionCode?: RejectionReasonCode | null;
   rejectionReason?: string | null;
@@ -141,6 +143,7 @@ export interface EditQuestionRequest {
   content?: string;
   options?: QuestionOption[];
   explanation?: string;
+  difficulty?: QuestionDifficulty;
   autoApprove?: boolean;
 }
 

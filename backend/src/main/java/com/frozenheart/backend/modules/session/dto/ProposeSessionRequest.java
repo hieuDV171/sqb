@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.session.dto;
 
 import java.util.List;
 
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -53,6 +54,9 @@ public record ProposeSessionRequest(
 
             @Schema(description = "Lời giải thích chi tiết cho đáp án đúng", example = "Saga Pattern chia transaction phân tán thành chuỗi các local transaction với các compensating transaction để rollback.")
             String explanation,
+
+            @Schema(description = "Độ khó do sinh viên đề xuất. Mặc định UNCLASSIFIED.", example = "MEDIUM")
+            QuestionDifficulty difficulty,
                     
             @Schema(description = "Đánh dấu câu hỏi do AI/LLM sinh (true) hay do tác giả tự biên soạn (false)", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
             @NotNull(message = "Nguồn câu hỏi không được để trống")

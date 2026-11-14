@@ -1,4 +1,5 @@
 import type { ReactionType } from '@/features/feed/services/reactService';
+import type { QuestionDifficulty } from '@/lib/questionDifficulty';
 
 export interface CursorPaginationDto {
   after?: number | null;
@@ -34,6 +35,7 @@ export interface QuestionProposeDto {
   mediaUrls?: string[];
   options: QuestionOption[];
   explanation?: string;
+  difficulty?: QuestionDifficulty;
   llmGenerated: boolean;
   confidence?: number; // 0.00 - 4.00
 }
@@ -107,6 +109,7 @@ export interface MySubmissionQuestionDto {
   imageUrls: string[];
   options: QuestionOption[];
   explanation?: string;
+  difficulty?: QuestionDifficulty | null;
   source?: string;
   confidenceScore?: number;
   status: QuestionReviewStatus;
@@ -144,6 +147,7 @@ export interface QuestionUpdateDto {
   mediaUrls?: string[];
   options: QuestionOption[];
   explanation?: string;
+  difficulty?: QuestionDifficulty;
   source?: QuestionSource;
   confidence?: number;
 }

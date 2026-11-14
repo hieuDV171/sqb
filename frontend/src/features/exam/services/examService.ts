@@ -1,5 +1,6 @@
 import { axiosClient } from '@/api/axiosClient';
 import type { GlobalResponse } from '@/types/response.types';
+import type { CourseClassResponse } from '@/features/course-class/types/courseClass.types';
 import type {
   GenerateExamRequest,
   ExamDetailResponse,
@@ -17,10 +18,11 @@ export const examService = {
   generateExam: async (
     data: GenerateExamRequest
   ): Promise<GlobalResponse<ExamDetailResponse>> => {
-    return (await axiosClient.post<GlobalResponse<ExamDetailResponse>>(
+    return axiosClient.post<unknown, GlobalResponse<ExamDetailResponse>>(
       '/exams/generate',
-      data
-    )) as any;
+      data,
+      { skipToast: true },
+    );
   },
 
   /**
@@ -30,9 +32,7 @@ export const examService = {
   getExamDetail: async (
     examId: number
   ): Promise<GlobalResponse<ExamDetailResponse>> => {
-    return (await axiosClient.get<GlobalResponse<ExamDetailResponse>>(
-      `/exams/${examId}`
-    )) as any;
+    return axiosClient.get<unknown, GlobalResponse<ExamDetailResponse>>(`/exams/${examId}`);
   },
 
   /**
@@ -66,16 +66,17 @@ export const examService = {
     examId: number,
     params?: ExportExamParams
   ): Promise<GlobalResponse<ExportResponse>> => {
-    return (await axiosClient.get<GlobalResponse<ExportResponse>>(
+    return axiosClient.get<unknown, GlobalResponse<ExportResponse>>(
       `/exams/${examId}/export`,
       {
+        skipToast: true,
         params: {
           format: params?.format ?? 'pdf',
           include_answer_key: params?.includeAnswerKey ?? false,
           paper_size: params?.paperSize ?? 'A4',
         },
       }
-    )) as any;
+    );
   },
 
   /**
@@ -85,16 +86,17 @@ export const examService = {
   exportQuestions: async (
     params: ExportQuestionsParams
   ): Promise<GlobalResponse<ExportResponse>> => {
-    return (await axiosClient.get<GlobalResponse<ExportResponse>>(
+    return axiosClient.get<unknown, GlobalResponse<ExportResponse>>(
       '/lecturer/questions/export',
       {
+        skipToast: true,
         params: {
           subject_id: params.subjectId,
           format: params.format ?? 'pdf',
           include_answer: params.includeAnswer ?? true,
         },
       }
-    )) as any;
+    );
   },
 
   /**
@@ -104,8 +106,8 @@ export const examService = {
   getLecturerClasses: async (params?: {
     semesterId?: number;
     includeHistory?: boolean;
-  }): Promise<GlobalResponse<any[]>> => {
-    return (await axiosClient.get<GlobalResponse<any[]>>(
+  }): Promise<GlobalResponse<CourseClassResponse[]>> => {
+    return axiosClient.get<unknown, GlobalResponse<CourseClassResponse[]>>(
       '/lecturer/course-classes/my-classes',
       {
         params: {
@@ -113,6 +115,6 @@ export const examService = {
           include_history: params?.includeHistory,
         },
       }
-    )) as any;
+    );
   },
 };

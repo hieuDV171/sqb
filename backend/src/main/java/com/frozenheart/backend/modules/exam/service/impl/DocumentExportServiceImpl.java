@@ -3,17 +3,21 @@ package com.frozenheart.backend.modules.exam.service.impl;
 import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.constant.Time;
+import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
 import com.frozenheart.backend.core.entity.session.Exam;
 import com.frozenheart.backend.core.entity.session.ExamQuestion;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
+import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.exam.dto.ExamQuestionReportDto;
 import com.frozenheart.backend.modules.exam.dto.ExportResponse;
 import com.frozenheart.backend.modules.exam.dto.QuestionReportDto;
+import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.exam.service.DocumentExportService;
+import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.Http.Method;
@@ -44,10 +48,22 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     private final MinioClient minioClient;
     private final R2Properties r2Properties;
     private final QuestionRepository questionRepository;
+    private final CourseClassRepository courseClassRepository;
+    private final MediaService mediaService;
 
     @Override
     @Transactional(readOnly = true)
     public ExportResponse exportQuestions(Long subjectId, String format, Boolean includeAnswer) {
+        JwtPayload user = JwtPayload.getCurrentUserPayload();
+        boolean canExport = UserRole.ADMIN.name().equals(user.getRole())
+                || (UserRole.LECTURER.name().equals(user.getRole())
+                    && courseClassRepository.existsByLecturerIdAndSubjectIdAndSemesterActiveTrue(user.getUserId(), subjectId));
+        if (!canExport) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Bạn chỉ có thể xuất tài liệu ôn tập cho môn được phân công trong học kỳ hiện tại");
+        }
+
+        String bucket = privateExportBucket();
         boolean withAnswer = includeAnswer == null || includeAnswer;
         String ext = "excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format) ? "xlsx" : "pdf";
 
@@ -62,7 +78,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         }
 
         // Check MinIO Cache
-        ExportResponse cachedResponse = checkMinioCache(objectKey, questions.size());
+        ExportResponse cachedResponse = checkMinioCache(bucket, objectKey, questions.size());
         if (cachedResponse != null) {
             return cachedResponse;
         }
@@ -79,12 +95,13 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         }
 
         // Upload to MinIO & Generate Presigned URL
-        return uploadAndPresign(objectKey, contentBytes, contentType, questions.size());
+        return uploadAndPresign(bucket, objectKey, contentBytes, contentType, questions.size());
     }
 
     @Override
     @Transactional(readOnly = true)
     public ExportResponse exportExam(Exam exam, String format, Boolean includeAnswerKey, String paperSize) {
+        String bucket = privateExportBucket();
         boolean withAnswer = includeAnswerKey != null && includeAnswerKey;
         String ext = "excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format) ? "xlsx" : "pdf";
         String objectKey = String.format("exports/exams/exam_%d_ans_%b.%s", exam.getId(), withAnswer, ext);
@@ -92,7 +109,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         int questionCount = exam.getExamQuestions() != null ? exam.getExamQuestions().size() : 0;
 
         // Check MinIO Cache
-        ExportResponse cachedResponse = checkMinioCache(objectKey, questionCount);
+        ExportResponse cachedResponse = checkMinioCache(bucket, objectKey, questionCount);
         if (cachedResponse != null) {
             return cachedResponse;
         }
@@ -109,21 +126,29 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         }
 
         // Upload to MinIO & Presign
-        return uploadAndPresign(objectKey, contentBytes, contentType, exam.getExamQuestions().size());
+        return uploadAndPresign(bucket, objectKey, contentBytes, contentType, questionCount);
     }
 
-    private ExportResponse checkMinioCache(String objectKey, int questionsCount) {
+    private String privateExportBucket() {
+        String bucket = r2Properties.getReportEvidenceBucket();
+        if (bucket == null || bucket.isBlank() || bucket.equals(r2Properties.getBucketName())) {
+            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Kho tệp xuất riêng tư chưa được cấu hình.");
+        }
+        return bucket;
+    }
+
+    private ExportResponse checkMinioCache(String bucket, String objectKey, int questionsCount) {
         try {
             var stat = minioClient.statObject(
                     StatObjectArgs.builder()
-                            .bucket(r2Properties.getBucketName())
+                            .bucket(bucket)
                             .object(objectKey)
                             .build());
             if (stat != null) {
                 String downloadUrl = minioClient.getPresignedObjectUrl(
                         GetPresignedObjectUrlArgs.builder()
                                 .method(Method.GET)
-                                .bucket(r2Properties.getBucketName())
+                                .bucket(bucket)
                                 .object(objectKey)
                                 .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
                                 .build());
@@ -141,23 +166,25 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         return null;
     }
 
-    private ExportResponse uploadAndPresign(String objectKey, byte[] contentBytes, String contentType,
+    private ExportResponse uploadAndPresign(String bucket, String objectKey, byte[] contentBytes, String contentType,
             int questionsCount) {
         try {
             try (InputStream is = new ByteArrayInputStream(contentBytes)) {
                 minioClient.putObject(
                         PutObjectArgs.builder()
-                                .bucket(r2Properties.getBucketName())
+                                .bucket(bucket)
                                 .object(objectKey)
                                 .stream(is, (long) contentBytes.length, -1L)
                                 .contentType(contentType)
+                                .headers(Map.of("Cache-Control", "private, no-store"))
                                 .build());
             }
+            mediaService.confirmMediaPermanent(List.of(objectKey));
 
             String downloadUrl = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
-                            .bucket(r2Properties.getBucketName())
+                            .bucket(bucket)
                             .object(objectKey)
                             .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
                             .build());

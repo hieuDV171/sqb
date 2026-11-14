@@ -1,355 +1,179 @@
-import { useState, useMemo } from 'react';
-import { X, Sparkles, Sliders, Send } from 'lucide-react';
+import { useId, useState, type FormEvent } from 'react';
+import { FilePlus2, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FilterSelect } from '@/components/ui/filter-select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { examDifficulties, getExamSubjects } from '../examPresentation';
 import { useGenerateExam, useLecturerClasses } from '../hooks/useExam';
+import { ExamDialog } from './ExamDialog';
 
 interface GenerateExamModalProps {
-  isOpen: boolean;
+  initialClassId?: number;
+  initialSubjectId?: number;
   onClose: () => void;
-  onSuccess?: (examId: number) => void;
+  onSuccess: (examId: number) => void;
 }
 
-export function GenerateExamModal({
-  isOpen,
-  onClose,
-  onSuccess,
-}: GenerateExamModalProps) {
-  const { data: rawClasses = [], isLoading: isClassesLoading } = useLecturerClasses();
-  const generateExamMutation = useGenerateExam();
+const defaultPercentages = { easy: '30', medium: '50', hard: '20', unclassified: '0' };
+const questionCounts = [20, 30, 40, 50, 60].map((count) => ({ value: String(count), label: `${count} câu` }));
 
-  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, onSuccess }: GenerateExamModalProps) {
+  const id = useId();
+  const classes = useLecturerClasses();
+  const generate = useGenerateExam();
+  const [subjectId, setSubjectId] = useState<number>();
+  const [classIds, setClassIds] = useState<number[]>();
   const [title, setTitle] = useState('');
-  const [questionCount, setQuestionCount] = useState<number>(40);
-  const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
+  const [questionCount, setQuestionCount] = useState('40');
+  const [percentages, setPercentages] = useState(defaultPercentages);
   const [shuffleOptions, setShuffleOptions] = useState(false);
   const [includeAnswerKey, setIncludeAnswerKey] = useState(false);
 
-  // Difficulty Distribution (%)
-  const [easyPercent, setEasyPercent] = useState<number>(30);
-  const [mediumPercent, setMediumPercent] = useState<number>(50);
-  const [hardPercent, setHardPercent] = useState<number>(20);
+  const subjects = getExamSubjects(classes.data);
+  const initialClass = classes.data?.find((courseClass) => courseClass.courseClassId === initialClassId);
+  const selectedId = subjectId ?? initialClass?.subjectId ?? initialSubjectId;
+  const selectedSubject = subjects.find((subject) => subject.id === selectedId);
+  const availableClasses = classes.data?.filter((courseClass) => courseClass.subjectId === selectedSubject?.id) ?? [];
+  const selectedClasses = availableClasses.filter((courseClass) =>
+    classIds ? classIds.includes(courseClass.courseClassId) : courseClass.courseClassId === initialClass?.courseClassId,
+  );
+  const total = Object.values(percentages).reduce((sum, value) => sum + Number(value), 0);
+  const hasInvalidPercentage = Object.values(percentages).some((value) => (
+    value === '' || !Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 100
+  ));
+  const validMatrix = total === 100 && !hasInvalidPercentage;
 
-  // Extract unique subjects from lecturer's classes
-  const uniqueSubjects = useMemo(() => {
-    const map = new Map<number, { id: number; code: string; name: string }>();
-    rawClasses.forEach((cls: any) => {
-      const sId = cls.subjectId;
-      if (sId && !map.has(sId)) {
-        map.set(sId, {
-          id: sId,
-          code: cls.subjectCode || `SUB_${sId}`,
-          name: cls.subjectName || `Môn học #${sId}`,
-        });
-      }
-    });
-    return Array.from(map.values());
-  }, [rawClasses]);
-
-  // Filter classes belonging to the selected subject
-  const availableClasses = useMemo(() => {
-    if (!selectedSubjectId) return [];
-    return rawClasses.filter((cls: any) => cls.subjectId === selectedSubjectId);
-  }, [rawClasses, selectedSubjectId]);
-
-  const handleSelectSubject = (sId: number) => {
-    setSelectedSubjectId(sId);
-    setSelectedClassIds([]); // Reset selected classes when subject changes
-  };
-
-  const handleToggleClass = (classId: number) => {
-    if (selectedClassIds.includes(classId)) {
-      setSelectedClassIds(selectedClassIds.filter((id) => id !== classId));
-    } else {
-      setSelectedClassIds([...selectedClassIds, classId]);
-    }
-  };
-
-  const handleSelectAllClasses = () => {
-    if (selectedClassIds.length === availableClasses.length) {
-      setSelectedClassIds([]);
-    } else {
-      setSelectedClassIds(availableClasses.map((c: any) => c.classId || c.courseClassId || c.id));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSubjectId || selectedClassIds.length === 0) return;
-
-    generateExamMutation.mutate(
-      {
-        subjectId: selectedSubjectId,
-        title: title.trim() || undefined,
-        questionCount,
-        difficultyDistribution: {
-          easy: easyPercent / 100,
-          medium: mediumPercent / 100,
-          hard: hardPercent / 100,
-        },
-        shuffleOptions,
-        includeAnswerKey,
-        classIds: selectedClassIds,
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedSubject || selectedClasses.length === 0 || !validMatrix || generate.isPending) return;
+    generate.mutate({
+      subjectId: selectedSubject.id,
+      title: title.trim() || undefined,
+      questionCount: Number(questionCount),
+      difficultyDistribution: {
+        easy: Number(percentages.easy) / 100,
+        medium: Number(percentages.medium) / 100,
+        hard: Number(percentages.hard) / 100,
+        unclassified: Number(percentages.unclassified) / 100,
       },
-      {
-        onSuccess: (res) => {
-          onClose();
-          if (res.data?.examId && onSuccess) {
-            onSuccess(res.data.examId);
-          }
-        },
-      }
-    );
-  };
-
-  if (!isOpen) return null;
+      shuffleOptions,
+      includeAnswerKey,
+      classIds: selectedClasses.map((courseClass) => courseClass.courseClassId),
+    }, { onSuccess: (response) => onSuccess(response.data.examId) });
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 space-y-6">
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">
-              Tạo Đề Thi Tự Động Từ Ngân Hàng Đề
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Bốc ngẫu nhiên câu hỏi đã duyệt (APPROVED) theo môn học, tỉ lệ ma trận độ khó và gán cho các lớp học phần.
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Step 1: Select Subject */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              1. Chọn môn học *
-            </label>
-            {isClassesLoading ? (
-              <div className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-            ) : uniqueSubjects.length === 0 ? (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                Bạn chưa được phân công lớp học phần nào trong học kỳ hiện tại.
-              </p>
+    <ExamDialog title="Tạo đề thi" description="Chọn môn, lớp học phần và tỷ lệ độ khó cho đề thi."
+      icon={FilePlus2} busy={generate.isPending} onClose={onClose}>
+      <form onSubmit={submit} className="flex min-h-0 min-w-0 flex-col">
+        <div className="min-h-0 overflow-y-auto">
+          <fieldset disabled={generate.isPending} className="min-w-0 space-y-5 p-4 sm:p-5">
+            {classes.isPending ? (
+              <Skeleton role="status" aria-label="Đang tải môn học" className="h-16 rounded-xl" />
+            ) : !classes.data ? (
+              <div className="flex flex-wrap items-center gap-2" role="status">
+                <p className="text-sm text-destructive">Không thể tải môn học phụ trách.</p>
+                <Button type="button" variant="outline" onClick={() => void classes.refetch()}>Thử lại</Button>
+              </div>
+            ) : subjects.length === 0 ? (
+              <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">Chưa có lớp học phần trong học kỳ hiện tại.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {uniqueSubjects.map((s) => {
-                  const isSelected = selectedSubjectId === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => handleSelectSubject(s.id)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
-                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                      }`}
-                    >
-                      <p className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
-                        {s.code}
-                      </p>
-                      <p className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
-                        {s.name}
-                      </p>
-                    </button>
-                  );
-                })}
+              <div className="space-y-3">
+                {initialClassId !== undefined && !initialClass && (
+                  <p role="status" className="text-sm text-warning">Lớp đã chọn không có trong học kỳ hiện tại. Hãy chọn lớp khác.</p>
+                )}
+                <FilterSelect label="Môn học" required value={selectedSubject ? String(selectedSubject.id) : ''}
+                  disabled={generate.isPending} options={subjects.map((subject) => ({ value: String(subject.id), label: subject.label }))}
+                  onChange={(value) => {
+                    setSubjectId(Number(value));
+                    setClassIds([]);
+                  }} />
+                {selectedSubject && (
+                  <fieldset className="min-w-0 space-y-2">
+                    <legend className="text-sm font-medium">Lớp học phần ({selectedClasses.length}/{availableClasses.length})</legend>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {availableClasses.map((courseClass) => {
+                        const checked = selectedClasses.includes(courseClass);
+                        return (
+                          <label key={courseClass.courseClassId} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-input px-3 text-sm font-medium has-checked:border-academic has-checked:bg-academic-soft has-checked:text-academic">
+                            <input type="checkbox" checked={checked} className="size-4 shrink-0 accent-academic"
+                              onChange={() => {
+                                const ids = selectedClasses.map((item) => item.courseClassId);
+                                setClassIds(checked ? ids.filter((classId) => classId !== courseClass.courseClassId) : [...ids, courseClass.courseClassId]);
+                              }} />
+                            {courseClass.classCode}
+                          </label>
+                        );
+                      })}
+                      {availableClasses.length > 1 && (
+                        <Button type="button" variant="ghost" onClick={() => setClassIds(
+                          selectedClasses.length === availableClasses.length ? [] : availableClasses.map((item) => item.courseClassId),
+                        )}>
+                          {selectedClasses.length === availableClasses.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                        </Button>
+                      )}
+                    </div>
+                  </fieldset>
+                )}
               </div>
             )}
-          </div>
 
-          {/* Step 2: Select Course Classes */}
-          {selectedSubjectId && (
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  2. Lớp học phần áp dụng đề thi * ({selectedClassIds.length}/{availableClasses.length})
-                </label>
-                <button
-                  type="button"
-                  onClick={handleSelectAllClasses}
-                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                >
-                  {selectedClassIds.length === availableClasses.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                </button>
+            <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+              <div className="space-y-1.5">
+                <Label htmlFor={`${id}-title`}>Tiêu đề (không bắt buộc)</Label>
+                <Input id={`${id}-title`} className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} />
               </div>
+              <FilterSelect label="Số câu hỏi" value={questionCount} onChange={setQuestionCount} options={questionCounts} disabled={generate.isPending} />
+            </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {availableClasses.map((cls: any) => {
-                  const cId = cls.classId || cls.courseClassId || cls.id;
-                  const isChecked = selectedClassIds.includes(cId);
-                  return (
-                    <label
-                      key={cId}
-                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                        isChecked
-                          ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-400'
-                          : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleClass(cId)}
-                        className="w-4 h-4 rounded-sm text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
-                        {cls.classCode || `Lớp ${cId}`}
-                      </span>
-                    </label>
-                  );
-                })}
+            <fieldset aria-describedby={`${id}-matrix-help ${id}-matrix-total`} className="min-w-0 space-y-2 border-t border-border pt-3">
+              <legend className="pr-2 text-sm font-semibold">Ma trận độ khó</legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {examDifficulties.map(({ field, label, tone }) => (
+                  <div key={field} className={cn('min-w-0 space-y-2 rounded-xl p-2.5', tone)}>
+                    <Label htmlFor={`${id}-${field}`} className="leading-tight">{label}</Label>
+                    <div className="relative text-foreground">
+                      <Input id={`${id}-${field}`} type="number" min={0} max={100} step={1} required
+                        aria-label={`Tỷ lệ ${label.toLowerCase()} (%)`}
+                        className="h-11 bg-background pr-7" value={percentages[field]}
+                        onChange={(event) => setPercentages((previous) => ({ ...previous, [field]: event.target.value }))} />
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
+              <p id={`${id}-matrix-total`} role="status" className={cn('text-sm font-medium', validMatrix ? 'text-success' : 'text-destructive')}>
+                Tổng {total}%{!validMatrix && ' · Nhập số nguyên từ 0 đến 100 cho mỗi nhóm, tổng phải bằng 100%.'}
+              </p>
+              <p id={`${id}-matrix-help`} className="text-sm text-muted-foreground">
+                Tỷ lệ là mục tiêu. Nếu một nhóm thiếu câu, hệ thống sẽ lấy thêm câu đã duyệt từ các nhóm còn lại nếu có.
+              </p>
+            </fieldset>
 
-          {/* Step 3: Exam Info & Question Count */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Tiêu đề đề thi (Tùy chọn)
+            <div className="flex flex-wrap gap-x-4 border-t border-border pt-2">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" checked={shuffleOptions} onChange={(event) => setShuffleOptions(event.target.checked)} className="size-4 shrink-0 accent-academic" />
+                Đảo thứ tự phương án
               </label>
-              <input
-                type="text"
-                placeholder="Ví dụ: Đề thi Cuối kỳ Hệ điều hành 2024.1"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Số lượng câu hỏi
-              </label>
-              <select
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
-              >
-                <option value={20}>20 câu</option>
-                <option value={30}>30 câu</option>
-                <option value={40}>40 câu</option>
-                <option value={50}>50 câu</option>
-                <option value={60}>60 câu</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Step 4: Difficulty Distribution Matrix */}
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-indigo-500" />
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Phân bổ ma trận độ khó (%) - Tổng: {easyPercent + mediumPercent + hardPercent}%
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" checked={includeAnswerKey} onChange={(event) => setIncludeAnswerKey(event.target.checked)} className="size-4 shrink-0 accent-academic" />
+                Kèm bảng đáp án
               </label>
             </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
-                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                  Dễ ({easyPercent}%)
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={easyPercent}
-                  onChange={(e) => setEasyPercent(Number(e.target.value))}
-                  className="w-full mt-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 text-xs font-bold text-emerald-800 dark:text-emerald-200"
-                />
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                  Trung bình ({mediumPercent}%)
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={mediumPercent}
-                  onChange={(e) => setMediumPercent(Number(e.target.value))}
-                  className="w-full mt-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-xs font-bold text-amber-800 dark:text-amber-200"
-                />
-              </div>
-
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50">
-                <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
-                  Khó ({hardPercent}%)
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={hardPercent}
-                  onChange={(e) => setHardPercent(Number(e.target.value))}
-                  className="w-full mt-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-xs font-bold text-rose-800 dark:text-rose-200"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Step 5: Options (Shuffle & Answer Key) */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={shuffleOptions}
-                onChange={(e) => setShuffleOptions(e.target.checked)}
-                className="w-4 h-4 rounded-sm text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Đảo ngẫu nhiên các đáp án A, B, C, D</span>
-            </label>
-
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeAnswerKey}
-                onChange={(e) => setIncludeAnswerKey(e.target.checked)}
-                className="w-4 h-4 rounded-sm text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Kèm bảng đáp án trong dữ liệu đề</span>
-            </label>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={
-                !selectedSubjectId ||
-                selectedClassIds.length === 0 ||
-                generateExamMutation.isPending
-              }
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-2 shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>
-                {generateExamMutation.isPending ? 'Đang bốc đề thi...' : 'Sinh Đề Thi Ngay'}
-              </span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            {generate.isError && <p role="alert" className="text-sm text-destructive">{generate.error.message || 'Không thể tạo đề thi. Vui lòng thử lại.'}</p>}
+          </fieldset>
+        </div>
+        <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border p-4 sm:px-5">
+          <Button type="button" variant="outline" disabled={generate.isPending} onClick={onClose}>Hủy</Button>
+          <Button type="submit" disabled={!selectedSubject || selectedClasses.length === 0 || !validMatrix || generate.isPending}>
+            {generate.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <FilePlus2 aria-hidden="true" />}
+            {generate.isPending ? 'Đang tạo đề…' : 'Tạo đề thi'}
+          </Button>
+        </footer>
+      </form>
+    </ExamDialog>
   );
 }

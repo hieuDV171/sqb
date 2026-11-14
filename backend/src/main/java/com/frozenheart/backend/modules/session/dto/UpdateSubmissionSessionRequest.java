@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.session.dto;
 
 import java.util.List;
 
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionSource;
 
@@ -48,6 +49,9 @@ public record UpdateSubmissionSessionRequest(
 
             @Schema(description = "Lời giải chi tiết cho câu hỏi", example = "SJF ưu tiên tiến trình ngắn hơn, các tiến trình dài có thể bị đói CPU nếu tiến trình ngắn liên tục tới.")
             String explanation,
+
+            @Schema(description = "Độ khó đề xuất. Bỏ qua để giữ giá trị hiện tại, gửi UNCLASSIFIED để bỏ phân loại.", example = "MEDIUM")
+            QuestionDifficulty difficulty,
 
             @Schema(description = "Nguồn gốc tạo câu hỏi", example = "HOMO_SAPIENS")
             QuestionSource source,

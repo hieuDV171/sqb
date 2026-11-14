@@ -22,6 +22,7 @@ import {mediaService} from '@/services/mediaService';
 import {toast} from '@/stores/useToastStore';
 import type {ProposeSessionRequest, ProposeSessionResponse, QuestionProposeDto,} from '@/features/session';
 import {useEnrolledCourseClasses, useSessionMutations} from '@/features/session';
+import { QuestionDifficultySelect } from './QuestionDifficultySelect';
 
 interface ProposeSessionFormProps {
   onSuccessNavigate?: () => void;
@@ -373,6 +374,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
           mediaUrl: opt.mediaUrl?.trim() || undefined,
         })),
         explanation: q.explanation?.trim() || undefined,
+        difficulty: q.difficulty,
         llmGenerated: q.llmGenerated,
         confidence: q.confidence,
       })),
@@ -669,6 +671,11 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   placeholder="Nhập nội dung câu hỏi trắc nghiệm..."
                   className="w-full px-3.5 py-2.5 border border-input bg-background rounded-2xl text-xs sm:text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 />
+              </div>
+
+              <div className="max-w-xs">
+                <QuestionDifficultySelect label="Độ khó đề xuất" value={q.difficulty} disabled={proposeMutation.isPending}
+                  onChange={(value) => handleUpdateQuestion(qIndex, 'difficulty', value)} />
               </div>
 
               {/* Question Media Attachments */}

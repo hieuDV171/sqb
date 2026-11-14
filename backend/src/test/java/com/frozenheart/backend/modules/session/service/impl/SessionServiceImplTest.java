@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.session.service.impl;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.session.Question;
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
@@ -123,6 +124,8 @@ class SessionServiceImplTest {
         when(questionRepository.saveAll(anyList())).thenAnswer(invocation -> {
             List<Question> questions = invocation.getArgument(0);
             assertEquals(List.of(1, 2), questions.stream().map(Question::getDisplayOrder).toList());
+            assertEquals(List.of(QuestionDifficulty.MEDIUM, QuestionDifficulty.UNCLASSIFIED),
+                    questions.stream().map(Question::getDifficulty).toList());
             for (int index = 0; index < questions.size(); index++) {
                 questions.get(index).setId(201L + index);
             }
@@ -134,7 +137,7 @@ class SessionServiceImplTest {
                 "Kiểm tra thứ tự câu hỏi",
                 null,
                 courseClassId,
-                List.of(question("Câu hỏi thứ nhất"), question("Câu hỏi thứ hai")));
+                List.of(question("Câu hỏi thứ nhất", QuestionDifficulty.MEDIUM), question("Câu hỏi thứ hai")));
 
         ProposeSessionResponse response = sessionService.proposeSession(request);
 
@@ -398,6 +401,10 @@ class SessionServiceImplTest {
     }
 
     private ProposeSessionRequest.QuestionProposeDto question(String content) {
+        return question(content, null);
+    }
+
+    private ProposeSessionRequest.QuestionProposeDto question(String content, QuestionDifficulty difficulty) {
         QuestionOption option = new QuestionOption();
         option.setKey("A");
         option.setText("Đáp án đúng");
@@ -408,6 +415,7 @@ class SessionServiceImplTest {
                 null,
                 List.of(option),
                 null,
+                difficulty,
                 false,
                 3.0);
     }

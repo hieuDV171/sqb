@@ -510,3 +510,23 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Quyết định, trạng thái đối tượng, thông báo và lịch sử lưu trong một giao dịch. STOMP được kiểm tra với trạng thái hiện tại và ngắt sau commit. Đồng bộ tìm kiếm dùng bản ghi hành động làm công việc có thể thử lại. Kết quả tìm kiếm lọc trạng thái PostgreSQL.
 - Kho `R2_REPORT_EVIDENCE_BUCKET` phải riêng tư và khác bucket media công khai. Ảnh trả về qua URL ký 120 giây. Thời hạn mặc định 90 ngày sau khi duyệt có thể chỉnh bằng `REPORT_EVIDENCE_RETENTION_DAYS`. Admin có thể chuyển ảnh cũ từ URL SQB hợp lệ để xem. Việc thu hồi URL public cũ cần kiểm kê tham chiếu trước khi xóa ở kho cũ.
 - Trước khi cập nhật BE, áp dụng schema từ entity qua quy trình Liquibase của dự án. Đối chiếu [đặc tả API](BACKEND_API_SPECIFICATION.md#30-báo-cáo-vi-phạm-reports) và [kế hoạch thiết kế](REPORT_MODERATION_PLAN.md).
+
+### [ADR-057] Độ khó đề xuất và xác nhận khi duyệt câu hỏi
+
+- Dùng cột `Question.difficulty` hiện có. Sinh viên có thể chọn độ khó khi đề xuất hoặc sửa phiên còn `PENDING`. Câu mới thiếu mức dùng `UNCLASSIFIED`. Client bỏ qua trường khi sửa câu hiện có sẽ giữ mức đã lưu.
+- Giảng viên được phân công hoặc Admin thấy độ khó hiện hành và có thể đổi mức khi biên tập. Phê duyệt trực tiếp hoặc theo lô xác nhận mức đang lưu. Cho phép duyệt câu `UNCLASSIFIED`. Luồng khóa phiên và quy tắc chỉ dùng câu `APPROVED` từ phiên `RESOLVED` khi tạo đề tiếp tục áp dụng.
+- Câu được hệ thống tự động phê duyệt từ trạng thái `PENDING` dùng `UNCLASSIFIED` vì mức đề xuất chưa qua giảng viên. Mức của câu đã được phê duyệt được giữ.
+
+### [ADR-058] Phạm vi xuất tài liệu ôn tập theo môn
+
+- `GET /lecturer/questions/export` kiểm tra giảng viên được phân công ít nhất một lớp của môn trong học kỳ đang hoạt động, cùng phạm vi với danh sách môn trên màn xuất. Admin được xuất mọi môn. Backend kiểm tra trước khi đọc dữ liệu hoặc truy cập tệp đã lưu.
+- Tài liệu ôn tập gồm toàn bộ câu hỏi của môn qua các lớp, học kỳ và trạng thái. API xuất đề thi dùng các câu đã được chọn khi sinh đề từ câu `APPROVED` trong phiên `RESOLVED`.
+
+### [ADR-059] Quyền xem và xuất đề thi
+
+- `GET /exams/{examId}` và `GET /exams/{examId}/export` chỉ dành cho giảng viên tạo đề hoặc Admin, theo phạm vi quản lý đề thi. Kiểm tra vai trò trước khi truy vấn và đối chiếu người tạo trước khi trả nội dung hoặc gọi dịch vụ xuất tệp. Gán đề cho lớp chưa cấp quyền xem đáp án cho sinh viên hoặc giảng viên khác.
+
+### [ADR-060] Lưu tệp xuất học thuật trong bucket R2 riêng tư
+
+- Lưu PDF và Excel dưới `exports/exams/` và `exports/questions/` trong bucket `R2_REPORT_EVIDENCE_BUCKET` (`sqb-secret` trên production). Cả tra cache, ghi object và ký URL tải đều dùng bucket này. Backend từ chối xuất nếu cấu hình bị thiếu hoặc trùng `R2_BUCKET`.
+- Dùng đường dẫn riêng với bằng chứng báo cáo. Tệp xuất mới có `Cache-Control: private, no-store`. Giữ thời hạn URL ký hiện hành và xác nhận quyền trước khi truy cập kho.

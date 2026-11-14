@@ -4,6 +4,7 @@ import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { QuestionDifficultySelect } from '@/features/session/components/QuestionDifficultySelect';
 import type { QuestionOption } from '@/features/session/types/session.types';
 import type { EditQuestionRequest, SessionQuestionReviewDto } from '../types/review.types';
 
@@ -22,6 +23,7 @@ export function EditQuestionModal({ question, questionNumber, isSaving, onClose,
   const id = useId();
   const [content, setContent] = useState(question.content ?? '');
   const [explanation, setExplanation] = useState(question.explanation ?? '');
+  const [difficulty, setDifficulty] = useState(question.difficulty ?? 'UNCLASSIFIED');
   const [options, setOptions] = useState<QuestionOption[]>(() => question.options?.length
     ? question.options.map((option) => ({ ...option }))
     : letters.slice(0, 4).map((key, index) => ({ key, text: '', isCorrect: index === 0 })));
@@ -43,7 +45,7 @@ export function EditQuestionModal({ question, questionNumber, isSaving, onClose,
     }
     setError('');
     try {
-      await onSave({ content: content.trim(), explanation: explanation.trim(), options, autoApprove });
+      await onSave({ content: content.trim(), explanation: explanation.trim(), options, difficulty, autoApprove });
     } catch {
       setError('Không thể lưu thay đổi. Bạn có thể thử lại.');
     }
@@ -57,20 +59,23 @@ export function EditQuestionModal({ question, questionNumber, isSaving, onClose,
           <header className="flex items-start justify-between gap-2 border-b border-border p-4">
             <div className="space-y-1">
               <Dialog.Title className="text-xl font-semibold">Biên tập câu {questionNumber}</Dialog.Title>
-              <Dialog.Description className="text-sm text-muted-foreground">Chỉnh nội dung, phương án và lời giải.</Dialog.Description>
+              <Dialog.Description className="text-sm text-muted-foreground">Chỉnh nội dung, độ khó, phương án và lời giải.</Dialog.Description>
             </div>
             <Dialog.Close render={<Button variant="ghost" size="icon" aria-label="Đóng biên tập" disabled={isSaving} />}>
               <X aria-hidden="true" />
             </Dialog.Close>
           </header>
           <form onSubmit={submit} className="min-h-0 overflow-y-auto">
-            <fieldset disabled={isSaving} className="space-y-4 p-4">
+            <fieldset disabled={isSaving} className="min-w-0 space-y-4 p-4">
               <div className="space-y-2">
                 <Label htmlFor={`${id}-content`}>Nội dung câu hỏi</Label>
                 <textarea id={`${id}-content`} rows={3} required value={content} className={textareaClass}
                   onChange={(event) => setContent(event.target.value)} />
               </div>
-              <fieldset className="space-y-2">
+              <div className="max-w-xs">
+                <QuestionDifficultySelect label="Độ khó" value={difficulty} disabled={isSaving} onChange={setDifficulty} />
+              </div>
+              <fieldset className="min-w-0 space-y-2">
                 <legend className="text-sm font-semibold">Phương án trả lời</legend>
                 {options.map((option) => (
                   <div key={option.key} className="space-y-2 rounded-xl border border-border bg-surface-subtle p-3">

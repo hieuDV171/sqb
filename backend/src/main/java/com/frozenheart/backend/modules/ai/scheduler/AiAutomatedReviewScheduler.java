@@ -7,6 +7,7 @@ import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
 import com.frozenheart.backend.core.entity.session.Question;
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Session;
@@ -148,6 +149,7 @@ public class AiAutomatedReviewScheduler {
                     boolean hasDuplicateWarning = question.getDuplicateWarnings() != null
                             && !question.getDuplicateWarnings().isEmpty();
                     if (!hasDuplicateWarning) {
+                        question.setDifficulty(QuestionDifficulty.UNCLASSIFIED);
                         question.setStatus(QuestionStatus.APPROVED);
                         approvedInSession++;
                     } else {

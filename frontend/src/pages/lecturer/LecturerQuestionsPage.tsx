@@ -1,120 +1,79 @@
-import { CheckCircle, FileText, ArrowRight, Layers, CalendarRange } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, FileText, Layers, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LecturerQuestionsExportCard, useLecturerClasses } from '@/features/exam';
 
 export function LecturerQuestionsPage() {
-  const { data: rawClasses = [], isLoading } = useLecturerClasses({ includeHistory: true });
+  const classes = useLecturerClasses({ includeHistory: true });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Ngân Hàng Câu Hỏi Môn Học
-            </h1>
-            <Badge variant="role">Giảng viên</Badge>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Tra cứu kho câu hỏi chuẩn hóa, xuất ngân hàng câu hỏi ôn tập và quản lý các môn học phụ trách.
+    <div className="mx-auto max-w-6xl space-y-6 pb-8">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+        <div className="space-y-2">
+          <p className="flex items-center gap-2 text-sm font-semibold text-academic">
+            <Layers aria-hidden="true" className="size-4" /> Không gian giảng viên
           </p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ngân hàng câu hỏi môn học</h1>
+          <p className="text-sm text-muted-foreground">Xuất tài liệu ôn tập theo môn và xem các lớp học phần phụ trách.</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Link
-            to="/lecturer/pending-reviews"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors shadow-sm"
-          >
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-            Duyệt Câu Hỏi Mới
-          </Link>
-          <Link
-            to="/lecturer/exams"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            Tạo & Xuất Đề Thi
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+        <div className="flex flex-wrap gap-2">
+          <Button nativeButton={false} variant="outline" render={<Link to="/lecturer/pending-reviews" />}>
+            <ClipboardCheck aria-hidden="true" /> Duyệt câu hỏi
+          </Button>
+          <Button nativeButton={false} render={<Link to="/lecturer/exams" />}>
+            <FileText aria-hidden="true" /> Quản lý đề thi
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Export Tool Component */}
       <LecturerQuestionsExportCard />
 
-      {/* Managed Subjects Cards */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-500" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Danh Sách Lớp Học Phần Phụ Trách ({rawClasses.length})
-            </h2>
-          </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Dữ liệu đồng bộ từ phân công giảng dạy
-          </span>
+      <section aria-labelledby="lecturer-classes-title" className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="lecturer-classes-title" className="text-xl font-semibold">Lớp học phần phụ trách</h2>
+          {classes.data && <Badge variant="secondary">{classes.data.length} lớp</Badge>}
         </div>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse"
-              />
-            ))}
+        {classes.isPending ? (
+          <div role="status" aria-label="Đang tải lớp học phần" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3].map((key) => <Skeleton key={key} className="h-40 rounded-2xl" />)}
           </div>
-        ) : rawClasses.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            Bạn chưa được phân công lớp học phần nào.
-          </div>
+        ) : !classes.data ? (
+          <ErrorState title="Không thể tải lớp học phần" onRetry={() => void classes.refetch()} />
+        ) : classes.data.length === 0 ? (
+          <EmptyState icon={Layers} title="Bạn chưa được phân công lớp học phần" />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rawClasses.map((courseClass: any) => (
-              <div
-                key={courseClass.courseClassId}
-                className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-blue-200 dark:hover:border-blue-800 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                      {courseClass.subjectCode}
-                    </span>
-                    <span className={courseClass.activeSemester
-                      ? 'text-xs font-semibold text-emerald-600 dark:text-emerald-400'
-                      : 'text-xs text-slate-500 dark:text-slate-400'}>
-                      {courseClass.activeSemester ? 'Học kỳ hiện tại' : 'Lịch sử'}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm line-clamp-2">
-                    {courseClass.subjectName}
-                  </h3>
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    Lớp <strong className="text-slate-700 dark:text-slate-200">{courseClass.classCode}</strong>
-                    {' · '}Học kỳ <strong className="text-slate-700 dark:text-slate-200">{courseClass.semesterName}</strong>
-                  </p>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {classes.data.map((courseClass) => (
+              <article key={courseClass.courseClassId} className="flex min-w-0 flex-col rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-[var(--card-shadow)]">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="border-academic/25 bg-academic-soft text-academic">{courseClass.subjectCode}</Badge>
+                  <span className="text-xs text-muted-foreground">{courseClass.activeSemester ? 'Học kỳ hiện tại' : 'Lịch sử'}</span>
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                    <CalendarRange className="w-3.5 h-3.5" />
-                    {courseClass.totalStudents ?? 0} sinh viên
+                <h3 className="wrap-break-word text-base font-semibold">{courseClass.subjectName}</h3>
+                <p className="mt-1 grow text-sm text-muted-foreground">
+                  Lớp {courseClass.classCode} · Học kỳ {courseClass.semesterName}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 border-t border-border pt-1">
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Users aria-hidden="true" className="size-4" /> {courseClass.totalStudents ?? 0} sinh viên
                   </span>
-                  <Link
-                    to={`/lecturer/exams`}
-                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold inline-flex items-center gap-1"
-                  >
-                    Tạo đề <ArrowRight className="w-3 h-3" />
-                  </Link>
+                  {courseClass.activeSemester && (
+                    <Button nativeButton={false} variant="ghost" className="text-academic" render={
+                      <Link to={`/lecturer/exams?classId=${courseClass.courseClassId}`} aria-label={`Tạo đề cho lớp ${courseClass.classCode}`} />
+                    }>
+                      Tạo đề <ArrowRight aria-hidden="true" />
+                    </Button>
+                  )}
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -180,7 +180,7 @@ public class SessionServiceImpl implements SessionService {
 
                             .content(textContent)
 
-                            .difficulty(QuestionDifficulty.UNCLASSIFIED)
+                            .difficulty(Objects.requireNonNullElse(q.difficulty(), QuestionDifficulty.UNCLASSIFIED))
                             .status(QuestionStatus.PENDING)
 
                             .options(q.options())
@@ -431,6 +431,7 @@ public class SessionServiceImpl implements SessionService {
 
                     return MySubmissionDetailResponse.MySubmissionQuestionDto.builder()
                             .questionId(q.getId())
+                            .difficulty(Objects.requireNonNullElse(q.getDifficulty(), QuestionDifficulty.UNCLASSIFIED))
                             .content(q.getContent())
                             .imageUrls(imageUrls)
                             .options(q.getOptions())
@@ -556,6 +557,9 @@ public class SessionServiceImpl implements SessionService {
                     if (explanation != null) {
                         q.setExplanation(explanation);
                     }
+                    if (qDto.difficulty() != null) {
+                        q.setDifficulty(qDto.difficulty());
+                    }
 
                     boolean llmGenerated = qDto.source() != QuestionSource.HOMO_SAPIENS;
 
@@ -573,7 +577,7 @@ public class SessionServiceImpl implements SessionService {
                     q = Question.builder()
                             .session(savedSession)
                             .content(textContent)
-                            .difficulty(QuestionDifficulty.UNCLASSIFIED)
+                            .difficulty(Objects.requireNonNullElse(qDto.difficulty(), QuestionDifficulty.UNCLASSIFIED))
                             .status(QuestionStatus.PENDING)
                             .options(qDto.options())
                             .explanation(qDto.explanation())

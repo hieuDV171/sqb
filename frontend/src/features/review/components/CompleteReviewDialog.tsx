@@ -23,7 +23,7 @@ export function CompleteReviewDialog({ mode, pendingCount, isRefreshing, isSubmi
           </AlertDialog.Title>
           <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
             {approve
-              ? `${pendingCount} câu còn chờ sẽ được đánh dấu phê duyệt. Bạn vẫn có thể đổi quyết định trước khi chốt phiên.`
+              ? `${pendingCount} câu còn chờ sẽ được phê duyệt với độ khó đang hiển thị, kể cả câu chưa phân loại. Bạn vẫn có thể biên tập trước khi chốt phiên.`
               : pendingCount > 0
                 ? `${pendingCount} câu còn chờ sẽ tự động bị từ chối. Sau khi chốt, kết quả được khóa và điểm thưởng được tính theo số câu đã duyệt.`
                 : 'Sau khi chốt, kết quả được khóa và điểm thưởng được tính theo số câu đã duyệt.'}
