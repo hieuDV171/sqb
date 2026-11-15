@@ -162,6 +162,8 @@ public class ExamServiceImpl implements ExamService {
 
             examCourseClasses.add(ExamCourseClass.builder()
                     .id(id)
+                    .exam(savedExam)
+                    .courseClass(courseClass)
                     .examCode(subject.getId() + "_" + courseClass.getId() + "_" + savedExam.getTitle() + "_"
                             + savedExam.getId())
                     .build());

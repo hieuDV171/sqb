@@ -17,7 +17,8 @@ FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
 # Tạo user bảo mật và tạo sẵn thư mục logs với quyền sở hữu cho sqbuser
-RUN addgroup -S sqbgroup && adduser -S sqbuser -G sqbgroup && \
+RUN apk add --no-cache font-dejavu && \
+    addgroup -S sqbgroup && adduser -S sqbuser -G sqbgroup && \
     mkdir -p /app/logs && \
     chown -R sqbuser:sqbgroup /app
 

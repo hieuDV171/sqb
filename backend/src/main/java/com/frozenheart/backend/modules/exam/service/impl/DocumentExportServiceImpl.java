@@ -373,8 +373,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     }
 
     private byte[] generateQuestionsPdf(List<Question> questions, boolean includeAnswer) {
-        try {
-            InputStream templateStream = getClass().getResourceAsStream("/templates/reports/questions_template.jrxml");
+        try (InputStream templateStream = getClass().getResourceAsStream("/templates/reports/questions_template.jrxml")) {
             if (templateStream == null) {
                 throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
                         "Không tìm thấy file mẫu questions_template.jrxml trong resources");
@@ -448,8 +447,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     }
 
     private byte[] generateExamPdf(Exam exam, boolean includeAnswerKey) {
-        try {
-            InputStream templateStream = getClass().getResourceAsStream("/templates/reports/exam_template.jrxml");
+        try (InputStream templateStream = getClass().getResourceAsStream("/templates/reports/exam_template.jrxml")) {
             if (templateStream == null) {
                 throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
                         "Không tìm thấy file mẫu exam_template.jrxml trong resources");
