@@ -2,6 +2,9 @@
 .vscode
 .env
 .env.prod
+/.deploy-images/
+/.deploy-staging/
+/.deploy-tools/
 .env.local
 *.log
 .agents

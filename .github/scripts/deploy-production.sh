@@ -2,20 +2,24 @@
 set -euo pipefail
 
 target=$DEPLOY_TARGET
-stage=$DEPLOY_STAGING
+stage=${DEPLOY_STAGING:-}
 compose_file=docker-compose.prod.yml
 image_dir=.deploy-images
+tools_dir=.deploy-tools
+env_snapshot=''
 backend_image=${DEPLOY_BACKEND_IMAGE:-}
 sidecar_image=${DEPLOY_SIDECAR_IMAGE:-}
 
-# Each workflow uploads into its own staging directory.
-if [[ $stage =~ ^/opt/sqb/\.deploy-staging/[0-9]+-[0-9]+$ ]]; then
-  cleanup_staging() {
-    rm -f -- "$stage/.github/scripts/deploy-production.sh" "$stage/docker-compose.prod.yml" || true
-    rmdir -- "$stage/.github/scripts" "$stage/.github" "$stage" 2>/dev/null || true
-  }
-  trap cleanup_staging EXIT
-fi
+cleanup() {
+  if [[ -n $env_snapshot ]]; then rm -f -- "$env_snapshot"; fi
+  # Each workflow uploads into its own staging directory.
+  if [[ $stage =~ ^/opt/sqb/\.deploy-staging/[0-9]+-[0-9]+$ ]]; then
+    rm -f -- "$stage/.github/scripts/deploy-production.sh" "$stage/docker-compose.prod.yml" \
+      "$stage/.github/deploy/sqb-production-env@.path" "$stage/.github/deploy/sqb-production-env@.service" || true
+    rmdir -- "$stage/.github/scripts" "$stage/.github/deploy" "$stage/.github" "$stage" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
 
 if [[ ! -f .env.prod ]]; then
   echo 'Missing /opt/sqb/.env.prod' >&2
@@ -50,12 +54,13 @@ case "$target" in
       docker pull "$sidecar_image"
     fi
     ;;
+  env) ;;
   *) echo 'Unknown deployment target' >&2; exit 1 ;;
 esac
 
 # Separate app services may deploy concurrently. A stack update runs exclusively.
 exec 9>"$image_dir/stack.lock"
-if [[ $target == stack ]]; then
+if [[ $target == stack || $target == env ]]; then
   flock -x -w 600 9
 else
   flock -s -w 600 9
@@ -70,13 +75,28 @@ elif [[ ! -f $compose_file ]]; then
   exit 1
 fi
 
+env_snapshot=$(mktemp "$image_dir/env.XXXXXX")
+env_source=.env.prod
+if [[ $target == backend || $target == ai-sidecar || ${DEPLOY_USE_APPLIED_ENV:-false} == true ]]; then
+  if [[ -f $image_dir/applied.env ]]; then env_source="$image_dir/applied.env"; fi
+fi
+cp -- "$env_source" "$env_snapshot"
+compose_env_file=$env_snapshot
+
 compose() {
   local flags=() file
   for file in "$image_dir/backend.env" "$image_dir/ai-sidecar.env"; do
     if [[ -f $file ]]; then flags+=(--env-file "$file"); fi
   done
-  docker compose -p sqb --project-directory "$PWD" --env-file .env.prod \
+  docker compose -p sqb --project-directory "$PWD" --env-file "$compose_env_file" \
     "${flags[@]}" -f "$compose_file" "$@"
+}
+
+validate_compose() {
+  if ! compose config --quiet >/dev/null 2>&1; then
+    echo 'Invalid production Compose or environment file.' >&2
+    exit 1
+  fi
 }
 
 deployed_image() {
@@ -140,10 +160,88 @@ wait_ready() {
   return 1
 }
 
+save_applied_env() {
+  local pending
+  pending=$(mktemp "$image_dir/applied.XXXXXX")
+  cp -- "$env_snapshot" "$pending"
+  mv -f -- "$pending" "$image_dir/applied.env"
+}
+
+restore_apps() {
+  local service
+  for service in "$@"; do
+    if compose up -d --no-deps --no-build --pull never "$service" && wait_ready "$service"; then
+      echo "Restored the last applied configuration for $service."
+    else
+      echo "Could not restore the last applied configuration for $service." >&2
+    fi
+  done
+}
+
+changed_env_services() {
+  local hashes previous_hashes service hash
+  local -A previous=()
+  if [[ ! -f $image_dir/applied.env ]]; then
+    echo 'No applied environment snapshot. Deploy the complete production stack first.' >&2
+    return 1
+  fi
+
+  local compose_env_file="$image_dir/applied.env"
+  previous_hashes=$(compose config --hash '*' 2>/dev/null) || previous_hashes=''
+  compose_env_file=$env_snapshot
+  if ! hashes=$(compose config --hash '*' 2>/dev/null) || [[ -z $hashes || -z $previous_hashes ]]; then
+    echo 'Could not compare production service configurations.' >&2
+    return 1
+  fi
+
+  while read -r service hash; do
+    previous[$service]=$hash
+  done <<< "$previous_hashes"
+
+  while read -r service hash; do
+    if [[ $hash != "${previous[$service]:-}" ]]; then printf '%s\n' "$service"; fi
+  done <<< "$hashes"
+}
+
+apply_runtime_env() {
+  local affected service
+  local -a attempted=()
+  affected=$(changed_env_services) || return 1
+
+  while IFS= read -r service; do
+    case "$service" in
+      backend|ai-sidecar|'') ;;
+      *) echo "Environment changes affect $service. Apply them in a coordinated Stack deployment." >&2; return 1 ;;
+    esac
+  done <<< "$affected"
+
+  for service in ai-sidecar backend; do
+    if ! grep -Fxq "$service" <<< "$affected"; then continue; fi
+    attempted+=("$service")
+    if compose up -d --no-deps --no-build --pull never "$service" && wait_ready "$service"; then continue; fi
+
+    echo "Failed to apply the new environment to $service." >&2
+    compose_env_file="$image_dir/applied.env"
+    restore_apps "${attempted[@]}"
+    return 1
+  done
+
+  save_applied_env
+}
+
+install_deploy_tools() {
+  install -d -- "$tools_dir"
+  install -m 0644 -- "$stage/.github/deploy/sqb-production-env@.path" \
+    "$stage/.github/deploy/sqb-production-env@.service" "$tools_dir/"
+  install -m 0755 -- "$stage/.github/scripts/deploy-production.sh" "$tools_dir/deploy-production.sh.pending"
+  mv -f -- "$tools_dir/deploy-production.sh.pending" "$tools_dir/deploy-production.sh"
+}
+
 case "$target" in
   backend)
     record_existing_image backend BACKEND_IMAGE
     export BACKEND_IMAGE="$backend_image"
+    validate_compose
     compose up -d --no-deps --pull never backend
     wait_ready backend
     record_image backend BACKEND_IMAGE "$backend_image"
@@ -151,17 +249,32 @@ case "$target" in
   ai-sidecar)
     record_existing_image ai-sidecar AI_SIDECAR_IMAGE
     export AI_SIDECAR_IMAGE="$sidecar_image"
+    validate_compose
     compose up -d --no-deps --pull never ai-sidecar
     wait_ready ai-sidecar
     record_image ai-sidecar AI_SIDECAR_IMAGE "$sidecar_image"
     ;;
+  env)
+    backend_image=$(last_ready_image backend BACKEND_IMAGE)
+    sidecar_image=$(last_ready_image ai-sidecar AI_SIDECAR_IMAGE)
+    if [[ -z $backend_image || -z $sidecar_image ]]; then
+      echo 'No installed application images. Deploy the production stack first.' >&2
+      exit 1
+    fi
+    export BACKEND_IMAGE="$backend_image" AI_SIDECAR_IMAGE="$sidecar_image"
+    validate_compose
+    apply_runtime_env
+    ;;
   stack)
     record_existing_image backend BACKEND_IMAGE
     record_existing_image ai-sidecar AI_SIDECAR_IMAGE
-    if [[ -z $backend_image ]]; then backend_image=$(last_ready_image backend BACKEND_IMAGE); fi
-    if [[ -z $sidecar_image ]]; then sidecar_image=$(last_ready_image ai-sidecar AI_SIDECAR_IMAGE); fi
+    previous_backend=$(last_ready_image backend BACKEND_IMAGE)
+    previous_sidecar=$(last_ready_image ai-sidecar AI_SIDECAR_IMAGE)
+    backend_image=${backend_image:-$previous_backend}
+    sidecar_image=${sidecar_image:-$previous_sidecar}
     if [[ -n $backend_image ]]; then export BACKEND_IMAGE="$backend_image"; fi
     if [[ -n $sidecar_image ]]; then export AI_SIDECAR_IMAGE="$sidecar_image"; fi
+    validate_compose
 
     available_services=$(compose config --services)
     services=$available_services
@@ -187,6 +300,15 @@ case "$target" in
       echo 'Include ai-sidecar when specifying a sidecar image.' >&2
       exit 1
     fi
+    if [[ -n ${DEPLOY_SERVICES:-} && $env_source == .env.prod && -f $image_dir/applied.env ]]; then
+      affected=$(changed_env_services)
+      while IFS= read -r service; do
+        if [[ -n $service ]] && ! grep -Fxq "$service" <<< "$services"; then
+          echo "Include $service when applying the pending environment changes." >&2
+          exit 1
+        fi
+      done <<< "$affected"
+    fi
     infrastructure=()
     while IFS= read -r service; do
       case "$service" in
@@ -195,23 +317,31 @@ case "$target" in
       esac
     done <<< "$services"
     if (( ${#infrastructure[@]} > 0 )); then
-      compose up -d --pull missing "${infrastructure[@]}"
+      compose up -d --no-build --pull missing "${infrastructure[@]}"
     fi
+    attempted_apps=()
+    for service in ai-sidecar backend; do
+      if ! grep -Fxq "$service" <<< "$services"; then continue; fi
+      attempted_apps+=("$service")
+      dependency_flags=()
+      if [[ $service == ai-sidecar || -n ${DEPLOY_SERVICES:-} ]]; then dependency_flags+=(--no-deps); fi
+      if ! compose up -d --no-build --pull missing "${dependency_flags[@]}" "$service" || ! wait_ready "$service"; then
+        if [[ -f docker-compose.prod.yml && -n $previous_backend && -n $previous_sidecar ]]; then
+          compose_file=docker-compose.prod.yml
+          if [[ -f $image_dir/applied.env ]]; then compose_env_file="$image_dir/applied.env"; fi
+          export BACKEND_IMAGE="$previous_backend" AI_SIDECAR_IMAGE="$previous_sidecar"
+          restore_apps "${attempted_apps[@]}"
+        fi
+        exit 1
+      fi
+    done
+
     if grep -Fxq ai-sidecar <<< "$services"; then
-      compose up -d --no-deps --pull missing ai-sidecar
-      wait_ready ai-sidecar
       sidecar_image=$(deployed_image ai-sidecar)
       [[ -n $sidecar_image ]]
       record_image ai-sidecar AI_SIDECAR_IMAGE "$sidecar_image"
     fi
-
     if grep -Fxq backend <<< "$services"; then
-      if [[ -n ${DEPLOY_SERVICES:-} ]]; then
-        compose up -d --no-deps --pull missing backend
-      else
-        compose up -d --pull missing backend
-      fi
-      wait_ready backend
       backend_image=$(deployed_image backend)
       [[ -n $backend_image ]]
       record_image backend BACKEND_IMAGE "$backend_image"
@@ -219,6 +349,8 @@ case "$target" in
 
     cp -- "$compose_file" docker-compose.prod.yml.pending
     mv -f -- docker-compose.prod.yml.pending docker-compose.prod.yml
+    install_deploy_tools
+    if [[ -z ${DEPLOY_SERVICES:-} || -f $image_dir/applied.env ]]; then save_applied_env; fi
     ;;
 esac
 

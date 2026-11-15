@@ -12,6 +12,8 @@ on:
         type: string
       sidecar_image:
         type: string
+      use_applied_env:
+        type: boolean
 
 jobs:
   update:
@@ -27,6 +29,7 @@ jobs:
       DEPLOY_SERVICES: ${{ inputs.services }}
       DEPLOY_BACKEND_IMAGE: ${{ inputs.backend_image }}
       DEPLOY_SIDECAR_IMAGE: ${{ inputs.sidecar_image }}
+      DEPLOY_USE_APPLIED_ENV: ${{ inputs.use_applied_env }}
       DEPLOY_STAGING: /opt/sqb/.deploy-staging/${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
@@ -45,7 +48,7 @@ jobs:
           username: ${{ env.SERVER_USER }}
           key: ${{ env.SERVER_SSH_KEY }}
           port: ${{ env.SERVER_PORT }}
-          source: ${{ inputs.target == 'stack' && '.github/scripts/deploy-production.sh,docker-compose.prod.yml' || '.github/scripts/deploy-production.sh' }}
+          source: ${{ inputs.target == 'stack' && '.github/scripts/deploy-production.sh,docker-compose.prod.yml,.github/deploy/sqb-production-env@.path,.github/deploy/sqb-production-env@.service' || '.github/scripts/deploy-production.sh' }}
           target: ${{ env.DEPLOY_STAGING }}
 
       - name: Deploy via SSH
@@ -57,7 +60,7 @@ jobs:
           key: ${{ env.SERVER_SSH_KEY }}
           port: ${{ env.SERVER_PORT }}
           command_timeout: 30m
-          envs: DEPLOY_TARGET,DEPLOY_SERVICES,DEPLOY_BACKEND_IMAGE,DEPLOY_SIDECAR_IMAGE,DEPLOY_STAGING
+          envs: DEPLOY_TARGET,DEPLOY_SERVICES,DEPLOY_BACKEND_IMAGE,DEPLOY_SIDECAR_IMAGE,DEPLOY_USE_APPLIED_ENV,DEPLOY_STAGING
           script: |
             set -e
             cd /opt/sqb

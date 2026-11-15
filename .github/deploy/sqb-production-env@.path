@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch the SQB production environment file
+
+[Path]
+PathChanged=/opt/sqb/.env.prod
+
+[Install]
+WantedBy=multi-user.target

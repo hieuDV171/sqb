@@ -488,7 +488,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 ### [ADR-053] Triển khai Backend và AI sidecar độc lập
 
 - `deploy-backend.yml` và `deploy-ai-sidecar.yml` theo dõi thư mục tương ứng trên `master`, dùng cache Buildx riêng và triển khai image theo digest. Hai workflow cập nhật từng service bằng `up -d --no-deps` trong cùng project Compose `sqb`. VPS kiểm tra readiness của Spring hoặc `/health` của sidecar rồi lưu image đã sẵn sàng trong `/opt/sqb/.deploy-images/`.
-- Dùng workflow thủ công **Deploy SQB Production Stack** khi cài stack lần đầu hoặc đổi `docker-compose.prod.yml`. Để trống `services` để áp dụng toàn stack, hoặc nhập danh sách service bị ảnh hưởng cách nhau bằng dấu cách. Workflow dùng các image đã sẵn sàng nếu không chọn digest khác và áp dụng theo thứ tự hạ tầng, sidecar, BE. Lần đầu chuyển từ cấu hình cũ, script lấy digest từ image của container hiện có. Stack mới hoàn toàn dùng các image trong `.env.prod`. VPS dùng `flock` để cập nhật stack không chồng lên hai deploy service.
+- ADR-065 thay thế trigger push và cách áp dụng Compose của ADR này. Workflow Stack vẫn có chế độ thủ công để khởi tạo hoặc khôi phục. Workflow dùng các image đã sẵn sàng nếu không chọn digest khác và áp dụng theo thứ tự hạ tầng, sidecar, BE. Lần đầu chuyển từ cấu hình cũ, script lấy digest từ image của container hiện có. Stack mới hoàn toàn dùng các image trong `.env.prod`.
 - Khi đổi hợp đồng HTTP, triển khai sidecar hỗ trợ hợp đồng cũ và mới, chuyển BE, rồi bỏ hợp đồng cũ sau khi hết nhu cầu rollback. Có thể chạy từng workflow với tùy chọn `deploy` tắt để xuất image và chọn cặp digest cụ thể trong workflow Stack. Sidecar mới vẫn phải phục vụ BE đang chạy trong lúc chuyển phiên bản.
 
 ### [ADR-054] Tải video bài giảng từng phần trực tiếp lên R2
@@ -553,3 +553,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Dùng cùng một liên kết `mailto:` ở màn đăng nhập, thiết lập tài khoản và header đã đăng nhập. Địa chỉ nhận là thông tin liên hệ công khai. Người dùng tự soạn và gửi thư trong ứng dụng email của mình.
 - Gỡ endpoint `/feedback` cùng mã lỗi, giới hạn Redis và cấu hình email dành riêng cho góp ý. Luồng gửi OTP dùng cấu hình SMTP hiện hành của chức năng xác thực.
+
+### [ADR-065] Tự động áp dụng cấu hình production theo phạm vi thay đổi
+
+- `deploy-stack.yml` phân loại diff trên `master`. Chỉ build image của thư mục thay đổi và giữ các job build độc lập. Compose mới và các digest của cùng lần push đi qua một lượt deploy. Thay đổi Compose riêng dùng các digest đã ghi trên VPS. Hàng đợi tuần tự hóa các lượt phát hành backend và sidecar tự động, còn VPS bảo vệ trạng thái bằng `flock`. Frontend dùng workflow riêng.
+- Mặc định không nhạy cảm nằm trong `docker-compose.prod.yml`. Bí mật ứng dụng và giá trị ghi đè nằm trong `/opt/sqb/.env.prod`. GitHub Actions tiếp tục dùng Secrets cho kết nối SSH. VPS dùng một bản env đã áp dụng có mode `0600` để deploy bằng cấu hình hiện hành và khôi phục khi áp dụng env mới thất bại.
+- `systemd.path` gọi nhánh `env` của script deploy dưới khóa stack. Script so sánh cấu hình Compose trước và sau khi đổi env, dùng image có sẵn và đợi readiness cho các service ứng dụng bị ảnh hưởng. Thay đổi env kéo theo PostgreSQL, Redis hoặc hạ tầng khác cần phối hợp qua Stack. Cài unit lần đầu trên VPS theo README.

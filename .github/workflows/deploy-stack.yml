@@ -1,6 +1,8 @@
 name: Deploy SQB Production Stack
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
     inputs:
       services:
@@ -16,9 +18,85 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: sqb-production-stack
+  queue: max
+
 jobs:
-  deploy:
-    if: github.ref == 'refs/heads/master'
+  changes:
+    if: github.event_name == 'push' && !github.event.deleted
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.detect.outputs.backend }}
+      sidecar: ${{ steps.detect.outputs.sidecar }}
+      stack: ${{ steps.detect.outputs.stack }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect affected production components
+        id: detect
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: bash .github/scripts/production-changes.sh "$BEFORE" "$GITHUB_SHA"
+
+  build-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-production-image.yml
+    with:
+      service: backend
+
+  build-sidecar:
+    needs: changes
+    if: needs.changes.outputs.sidecar == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-production-image.yml
+    with:
+      service: ai-sidecar
+
+  deploy-backend:
+    needs: [changes, build-backend]
+    if: needs.changes.outputs.stack == 'false' && needs.changes.outputs.sidecar == 'false' && needs.build-backend.result == 'success'
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      target: backend
+      backend_image: ${{ needs.build-backend.outputs.image }}
+    secrets: inherit
+
+  deploy-sidecar:
+    needs: [changes, build-sidecar]
+    if: needs.changes.outputs.stack == 'false' && needs.changes.outputs.backend == 'false' && needs.build-sidecar.result == 'success'
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      target: ai-sidecar
+      sidecar_image: ${{ needs.build-sidecar.outputs.image }}
+    secrets: inherit
+
+  deploy-stack:
+    needs: [changes, build-backend, build-sidecar]
+    if: >-
+      ${{ !cancelled() && needs.changes.result == 'success' &&
+      (needs.changes.outputs.stack == 'true' ||
+       (needs.changes.outputs.backend == 'true' && needs.changes.outputs.sidecar == 'true')) &&
+      (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
+      (needs.build-sidecar.result == 'success' || needs.build-sidecar.result == 'skipped') }}
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      target: stack
+      services: ${{ needs.changes.outputs.stack == 'false' && 'ai-sidecar backend' || '' }}
+      backend_image: ${{ needs.build-backend.outputs.image }}
+      sidecar_image: ${{ needs.build-sidecar.outputs.image }}
+      use_applied_env: true
+    secrets: inherit
+
+  deploy-manual:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     uses: ./.github/workflows/deploy-production.yml
     with:
       target: stack

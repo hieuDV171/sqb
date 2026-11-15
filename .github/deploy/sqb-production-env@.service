@@ -1,0 +1,12 @@
+[Unit]
+Description=Apply changes to the SQB production environment
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=%i
+WorkingDirectory=/opt/sqb
+Environment=DEPLOY_TARGET=env
+ExecStart=/usr/bin/bash /opt/sqb/.deploy-tools/deploy-production.sh
+TimeoutStartSec=1h
