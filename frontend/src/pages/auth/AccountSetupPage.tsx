@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { AlertCircle, Check, Eye, EyeOff, KeyRound, LogOut, MailCheck, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/common/BrandMark';
+import { FeedbackButton } from '@/features/feedback/components/FeedbackButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -92,7 +93,7 @@ export function AccountSetupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-background px-4 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pt-10">
       <div className="mx-auto w-full max-w-5xl">
         <header className="flex items-center justify-between gap-4">
           <BrandMark />
@@ -179,6 +180,7 @@ export function AccountSetupPage() {
           </Card>
         </div>
       </div>
+      <FeedbackButton floating />
     </main>
   );
 }

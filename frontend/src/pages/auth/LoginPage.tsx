@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandMark } from '@/components/common/BrandMark';
+import { FeedbackButton } from '@/features/feedback/components/FeedbackButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -271,6 +272,7 @@ export function LoginPage() {
         </section>
       </div>
 
+      <FeedbackButton floating />
       <AccountHelpDialog open={showHelpDialog} onClose={() => setShowHelpDialog(false)} />
     </main>
   );

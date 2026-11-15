@@ -545,5 +545,11 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 ### [ADR-063] Gửi góp ý về web SQB qua SMTP
 
+- **Trạng thái:** Đã được thay thế bởi ADR-064.
 - Nút Góp ý trong header của ứng dụng gọi `POST /feedback` bằng phiên đăng nhập thông thường. Backend dùng SMTP hiện có và lấy địa chỉ nhận từ `FEEDBACK_RECIPIENT_EMAIL`. Phản hồi thành công sau khi SMTP chấp nhận thư. Email dạng văn bản chứa nội dung, ID tài khoản từ JWT và đường dẫn màn hình nếu có. FE chỉ gửi pathname.
 - Redis giữ một lượt gửi mỗi phút theo tài khoản bằng thao tác đặt khóa kèm TTL. API trả 429 trong thời gian chờ và 503 khi thiếu địa chỉ nhận hoặc Redis/SMTP gặp lỗi. Thiết lập timeout cho kết nối SMTP dùng chung. Không thêm schema hay lưu nội dung vào log.
+
+### [ADR-064] Mở ứng dụng email từ nút Góp ý
+
+- Dùng cùng một liên kết `mailto:` ở màn đăng nhập, thiết lập tài khoản và header đã đăng nhập. Địa chỉ nhận là thông tin liên hệ công khai. Người dùng tự soạn và gửi thư trong ứng dụng email của mình.
+- Gỡ endpoint `/feedback` cùng mã lỗi, giới hạn Redis và cấu hình email dành riêng cho góp ý. Luồng gửi OTP dùng cấu hình SMTP hiện hành của chức năng xác thực.
