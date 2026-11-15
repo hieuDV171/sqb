@@ -551,7 +551,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 ### [ADR-064] Mở ứng dụng email từ nút Góp ý
 
-- Dùng cùng một liên kết `mailto:` ở màn đăng nhập, thiết lập tài khoản và header đã đăng nhập. Địa chỉ nhận là thông tin liên hệ công khai. Người dùng tự soạn và gửi thư trong ứng dụng email của mình.
+- Dùng một liên kết `mailto:` toàn ứng dụng dưới dạng nút nổi ở góc dưới bên phải. Địa chỉ nhận là thông tin liên hệ công khai. Người dùng tự soạn và gửi thư trong ứng dụng email của mình.
 - Gỡ endpoint `/feedback` cùng mã lỗi, giới hạn Redis và cấu hình email dành riêng cho góp ý. Luồng gửi OTP dùng cấu hình SMTP hiện hành của chức năng xác thực.
 
 ### [ADR-065] Tự động áp dụng cấu hình production theo phạm vi thay đổi

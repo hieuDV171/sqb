@@ -21,7 +21,6 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { BrandMark } from '@/components/common/BrandMark';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
-import { FeedbackButton } from '@/features/feedback/components/FeedbackButton';
 import { NotificationDropdown } from '@/features/notification';
 import { GlobalSearchModal } from '@/features/search';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -175,8 +174,6 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
             >
               {theme === 'dark' ? <Sun className="size-5 text-reward" /> : <Moon className="size-5" />}
             </button>
-
-            <FeedbackButton />
 
             <div ref={notificationPanelRef} className="relative">
               <button

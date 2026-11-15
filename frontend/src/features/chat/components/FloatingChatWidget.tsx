@@ -34,7 +34,7 @@ export function FloatingChatWidget() {
   };
 
   return (
-    <div className="pointer-events-none fixed right-4 bottom-3 z-40 hidden max-w-[calc(100vw-2rem)] items-end gap-3 md:flex">
+    <div className="pointer-events-none fixed right-[calc(var(--app-floating-right)+var(--app-feedback-size)+0.75rem)] bottom-3 left-4 z-40 hidden items-end justify-end gap-3 md:flex">
       {openFloatingChats.map((convId) => {
         const isMinimized = minimizedFloatingChats.includes(convId);
         const conv = findConversation(convId);

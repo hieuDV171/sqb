@@ -108,7 +108,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
-        <main className="min-w-0 flex-1 overflow-x-hidden pb-[calc(var(--app-mobile-nav-height)+env(safe-area-inset-bottom)+var(--space-4))] md:pb-0">
+        <main className="min-w-0 flex-1 overflow-x-hidden pb-[calc(var(--app-mobile-nav-height)+env(safe-area-inset-bottom)+var(--space-4)+var(--app-feedback-size))] md:pb-0">
           <div className="mx-auto w-full max-w-[var(--app-content-max-width)] px-4 py-5 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
             {children ? children : <Outlet />}
           </div>

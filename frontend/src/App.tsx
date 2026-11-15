@@ -36,6 +36,7 @@ import { OnboardingRoute } from "./components/routing/OnboardingRoute";
 import { AccountSetupPage } from "./pages/auth/AccountSetupPage";
 import { RoleGuard } from "./components/routing/RoleGuard";
 import { GlobalToastContainer } from "./components/ui/GlobalToastContainer";
+import { FeedbackButton } from "./features/feedback/components/FeedbackButton";
 import { useAuthStore } from "./stores/useAuthStore";
 
 export default function App() {
@@ -117,6 +118,7 @@ export default function App() {
         {/* 404 Catch-all */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <FeedbackButton />
     </BrowserRouter>
   );
 }
