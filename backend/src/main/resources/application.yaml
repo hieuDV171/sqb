@@ -49,6 +49,9 @@ spring:
       mail:
         smtp:
           auth: true
+          connectiontimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
           starttls:
             enable: true
 
@@ -91,6 +94,8 @@ r2:
   lecture-video-max-file-size: ${LECTURE_VIDEO_MAX_FILE_SIZE:2GB}
 
 app:
+  feedback:
+    recipient: ${FEEDBACK_RECIPIENT_EMAIL:}
   admin:
     username: ${ADMIN_USERNAME}
     password: ${ADMIN_PASSWORD}
