@@ -530,3 +530,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Lưu PDF và Excel dưới `exports/exams/` và `exports/questions/` trong bucket `R2_REPORT_EVIDENCE_BUCKET` (`sqb-secret` trên production). Cả tra cache, ghi object và ký URL tải đều dùng bucket này. Backend từ chối xuất nếu cấu hình bị thiếu hoặc trùng `R2_BUCKET`.
 - Dùng đường dẫn riêng với bằng chứng báo cáo. Tệp xuất mới có `Cache-Control: private, no-store`. Giữ thời hạn URL ký hiện hành và xác nhận quyền trước khi truy cập kho.
+
+### [ADR-061] Phiên bản cache và cách tải tệp xuất học thuật
+
+- Mẫu PDF và Excel mới dùng nhánh `v2/` bên dưới các tiền tố xuất hiện hành. Lần xuất tiếp theo sinh object theo bố cục mới và ghi sẵn `Content-Disposition: attachment` cùng tên tệp. Bản cũ còn trong kho riêng tư và các URL đã cấp chịu thời hạn của chữ ký.
+- Trình duyệt tải trực tiếp từ URL ký. Backend tiếp tục kiểm tra quyền trước khi cấp URL và R2 trả metadata tải xuống từ object.

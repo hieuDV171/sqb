@@ -5,7 +5,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 
@@ -14,7 +16,7 @@ import java.time.Duration;
 public class AiSidecarConfig {
 
     @Bean
-    public RestClient aiSidecarRestClient(AiSidecarProperties properties) {
+    public RestClient aiSidecarRestClient(AiSidecarProperties properties, JsonMapper jsonMapper) {
         String baseUrl = properties.getUrl();
         if (baseUrl == null || baseUrl.isBlank()) {
             baseUrl = "http://localhost:8000";
@@ -28,6 +30,8 @@ public class AiSidecarConfig {
         return RestClient.builder()
                 .baseUrl(baseUrl)
                 .requestFactory(requestFactory)
+                .configureMessageConverters(converters ->
+                        converters.withJsonConverter(new JacksonJsonHttpMessageConverter(jsonMapper)))
                 .build();
     }
 }

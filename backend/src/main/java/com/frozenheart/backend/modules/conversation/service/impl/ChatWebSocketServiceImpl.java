@@ -244,7 +244,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
     @Override
     @Transactional(readOnly = true)
     public void handleTyping(JwtPayload session, TypingWsRequestDto request) {
-        if (request == null || request.conversationId() == null) {
+        if (request == null || request.conversationId() == null || request.typing() == null) {
             return;
         }
         Long currentUserId = session.getUserId();

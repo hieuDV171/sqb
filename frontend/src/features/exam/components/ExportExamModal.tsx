@@ -38,14 +38,14 @@ export function ExportExamModal({ examId, examTitle, onClose }: ExportExamModalP
             )}
             <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-input px-3 py-2 text-sm">
               <input type="checkbox" checked={includeAnswerKey} onChange={(event) => setIncludeAnswerKey(event.target.checked)} className="size-4 shrink-0 accent-academic" />
-              Kèm bảng đáp án và lời giải
+              Kèm đáp án
             </label>
           </fieldset>
           {exportExam.isError && <p role="alert" className="text-sm text-destructive">{exportExam.error.message || 'Không thể xuất đề thi.'}</p>}
           {downloadUrl && (
             <p role="status" className="text-sm text-success">
               Tệp đã sẵn sàng.{' '}
-              <a href={downloadUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">Tải tệp</a>
+              <a href={downloadUrl} download referrerPolicy="no-referrer" className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">Tải lại</a>
             </p>
           )}
           {exportExam.isSuccess && !downloadUrl && <p role="alert" className="text-sm text-destructive">Không nhận được liên kết tải tệp.</p>}

@@ -76,7 +76,7 @@ export function useExportExam() {
       examId: number;
       params?: ExportExamParams;
     }) => examService.exportExam(examId, params),
-    onSuccess: openExport,
+    onSuccess: downloadExport,
   });
 }
 
@@ -84,12 +84,18 @@ export function useExportQuestions() {
   return useMutation({
     mutationFn: (params: ExportQuestionsParams) =>
       examService.exportQuestions(params),
-    onSuccess: openExport,
+    onSuccess: downloadExport,
   });
 }
 
-function openExport(response: { data: { downloadUrl: string } }) {
-  if (response.data?.downloadUrl) {
-    window.open(response.data.downloadUrl, '_blank', 'noopener,noreferrer');
-  }
+function downloadExport(response: { data: { downloadUrl: string } }) {
+  if (!response.data?.downloadUrl) return;
+
+  const link = document.createElement('a');
+  link.href = response.data.downloadUrl;
+  link.referrerPolicy = 'no-referrer';
+  link.download = '';
+  document.body.append(link);
+  link.click();
+  link.remove();
 }

@@ -78,7 +78,7 @@ export function LecturerQuestionsExportCard() {
               <p role="status" className="min-w-0 grow wrap-anywhere text-sm text-success">
                 Đã xuất {lastExport.fileName || 'tài liệu ôn tập'}.{' '}
                 <a className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
-                  href={lastExport.downloadUrl} target="_blank" rel="noreferrer">
+                  href={lastExport.downloadUrl} download referrerPolicy="no-referrer">
                   Tải lại
                 </a>
               </p>

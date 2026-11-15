@@ -10,6 +10,9 @@ import com.frozenheart.backend.core.entity.session.ExamQuestion;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
+import com.frozenheart.backend.core.entity.session.Session;
+import com.frozenheart.backend.core.entity.session.Subject;
+import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
@@ -23,6 +26,8 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +45,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -61,6 +67,7 @@ class DocumentExportServiceImplTest {
 
     private static final long USER_ID = 7L;
     private static final long SUBJECT_ID = 12L;
+    private static final String EXAM_TITLE = "Đề thi cuối kỳ môn Công nghệ Web và dịch vụ trực tuyến";
 
     @Mock private MinioClient minioClient;
     @Mock private QuestionRepository questionRepository;
@@ -108,28 +115,55 @@ class DocumentExportServiceImplTest {
             when(courseClassRepository.existsByLecturerIdAndSubjectIdAndSemesterActiveTrue(USER_ID, SUBJECT_ID))
                     .thenReturn(true);
         }
+        Question approved = questionWithImages();
+        approved.setStatus(QuestionStatus.APPROVED);
         when(questionRepository.findAllBySubjectIdForExport(SUBJECT_ID)).thenReturn(List.of(
-                Question.builder().content("Câu đã duyệt").status(QuestionStatus.APPROVED).build(),
+                approved,
                 Question.builder().content("Câu chờ duyệt").status(QuestionStatus.PENDING).build(),
                 Question.builder().content("Câu bị từ chối").status(QuestionStatus.REJECTED).build()));
         when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
                 .thenReturn("https://example.test/study-material.xlsx");
 
+        var file = captureUpload();
         var result = service.exportQuestions(SUBJECT_ID, "excel", true);
 
         assertEquals(3, result.getQuestionsCount());
         assertEquals("https://example.test/study-material.xlsx", result.getDownloadUrl());
-        verifyNewPrivateExport("exports/questions/subject_12_ans_true.xlsx");
+        verifyNewPrivateExport("exports/questions/v2/subject_12_ans_true.xlsx", "tai-lieu-on-tap-12.xlsx");
+        try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(file.get()))) {
+            var sheet = workbook.getSheetAt(0);
+            assertEquals("Tài liệu ôn tập", sheet.getRow(0).getCell(0).getStringCellValue());
+            assertTrue(sheet.getPaneInformation().isFreezePane());
+            assertEquals(approved.getContent(), sheet.getRow(4).getCell(1).getStringCellValue());
+            assertTrue(sheet.getRow(4).getCell(2).getStringCellValue().contains("(Đúng)"));
+            assertEquals(approved.getExplanation(), sheet.getRow(4).getCell(3).getStringCellValue());
+            assertEquals("Câu chờ duyệt", sheet.getRow(5).getCell(1).getStringCellValue());
+            assertEquals("Câu bị từ chối", sheet.getRow(6).getCell(1).getStringCellValue());
+            assertEquals(CellType.BLANK, sheet.getRow(5).getCell(3).getCellType());
+        }
         if (role == UserRole.ADMIN) {
             verifyNoInteractions(courseClassRepository);
         }
     }
 
-    @Test
-    void uploadsAndSignsNewExamInPrivateBucket() throws Exception {
-        service.exportExam(Exam.builder().id(19L).build(), "xlsx", false, "A4");
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void rendersSortedExamWorkbookAndSignsItInPrivateBucket(boolean withAnswer) throws Exception {
+        var file = captureUpload();
+        service.exportExam(unsortedExam(questionWithImages()), "xlsx", withAnswer, "A4");
 
-        verifyNewPrivateExport("exports/exams/exam_19_ans_false.xlsx");
+        verifyNewPrivateExport("exports/exams/v2/exam_19_ans_" + withAnswer + ".xlsx", "de-thi-19.xlsx");
+        try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(file.get()))) {
+            var sheet = workbook.getSheetAt(0);
+            assertEquals(EXAM_TITLE, sheet.getRow(0).getCell(0).getStringCellValue());
+            assertTrue(sheet.getPaneInformation().isFreezePane());
+            assertEquals(withAnswer ? 4 : 3, sheet.getRow(3).getLastCellNum());
+            assertEquals(1.0, sheet.getRow(4).getCell(0).getNumericCellValue());
+            assertEquals(2.0, sheet.getRow(5).getCell(0).getNumericCellValue());
+            if (withAnswer) {
+                assertEquals("A", sheet.getRow(4).getCell(3).getStringCellValue());
+            }
+        }
     }
 
     @Test
@@ -139,7 +173,7 @@ class DocumentExportServiceImplTest {
 
         service.exportExam(Exam.builder().id(19L).build(), "pdf", true, "A4");
 
-        String key = "exports/exams/exam_19_ans_true.pdf";
+        String key = "exports/exams/v2/exam_19_ans_true.pdf";
         verifyPrivateLookupAndLink(key);
         verify(minioClient, never()).putObject(any(PutObjectArgs.class));
         verifyNoInteractions(mediaService);
@@ -148,20 +182,15 @@ class DocumentExportServiceImplTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void rendersExamPdfWithVietnameseTextAndImages(boolean withAnswer) throws Exception {
-        Question question = questionWithImages();
-        var exam = Exam.builder().id(19L).title("Đề thi cuối kỳ")
-                .examQuestion(ExamQuestion.builder().displayOrder(1).question(question)
-                        .optionsSnapshot(question.getOptions()).build())
-                .build();
-        var pdf = capturePdfUpload();
+        var pdf = captureUpload();
 
-        service.exportExam(exam, "pdf", withAnswer, "A4");
+        service.exportExam(unsortedExam(questionWithImages()), "pdf", withAnswer, "A4");
 
-        verifyNewPrivateExport("exports/exams/exam_19_ans_" + withAnswer + ".pdf");
+        verifyNewPrivateExport("exports/exams/v2/exam_19_ans_" + withAnswer + ".pdf", "de-thi-19.pdf");
         String text = readPdfWithImages(pdf.get(), 1);
-        assertTrue(text.contains("Đề thi cuối kỳ"), text);
+        assertTrue(text.contains("Đề thi cuối kỳ môn Công nghệ Web"), text);
+        assertTrue(text.contains("Câu 1") && text.contains("Câu 2") && text.indexOf("Câu 1") < text.indexOf("Câu 2"), text);
         assertEquals(withAnswer, text.contains("Đáp án đúng: A"), text);
-        assertEquals(withAnswer, text.contains("[Đáp án đúng]"), text);
     }
 
     @ParameterizedTest
@@ -172,16 +201,28 @@ class DocumentExportServiceImplTest {
                 .thenReturn(true);
         when(questionRepository.findAllBySubjectIdForExport(SUBJECT_ID))
                 .thenReturn(Collections.nCopies(5, questionWithImages()));
-        var pdf = capturePdfUpload();
+        var pdf = captureUpload();
 
         service.exportQuestions(SUBJECT_ID, "pdf", withAnswer);
 
-        verifyNewPrivateExport("exports/questions/subject_12_ans_" + withAnswer + ".pdf");
+        verifyNewPrivateExport("exports/questions/v2/subject_12_ans_" + withAnswer + ".pdf", "tai-lieu-on-tap-12.pdf");
         String text = readPdfWithImages(pdf.get(), 2);
-        assertTrue(text.contains("DANH SÁCH CÂU HỎI ÔN TẬP"), text);
-        assertTrue(text.contains("Câu 5: Giao thức nào"), text);
+        assertTrue(text.contains("Tài liệu ôn tập"), text);
+        assertTrue(text.contains("Câu 5"), text);
         assertEquals(withAnswer, text.contains("Lời giải: Trình duyệt đọc phản hồi"), text);
         assertEquals(withAnswer, text.contains("[Đáp án đúng]"), text);
+    }
+
+    private Exam unsortedExam(Question first) {
+        var second = Question.builder()
+                .content("Cơ chế ghép kênh cho phép trình duyệt thực hiện nhiều yêu cầu và nhận nhiều phản hồi trên cùng một kết nối TCP. Cơ chế này mang lại lợi ích gì so với HTTP/1.1?")
+                .options(first.getOptions()).build();
+        return Exam.builder().id(19L).title(EXAM_TITLE)
+                .subject(first.getSession().getCourseClass().getSubject())
+                .examQuestion(ExamQuestion.builder().displayOrder(2).question(second).build())
+                .examQuestion(ExamQuestion.builder().displayOrder(1).question(first)
+                        .optionsSnapshot(first.getOptions()).build())
+                .build();
     }
 
     @ParameterizedTest
@@ -211,6 +252,8 @@ class DocumentExportServiceImplTest {
         otherOption.setIsCorrect(false);
         return Question.builder().content("Giao thức nào mã hóa dữ liệu khi truyền qua mạng?")
                 .explanation("Trình duyệt đọc phản hồi")
+                .session(Session.builder().courseClass(CourseClass.builder()
+                        .subject(Subject.builder().name("Công nghệ Web và dịch vụ trực tuyến").build()).build()).build())
                 .ownedMedia(QuestionMedia.builder().mediaTarget(MediaTarget.CONTENT)
                         .url(createImage("question.png", Color.ORANGE)).build())
                 .options(List.of(option, otherOption)).build();
@@ -227,7 +270,7 @@ class DocumentExportServiceImplTest {
         return path.toUri().toString();
     }
 
-    private AtomicReference<byte[]> capturePdfUpload() throws Exception {
+    private AtomicReference<byte[]> captureUpload() throws Exception {
         var pdf = new AtomicReference<byte[]>();
         when(minioClient.putObject(any(PutObjectArgs.class))).thenAnswer(invocation -> {
             PutObjectArgs args = invocation.getArgument(0);
@@ -258,9 +301,12 @@ class DocumentExportServiceImplTest {
         }
     }
 
-    private void verifyNewPrivateExport(String key) throws Exception {
+    private void verifyNewPrivateExport(String key, String fileName) throws Exception {
         verifyPrivateLookupAndLink(key);
-        verify(minioClient).putObject(argThat(args -> args.bucket().equals("sqb-secret") && args.object().equals(key)));
+        verify(minioClient).putObject(argThat(args -> args.bucket().equals("sqb-secret") && args.object().equals(key)
+                && args.headers().entries().stream().anyMatch(header ->
+                        header.getKey().equalsIgnoreCase("Content-Disposition")
+                                && header.getValue().equals("attachment; filename=\"" + fileName + "\""))));
         verify(mediaService).confirmMediaPermanent(List.of(key));
     }
 

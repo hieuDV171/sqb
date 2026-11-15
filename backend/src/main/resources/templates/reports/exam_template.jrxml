@@ -1,21 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jasperReport name="exam_template" pageWidth="595" pageHeight="842" columnWidth="555"
-              leftMargin="20" rightMargin="20" topMargin="24" bottomMargin="24">
-    <style name="Body" default="true" fontName="DejaVu Sans" fontSize="10.0"/>
+<jasperReport name="exam_template" pageWidth="595" pageHeight="842" columnWidth="511"
+              leftMargin="42" rightMargin="42" topMargin="36" bottomMargin="30"
+              whenNoDataType="AllSectionsNoDetail">
+    <style name="Body" default="true" fontName="DejaVu Sans" fontSize="10.0" forecolor="#1B2938"/>
+    <style name="Category" style="Body" fontSize="9.0" forecolor="#1B344F" bold="true"/>
+    <style name="Title" style="Body" fontSize="20.0" forecolor="#16273A" bold="true"/>
+    <style name="Question" style="Body" fontSize="10.5" bold="true"/>
+    <style name="Footer" style="Body" fontSize="8.0" forecolor="#526579"/>
 
     <dataset name="Images">
         <field name="_THIS" class="java.lang.String"/>
     </dataset>
     <dataset name="Options">
-        <parameter name="INCLUDE_ANSWER" class="java.lang.Boolean"/>
         <field name="key" class="java.lang.String"/>
         <field name="text" class="java.lang.String"/>
         <field name="mediaUrl" class="java.lang.String"/>
-        <field name="isCorrect" class="java.lang.Boolean"/>
     </dataset>
 
     <parameter name="EXAM_TITLE" class="java.lang.String"/>
-    <parameter name="SUBJECT_NAME" class="java.lang.String"/>
+    <parameter name="REPORT_META" class="java.lang.String"/>
     <parameter name="INCLUDE_ANSWER" class="java.lang.Boolean"/>
 
     <field name="order" class="java.lang.Integer"/>
@@ -24,60 +27,70 @@
     <field name="options" class="java.util.List"/>
     <field name="correctAnswer" class="java.lang.String"/>
 
-    <title height="54" splitType="Stretch">
-        <element kind="textField" x="0" y="0" width="555" height="28" textAdjust="StretchHeight"
-                 hTextAlign="Center" bold="true" fontSize="16.0">
+    <title height="109" splitType="Stretch">
+        <element kind="line" x="0" y="0" width="511" height="1" forecolor="#1B344F">
+            <pen lineWidth="2.5" lineColor="#1B344F"/>
+        </element>
+        <element kind="staticText" style="Category" x="0" y="13" width="511" height="15">
+            <text>ĐỀ THI TRẮC NGHIỆM</text>
+        </element>
+        <element kind="textField" style="Title" x="0" y="30" width="511" height="29" textAdjust="StretchHeight">
             <expression><![CDATA[$P{EXAM_TITLE}]]></expression>
         </element>
-        <element kind="textField" x="0" y="30" width="555" height="18"
-                 positionType="Float" hTextAlign="Center" fontSize="11.0" textAdjust="StretchHeight">
-            <expression><![CDATA["Môn học: " + $P{SUBJECT_NAME}]]></expression>
+        <element kind="textField" x="0" y="66" width="511" height="25" textAdjust="StretchHeight"
+                 positionType="Float" mode="Opaque" backcolor="#EAF1F8" forecolor="#1B344F" vTextAlign="Middle">
+            <box leftPadding="9" rightPadding="9" topPadding="4" bottomPadding="4"/>
+            <expression><![CDATA[$P{REPORT_META}]]></expression>
         </element>
     </title>
+
     <detail>
-        <band height="46" splitType="Stretch">
-            <element kind="textField" x="0" y="0" width="555" height="19" bold="true"
-                     fontSize="11.0" textAdjust="StretchHeight">
-                <expression><![CDATA["Câu " + $F{order} + ": " + $F{questionContent}]]></expression>
+        <band height="70" splitType="Prevent">
+            <element kind="line" x="0" y="0" width="511" height="1">
+                <pen lineWidth="0.6" lineColor="#C9D7E6"/>
             </element>
-            <element kind="component" x="20" y="20" width="535" height="1"
+            <element kind="textField" style="Category" x="0" y="8" width="49" height="21"
+                     mode="Opaque" backcolor="#EAF1F8" hTextAlign="Center" vTextAlign="Middle">
+                <expression><![CDATA["Câu " + $F{order}]]></expression>
+            </element>
+            <element kind="textField" style="Question" x="63" y="9" width="448" height="18"
+                     textAdjust="StretchHeight">
+                <expression><![CDATA[java.util.Objects.toString($F{questionContent}, "")]]></expression>
+            </element>
+
+            <element kind="component" x="63" y="29" width="448" height="1"
                      positionType="Float" removeLineWhenBlank="true">
                 <component kind="list">
                     <datasetRun subDataset="Images">
                         <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{questionImageUrls})]]></dataSourceExpression>
                     </datasetRun>
-                    <contents height="114" width="535">
-                        <element kind="image" x="0" y="3" width="275" height="108"
+                    <contents height="124" width="448">
+                        <element kind="image" x="0" y="4" width="405" height="114"
                                  scaleImage="RetainShape" hImageAlign="Left" onErrorType="Blank">
                             <expression><![CDATA[$F{_THIS}]]></expression>
                         </element>
                     </contents>
                 </component>
             </element>
-            <element kind="component" x="20" y="22" width="535" height="1" positionType="Float">
+
+            <element kind="component" x="63" y="33" width="448" height="1" positionType="Float">
                 <component kind="list">
                     <datasetRun subDataset="Options">
-                        <parameter name="INCLUDE_ANSWER">
-                            <expression><![CDATA[$P{INCLUDE_ANSWER}]]></expression>
-                        </parameter>
                         <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{options})]]></dataSourceExpression>
                     </datasetRun>
-                    <contents height="19" width="535">
-                        <element kind="textField" x="0" y="0" width="535" height="16" textAdjust="StretchHeight">
-                            <expression><![CDATA[
-                                $F{key} + ". " + java.util.Objects.toString($F{text}, "")
-                                    + (Boolean.TRUE.equals($P{INCLUDE_ANSWER}) && Boolean.TRUE.equals($F{isCorrect}) ? " [Đáp án đúng]" : "")
-                            ]]></expression>
+                    <contents height="20" width="448">
+                        <element kind="textField" x="0" y="0" width="448" height="16" textAdjust="StretchHeight">
+                            <expression><![CDATA[$F{key} + ". " + java.util.Objects.toString($F{text}, "")]]></expression>
                         </element>
-                        <element kind="component" x="15" y="17" width="520" height="1"
+                        <element kind="component" x="18" y="17" width="430" height="1"
                                  positionType="Float" removeLineWhenBlank="true">
                             <component kind="list">
                                 <datasetRun subDataset="Images">
-                                    <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{mediaUrl} == null || $F{mediaUrl}.isBlank()
-                                                    ? java.util.Collections.emptyList() : java.util.Collections.singletonList($F{mediaUrl}))]]></dataSourceExpression>
+                                    <dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource(
+                                        $F{mediaUrl} == null || $F{mediaUrl}.isBlank() ? java.util.List.of() : java.util.List.of($F{mediaUrl}))]]></dataSourceExpression>
                                 </datasetRun>
-                                <contents height="96" width="520">
-                                    <element kind="image" x="0" y="3" width="275" height="90"
+                                <contents height="102" width="430">
+                                    <element kind="image" x="0" y="4" width="385" height="92"
                                              scaleImage="RetainShape" hImageAlign="Left" onErrorType="Blank">
                                         <expression><![CDATA[$F{_THIS}]]></expression>
                                     </element>
@@ -87,16 +100,26 @@
                     </contents>
                 </component>
             </element>
-            <element kind="textField" x="20" y="24" width="535" height="16" positionType="Float"
-                     textAdjust="StretchHeight" removeLineWhenBlank="true" bold="true">
+
+            <element kind="textField" x="63" y="39" width="448" height="22" positionType="Float"
+                     textAdjust="StretchHeight" removeLineWhenBlank="true" mode="Opaque"
+                     backcolor="#F2F6FA" forecolor="#1B344F" bold="true">
+                <box leftPadding="8" rightPadding="8" topPadding="4" bottomPadding="4"/>
                 <printWhenExpression><![CDATA[Boolean.TRUE.equals($P{INCLUDE_ANSWER})
                     && $F{correctAnswer} != null && !$F{correctAnswer}.isBlank()]]></printWhenExpression>
                 <expression><![CDATA["Đáp án đúng: " + $F{correctAnswer}]]></expression>
             </element>
         </band>
     </detail>
-    <pageFooter height="20">
-        <element kind="textField" x="355" y="2" width="200" height="16" hTextAlign="Right" fontSize="9.0">
+
+    <pageFooter height="23">
+        <element kind="line" x="0" y="0" width="511" height="1">
+            <pen lineWidth="0.6" lineColor="#C9D7E6"/>
+        </element>
+        <element kind="staticText" style="Footer" x="0" y="6" width="320" height="15">
+            <text>Đề thi trắc nghiệm</text>
+        </element>
+        <element kind="textField" style="Footer" x="351" y="6" width="160" height="15" hTextAlign="Right">
             <expression><![CDATA["Trang " + $V{PAGE_NUMBER}]]></expression>
         </element>
     </pageFooter>

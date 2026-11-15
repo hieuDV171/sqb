@@ -82,13 +82,18 @@ class ChatTypingStompTest {
             var sender = connect(handler, "sender", senderFrames);
             var receiver = connect(handler, "receiver", receiverFrames);
 
-            for (boolean typing : new boolean[] {true, false}) {
+            for (String payload : List.of(
+                    "{\"conversation_id\":42,\"typing\":true}",
+                    "{\"conversation_id\":42,\"typing\":null}",
+                    "{\"conversation_id\":42}",
+                    "{\"conversation_id\":42,\"typing\":false}",
+                    "{\"conversation_id\":42,\"is_typing\":true}")) {
                 handler.handleMessage(sender, frame("""
                         SEND
                         destination:/app/chat.typing
 
-                        {"conversation_id":42,"typing":%b}
-                        """.formatted(typing).stripTrailing()));
+                        %s
+                        """.formatted(payload).stripTrailing()));
             }
 
             assertTrue(senderFrames.stream().noneMatch(frame -> frame.startsWith("MESSAGE")));

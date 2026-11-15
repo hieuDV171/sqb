@@ -92,20 +92,26 @@ export function ReviewQuestionCard({
         </div>
       )}
       {question.editLog && <p className="text-sm text-muted-foreground">Biên tập gần nhất · {question.editLog.actorName}</p>}
-      {!readOnly && <footer className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
-        <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onRefine(question)}>AI tinh chỉnh</Button>
-        <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onEdit(question)}>
-          <Pencil aria-hidden="true" /> Biên tập
-        </Button>
-        <RejectReasonPopover disabled={disabled} isRejected={rejected}
-          rejectionCode={question.rejectionCode} rejectionReason={question.rejectionReason}
-          onConfirm={(code, reason) => onReject(question.questionId, code, reason)} />
-        {!approved && (
-          <Button className="min-h-11" disabled={disabled} onClick={() => onApprove(question.questionId)}
-            title="Phê duyệt với độ khó đang hiển thị">
-            <CircleCheck aria-hidden="true" /> Phê duyệt
+      {!readOnly && <footer className="space-y-2 border-t border-border pt-3">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" className="min-h-11" disabled={disabled}
+            aria-describedby={`${id}-btprop-note`} onClick={() => onRefine(question)}>AI tinh chỉnh</Button>
+          <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onEdit(question)}>
+            <Pencil aria-hidden="true" /> Biên tập
           </Button>
-        )}
+          <RejectReasonPopover disabled={disabled} isRejected={rejected}
+            rejectionCode={question.rejectionCode} rejectionReason={question.rejectionReason}
+            onConfirm={(code, reason) => onReject(question.questionId, code, reason)} />
+          {!approved && (
+            <Button className="min-h-11" disabled={disabled} onClick={() => onApprove(question.questionId)}
+              title="Phê duyệt với độ khó đang hiển thị">
+              <CircleCheck aria-hidden="true" /> Phê duyệt
+            </Button>
+          )}
+        </div>
+        <p id={`${id}-btprop-note`} className="text-right text-sm text-muted-foreground">
+          Hiện chưa có API key cho AI nên chưa thể kiểm chứng bằng BTProp.
+        </p>
       </footer>}
       <Dialog.Root open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <Dialog.Portal>
