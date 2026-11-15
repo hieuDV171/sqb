@@ -535,3 +535,10 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - Mẫu PDF và Excel mới dùng nhánh `v2/` bên dưới các tiền tố xuất hiện hành. Lần xuất tiếp theo sinh object theo bố cục mới và ghi sẵn `Content-Disposition: attachment` cùng tên tệp. Bản cũ còn trong kho riêng tư và các URL đã cấp chịu thời hạn của chữ ký.
 - Trình duyệt tải trực tiếp từ URL ký. Backend tiếp tục kiểm tra quyền trước khi cấp URL và R2 trả metadata tải xuống từ object.
+
+### [ADR-062] Hạn mức ghi R2 chung cho tài khoản SQB
+
+- `R2StorageQuota` giữ chỗ theo byte trong Redis dưới khóa chung của tài khoản. Giữ chỗ áp dụng cho media tải qua backend, batch presigned PUT, video multipart, bằng chứng báo cáo và tệp PDF/Excel mới. Presigned PUT ràng buộc `Content-Length`. Phiên video giữ chỗ cả video trước khi tạo multipart và trong lúc tải từng phần.
+- Mỗi 5 phút, backend đối soát danh sách object có phân trang ở các jurisdiction đã cấu hình và metrics toàn tài khoản. Redis giữ các lượt ghi mới hoặc đang tải giữa hai lần đối soát. Backend hủy multipart hết hạn trước khi thu hồi giữ chỗ. Link PUT đã hết hạn có thêm 15 phút dành cho lượt tải đang chạy.
+- Mặc định cảnh báo ở 9 GB và từ chối nếu ghi thêm sẽ vượt 9,5 GB. API dùng HTTP `507` và mã `1017 STORAGE_QUOTA_EXCEEDED`. Khi chưa có số liệu, Redis không khả dụng hoặc kết quả đối soát quá 15 phút, API dùng `503` và mã `1018 STORAGE_QUOTA_UNAVAILABLE` cho lượt giữ chỗ mới. Xem, tải xuống và xóa tệp dùng các đường dẫn hiện hành.
+- Để bật, thêm `R2_STORAGE_QUOTA_ENABLED=true`, `R2_ACCOUNT_ID` và `R2_METRICS_API_TOKEN` vào env backend. Dùng Cloudflare API token Bearer có quyền Workers R2 Storage Read trong đúng tài khoản. Thêm các jurisdiction của tài khoản qua `R2_QUOTA_JURISDICTIONS` nếu có bucket ngoài `default`. Token S3 hiện hành dùng cho ghi và hủy upload. Log `R2 quota initialized` xác nhận lần đối soát đầu tiên. Ghi qua Dashboard hoặc công cụ khác nằm ngoài cơ chế giữ chỗ của SQB.

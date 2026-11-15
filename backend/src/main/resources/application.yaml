@@ -81,6 +81,12 @@ r2:
   region: ${R2_REGION:auto}
   public-url: ${R2_PUBLIC_URL}
   report-evidence-bucket: ${R2_REPORT_EVIDENCE_BUCKET:}
+  storage-quota-enabled: ${R2_STORAGE_QUOTA_ENABLED:false}
+  storage-warning-bytes: ${R2_STORAGE_WARNING_BYTES:9000000000}
+  storage-limit-bytes: ${R2_STORAGE_LIMIT_BYTES:9500000000}
+  account-id: ${R2_ACCOUNT_ID:}
+  metrics-api-token: ${R2_METRICS_API_TOKEN:}
+  quota-jurisdictions: ${R2_QUOTA_JURISDICTIONS:default}
   report-evidence-retention-days: ${REPORT_EVIDENCE_RETENTION_DAYS:90}
   lecture-video-max-file-size: ${LECTURE_VIDEO_MAX_FILE_SIZE:2GB}
 

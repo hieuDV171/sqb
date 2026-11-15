@@ -116,6 +116,8 @@ axiosClient.interceptors.response.use(
                 if (message) {
                     toast.warning(message, "Không tìm thấy dữ liệu (404)");
                 }
+            } else if (responseCode === '1017') {
+                toast.warning(message || 'Kho lưu trữ đã gần đầy. Không thể ghi thêm tệp mới.', 'Kho lưu trữ gần đầy');
             } else if (status >= 500) {
                 toast.error(message || "Máy chủ gặp sự cố xử lý. Vui lòng thử lại sau.", "Lỗi hệ thống (500)");
             }

@@ -23,14 +23,23 @@ public final class R2MultipartClient extends MinioAsyncClient {
 
     public String presignPart(String bucket, String key, String uploadId, int number, long size, int expires)
             throws MinioException {
+        return presignSizedPut(bucket, key, size, expires,
+                new Http.QueryParameters("uploadId", uploadId, "partNumber", Integer.toString(number)));
+    }
+
+    public String presignPut(String bucket, String key, long size, int expires) throws MinioException {
+        return presignSizedPut(bucket, key, size, expires, new Http.QueryParameters());
+    }
+
+    private String presignSizedPut(String bucket, String key, long size, int expires, Http.QueryParameters params)
+            throws MinioException {
         var region = getRegion(bucket, null).join();
         var credentials = provider.fetch();
-        var params = new Http.QueryParameters("uploadId", uploadId, "partNumber", Integer.toString(number));
         if (credentials.sessionToken() != null) {
             params.put(Http.Headers.X_AMZ_SECURITY_TOKEN, credentials.sessionToken());
         }
         var url = baseUrl.buildUrl(Http.Method.PUT, bucket, key, region, params);
-        // MinIO's presigner removes Content-Length. Bind each URL to its exact part size.
+        // MinIO's presigner removes Content-Length. Bind the URL to the reserved payload size.
         var request = new Request.Builder().url(url)
                 .header("Host", url.uri().getRawAuthority())
                 .header("Content-Length", Long.toString(size))

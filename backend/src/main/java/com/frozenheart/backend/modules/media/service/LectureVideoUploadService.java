@@ -60,6 +60,7 @@ public class LectureVideoUploadService {
     private final RedisTemplate<String, String> redisTemplate;
     private final RedissonClient redissonClient;
     private final JsonMapper jsonMapper;
+    private final R2StorageQuota storageQuota;
 
     public LectureVideoUpload.Status start(UUID id, LectureVideoUpload.StartRequest request) {
         long ownerId = lecturerId();
@@ -86,13 +87,23 @@ public class LectureVideoUploadService {
             }
 
             String key = OBJECT_PREFIX + id + "/" + UUID.randomUUID() + extension;
-            String uploadId = r2.createMultipartUpload(CreateMultipartUploadArgs.builder()
-                    .bucket(properties.getBucketName()).object(key)
-                    .headers(new Http.Headers("Content-Type", request.contentType()))
-                    .build()).join().result().uploadId();
-            var session = new Session(ownerId, key, uploadId, request.fileName(), request.contentType(),
-                    request.fileSize(), Instant.now().plus(SESSION_TTL).toEpochMilli(), State.UPLOADING);
+            String bucket = properties.getBucketName();
+            long expiresAt = Instant.now().plus(SESSION_TTL).toEpochMilli();
+            storageQuota.reserveMultipart(bucket, key, request.fileSize(), expiresAt, null);
+            String uploadId;
             try {
+                uploadId = r2.createMultipartUpload(CreateMultipartUploadArgs.builder()
+                        .bucket(bucket).object(key)
+                        .headers(new Http.Headers("Content-Type", request.contentType()))
+                        .build()).join().result().uploadId();
+            } catch (RuntimeException failure) {
+                storageQuota.finishMultipart(bucket, key);
+                throw failure;
+            }
+            var session = new Session(ownerId, key, uploadId, request.fileName(), request.contentType(),
+                    request.fileSize(), expiresAt, State.UPLOADING);
+            try {
+                storageQuota.registerMultipart(bucket, key, uploadId);
                 save(id, session);
             } catch (RuntimeException failure) {
                 try {
@@ -119,9 +130,13 @@ public class LectureVideoUploadService {
             if (number < 1 || number > partCount(session.size())) {
                 throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Số thứ tự phần tải không hợp lệ.");
             }
+            reserveExistingUpload(session);
+            int ttl = (int) Math.min(PART_URL_TTL_SECONDS,
+                    (session.expiresAt() - System.currentTimeMillis()) / 1000);
+            if (ttl < 1) throw expired();
             try {
                 String url = r2.presignPart(properties.getBucketName(), session.key(), session.uploadId(), number,
-                        partSize(session.size(), number), PART_URL_TTL_SECONDS);
+                        partSize(session.size(), number), ttl);
                 return new LectureVideoUpload.PartUrl(url);
             } catch (MinioException exception) {
                 throw storageFailure(exception);
@@ -147,6 +162,7 @@ public class LectureVideoUploadService {
                 throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Video còn phần chưa tải xong. Hãy thử tải tiếp.");
             }
 
+            reserveExistingUpload(session);
             // Register before completion so the cleanup job can find objects even if the response is lost.
             trackPending(session.key());
             Part[] manifest = valid.stream()
@@ -281,6 +297,7 @@ public class LectureVideoUploadService {
             }
             throw exception;
         }
+        storageQuota.finishMultipart(properties.getBucketName(), session.key());
         trackPending(session.key());
         save(id, session.ready());
         return media(session);
@@ -329,6 +346,12 @@ public class LectureVideoUploadService {
                 throw exception;
             }
         }
+        storageQuota.finishMultipart(properties.getBucketName(), session.key());
+    }
+
+    private void reserveExistingUpload(Session session) {
+        storageQuota.reserveMultipart(properties.getBucketName(), session.key(), session.size(),
+                session.expiresAt(), session.uploadId());
     }
 
     private void trackPending(String key) {

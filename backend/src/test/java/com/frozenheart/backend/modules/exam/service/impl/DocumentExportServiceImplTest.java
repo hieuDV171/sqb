@@ -17,6 +17,7 @@ import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.R2StorageQuota;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.lowagie.text.pdf.PdfName;
 import com.lowagie.text.pdf.PdfReader;
@@ -83,7 +84,8 @@ class DocumentExportServiceImplTest {
         properties = new R2Properties();
         properties.setBucketName("sqb-public");
         properties.setReportEvidenceBucket("sqb-secret");
-        service = new DocumentExportServiceImpl(minioClient, properties, questionRepository, courseClassRepository, mediaService);
+        var quota = new R2StorageQuota(properties, null, null, minioClient, null, null, null);
+        service = new DocumentExportServiceImpl(minioClient, properties, questionRepository, courseClassRepository, mediaService, quota);
     }
 
     @AfterEach

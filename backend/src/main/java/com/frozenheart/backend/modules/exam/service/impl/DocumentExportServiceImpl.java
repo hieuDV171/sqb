@@ -18,6 +18,7 @@ import com.frozenheart.backend.modules.exam.dto.QuestionReportDto;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.exam.service.DocumentExportService;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.R2StorageQuota;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.Http.Method;
@@ -57,6 +58,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     private final QuestionRepository questionRepository;
     private final CourseClassRepository courseClassRepository;
     private final MediaService mediaService;
+    private final R2StorageQuota storageQuota;
 
     @Override
     @Transactional(readOnly = true)
@@ -183,7 +185,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             String contentType, int questionsCount) {
         try {
             try (InputStream is = new ByteArrayInputStream(contentBytes)) {
-                minioClient.putObject(
+                storageQuota.putObject(
                         PutObjectArgs.builder()
                                 .bucket(bucket)
                                 .object(objectKey)
@@ -212,6 +214,8 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                     .expiresAt(Instant.now().plusSeconds(Time.DEFAULT_EXPIRATION_SECONDS))
                     .build();
 
+        } catch (AppException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[DocumentExportService] Lỗi khi upload/presign file export: ", e);
             throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Xuất file thất bại: " + e.getMessage());

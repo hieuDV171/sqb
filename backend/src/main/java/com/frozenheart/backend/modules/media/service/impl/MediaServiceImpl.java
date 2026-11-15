@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.media.service.impl;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -35,12 +36,12 @@ import com.frozenheart.backend.modules.media.dto.PresignMediaResponse;
 import com.frozenheart.backend.modules.media.dto.PresignMediaRequest.PresignFileItem;
 import com.frozenheart.backend.modules.media.dto.PresignMediaResponse.PresignedUrlItem;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.R2StorageQuota;
+import com.frozenheart.backend.modules.media.service.R2StorageQuota.SizedUpload;
 import com.frozenheart.backend.modules.report.service.ReportEvidenceStorage;
 
-import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.Http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,6 +53,8 @@ public class MediaServiceImpl implements MediaService {
     private final MinioClient minioClient;
     private final R2Properties r2Properties;
     private final RedisTemplate<String, String> redisTemplate;
+    private final R2StorageQuota storageQuota;
+    private final R2MultipartClient r2;
 
     public static final String REDIS_PENDING_MEDIA_KEY = "sqb:media:pending";
 
@@ -76,7 +79,7 @@ public class MediaServiceImpl implements MediaService {
             String objectKey = generateObjectKey(purpose, originalFilename);
 
             try (InputStream inputStream = file.getInputStream()) {
-                minioClient.putObject(
+                storageQuota.putObject(
                         PutObjectArgs.builder()
                                 .bucket(r2Properties.getBucketName())
                                 .object(objectKey)
@@ -116,6 +119,8 @@ public class MediaServiceImpl implements MediaService {
                     .height(height)
                     .build();
 
+        } catch (AppException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[MediaServiceImpl] Lỗi khi upload file lên R2: ", e);
             throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Upload file thất bại: " + e.getMessage());
@@ -316,45 +321,52 @@ public class MediaServiceImpl implements MediaService {
     public PresignMediaResponse generatePresignedUrls(PresignMediaRequest request) {
 
         List<PresignedUrlItem> resultItems = new ArrayList<>();
-        long currentTimestamp = Instant.now().toEpochMilli();
+        List<SizedUpload> uploads = new ArrayList<>();
+        String bucket = r2Properties.getBucketName();
 
         for (PresignFileItem item : request.files()) {
             if (item.purpose() == MediaPurpose.BADGE_ICON) {
                 throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Biểu tượng huy hiệu sử dụng API upload trực tiếp.");
             }
             validateFileSize(item.purpose(), item.fileSize(), item.fileName());
+            uploads.add(new SizedUpload(generateObjectKey(item.purpose(), item.fileName()), item.fileSize()));
+        }
 
-            try {
-                String objectKey = generateObjectKey(item.purpose(), item.fileName());
-
-                String uploadUrl = minioClient.getPresignedObjectUrl(
-                        GetPresignedObjectUrlArgs.builder()
-                                .method(Method.PUT)
-                                .bucket(r2Properties.getBucketName())
-                                .object(objectKey)
-                                .expiry(Time.DEFAULT_EXPIRATION_SECONDS)
-                                .build());
-
-                // Ghi nhận objectKey vào hàng đợi pending trên Redis với timestamp UTC
-                redisTemplate.opsForZSet().add(REDIS_PENDING_MEDIA_KEY, objectKey, currentTimestamp);
+        Instant expiresAt = Instant.now().plusSeconds(Time.DEFAULT_EXPIRATION_SECONDS);
+        storageQuota.reservePresigned(bucket, uploads, expiresAt);
+        try {
+            for (int i = 0; i < uploads.size(); i++) {
+                SizedUpload upload = uploads.get(i);
+                PresignFileItem item = request.files().get(i);
+                int ttl = (int) Duration.between(Instant.now(), expiresAt).toSeconds();
+                if (ttl < 1) {
+                    throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Yêu cầu tải tệp đã hết hạn. Vui lòng thử lại.");
+                }
+                String uploadUrl;
+                try {
+                    uploadUrl = r2.presignPut(bucket, upload.key(), upload.size(), ttl);
+                } catch (Exception e) {
+                    log.error("[MediaServiceImpl] Lỗi khi sinh Presigned URL cho file {}: ", item.fileName(), e);
+                    throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Sinh presigned URL thất bại cho file: " + item.fileName());
+                }
+                redisTemplate.opsForZSet().add(REDIS_PENDING_MEDIA_KEY, upload.key(), Instant.now().toEpochMilli());
                 if (item.purpose() == MediaPurpose.POST) {
                     Long owner = JwtPayload.getCurrentUserPayload().getUserId();
-                    redisTemplate.opsForValue().set(ReportEvidenceStorage.LEGACY_OWNER_PREFIX + objectKey,
-                            owner.toString(), java.time.Duration.ofHours(23));
+                    redisTemplate.opsForValue().set(ReportEvidenceStorage.LEGACY_OWNER_PREFIX + upload.key(),
+                            owner.toString(), Duration.ofHours(23));
                 }
-
-                String publicUrl = buildPublicUrl(objectKey);
-
                 resultItems.add(PresignedUrlItem.builder()
-                        .objectKey(objectKey)
+                        .objectKey(upload.key())
                         .uploadUrl(uploadUrl)
-                        .publicUrl(publicUrl)
-                        .expiresInSeconds(Time.DEFAULT_EXPIRATION_SECONDS)
+                        .publicUrl(buildPublicUrl(upload.key()))
+                        .expiresInSeconds(ttl)
                         .build());
-            } catch (Exception e) {
-                log.error("[MediaServiceImpl] Lỗi khi sinh Presigned URL cho file {}: ", item.fileName(), e);
-                throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Sinh presigned URL thất bại cho file: " + item.fileName());
             }
+        } catch (RuntimeException failure) {
+            storageQuota.releaseUnissuedPresigned(bucket, uploads);
+            if (failure instanceof AppException appException) throw appException;
+            log.error("[MediaServiceImpl] Lỗi khi chuẩn bị liên kết tải tệp: ", failure);
+            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Không thể cấp liên kết tải tệp lên.");
         }
 
         return PresignMediaResponse.builder()

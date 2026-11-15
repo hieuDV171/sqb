@@ -30,7 +30,7 @@ class LectureVideoUploadServiceTest {
 
     @Test
     void rejectsStudentsAndOversizedFilesBeforeContactingStorage() {
-        var service = new LectureVideoUploadService(new R2Properties(), null, null, null, null, null, null);
+        var service = new LectureVideoUploadService(new R2Properties(), null, null, null, null, null, null, null);
         var id = UUID.randomUUID();
         authenticate("STUDENT");
         var request = new StartRequest("lecture.mp4", "video/mp4", 1);
@@ -61,6 +61,17 @@ class LectureVideoUploadServiceTest {
             assertEquals("/sqb-media/lecture-videos/test.mp4", url.encodedPath());
             assertEquals("upload+/=", url.queryParameter("uploadId"));
             assertEquals("2", url.queryParameter("partNumber"));
+            assertEquals("content-length;host", url.queryParameter("X-Amz-SignedHeaders"));
+            assertEquals("900", url.queryParameter("X-Amz-Expires"));
+        }
+    }
+
+    @Test
+    void signsLengthOnOrdinaryMediaUploads() throws Exception {
+        try (var r2 = new R2MultipartClient(MinioAsyncClient.builder()
+                .endpoint("https://example.com").region("auto").credentials("test", "test").build())) {
+            var url = HttpUrl.get(r2.presignPut("sqb-media", "images/test.webp", 100, 900));
+            assertEquals("/sqb-media/images/test.webp", url.encodedPath());
             assertEquals("content-length;host", url.queryParameter("X-Amz-SignedHeaders"));
             assertEquals("900", url.queryParameter("X-Amz-Expires"));
         }

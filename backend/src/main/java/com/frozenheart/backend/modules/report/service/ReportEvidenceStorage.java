@@ -4,6 +4,7 @@ import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.media.service.MediaService;
+import com.frozenheart.backend.modules.media.service.R2StorageQuota;
 import com.frozenheart.backend.modules.report.repository.ReportRepository;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -56,6 +57,7 @@ public class ReportEvidenceStorage {
     private final StringRedisTemplate strings;
     private final MediaService mediaService;
     private final ReportRepository reports;
+    private final R2StorageQuota storageQuota;
 
     public String upload(Long ownerId, MultipartFile file) {
         checkUploadLimit(ownerId);
@@ -186,7 +188,7 @@ public class ReportEvidenceStorage {
         String bucket = bucket();
         String key = PREFIX + ownerId + "/" + UUID.randomUUID();
         redisTemplate.opsForZSet().add(STAGED, key, Instant.now().toEpochMilli());
-        storage.putObject(PutObjectArgs.builder().bucket(bucket).object(key)
+        storageQuota.putObject(PutObjectArgs.builder().bucket(bucket).object(key)
                 .stream(new ByteArrayInputStream(bytes), (long) bytes.length, -1L).contentType(contentType)
                 .headers(java.util.Map.of("Cache-Control", "private, no-store")).build());
         return key;
