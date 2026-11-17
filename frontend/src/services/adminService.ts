@@ -17,9 +17,9 @@ export const adminService = {
    * Lấy danh sách Giảng viên hoạt động trong hệ thống
    */
   getLecturers: async (): Promise<GlobalResponse<LecturerSummary[]>> => {
-    return (await axiosClient.get<GlobalResponse<LecturerSummary[]>>(
+    return axiosClient.get<unknown, GlobalResponse<LecturerSummary[]>>(
       '/lecturer/course-classes/lecturers'
-    )) as any;
+    );
   },
 
   /**
@@ -36,7 +36,7 @@ export const adminService = {
       formData.append('lecturer_id', lecturerId.toString());
     }
 
-    return (await axiosClient.post<GlobalResponse<ExcelImportClassResult>>(
+    return axiosClient.post<unknown, GlobalResponse<ExcelImportClassResult>>(
       '/admin/course-classes/import-excel',
       formData,
       {
@@ -44,7 +44,7 @@ export const adminService = {
           'Content-Type': 'multipart/form-data',
         },
       }
-    )) as any;
+    );
   },
 
 
@@ -54,10 +54,10 @@ export const adminService = {
   bulkImportUsers: async (
     data: BulkImportRequest
   ): Promise<GlobalResponse<BulkImportResult>> => {
-    return (await axiosClient.post<GlobalResponse<BulkImportResult>>(
+    return axiosClient.post<unknown, GlobalResponse<BulkImportResult>>(
       '/auth/admin/bulk-import',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -67,10 +67,10 @@ export const adminService = {
   adminResetPassword: async (
     data: AdminResetPasswordRequest
   ): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(
+    return axiosClient.post<unknown, GlobalResponse<void>>(
       '/auth/admin/reset-password',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -83,10 +83,10 @@ export const adminService = {
     role: UserRole;
     timezone?: string;
   }): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(
+    return axiosClient.post<unknown, GlobalResponse<void>>(
       '/auth/admin/register',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -97,29 +97,29 @@ export const adminService = {
     verifyCode: string;
     deviceId: string;
   }): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(
+    return axiosClient.post<unknown, GlobalResponse<void>>(
       '/auth/admin/verify',
       data
-    )) as any;
+    );
   },
 
   /**
    * Tạo học kỳ mới
    */
   createSemester: async (data: CreateSemesterRequest): Promise<GlobalResponse<SemesterResponse>> => {
-    return (await axiosClient.post<GlobalResponse<SemesterResponse>>(
+    return axiosClient.post<unknown, GlobalResponse<SemesterResponse>>(
       '/admin/semesters',
       data
-    )) as any;
+    );
   },
 
   /**
    * Lấy danh sách tất cả học kỳ
    */
   getAllSemesters: async (): Promise<GlobalResponse<SemesterResponse[]>> => {
-    return (await axiosClient.get<GlobalResponse<SemesterResponse[]>>(
+    return axiosClient.get<unknown, GlobalResponse<SemesterResponse[]>>(
       '/admin/semesters'
-    )) as any;
+    );
   },
 
   updateSemesterStartDate: async (semesterId: number, startDate: string): Promise<GlobalResponse<SemesterResponse>> => {
@@ -133,54 +133,54 @@ export const adminService = {
    * Kích hoạt một học kỳ
    */
   activateSemester: async (semesterId: number): Promise<GlobalResponse<SemesterResponse>> => {
-    return (await axiosClient.put<GlobalResponse<SemesterResponse>>(
+    return axiosClient.put<unknown, GlobalResponse<SemesterResponse>>(
       `/admin/semesters/${semesterId}/activate`
-    )) as any;
+    );
   },
 
   /**
    * Hủy kích hoạt toàn bộ học kỳ
    */
   deactivateAllSemesters: async (): Promise<GlobalResponse<string>> => {
-    return (await axiosClient.put<GlobalResponse<string>>(
+    return axiosClient.put<unknown, GlobalResponse<string>>(
       '/admin/semesters/deactive-all'
-    )) as any;
+    );
   },
 
   /**
    * Chốt sổ học kỳ (finalize semester)
    */
   finalizeSemester: async (): Promise<GlobalResponse<string>> => {
-    return (await axiosClient.post<GlobalResponse<string>>(
+    return axiosClient.post<unknown, GlobalResponse<string>>(
       '/admin/semesters/finalize-semester'
-    )) as any;
+    );
   },
 
   /**
    * Xóa một học kỳ
    */
   deleteSemester: async (semesterId: number): Promise<GlobalResponse<string>> => {
-    return (await axiosClient.delete<GlobalResponse<string>>(
+    return axiosClient.delete<unknown, GlobalResponse<string>>(
       `/admin/semesters/${semesterId}`
-    )) as any;
+    );
   },
 
   /**
    * Tạo môn học mới
    */
   createSubject: async (data: { code: string; name: string }): Promise<GlobalResponse<AdminSubjectResponse>> => {
-    return (await axiosClient.post<GlobalResponse<AdminSubjectResponse>>(
+    return axiosClient.post<unknown, GlobalResponse<AdminSubjectResponse>>(
       '/admin/subjects',
       data
-    )) as any;
+    );
   },
 
   /**
    * Lấy danh sách tất cả môn học (danh mục dùng chung toàn trường)
    */
   getAllSubjects: async (): Promise<GlobalResponse<AdminSubjectResponse[]>> => {
-    return (await axiosClient.get<GlobalResponse<AdminSubjectResponse[]>>(
+    return axiosClient.get<unknown, GlobalResponse<AdminSubjectResponse[]>>(
       '/subjects'
-    )) as any;
+    );
   },
 };

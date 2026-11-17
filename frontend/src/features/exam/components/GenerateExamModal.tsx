@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type SubmitEvent } from 'react';
 import { FilePlus2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
@@ -46,7 +46,7 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   ));
   const validMatrix = total === 100 && !hasInvalidPercentage;
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedSubject || selectedClasses.length === 0 || !validMatrix || generate.isPending) return;
     generate.mutate({

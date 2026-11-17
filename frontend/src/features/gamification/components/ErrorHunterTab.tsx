@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { BookOpen, Flag, Send, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ export function ErrorHunterTab() {
   const [notes, setNotes] = useState('');
   const reviewError = useReviewErrorHunter();
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!questionId || !ratingUserId || reviewError.isPending) return;
     reviewError.mutate({

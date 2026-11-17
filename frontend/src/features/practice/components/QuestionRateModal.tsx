@@ -1,5 +1,5 @@
 import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert, Star, X } from 'lucide-react';
@@ -46,7 +46,7 @@ export function QuestionRateModal({ questionId, questionCode, sessionId, interac
   });
   const isSubmitting = rating.isPending || report.isPending;
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) return;
     if (tab === 'report' && reportDescription.trim()) report.mutate(reportDescription.trim());

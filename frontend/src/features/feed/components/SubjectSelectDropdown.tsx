@@ -25,6 +25,11 @@ export const SubjectSelectDropdown: React.FC<SubjectSelectDropdownProps> = ({
 
   const selectedSubject = subjects.find((s) => s.subjectId === value);
 
+  function closeDropdown() {
+    setIsOpen(false);
+    setSearchQuery('');
+  }
+
   const filteredSubjects = useMemo(() => {
     if (!searchQuery.trim()) return subjects;
     const q = searchQuery.toLowerCase().trim();
@@ -36,29 +41,26 @@ export const SubjectSelectDropdown: React.FC<SubjectSelectDropdownProps> = ({
   }, [subjects, searchQuery]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        closeDropdown();
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false);
+        closeDropdown();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-    } else {
-      setSearchQuery('');
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    const focusTimer = setTimeout(() => searchInputRef.current?.focus(), 50);
 
     return () => {
+      clearTimeout(focusTimer);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -69,7 +71,10 @@ export const SubjectSelectDropdown: React.FC<SubjectSelectDropdownProps> = ({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onClick={() => {
+          if (isOpen) closeDropdown();
+          else setIsOpen(true);
+        }}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -153,7 +158,7 @@ export const SubjectSelectDropdown: React.FC<SubjectSelectDropdownProps> = ({
                     aria-selected={isSelected}
                     onClick={() => {
                       onChange(s.subjectId);
-                      setIsOpen(false);
+                      closeDropdown();
                     }}
                     className={cn(
                       'w-full flex items-center justify-between p-2 rounded-xl text-left transition-colors cursor-pointer group text-xs',

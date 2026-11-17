@@ -1,4 +1,5 @@
 import { getAvatarInitial } from '@/lib/avatar';
+import { getErrorMessage } from '@/lib/errorMessage';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import React, { useState, useRef } from 'react';
 import type { SubjectItem, PostVisibility, PostType } from '@/types/post.types';
@@ -66,8 +67,8 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
       const results = await Promise.all(uploadPromises);
       const newUrls = results.map((r) => r.publicUrl);
       setAttachedImages((prev) => [...prev, ...newUrls]);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Lỗi khi tải ảnh lên máy chủ');
+    } catch (err) {
+      setErrorMessage(getErrorMessage(err) ?? 'Lỗi khi tải ảnh lên máy chủ');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -78,7 +79,7 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
     setAttachedImages(attachedImages.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
 

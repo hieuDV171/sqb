@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { AlertTriangle, CheckCircle2, KeyRound, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ export function AccountSettingsPage() {
     }
   };
 
-  const confirmOtp = async (event: FormEvent<HTMLFormElement>) => {
+  const confirmOtp = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!/^\d{6}$/.test(verifyCode)) {
       setError('Vui lòng nhập đúng 6 chữ số trong email.');

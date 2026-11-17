@@ -23,7 +23,7 @@ export function AssignStudentsDialog({ open, courseClassId, classCode, onClose }
 
   if (!open) return null;
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (studentCodes.length === 0) return;
     const response = await assignMutation.mutateAsync({ studentCodes });

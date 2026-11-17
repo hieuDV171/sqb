@@ -48,7 +48,7 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) {

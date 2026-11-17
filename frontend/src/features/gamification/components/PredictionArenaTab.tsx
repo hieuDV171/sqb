@@ -1,5 +1,5 @@
 import { CursorPagination, type PageCursor } from '@/components/ui/cursor-pagination';
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type SubmitEvent, type ReactNode } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Bot, BrainCircuit, ChevronDown, Database, History, RefreshCw, Send, ShieldAlert, Target, Users } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -198,7 +198,7 @@ export function PredictionArenaTab() {
   const historyQuery = useMyPredictions(historyCursor, activeGame === 'history');
   const predictions = historyQuery.data?.contents ?? [];
 
-  function submitGame1(event: FormEvent) {
+  function submitGame1(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedClass || predictGame1.isPending) return;
     predictGame1.mutate({ courseClassId: selectedClass.courseClassId, predictedCount: Number(game1Count) }, {
@@ -206,7 +206,7 @@ export function PredictionArenaTab() {
     });
   }
 
-  function submitGame4(event: FormEvent) {
+  function submitGame4(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!game4Subject || predictGame4.isPending) return;
     predictGame4.mutate({ subjectId: game4Subject.subjectId, predictedBankSize: Number(game4BankSize) }, {

@@ -1,41 +1,38 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getErrorMessage } from '@/lib/errorMessage';
 import { deviceService } from '@/services/deviceService';
-import type { DeviceResponse } from '@/types/device.types';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export function useDevices() {
-  const [devices, setDevices] = useState<DeviceResponse[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const userId = useAuthStore((state) => state.user?.id);
   const currentDeviceId = typeof window !== 'undefined' ? localStorage.getItem('sqb_device_id') : null;
 
-  const fetchDevices = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
+  const devicesQuery = useQuery({
+    queryKey: ['my-devices', userId, currentDeviceId],
+    staleTime: 0,
+    gcTime: 0,
+    networkMode: 'always',
+    retry: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
       const response = await deviceService.getMyDevices();
-      const deviceList = response.data?.devices || (Array.isArray(response.data) ? response.data : []);
-      
-      // Gán thêm cờ isCurrentDevice nếu trùng với sqb_device_id trong localStorage
-      const enrichedDevices = deviceList.map((device) => ({
+      const deviceList = Array.isArray(response.data) ? response.data : response.data?.devices ?? [];
+
+      return deviceList.map((device) => ({
         ...device,
         isCurrentDevice: device.isCurrentDevice ?? (currentDeviceId === device.deviceId),
       }));
+    },
+  });
 
-      setDevices(enrichedDevices);
-    } catch (err: any) {
-      setError(err?.message || 'Không thể tải danh sách thiết bị');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentDeviceId]);
+  const fetchDevices = devicesQuery.refetch;
 
   const revokeDevice = async (deviceId: string) => {
     try {
       await deviceService.revokeDevice(deviceId);
       await fetchDevices();
-    } catch (err: any) {
-      throw new Error(err?.message || 'Đăng xuất thiết bị thất bại');
+    } catch (err) {
+      throw new Error(getErrorMessage(err) ?? 'Đăng xuất thiết bị thất bại', { cause: err });
     }
   };
 
@@ -43,19 +40,17 @@ export function useDevices() {
     try {
       await deviceService.deleteDevice(deviceId);
       await fetchDevices();
-    } catch (err: any) {
-      throw new Error(err?.message || 'Xóa thiết bị thất bại');
+    } catch (err) {
+      throw new Error(getErrorMessage(err) ?? 'Xóa thiết bị thất bại', { cause: err });
     }
   };
 
-  useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
-
   return {
-    devices,
-    isLoading,
-    error,
+    devices: devicesQuery.data ?? [],
+    isLoading: devicesQuery.isFetching,
+    error: devicesQuery.isError
+      ? getErrorMessage(devicesQuery.error) ?? 'Không thể tải danh sách thiết bị'
+      : null,
     fetchDevices,
     revokeDevice,
     deleteDevice,

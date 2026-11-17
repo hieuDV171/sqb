@@ -49,9 +49,9 @@ export const gamificationService = {
     before?: number;
     limit?: number;
   }): Promise<GlobalResponse<LeaderboardResponse>> => {
-    return (await axiosClient.get<GlobalResponse<LeaderboardResponse>>('/games/leaderboard', {
+    return axiosClient.get<unknown, GlobalResponse<LeaderboardResponse>>('/games/leaderboard', {
       params,
-    })) as any;
+    });
   },
 
   /**
@@ -59,7 +59,7 @@ export const gamificationService = {
    * POST /api/v1/games/check-in
    */
   checkInDaily: async (): Promise<GlobalResponse<CheckInResponse>> => {
-    return (await axiosClient.post<GlobalResponse<CheckInResponse>>('/games/check-in')) as any;
+    return axiosClient.post<unknown, GlobalResponse<CheckInResponse>>('/games/check-in');
   },
 
   /**
@@ -67,7 +67,7 @@ export const gamificationService = {
    * GET /api/v1/games/check-in
    */
   getCheckInStatus: async (): Promise<GlobalResponse<CheckInStatusResponse>> => {
-    return (await axiosClient.get<GlobalResponse<CheckInStatusResponse>>('/games/check-in')) as any;
+    return axiosClient.get<unknown, GlobalResponse<CheckInStatusResponse>>('/games/check-in');
   },
 
   /**
@@ -75,7 +75,7 @@ export const gamificationService = {
    * POST /api/v1/admin/leaderboards/rebuild
    */
   rebuildLeaderboard: async (request: RebuildLeaderboardRequest): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>('/admin/leaderboards/rebuild', request)) as any;
+    return axiosClient.post<unknown, GlobalResponse<void>>('/admin/leaderboards/rebuild', request);
   },
 
   /**
@@ -83,7 +83,7 @@ export const gamificationService = {
    * POST /api/v1/admin/semesters/finalize-semester
    */
   finalizeSemester: async (): Promise<GlobalResponse<string>> => {
-    return (await axiosClient.post<GlobalResponse<string>>('/admin/semesters/finalize-semester')) as any;
+    return axiosClient.post<unknown, GlobalResponse<string>>('/admin/semesters/finalize-semester');
   },
 
   // ==========================================
@@ -95,7 +95,7 @@ export const gamificationService = {
    * GET /api/v1/badges
    */
   getAllBadges: async (): Promise<GlobalResponse<BadgeResponseDto[]>> => {
-    return (await axiosClient.get<GlobalResponse<BadgeResponseDto[]>>('/badges')) as any;
+    return axiosClient.get<unknown, GlobalResponse<BadgeResponseDto[]>>('/badges');
   },
 
   /**
@@ -103,7 +103,7 @@ export const gamificationService = {
    * GET /api/v1/badges/me
    */
   getMyBadges: async (): Promise<GlobalResponse<UserBadgeResponseDto[]>> => {
-    return (await axiosClient.get<GlobalResponse<UserBadgeResponseDto[]>>('/badges/me')) as any;
+    return axiosClient.get<unknown, GlobalResponse<UserBadgeResponseDto[]>>('/badges/me');
   },
 
   /**
@@ -111,7 +111,7 @@ export const gamificationService = {
    * GET /api/v1/badges/users/{userId}
    */
   getUserBadges: async (userId: number): Promise<GlobalResponse<UserBadgeResponseDto[]>> => {
-    return (await axiosClient.get<GlobalResponse<UserBadgeResponseDto[]>>(`/badges/users/${userId}`)) as any;
+    return axiosClient.get<unknown, GlobalResponse<UserBadgeResponseDto[]>>(`/badges/users/${userId}`);
   },
 
   /**
@@ -119,7 +119,7 @@ export const gamificationService = {
    * GET /api/v1/badges/{badgeId}
    */
   getBadgeById: async (badgeId: number): Promise<GlobalResponse<BadgeResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<BadgeResponseDto>>(`/badges/${badgeId}`)) as any;
+    return axiosClient.get<unknown, GlobalResponse<BadgeResponseDto>>(`/badges/${badgeId}`);
   },
 
   /**
@@ -127,7 +127,7 @@ export const gamificationService = {
    * GET /api/v1/admin/badges
    */
   getAdminBadges: async (): Promise<GlobalResponse<BadgeResponseDto[]>> => {
-    return (await axiosClient.get<GlobalResponse<BadgeResponseDto[]>>('/admin/badges')) as any;
+    return axiosClient.get<unknown, GlobalResponse<BadgeResponseDto[]>>('/admin/badges');
   },
 
   /**
@@ -135,7 +135,7 @@ export const gamificationService = {
    * POST /api/v1/admin/badges
    */
   createBadge: async (data: CreateBadgeRequestDto): Promise<GlobalResponse<BadgeResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<BadgeResponseDto>>('/admin/badges', data)) as any;
+    return axiosClient.post<unknown, GlobalResponse<BadgeResponseDto>>('/admin/badges', data);
   },
 
   /**
@@ -146,7 +146,7 @@ export const gamificationService = {
     badgeId: number,
     data: UpdateBadgeRequestDto
   ): Promise<GlobalResponse<BadgeResponseDto>> => {
-    return (await axiosClient.put<GlobalResponse<BadgeResponseDto>>(`/admin/badges/${badgeId}`, data)) as any;
+    return axiosClient.put<unknown, GlobalResponse<BadgeResponseDto>>(`/admin/badges/${badgeId}`, data);
   },
 
   /**
@@ -154,7 +154,7 @@ export const gamificationService = {
    * DELETE /api/v1/admin/badges/{badgeId}
    */
   deleteBadge: async (badgeId: number): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.delete<GlobalResponse<void>>(`/admin/badges/${badgeId}`)) as any;
+    return axiosClient.delete<unknown, GlobalResponse<void>>(`/admin/badges/${badgeId}`);
   },
 
   /**
@@ -165,7 +165,7 @@ export const gamificationService = {
     badgeId: number,
     data: ManualGrantBadgeRequestDto
   ): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(`/admin/badges/${badgeId}/grant`, data)) as any;
+    return axiosClient.post<unknown, GlobalResponse<void>>(`/admin/badges/${badgeId}/grant`, data);
   },
 
   searchBadgeAccounts: (badgeId: number, holders: boolean, query: string, after?: number, signal?: AbortSignal) =>
@@ -216,7 +216,7 @@ export const gamificationService = {
    * POST /api/v1/cosmetics/{id}/buy
    */
   buyCosmetic: async (cosmeticId: number): Promise<GlobalResponse<ShopItemDto>> => {
-    return (await axiosClient.post<GlobalResponse<ShopItemDto>>(`/cosmetics/${cosmeticId}/buy`)) as any;
+    return axiosClient.post<unknown, GlobalResponse<ShopItemDto>>(`/cosmetics/${cosmeticId}/buy`);
   },
 
   /**
@@ -224,7 +224,7 @@ export const gamificationService = {
    * PUT /api/v1/cosmetics/equip
    */
   equipCosmetic: async (data: EquipCosmeticRequestDto): Promise<GlobalResponse<EquipCosmeticResponseDto>> => {
-    return (await axiosClient.put<GlobalResponse<EquipCosmeticResponseDto>>('/cosmetics/equip', data)) as any;
+    return axiosClient.put<unknown, GlobalResponse<EquipCosmeticResponseDto>>('/cosmetics/equip', data);
   },
 
   /**
@@ -232,7 +232,7 @@ export const gamificationService = {
    * PUT /api/v1/cosmetics/unequip
    */
   unequipCosmetic: async (data: UnequipCosmeticRequestDto): Promise<GlobalResponse<UnequipCosmeticResponseDto>> => {
-    return (await axiosClient.put<GlobalResponse<UnequipCosmeticResponseDto>>('/cosmetics/unequip', data)) as any;
+    return axiosClient.put<unknown, GlobalResponse<UnequipCosmeticResponseDto>>('/cosmetics/unequip', data);
   },
 
   // ==========================================
@@ -244,9 +244,9 @@ export const gamificationService = {
    * GET /api/v1/games/prediction/game-1/classes
    */
   getMyCourseClassesForGame1: async (): Promise<GlobalResponse<MyCourseClassPredictionDto[]>> => {
-    return (await axiosClient.get<GlobalResponse<MyCourseClassPredictionDto[]>>(
+    return axiosClient.get<unknown, GlobalResponse<MyCourseClassPredictionDto[]>>(
       '/games/prediction/game-1/classes'
-    )) as any;
+    );
   },
 
   /**
@@ -254,10 +254,10 @@ export const gamificationService = {
    * POST /api/v1/games/prediction/participants
    */
   predictGame1: async (data: Game1PredictionRequest): Promise<GlobalResponse<GamePredictionResponse>> => {
-    return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
+    return axiosClient.post<unknown, GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/participants',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -265,10 +265,10 @@ export const gamificationService = {
    * POST /api/v1/games/prediction/approved-questions
    */
   predictGame2: async (data: Game2PredictionRequest): Promise<GlobalResponse<GamePredictionResponse>> => {
-    return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
+    return axiosClient.post<unknown, GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/approved-questions',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -288,9 +288,9 @@ export const gamificationService = {
    * GET /api/v1/games/prediction/active-session
    */
   getActiveGame6Session: async (): Promise<GlobalResponse<Game6ActiveSessionResponse>> => {
-    return (await axiosClient.get<GlobalResponse<Game6ActiveSessionResponse>>(
+    return axiosClient.get<unknown, GlobalResponse<Game6ActiveSessionResponse>>(
       '/games/prediction/active-session'
-    )) as any;
+    );
   },
 
   /**
@@ -298,10 +298,10 @@ export const gamificationService = {
    * POST /api/v1/games/prediction/submit
    */
   submitGame6: async (data: Game6SubmitRequest): Promise<GlobalResponse<GamePredictionResponse>> => {
-    return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
+    return axiosClient.post<unknown, GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/submit',
       data
-    )) as any;
+    );
   },
 
   /**
@@ -327,9 +327,9 @@ export const gamificationService = {
     ratingUserId: number,
     data: ReviewErrorRequest
   ): Promise<GlobalResponse<string>> => {
-    return (await axiosClient.post<GlobalResponse<string>>(
+    return axiosClient.post<unknown, GlobalResponse<string>>(
       `/questions/${questionId}/ratings/${ratingUserId}/review-error`,
       data
-    )) as any;
+    );
   },
 };

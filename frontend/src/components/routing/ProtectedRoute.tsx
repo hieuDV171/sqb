@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
+import { lazy, type ReactNode } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { AppLayout } from '@/layouts/AppLayout';
+import { RouteContent } from './RouteContent';
+
+const AppLayout = lazy(() => import('@/layouts/AppLayout').then((module) => ({ default: module.AppLayout })));
 
 interface ProtectedRouteProps {
   children?: ReactNode;
@@ -20,5 +22,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/account-setup" replace />;
   }
 
-  return <AppLayout>{children ? children : <Outlet />}</AppLayout>;
+  return (
+    <RouteContent routeKey={location.key}>
+      <AppLayout>
+        <RouteContent routeKey={location.key}>{children ? children : <Outlet />}</RouteContent>
+      </AppLayout>
+    </RouteContent>
+  );
 }

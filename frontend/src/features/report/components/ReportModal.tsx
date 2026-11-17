@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { X, ShieldAlert, AlertTriangle, Loader2, Send, ImagePlus } from 'lucide-react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Button } from '@/components/ui/button';
@@ -111,7 +111,7 @@ export function ReportModal({
     setEvidence({ file, previewUrl: URL.createObjectURL(file) });
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
 

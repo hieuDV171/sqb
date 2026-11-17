@@ -18,7 +18,7 @@ export function CommentSection({ postId, comments, onAddComment }: CommentSectio
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  const handleSendRootComment = (e: React.FormEvent) => {
+  const handleSendRootComment = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!commentText.trim()) return;
     onAddComment(postId, commentText.trim());

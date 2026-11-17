@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@base-ui/react/button';
 import { Input } from '@base-ui/react/input';
 import { axiosClient } from '@/api/axiosClient';
+import { getErrorMessage } from '@/lib/errorMessage';
 import { Mail, CheckCircle2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export function VerifyOtpPage() {
@@ -21,11 +22,9 @@ export function VerifyOtpPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    let timer: any;
-    if (countdown > 0) {
-      timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
-    }
-    return () => clearInterval(timer);
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   const handleOtpChange = (index: number, value: string) => {
@@ -46,7 +45,7 @@ export function VerifyOtpPage() {
     }
   };
 
-  const handleVerify = async (e: React.FormEvent) => {
+  const handleVerify = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
@@ -68,8 +67,8 @@ export function VerifyOtpPage() {
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } catch (err: any) {
-      setError(err?.message || 'Mã xác thực không đúng hoặc đã hết hạn!');
+    } catch (err) {
+      setError(getErrorMessage(err) ?? 'Mã xác thực không đúng hoặc đã hết hạn!');
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +84,8 @@ export function VerifyOtpPage() {
       await axiosClient.post('/auth/admin/resend-verify', { email });
       setSuccessMsg('Đã gửi lại mã OTP mới về Email của bạn!');
       setCountdown(60);
-    } catch (err: any) {
-      setError(err?.message || 'Gửi lại mã OTP thất bại!');
+    } catch (err) {
+      setError(getErrorMessage(err) ?? 'Gửi lại mã OTP thất bại!');
     } finally {
       setIsResending(false);
     }

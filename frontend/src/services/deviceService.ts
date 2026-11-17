@@ -1,25 +1,25 @@
 import { axiosClient } from '@/api/axiosClient';
-import type { DeviceListResponse } from '../types/device.types';
+import type { DeviceListResponse, DeviceResponse } from '../types/device.types';
 import type { GlobalResponse } from '../types/response.types';
 
 export const deviceService = {
-  getMyDevices: async (): Promise<GlobalResponse<DeviceListResponse>> => {
-    return (await axiosClient.get<GlobalResponse<DeviceListResponse>>('/devices')) as any;
+  getMyDevices: async (): Promise<GlobalResponse<DeviceListResponse | DeviceResponse[]>> => {
+    return axiosClient.get<unknown, GlobalResponse<DeviceListResponse | DeviceResponse[]>>('/devices');
   },
 
   revokeDevice: async (deviceId: string): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(`/devices/${deviceId}/logout`)) as any;
+    return axiosClient.post<unknown, GlobalResponse<void>>(`/devices/${deviceId}/logout`);
   },
 
   deleteDevice: async (deviceId: string): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.delete<GlobalResponse<void>>(`/devices/${deviceId}`)) as any;
+    return axiosClient.delete<unknown, GlobalResponse<void>>(`/devices/${deviceId}`);
   },
 
   unregisterFid: async (fid: string): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>('/devices/fid/unregister', { fid })) as any;
+    return axiosClient.post<unknown, GlobalResponse<void>>('/devices/fid/unregister', { fid });
   },
 
   syncFid: async (fid: string): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>('/devices/fid', { fid })) as any;
+    return axiosClient.post<unknown, GlobalResponse<void>>('/devices/fid', { fid });
   },
 };

@@ -559,3 +559,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - `deploy-stack.yml` phân loại diff trên `master`. Chỉ build image của thư mục thay đổi và giữ các job build độc lập. Compose mới và các digest của cùng lần push đi qua một lượt deploy. Thay đổi Compose riêng dùng các digest đã ghi trên VPS. Hàng đợi tuần tự hóa các lượt phát hành backend và sidecar tự động, còn VPS bảo vệ trạng thái bằng `flock`. Frontend dùng workflow riêng.
 - Mặc định không nhạy cảm nằm trong `docker-compose.prod.yml`. Bí mật ứng dụng và giá trị ghi đè nằm trong `/opt/sqb/.env.prod`. GitHub Actions tiếp tục dùng Secrets cho kết nối SSH. VPS dùng một bản env đã áp dụng có mode `0600` để deploy bằng cấu hình hiện hành và khôi phục khi áp dụng env mới thất bại.
 - `systemd.path` gọi nhánh `env` của script deploy dưới khóa stack. Script so sánh cấu hình Compose trước và sau khi đổi env, dùng image có sẵn và đợi readiness cho các service ứng dụng bị ảnh hưởng. Thay đổi env kéo theo PostgreSQL, Redis hoặc hạ tầng khác cần phối hợp qua Stack. Cài unit lần đầu trên VPS theo README.
+
+### [ADR-066] Tải mã frontend theo route được bảo vệ
+
+- Vite tách mã trang thành các chunk từ dynamic import. `ProtectedRoute` kiểm tra phiên và onboarding trước khi tải `AppLayout`. `RoleGuard` xét quyền trước khi tải mã trang quản trị hoặc giảng viên. Các URL và redirect tiếp tục đi qua các guard hiện hành của React Router.
+- `RouteContent` hiển thị skeleton trong lúc tải layout hoặc trang. Sau khi layout sẵn sàng, phần nội dung có ranh giới tải riêng, giữ thanh điều hướng và các listener WebSocket trong layout. Khi tải route lỗi, giao diện cho phép thử tải lại và tự bỏ trạng thái lỗi khi đổi route.
+- Workflow frontend chạy ESLint với ngưỡng 0 cảnh báo sau khi cài từ lockfile và trước khi build.

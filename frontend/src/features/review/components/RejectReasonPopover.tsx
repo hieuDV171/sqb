@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, X, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
   const [saving, setSaving] = useState(false);
   const formId = useId();
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!code || saving || (code === 'OTHER' && !reason.trim())) return;
     setSaving(true);

@@ -1,6 +1,7 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {Bot, Check, HelpCircle, ImageIcon, Loader2, Plus, Save, Trash2, User, X,} from 'lucide-react';
 import {cn} from '@/lib/utils';
+import {getErrorMessage} from '@/lib/errorMessage';
 import {mediaService} from '@/services/mediaService';
 import {toast} from '@/stores/useToastStore';
 import type {MySubmissionDetailResponse, QuestionUpdateDto, UpdateSubmissionSessionRequest,} from '@/features/session';
@@ -10,49 +11,49 @@ interface EditSubmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
   detail: MySubmissionDetailResponse | null;
-  onSave: (sessionId: number, data: UpdateSubmissionSessionRequest) => Promise<any>;
+  onSave: (sessionId: number, data: UpdateSubmissionSessionRequest) => Promise<void>;
   isSaving: boolean;
 }
 
-export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
-  isOpen,
+export function EditSubmissionModal({ isOpen, detail, ...props }: EditSubmissionModalProps) {
+  if (!isOpen || !detail) return null;
+
+  return <EditSubmissionForm key={detail.sessionId} detail={detail} {...props} />;
+}
+
+type EditSubmissionFormProps = Omit<EditSubmissionModalProps, 'isOpen' | 'detail'> & {
+  detail: MySubmissionDetailResponse;
+};
+
+function EditSubmissionForm({
   onClose,
   detail,
   onSave,
   isSaving,
-}) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [questions, setQuestions] = useState<QuestionUpdateDto[]>([]);
+}: EditSubmissionFormProps) {
+  const [title, setTitle] = useState(detail.title || '');
+  const [content, setContent] = useState(detail.content || '');
+  const [questions, setQuestions] = useState<QuestionUpdateDto[]>(() =>
+    (detail.questions || []).map((q) => ({
+      questionId: q.questionId,
+      content: q.content,
+      mediaUrls: q.imageUrls || [],
+      options: (q.options || []).map((opt) => ({
+        key: opt.key,
+        text: opt.text,
+        isCorrect: Boolean(opt.isCorrect),
+        mediaUrl: opt.mediaUrl,
+      })),
+      explanation: q.explanation || '',
+      difficulty: q.difficulty ?? undefined,
+      source: q.source || 'HOMO_SAPIENS',
+      confidence: q.confidenceScore ?? 3.5,
+    })),
+  );
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const getOptionKey = (idx: number) => String.fromCharCode(65 + idx);
-
-  useEffect(() => {
-    if (detail && isOpen) {
-      setTitle(detail.title || '');
-      setContent(detail.content || '');
-      const mappedQuestions: QuestionUpdateDto[] = (detail.questions || []).map((q) => ({
-        questionId: q.questionId,
-        content: q.content,
-        mediaUrls: q.imageUrls || [],
-        options: (q.options || []).map((opt) => ({
-          key: opt.key,
-          text: opt.text,
-          isCorrect: Boolean(opt.isCorrect),
-          mediaUrl: opt.mediaUrl,
-        })),
-        explanation: q.explanation || '',
-        difficulty: q.difficulty ?? undefined,
-        source: (q.source as any) || 'HOMO_SAPIENS',
-        confidence: q.confidenceScore ?? 3.5,
-      }));
-      setQuestions(mappedQuestions);
-    }
-  }, [detail, isOpen]);
-
-  if (!isOpen || !detail) return null;
 
   const handleAddQuestion = () => {
     const newQ: QuestionUpdateDto = {
@@ -79,13 +80,13 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
     setQuestions(questions.filter((_, i) => i !== idx));
   };
 
-  const handleUpdateQuestion = (
+  const handleUpdateQuestion = <Field extends keyof QuestionUpdateDto>(
     idx: number,
-    field: keyof QuestionUpdateDto,
-    val: any
+    field: Field,
+    value: QuestionUpdateDto[Field],
   ) => {
     const updated = [...questions];
-    updated[idx] = { ...updated[idx], [field]: val };
+    updated[idx] = { ...updated[idx], [field]: value };
     setQuestions(updated);
   };
 
@@ -138,8 +139,8 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
           toast.success(`Đã gắn ảnh vào đáp án ${optKey}`);
         }
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Lỗi khi tải ảnh đáp án');
+    } catch (err) {
+      toast.error(getErrorMessage(err) ?? 'Lỗi khi tải ảnh đáp án');
     } finally {
       setUploadingTarget(null);
     }
@@ -178,7 +179,7 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
     setQuestions(updated);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!title.trim()) {

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
     || !suggestion.options?.some((option) => option.isCorrect);
   const error = apply.error ?? refine.error;
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!prompt.trim() || busy) return;
     setAcknowledged(false);

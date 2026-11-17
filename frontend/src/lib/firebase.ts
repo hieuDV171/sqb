@@ -11,6 +11,7 @@ import {
 } from 'firebase/messaging';
 import { deviceService } from '@/services/deviceService';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { getErrorMessage } from './errorMessage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -98,8 +99,8 @@ function bindFidLifecycleListeners(messaging: Messaging) {
         await deviceService.syncFid(fid);
         console.log('[FID] Đã tự động đồng bộ FID mới lên server thành công.');
       }
-    } catch (err: any) {
-      console.warn('[FID] Không thể tự động đồng bộ FID lên server:', err?.message);
+    } catch (err) {
+      console.warn('[FID] Không thể tự động đồng bộ FID lên server:', getErrorMessage(err));
     }
   });
 
@@ -237,7 +238,7 @@ export async function syncCurrentFidIfAuthenticated(): Promise<void> {
   try {
     await deviceService.syncFid(fid);
     console.log('[FID] syncCurrentFidIfAuthenticated thành công cho FID:', fid.substring(0, 15) + '...');
-  } catch (error: any) {
-    console.warn('[FID] syncCurrentFidIfAuthenticated thất bại:', error?.message);
+  } catch (error) {
+    console.warn('[FID] syncCurrentFidIfAuthenticated thất bại:', getErrorMessage(error));
   }
 }

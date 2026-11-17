@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
+import {getErrorMessage} from '@/lib/errorMessage';
 import {CustomSelect} from '@/components/ui/custom-select';
 import {Button} from '@/components/ui/button';
 import {mediaService} from '@/services/mediaService';
@@ -29,6 +30,8 @@ interface ProposeSessionFormProps {
   onViewMySubmissions?: () => void;
 }
 
+const DRAFT_KEY = 'sqb_propose_session_draft_v3';
+
 export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   onSuccessNavigate,
   onViewMySubmissions,
@@ -37,13 +40,19 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   const { data: courseClasses = [], isLoading: isLoadingCourseClasses } = courseClassQuery;
   const { proposeMutation, predictGame2Mutation } = useSessionMutations();
 
-  const [selectedCourseClassId, setSelectedCourseClassId] = useState<number | null>(null);
+  const [requestedCourseClassId, setRequestedCourseClassId] = useState<number | null>(null);
+  const selectedCourseClass = courseClasses.find((courseClass) =>
+    courseClass.canPropose && courseClass.courseClassId === requestedCourseClassId
+  ) ?? courseClasses.find((courseClass) => courseClass.canPropose);
+  const selectedCourseClassId = courseClasses.length === 0
+    ? requestedCourseClassId
+    : selectedCourseClass?.courseClassId ?? null;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
 
   const [questions, setQuestions] = useState<QuestionProposeDto[]>([
-    createEmptyQuestion(1),
+    createEmptyQuestion(),
   ]);
 
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
@@ -65,13 +74,25 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   } | null>(null);
 
   // Draft auto-save state
-  const DRAFT_KEY = 'sqb_propose_session_draft_v3';
-  const [draftInfo, setDraftInfo] = useState<{ updatedAt: string } | null>(null);
+  const [draftInfo, setDraftInfo] = useState<{ updatedAt: string } | null>(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && (parsed.title || parsed.questions?.length > 1 || parsed.questions?.[0]?.content)) {
+          return { updatedAt: new Date(parsed.updatedAt || Date.now()).toLocaleString('vi-VN') };
+        }
+      }
+    } catch {
+      // A malformed or inaccessible draft cannot be restored.
+    }
+    return null;
+  });
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const getOptionKey = (idx: number) => String.fromCharCode(65 + idx);
 
-  function createEmptyQuestion(_index: number): QuestionProposeDto {
+  function createEmptyQuestion(): QuestionProposeDto {
     return {
       content: '',
       mediaUrls: [],
@@ -86,39 +107,6 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       confidence: 3.5,
     };
   }
-
-  // Chỉ tự chọn một lớp của học kỳ hiện tại. Lớp lịch sử vẫn hiển thị nhưng không thể chọn.
-  useEffect(() => {
-    if (courseClasses.length === 0) return;
-    const selectedClass = courseClasses.find(
-      (courseClass) => courseClass.courseClassId === selectedCourseClassId
-    );
-    if (!selectedClass?.canPropose) {
-      setSelectedCourseClassId(
-        courseClasses.find((courseClass) => courseClass.canPropose)?.courseClassId ?? null
-      );
-    }
-  }, [courseClasses, selectedCourseClassId]);
-
-  // Check existing draft
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (
-          parsed &&
-          (parsed.title || (parsed.questions && parsed.questions.length > 1) || parsed.questions?.[0]?.content)
-        ) {
-          setDraftInfo({
-            updatedAt: new Date(parsed.updatedAt || Date.now()).toLocaleString('vi-VN'),
-          });
-        }
-      }
-    } catch {
-      // Ignore JSON parse errors
-    }
-  }, []);
 
   // Save draft periodically
   useEffect(() => {
@@ -153,7 +141,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed.selectedCourseClassId) setSelectedCourseClassId(parsed.selectedCourseClassId);
+      if (parsed.selectedCourseClassId) setRequestedCourseClassId(parsed.selectedCourseClassId);
       if (parsed.title) setTitle(parsed.title);
       if (parsed.content) setContent(parsed.content);
       if (parsed.sourceUrl) setSourceUrl(parsed.sourceUrl);
@@ -177,7 +165,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   const humanQuestionsCount = questions.length - llmQuestionsCount;
 
   const handleAddQuestion = () => {
-    setQuestions([...questions, createEmptyQuestion(questions.length + 1)]);
+    setQuestions([...questions, createEmptyQuestion()]);
     toast.info(`Đã thêm câu hỏi #${questions.length + 1}`);
   };
 
@@ -194,7 +182,11 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     setDeleteIndex(null);
   };
 
-  const handleUpdateQuestion = (index: number, field: keyof QuestionProposeDto, value: any) => {
+  const handleUpdateQuestion = <Field extends keyof QuestionProposeDto>(
+    index: number,
+    field: Field,
+    value: QuestionProposeDto[Field],
+  ) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
@@ -221,8 +213,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
         setQuestions(updated);
         toast.success(`Đã tải ảnh lên thành công!`);
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Lỗi khi tải ảnh câu hỏi lên');
+    } catch (err) {
+      toast.error(getErrorMessage(err) ?? 'Lỗi khi tải ảnh câu hỏi lên');
     } finally {
       setUploadingTarget(null);
     }
@@ -248,8 +240,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
           toast.success(`Đã gắn ảnh vào đáp án ${optKey}`);
         }
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Lỗi khi tải ảnh đáp án');
+    } catch (err) {
+      toast.error(getErrorMessage(err) ?? 'Lỗi khi tải ảnh đáp án');
     } finally {
       setUploadingTarget(null);
     }
@@ -434,9 +426,6 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     }
   };
 
-  const selectedCourseClass = courseClasses.find(
-    (courseClass) => courseClass.courseClassId === selectedCourseClassId
-  );
 
   return (
     <div className="space-y-6">
@@ -506,7 +495,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             <CustomSelect
               id="proposal-course-class"
               value={selectedCourseClassId?.toString() ?? ''}
-              onChange={(value) => setSelectedCourseClassId(value ? Number(value) : null)}
+              onChange={(value) => setRequestedCourseClassId(value ? Number(value) : null)}
               disabled={isLoadingCourseClasses || courseClassQuery.isError || !courseClasses.length}
               searchable={courseClasses.length > 5}
               placeholder={isLoadingCourseClasses
@@ -1147,7 +1136,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   setTitle('');
                   setContent('');
                   setSourceUrl('');
-                  setQuestions([createEmptyQuestion(1)]);
+                  setQuestions([createEmptyQuestion()]);
                 }}
                 className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >

@@ -24,17 +24,17 @@ import type {
 export const userService = {
   // ==================== USER PROFILE ====================
   getMyProfile: async (): Promise<GlobalResponse<ProfileResponse>> => {
-    return (await axiosClient.get<GlobalResponse<ProfileResponse>>('/users/me')) as any;
+    return axiosClient.get<unknown, GlobalResponse<ProfileResponse>>('/users/me');
   },
 
   getUserProfile: async (userId: number): Promise<GlobalResponse<ProfileResponse>> => {
-    return (await axiosClient.get<GlobalResponse<ProfileResponse>>(`/users/${userId}`)) as any;
+    return axiosClient.get<unknown, GlobalResponse<ProfileResponse>>(`/users/${userId}`);
   },
 
   updateMyProfile: async (
     data: UpdateProfileRequest
   ): Promise<GlobalResponse<ProfileResponse>> => {
-    return (await axiosClient.put<GlobalResponse<ProfileResponse>>('/users/me', data)) as any;
+    return axiosClient.put<unknown, GlobalResponse<ProfileResponse>>('/users/me', data);
   },
 
   getAccountDeletion: (signal?: AbortSignal) =>
@@ -95,32 +95,32 @@ export const userService = {
   sendFriendRequest: async (
     data: SendFriendRequestDto
   ): Promise<GlobalResponse<FriendshipResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<FriendshipResponseDto>>(
+    return axiosClient.post<unknown, GlobalResponse<FriendshipResponseDto>>(
       '/friendships/request',
       data
-    )) as any;
+    );
   },
 
   acceptFriendRequest: async (
     data: AcceptFriendRequestDto
   ): Promise<GlobalResponse<FriendshipResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<FriendshipResponseDto>>(
+    return axiosClient.post<unknown, GlobalResponse<FriendshipResponseDto>>(
       '/friendships/accept',
       data
-    )) as any;
+    );
   },
 
   declineFriendRequest: async (
     data: DeclineFriendRequestDto
   ): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.post<GlobalResponse<void>>(
+    return axiosClient.post<unknown, GlobalResponse<void>>(
       '/friendships/decline',
       data
-    )) as any;
+    );
   },
 
   unfriend: async (friendId: number): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.delete<GlobalResponse<void>>(`/friendships/${friendId}`)) as any;
+    return axiosClient.delete<unknown, GlobalResponse<void>>(`/friendships/${friendId}`);
   },
 
   cancelSentFriendRequest: (receiverId: number): Promise<GlobalResponse<void>> =>
@@ -158,9 +158,9 @@ export const userService = {
   getUserRelationshipStats: async (
     userId: number
   ): Promise<GlobalResponse<RelationshipStatsResponseDto>> => {
-    return (await axiosClient.get<GlobalResponse<RelationshipStatsResponseDto>>(
+    return axiosClient.get<unknown, GlobalResponse<RelationshipStatsResponseDto>>(
       `/users/${userId}/relationship-stats`
-    )) as any;
+    );
   },
 
   followUser: async (targetUserId: number): Promise<GlobalResponse<FollowResponseDto>> => {
@@ -177,15 +177,15 @@ export const userService = {
 
   // ==================== BLOCKS ====================
   blockUser: async (targetUserId: number): Promise<GlobalResponse<BlockResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<BlockResponseDto>>(
+    return axiosClient.post<unknown, GlobalResponse<BlockResponseDto>>(
       `/blocks/${targetUserId}`
-    )) as any;
+    );
   },
 
   unblockUser: async (targetUserId: number): Promise<GlobalResponse<UnblockResponseDto>> => {
-    return (await axiosClient.delete<GlobalResponse<UnblockResponseDto>>(
+    return axiosClient.delete<unknown, GlobalResponse<UnblockResponseDto>>(
       `/blocks/${targetUserId}`
-    )) as any;
+    );
   },
 
   getBlockedUsers: async (

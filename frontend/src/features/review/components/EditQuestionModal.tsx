@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ export function EditQuestionModal({ question, questionNumber, isSaving, onClose,
     setOptions((previous) => previous.map((option) => option.key === key ? { ...option, ...patch } : option));
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSaving) return;
     if (!content.trim() || options.length < 2 || options.some((option) => !option.text?.trim() && !option.mediaUrl)

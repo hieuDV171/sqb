@@ -75,7 +75,7 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
 
   if (!isOpen || !questionId) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!commentText.trim() || isSending) return;
     try {

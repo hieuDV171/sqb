@@ -1,3 +1,4 @@
+import { getErrorMessage, getResponseErrorMessage } from '@/lib/errorMessage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { sessionService } from '../services/sessionService';
 import { toast } from '@/stores/useToastStore';
@@ -19,8 +20,8 @@ export function useSessionMutations() {
       queryClient.invalidateQueries({ queryKey: ['my-submissions'] });
       toast.success('Đề xuất phiên câu hỏi thành công!');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi đề xuất phiên');
+    onError: (err: unknown) => {
+      toast.error(getResponseErrorMessage(err) ?? getErrorMessage(err) ?? 'Lỗi khi đề xuất phiên');
     },
   });
 
@@ -42,8 +43,8 @@ export function useSessionMutations() {
       });
       toast.success('Cập nhật phiên nộp thành công!');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi cập nhật phiên nộp');
+    onError: (err: unknown) => {
+      toast.error(getResponseErrorMessage(err) ?? getErrorMessage(err) ?? 'Lỗi khi cập nhật phiên nộp');
     },
   });
 
@@ -56,8 +57,8 @@ export function useSessionMutations() {
       queryClient.invalidateQueries({ queryKey: ['my-submissions'] });
       toast.success('Đã xóa phiên đề xuất nháp thành công!');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi xóa phiên');
+    onError: (err: unknown) => {
+      toast.error(getResponseErrorMessage(err) ?? getErrorMessage(err) ?? 'Lỗi khi xóa phiên');
     },
   });
 
@@ -69,8 +70,8 @@ export function useSessionMutations() {
     onSuccess: () => {
       toast.success('Đã ghi nhận dự đoán Gamification Game 2!');
     },
-    onError: (err: any) => {
-      toast.warning(err?.response?.data?.message || 'Không thể gửi dự đoán Game 2');
+    onError: (err: unknown) => {
+      toast.warning(getResponseErrorMessage(err) ?? 'Không thể gửi dự đoán Game 2');
     },
   });
 

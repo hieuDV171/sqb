@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -146,7 +146,7 @@ function SemesterSettings() {
     setAction({ type, semester });
   }
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (name.trim() && !busy) {
       create.mutate({ name: name.trim(), startDate: startDate || undefined });
@@ -295,7 +295,7 @@ function SubjectSettings() {
     `${subject.code} ${subject.name}`.toLocaleLowerCase('vi-VN').includes(keyword),
   );
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (code.trim() && name.trim() && !create.isPending) create.mutate({ code: code.trim(), name: name.trim() });
   }

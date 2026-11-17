@@ -131,7 +131,7 @@ export const CreatePostBox: React.FC = () => {
     setMediaList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // 1. Kiểm tra validation cho LEARNING_VIDEO

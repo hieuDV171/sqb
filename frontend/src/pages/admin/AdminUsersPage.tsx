@@ -273,7 +273,7 @@ export function AdminUsersPage() {
     setExcelResult(null);
   }
 
-  const handleExcelImport = async (e: React.FormEvent) => {
+  const handleExcelImport = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isExcelUploading) return;
     if (!selectedFile) {
@@ -355,7 +355,7 @@ export function AdminUsersPage() {
       : draft));
   };
 
-  const handleBulkSubmit = async (e: React.FormEvent) => {
+  const handleBulkSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isBulkLoading) return;
     setBulkError(null);
@@ -423,7 +423,7 @@ export function AdminUsersPage() {
     ? getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation)
     : null;
 
-  const handleAdminResetPassword = async (e: React.FormEvent) => {
+  const handleAdminResetPassword = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isResetLoading) return;
     setResetError(null);

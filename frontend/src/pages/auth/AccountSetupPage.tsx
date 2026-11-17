@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { AlertCircle, Check, Eye, EyeOff, KeyRound, LogOut, MailCheck, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/common/BrandMark';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export function AccountSetupPage() {
     }
   };
 
-  const verifyOtp = async (event: FormEvent<HTMLFormElement>) => {
+  const verifyOtp = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(otp)) {
@@ -64,7 +64,7 @@ export function AccountSetupPage() {
     }
   };
 
-  const changePassword = async (event: FormEvent<HTMLFormElement>) => {
+  const changePassword = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     if (newPassword.length < 8) {

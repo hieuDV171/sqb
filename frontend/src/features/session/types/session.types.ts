@@ -110,7 +110,7 @@ export interface MySubmissionQuestionDto {
   options: QuestionOption[];
   explanation?: string;
   difficulty?: QuestionDifficulty | null;
-  source?: string;
+  source?: QuestionSource | null;
   confidenceScore?: number;
   status: QuestionReviewStatus;
   rejectionCode?: RejectionReasonCode | null;
@@ -196,8 +196,8 @@ export interface GamePredictionResponse {
   gameType: GameType;
   targetType: PredictionTargetType;
   targetId: number;
-  predictionData: any;
-  actualData: any;
+  predictionData: unknown;
+  actualData: unknown;
   status: PredictionStatus;
   isCorrect: boolean;
   createdAt: string;

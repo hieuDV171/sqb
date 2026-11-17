@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export function LecturerNoteModal({ postId, initialNote = '', onClose }: Lecture
   const [note, setNote] = useState(initialNote);
   const { updateLecturerNote, isUpdatingNote } = usePostMutations();
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = note.trim();
     if (!content || isUpdatingNote) return;

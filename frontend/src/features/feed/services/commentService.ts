@@ -22,7 +22,7 @@ export const commentService = {
    * POST /api/v1/comments
    */
   createComment: async (data: CreateCommentRequest): Promise<GlobalResponse<CommentResponseDto>> => {
-    return (await axiosClient.post<GlobalResponse<CommentResponseDto>>('/comments', data)) as any;
+    return axiosClient.post<unknown, GlobalResponse<CommentResponseDto>>('/comments', data);
   },
 
   /**
@@ -37,7 +37,7 @@ export const commentService = {
     after?: number;
     limit?: number;
   }): Promise<GlobalResponse<CursorResponse<CommentResponseDto>>> => {
-    return (await axiosClient.get<GlobalResponse<CursorResponse<CommentResponseDto>>>('/comments', {
+    return axiosClient.get<unknown, GlobalResponse<CursorResponse<CommentResponseDto>>>('/comments', {
       params: {
         target_type: params.targetType,
         target_id: params.targetId,
@@ -46,7 +46,7 @@ export const commentService = {
         after: params.after,
         limit: params.limit || 20,
       },
-    })) as any;
+    });
   },
 
   /**
@@ -69,6 +69,6 @@ export const commentService = {
    * DELETE /api/v1/comments/{commentId}
    */
   deleteComment: async (commentId: number): Promise<GlobalResponse<void>> => {
-    return (await axiosClient.delete<GlobalResponse<void>>(`/comments/${commentId}`)) as any;
+    return axiosClient.delete<unknown, GlobalResponse<void>>(`/comments/${commentId}`);
   },
 };

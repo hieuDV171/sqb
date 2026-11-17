@@ -27,7 +27,7 @@ export function CreateCourseClassDialog({
   const classCodeRef = useRef<HTMLInputElement>(null);
   const createMutation = useCreateCourseClass();
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!classCode.trim() || !subjectId || (isAdmin && !lecturerId)) return;
     await createMutation.mutateAsync({

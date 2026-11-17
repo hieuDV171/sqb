@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Award, Plus } from 'lucide-react';
@@ -145,7 +145,7 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
     },
     onError: (error) => setValidationError(error.message || 'Không thể lưu. Hãy thử lại.'),
   });
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mutation.isPending || upload.isPending) return;
     setValidationError('');

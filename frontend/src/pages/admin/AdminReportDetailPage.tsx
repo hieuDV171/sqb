@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type SubmitEvent, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ChevronDown, Image, Minus, Plus, ShieldAlert, X, ZoomIn } from 'lucide-react';
@@ -208,7 +208,7 @@ function ReportDecisionDialog({ report, onClose, mode }: {
     : selected !== undefined && report.allowedActions.includes(selected) && report.version === openedVersion;
   const reverseLabel = report.report.targetType === 'USER' ? decisionLabels.LIFT_SUSPENSION : decisionLabels.RESTORE_CONTENT;
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!reason.trim() || !stillAllowed || mutation.isPending) return;
     try {

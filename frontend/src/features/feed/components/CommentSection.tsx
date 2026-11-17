@@ -56,7 +56,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
     }
   };
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
+  const handleSubmitComment = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isCreating || (!inputContent.trim() && !commentMediaUrl)) return;
 
