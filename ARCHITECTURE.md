@@ -1,9 +1,12 @@
-# 🏛️ KIẾN TRÚC TỔNG THỂ BACKEND (BE_ARCHITECTURE.md)
+# Kiến trúc hệ thống SQB
 
 > **Dự án:** School Social Network & Crowdsourced Question Bank (SQB)  
 > **Phiên bản:** 1.0.0-SNAPSHOT  
 > **Trạng thái:** Backend cung cấp 126 endpoint REST, WebSocket STOMP và 23 module.
-> **Tài liệu đặc tả API đi kèm:** [BACKEND_API_SPECIFICATION.md](file:///c:/Users/ADMIN/IdeaProjects/sqb/BACKEND_API_SPECIFICATION.md)
+
+Tài liệu gồm tổng quan backend và các bản ghi quyết định kiến trúc (ADR) của frontend, backend và hạ tầng triển khai.
+
+[Tài liệu API (Swagger UI)](https://hieudv.id.vn/api/v1/docs)
 
 ---
 
@@ -509,7 +512,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - `moderation_actions` ghi biện pháp và hoàn tác. `Post`, `Comment` và `User` ánh xạ `activeModerationAction` bằng `@ManyToOne(fetch = LAZY)` trên cột nullable `moderation_action_id`. Khóa ngoại trỏ tới `moderation_actions.id`. Truy vấn lọc nội dung kiểm tra cột này, còn hàng đợi Admin lấy ID biện pháp từ tham chiếu mà không tải bản ghi. Đình chỉ 24 giờ, 7 ngày hoặc 30 ngày có thể gỡ sớm và dùng `session_epoch` để thu hồi token cũ. Tài khoản Admin được tiếp nhận đơn và đóng đơn. Trạng thái đình chỉ độc lập với xóa tài khoản.
 - Quyết định, trạng thái đối tượng, thông báo và lịch sử lưu trong một giao dịch. STOMP được kiểm tra với trạng thái hiện tại và ngắt sau commit. Đồng bộ tìm kiếm dùng bản ghi hành động làm công việc có thể thử lại. Kết quả tìm kiếm lọc trạng thái PostgreSQL.
 - Kho `R2_REPORT_EVIDENCE_BUCKET` phải riêng tư và khác bucket media công khai. Ảnh trả về qua URL ký 120 giây. Thời hạn mặc định 90 ngày sau khi duyệt có thể chỉnh bằng `REPORT_EVIDENCE_RETENTION_DAYS`. Admin có thể chuyển ảnh cũ từ URL SQB hợp lệ để xem. Việc thu hồi URL public cũ cần kiểm kê tham chiếu trước khi xóa ở kho cũ.
-- Trước khi cập nhật BE, áp dụng schema từ entity qua quy trình Liquibase của dự án. Đối chiếu [đặc tả API](BACKEND_API_SPECIFICATION.md#30-báo-cáo-vi-phạm-reports) và [kế hoạch thiết kế](REPORT_MODERATION_PLAN.md).
+- Trước khi cập nhật BE, áp dụng schema từ entity qua quy trình Liquibase của dự án. Đối chiếu API báo cáo trong [Swagger UI](https://hieudv.id.vn/api/v1/docs) và kế hoạch thiết kế trong `REPORT_MODERATION_PLAN.md`.
 
 ### [ADR-057] Độ khó đề xuất và xác nhận khi duyệt câu hỏi
 

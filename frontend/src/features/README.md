@@ -1,6 +1,6 @@
 # 📦 SQB Frontend Features Architecture (Domain-Driven Modules)
 
-Cấu trúc thư mục `features/` được tổ chức bám sát theo 23 Module của Backend đã được đặc tả tại `BACKEND_API_SPECIFICATION.md`:
+Cấu trúc thư mục `features/` bám sát 23 module của backend. Các API được mô tả trong [Swagger UI](https://hieudv.id.vn/api/v1/docs).
 
 ```
 src/features/
