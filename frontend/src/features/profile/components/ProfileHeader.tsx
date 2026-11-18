@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { toast } from '@/stores/useToastStore';
 import type { ProfileResponse } from '@/types/user.types';
 import { AvatarWithFrame } from './AvatarWithFrame';
+import { ProfilePhotoViewer } from './ProfilePhotoViewer';
 import { EditProfileModal } from './EditProfileModal';
 import { FollowListModal } from './FollowListModal';
 import { BlockUserModal } from './BlockUserModal';
@@ -164,16 +165,18 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       <section aria-labelledby="profile-name" className="rounded-2xl border border-border bg-card shadow-[var(--card-shadow)]">
         <div className="relative h-36 overflow-hidden rounded-t-2xl bg-accent sm:h-52">
           {profile.coverUrl ? (
-            <img src={profile.coverUrl} alt="" className="size-full object-cover" />
+            <ProfilePhotoViewer url={profile.coverUrl} label={`Ảnh bìa của ${profile.fullName}`} initialAspectRatio={16 / 9} className="size-full">
+              <img src={profile.coverUrl} alt="" className="size-full object-cover" />
+            </ProfilePhotoViewer>
           ) : (
             <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/2 border-t border-primary/15 bg-primary/5" />
           )}
         </div>
 
         <div className="relative px-4 pb-4 sm:px-6 sm:pb-6">
-          <div className="-mt-10 w-fit rounded-full bg-card p-1">
+          <ProfilePhotoViewer url={profile.avatarUrl} label={`Ảnh đại diện của ${profile.fullName}`} className="-mt-10 w-fit rounded-full bg-card p-1">
             <AvatarWithFrame avatarUrl={profile.avatarUrl} frameUrl={profile.frameUrl} name={profile.fullName} size="xl" />
-          </div>
+          </ProfilePhotoViewer>
 
           <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">

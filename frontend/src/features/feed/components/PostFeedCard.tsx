@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { CommentSection } from './CommentSection';
+import { AuthorProfileLink } from './AuthorProfileLink';
 import { LecturerNoteModal } from './LecturerNoteModal';
 import { LectureVideo } from './LectureVideo';
 import { isVideoMedia } from '../utils/postMedia';
@@ -173,7 +174,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
       {/* 1. Card Header */}
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="relative shrink-0">
+          <AuthorProfileLink userId={isApprovalPost ? null : actor.userId} name={displayName} className="relative shrink-0 rounded-full">
             {isApprovalPost ? (
               <span aria-hidden="true" className="grid size-11 place-items-center rounded-full bg-academic-soft text-academic ring-2 ring-muted">
                 <Award className="size-5" />
@@ -194,13 +195,13 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
                 {actor.role === 'LECTURER' ? 'GV' : actor.role === 'ADMIN' ? 'AD' : 'SV'}
               </span>
             )}
-          </div>
+          </AuthorProfileLink>
 
           <div className="min-w-0">
             <div className="flex items-baseline gap-1.5">
-              <span className="truncate text-sm font-bold text-foreground md:text-base" title={displayName}>
+              <AuthorProfileLink userId={isApprovalPost ? null : actor.userId} name={displayName} className="truncate text-sm font-bold text-foreground hover:underline md:text-base">
                 {displayName}
-              </span>
+              </AuthorProfileLink>
               {!isApprovalPost && actor.schoolFaculty && (
                 <span className="hidden max-w-[35%] truncate text-[11px] text-muted-foreground sm:inline" title={actor.schoolFaculty}>
                   • {actor.schoolFaculty}

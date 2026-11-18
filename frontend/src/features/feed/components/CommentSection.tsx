@@ -5,8 +5,10 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useComments, useCommentReplies } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { EditComment } from './EditComment';
+import { AuthorProfileLink } from './AuthorProfileLink';
 import { ReportCommentAction } from '@/features/report/components/ReportCommentAction';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import {
@@ -97,31 +99,35 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
               onSubmit={handleSubmitComment}
               className="flex gap-2.5 items-start mb-4"
           >
-              <UserAvatar
+              <AuthorProfileLink userId={user?.id} name={avatarName} className="grid size-11 shrink-0 place-items-center rounded-full">
+                <UserAvatar
                   avatarUrl={user?.avatarUrl}
                   name={avatarName}
-                  className="mt-0.5 size-8 text-xs"
-              />
+                  className="size-10"
+                  decorative
+                />
+              </AuthorProfileLink>
 
-              <div className="flex-1 rounded-2xl border border-border bg-surface-subtle p-2 transition-[border-color,box-shadow] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
+              <div className="min-w-0 flex-1 rounded-2xl border border-border bg-surface-subtle p-2.5 transition-[border-color,box-shadow] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
                   <textarea
                       aria-label="Nội dung bình luận"
                       value={inputContent}
                       onChange={(e) => setInputContent(e.target.value)}
                       placeholder={targetType === 'SESSION' ? 'Chia sẻ góp ý về cả bộ câu hỏi…' : 'Viết bình luận hoặc lời giải của bạn...'}
-                      rows={1}
-                      className="w-full resize-none bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                      rows={2}
+                      className="w-full resize-none bg-transparent px-1 py-1 text-base leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
 
                   {commentMediaUrl && (
                       <div className="relative inline-block mt-2">
                           <img
                               src={commentMediaUrl}
-                              alt="comment media"
-                              className="w-20 h-20 object-cover rounded-xl border border-slate-300 dark:border-slate-600"
+                              alt="Ảnh đính kèm bình luận"
+                              className="size-20 rounded-xl border border-border object-cover"
                           />
                           <button
                               type="button"
+                              aria-label="Gỡ ảnh đính kèm"
                               onClick={() => setCommentMediaUrl(null)}
                               className="absolute -top-1.5 -right-1.5 p-1 bg-black/70 hover:bg-black text-white rounded-full"
                           >
@@ -130,14 +136,15 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                       </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                      <label className="grid size-11 cursor-pointer place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-primary" aria-label="Đính kèm ảnh">
+                  <div className="mt-1 flex items-center justify-between border-t border-border pt-1.5">
+                      <label className="grid size-11 cursor-pointer place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-within:ring-2 focus-within:ring-ring">
                           <ImageIcon className="w-4 h-4" />
                           <input
                               type="file"
                               accept="image/*"
                               onChange={handleMediaUpload}
-                              className="hidden"
+                              className="sr-only"
+                              aria-label="Đính kèm ảnh"
                               disabled={isUploadingMedia}
                           />
                       </label>
@@ -166,46 +173,54 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
 
           {/* 2. Comments List */}
           {isLoading ? (
-              <div className="flex items-center justify-center py-6" role="status">
-                  <Loader2 className="size-5 animate-spin text-primary" />
+              <div className="space-y-4 py-2" role="status">
                   <span className="sr-only">Đang tải bình luận</span>
+                  {[0, 1].map((item) => (
+                      <div key={item} className="flex gap-2.5" aria-hidden="true">
+                          <Skeleton className="size-10 shrink-0 rounded-full" />
+                          <Skeleton className="h-20 w-full rounded-2xl" />
+                      </div>
+                  ))}
               </div>
           ) : comments.length === 0 ? (
               <div className="py-5 text-center text-sm text-muted-foreground">
                   Chưa có bình luận nào. Hãy là người đầu tiên trao đổi!
               </div>
           ) : (
-              <div ref={commentsRoot} className="max-h-[min(65vh,36rem)] space-y-3 overflow-y-auto overscroll-contain pr-1">
+              // Allow wheel/touch scrolling to continue into the page at either boundary.
+              <div ref={commentsRoot} className="max-h-[min(65dvh,36rem)] space-y-4 overflow-y-auto overscroll-auto pr-1">
                   {comments.map((comment) => (
                       <div key={comment.commentId} className="group/item">
                           <div className="flex gap-2.5 items-start">
-                              <UserAvatar
+                              <AuthorProfileLink userId={comment.author?.userId} name={comment.author?.fullName} className="grid size-11 shrink-0 place-items-center rounded-full">
+                                <UserAvatar
                                   avatarUrl={comment.author?.avatarUrl}
                                   name={comment.author?.fullName}
-                                  className="mt-0.5 size-7 text-xs"
+                                  className="size-10"
                                   decorative
-                              />
+                                />
+                              </AuthorProfileLink>
 
-                              <div className="flex-1">
-                                  <div className="inline-block bg-slate-100 dark:bg-slate-800/80 rounded-2xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60">
-                                      <div className="flex items-center gap-2 mb-0.5">
-                                          <span className="font-semibold text-slate-900 dark:text-white">
+                              <div className="min-w-0 flex-1">
+                                  <div className="rounded-2xl border border-border bg-surface-subtle px-3.5 py-2.5 text-base leading-relaxed text-foreground">
+                                      <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          <AuthorProfileLink userId={comment.author?.userId} name={comment.author?.fullName} className="min-w-0 wrap-anywhere text-sm font-semibold hover:underline">
                                               {comment.author?.fullName ||
                                                   "Người dùng SQB"}
-                                          </span>
+                                          </AuthorProfileLink>
                                           {comment.author?.role && (
                                               <span
-                                                  className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                                                       comment.author.role ===
                                                       "LECTURER"
-                                                          ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400"
-                                                          : "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400"
+                                                          ? "bg-academic-soft text-academic"
+                                                          : "bg-primary/10 text-primary"
                                                   }`}
                                               >
                                                   {comment.author.role ===
                                                   "LECTURER"
                                                       ? "Giảng viên"
-                                                      : "Sinh viên"}
+                                                      : comment.author.role === 'ADMIN' ? 'Quản trị viên' : "Sinh viên"}
                                               </span>
                                           )}
                                       </div>
@@ -216,14 +231,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                       {comment.mediaUrl && (
                                           <img
                                               src={comment.mediaUrl}
-                                              alt="attachment"
-                                              className="mt-2 rounded-xl max-h-48 object-cover border border-slate-200 dark:border-slate-700"
+                                              alt="Ảnh đính kèm bình luận"
+                                              className="mt-2 max-h-48 max-w-full rounded-xl border border-border object-contain"
                                           />
                                       )}
                                   </div>
 
                                   {/* Actions under comment */}
-                                  <div className="flex items-center gap-3 mt-1 ml-2 text-[11px] text-slate-400">
+                                  <div className="ml-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
                                       <span>
                                           {new Date(
                                               comment.createdAt,
@@ -240,7 +255,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                                           : comment.commentId,
                                                   )
                                               }
-                                              className="font-medium hover:text-blue-500 cursor-pointer"
+                                              aria-expanded={replyingToCommentId === comment.commentId}
+                                              className="min-h-11 px-1 font-medium transition-colors hover:text-primary"
                                           >
                                               Trả lời
                                           </button>
@@ -254,10 +270,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                                       comment.commentId,
                                                   )
                                               }
-                                              className="hover:text-red-500 cursor-pointer opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                              className="grid size-11 place-items-center rounded-xl transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                              aria-label="Xóa bình luận"
                                               title="Xóa bình luận"
                                           >
-                                              <Trash2 className="w-3 h-3" />
+                                              <Trash2 className="size-4" aria-hidden="true" />
                                           </button>
                                       )}
                                   </div>
@@ -268,10 +285,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                   {/* Reply Input Box */}
                                   {replyingToCommentId ===
                                       comment.commentId && (
-                                      <div className="flex gap-2 mt-2 ml-4 items-center animate-in fade-in duration-150">
-                                          <CornerDownRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <div className="mt-2 flex items-center gap-2">
+                                          <CornerDownRight className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden="true" />
                                           <input
                                               type="text"
+                                              aria-label={`Trả lời ${comment.author?.fullName || 'người dùng SQB'}`}
                                               value={replyContent}
                                               onChange={(e) =>
                                                   setReplyContent(
@@ -287,7 +305,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                                       );
                                                   }
                                               }}
-                                              className="flex-1 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:border-blue-500"
+                                              className="min-h-11 min-w-0 flex-1 rounded-xl border border-input bg-surface-subtle px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-primary"
                                           />
                                           <button
                                               type="button"
@@ -297,9 +315,10 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                                   )
                                               }
                                               disabled={isCreating || !replyContent.trim()}
-                                              className="p-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl cursor-pointer"
+                                              aria-label="Gửi phản hồi"
+                                              className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary/85 disabled:opacity-40"
                                           >
-                                              <Send className="w-3 h-3" />
+                                              <Send className="size-4" aria-hidden="true" />
                                           </button>
                                       </div>
                                   )}
@@ -328,15 +347,20 @@ function CommentReplies({ comment, targetType, targetId }: CommentSectionProps &
   if (total === 0 && !open) return null;
 
   return (
-    <div className="mt-2 ml-5 space-y-2 border-l-2 border-border pl-3">
-      <div ref={listRef} className={open ? 'max-h-64 space-y-2 overflow-y-auto overscroll-contain' : 'space-y-2'}>
+    <div className="mt-2 space-y-3 border-l-2 border-border pl-2 sm:pl-3">
+      <div ref={listRef} className={open ? 'max-h-64 space-y-3 overflow-y-auto overscroll-auto pr-1' : 'space-y-3'}>
         {replies.map((reply) => (
-          <div key={reply.commentId} className="flex items-start gap-2 text-xs">
-            <UserAvatar avatarUrl={reply.author?.avatarUrl} name={reply.author?.fullName} decorative className="size-5" />
+          <div key={reply.commentId} className="flex items-start gap-2">
+            <AuthorProfileLink userId={reply.author?.userId} name={reply.author?.fullName} className="grid size-11 shrink-0 place-items-center rounded-full">
+              <UserAvatar avatarUrl={reply.author?.avatarUrl} name={reply.author?.fullName} decorative className="size-9" />
+            </AuthorProfileLink>
             <div className="min-w-0 flex-1">
-              <p className="whitespace-pre-wrap rounded-xl bg-muted px-2.5 py-1.5">
-                <strong className="mr-1.5">{reply.author?.fullName}</strong>{reply.content}
-              </p>
+              <div className="rounded-2xl border border-border bg-surface-subtle px-3 py-2.5 text-foreground">
+                <AuthorProfileLink userId={reply.author?.userId} name={reply.author?.fullName} className="wrap-anywhere text-sm font-semibold hover:underline">
+                  {reply.author?.fullName || 'Người dùng SQB'}
+                </AuthorProfileLink>
+                <p className="mt-1 wrap-anywhere whitespace-pre-wrap text-base leading-relaxed">{reply.content}</p>
+              </div>
               <EditComment comment={reply} />
               <ReportCommentAction comment={reply} />
             </div>
