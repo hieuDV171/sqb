@@ -3,8 +3,20 @@ import humps from 'humps';
 import type { GlobalResponse } from '../types/response.types';
 import { useAuthStore } from '../stores/useAuthStore';
 import { toast } from '../stores/useToastStore';
+import { ACCESS_REAUTH_MESSAGE, AccessGatewayError, isAccessGatewayResponse, isAdminHostname, resolveApiBaseUrl } from '../lib/adminAccess';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+export const API_BASE_URL = resolveApiBaseUrl(window.location, import.meta.env.VITE_API_BASE_URL);
+export const ACCESS_REQUEST_HEADERS = isAdminHostname(window.location.hostname)
+    ? { 'X-Requested-With': 'XMLHttpRequest' }
+    : {};
+
+export function getAccessGatewayError(error: unknown): Error | undefined {
+    if (error instanceof AccessGatewayError) return error;
+    if (isAdminHostname(window.location.hostname) && axios.isAxiosError(error)
+        && isAccessGatewayResponse(error.response?.status, error.response?.data)) {
+        return new AccessGatewayError(ACCESS_REAUTH_MESSAGE, { cause: error });
+    }
+}
 
 interface AccessClaims {
     userId?: number;
@@ -84,7 +96,7 @@ async function fetchRotatedToken(token: string): Promise<string | null> {
     const response = await axios.post<GlobalResponse<{ access_token: string }>>(
         `${API_BASE_URL.replace(/\/$/, '')}/auth/refresh`,
         undefined,
-        { withCredentials: true, timeout: 15000 },
+        { withCredentials: true, timeout: 15000, headers: ACCESS_REQUEST_HEADERS },
     );
     const refreshData = humps.camelizeKeys(response.data) as GlobalResponse<{ accessToken: string }>;
     const newToken = refreshData?.data?.accessToken;
@@ -98,6 +110,11 @@ async function applyRefresh(token: string, request: Promise<string | null>): Pro
     const newToken = await request.catch((error: unknown) => {
         if (useAuthStore.getState().accessToken !== token) {
             throw new axios.CanceledError('Session changed during refresh');
+        }
+        const gatewayError = getAccessGatewayError(error);
+        if (gatewayError) {
+            toast.warning(gatewayError.message, 'Xác thực truy cập quản trị', 0);
+            throw gatewayError;
         }
         if (axios.isAxiosError<GlobalResponse<null>>(error)) {
             const status = error.response?.status;
@@ -127,7 +144,7 @@ export async function revokeAccessSession(token: string, canRefresh: boolean): P
     const logout = (accessToken: string) => axios.post(
         `${API_BASE_URL.replace(/\/$/, '')}/auth/logout`,
         undefined,
-        { headers: { Authorization: `Bearer ${accessToken}` }, timeout: 15000 },
+        { headers: { ...ACCESS_REQUEST_HEADERS, Authorization: `Bearer ${accessToken}` }, withCredentials: true, timeout: 15000 },
     );
 
     // Let a concurrent rotation finish before revoking the refresh token for this device.
@@ -136,6 +153,8 @@ export async function revokeAccessSession(token: string, canRefresh: boolean): P
     try {
         await logout(rotatedToken ?? token);
     } catch (error) {
+        const gatewayError = getAccessGatewayError(error);
+        if (gatewayError) throw gatewayError;
         if (!canRefresh || refresh || !axios.isAxiosError(error) || error.response?.status !== 401) throw error;
         const freshToken = await requestRefresh(token);
         if (!freshToken) throw new Error('Refresh response does not match the session being signed out', { cause: error });

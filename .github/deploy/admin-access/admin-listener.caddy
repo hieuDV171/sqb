@@ -1,0 +1,33 @@
+# Imported by /etc/caddy/Caddyfile. cloudflared runs natively on this VPS.
+# Cloudflare Tunnel MUST validate the SQB Administration Access JWT before forwarding here.
+http://admin.hieudv.id.vn:9080 {
+	bind 127.0.0.1
+
+	request_body {
+		max_size 50MB
+	}
+
+	route {
+		# Keep the admin browser origin isolated from the public frontend.
+		@cross_origin {
+			header Origin *
+			not header Origin https://admin.hieudv.id.vn
+		}
+		respond @cross_origin "Cross-origin access denied" 403
+
+		@api path /api/v1 /api/v1/*
+		handle @api {
+			reverse_proxy 127.0.0.1:8085 {
+				header_up Host admin.hieudv.id.vn
+				header_up X-Forwarded-Host admin.hieudv.id.vn
+				header_up X-Forwarded-Proto https
+			}
+		}
+
+		handle {
+			root * /var/www/sqb-frontend/dist
+			try_files {path} /index.html
+			file_server
+		}
+	}
+}

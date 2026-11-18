@@ -2,7 +2,7 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import humps from "humps";
 import { useAuthStore } from "../stores/useAuthStore";
 import { toast } from "../stores/useToastStore";
-import { API_BASE_URL, isAccessTokenExpiring, refreshAccessToken } from "./accessSession";
+import { ACCESS_REQUEST_HEADERS, API_BASE_URL, getAccessGatewayError, isAccessTokenExpiring, refreshAccessToken } from "./accessSession";
 
 declare module "axios" {
     export interface AxiosRequestConfig {
@@ -20,6 +20,7 @@ export const axiosClient = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
     headers: {
+        ...ACCESS_REQUEST_HEADERS,
         "Content-Type": "application/json",
     },
 });
@@ -56,6 +57,12 @@ axiosClient.interceptors.response.use(
     ) as unknown as typeof response, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
     async (error) => {
         if (axios.isCancel(error)) return Promise.reject(error);
+
+        const gatewayError = getAccessGatewayError(error);
+        if (gatewayError) {
+            if (!error.config?.skipToast) toast.warning(gatewayError.message, 'Xác thực truy cập quản trị', 0);
+            return Promise.reject(gatewayError);
+        }
 
         const originalRequest = error.config;
         const formattedError = error.response?.data ? humps.camelizeKeys(error.response.data) : error;

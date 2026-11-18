@@ -91,6 +91,10 @@ jobs:
         working-directory: frontend
         run: npm run lint -- --max-warnings=0
 
+      - name: Test admin access routing
+        working-directory: frontend
+        run: npm run test:admin-access
+
       - name: Build production frontend
         working-directory: frontend
         run: npm run build

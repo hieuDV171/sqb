@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test:admin-access": "node --test scripts/admin-access.test.mjs scripts/admin-access.integration.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

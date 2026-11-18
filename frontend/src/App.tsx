@@ -6,6 +6,7 @@ import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ProtectedRoute } from "./components/routing/ProtectedRoute";
 import { PublicRoute } from "./components/routing/PublicRoute";
 import { OnboardingRoute } from "./components/routing/OnboardingRoute";
+import { AdminHostRoute } from "./components/routing/AdminHostRoute";
 import { AccountSetupPage } from "./pages/auth/AccountSetupPage";
 import { RoleGuard } from "./components/routing/RoleGuard";
 import { GlobalToastContainer } from "./components/ui/GlobalToastContainer";
@@ -54,6 +55,7 @@ export default function App() {
     <BrowserRouter>
       <GlobalToastContainer />
       <Routes>
+        <Route element={<AdminHostRoute />}>
         {/* Public Routes (Không cho phép người đã login vào lại trang đăng nhập) */}
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<LoginPage />} />
@@ -108,6 +110,7 @@ export default function App() {
 
           {/* Admin Restricted Routes */}
           <Route element={<RoleGuard allowedRoles={['ADMIN']} />}>
+            <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/badges" element={<AdminBadgesPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />
@@ -119,6 +122,7 @@ export default function App() {
 
         {/* 404 Catch-all */}
         <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Routes>
       <FeedbackButton />
     </BrowserRouter>
