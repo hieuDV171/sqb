@@ -5,6 +5,7 @@
 /.deploy-images/
 /.deploy-staging/
 /.deploy-tools/
+/.tmp/
 .env.local
 *.log
 .agents

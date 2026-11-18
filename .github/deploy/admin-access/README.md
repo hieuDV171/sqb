@@ -1,6 +1,8 @@
 # Chuyển quản trị SQB sang admin.hieudv.id.vn
 
-Thiết kế được chốt ngày 18/11/2026, dựa trên Ubuntu 24.04.1 và Caddyfile người dùng cung cấp. Các file trong thư mục này là cấu hình chuẩn bị để áp dụng; chưa được cài lên VPS.
+Thiết kế được chốt ngày 18/11/2026 trên Ubuntu 24.04.1. Luồng Access/Tunnel và cutover đã được kiểm tra trên production ngày 19/11/2026. VPS dùng chung với các project khác: không thay toàn bộ `/etc/caddy/Caddyfile` bằng một bản trong repository.
+
+Cấu hình SQB được tách thành `admin-listener.caddy` và `public-site.caddy`. Script `ensure-caddy.py` mặc định chỉ kiểm tra; `--apply` chỉ cài file SQB còn thiếu và thêm một dòng import nếu cần. Cấu hình đã đúng, kể cả block inline từ bản cutover cũ, thì không sửa file và không reload. Script không chạy trong CI/CD và chưa được chạy trên VPS.
 
 ```text
 Trình duyệt → Cloudflare Access → Tunnel (kiểm tra JWT Access)
@@ -42,34 +44,31 @@ Tài liệu: [Tạo ứng dụng Access](https://developers.cloudflare.com/cloud
 
 ## 3. Thêm listener Caddy nội bộ, giữ đường cũ để nghiệm thu
 
-Từ máy có repository, chép hai file cấu hình lên VPS. Ví dụ PowerShell, thay địa chỉ SSH bằng thông tin đang dùng:
+Từ máy có repository, chép script và các phần cấu hình SQB lên VPS. Ví dụ PowerShell, thay địa chỉ SSH bằng thông tin đang dùng:
 
 ```powershell
 $sqbServer = 'hieudv@YOUR_VPS_IP'
-scp .github/deploy/admin-access/admin-listener.caddy "${sqbServer}:/tmp/sqb-admin.caddy"
-scp .github/deploy/admin-access/Caddyfile.cutover "${sqbServer}:/tmp/sqb-Caddyfile.cutover"
+ssh $sqbServer 'mkdir -p /tmp/sqb-caddy-setup'
+scp .github/deploy/admin-access/ensure-caddy.py .github/deploy/admin-access/admin-listener.caddy .github/deploy/admin-access/public-site.caddy "${sqbServer}:/tmp/sqb-caddy-setup/"
 ```
 
 Trên VPS:
 
 ```bash
 sudo ss -ltnp '( sport = :9080 )'
-sudo cp -an /etc/caddy/Caddyfile /etc/caddy/Caddyfile.before-admin-access
-sudo install -o root -g root -m 0644 /tmp/sqb-admin.caddy /etc/caddy/sqb-admin.caddy
-sudo nano /etc/caddy/Caddyfile
+sudo python3 /tmp/sqb-caddy-setup/ensure-caddy.py --site admin
+sudo python3 /tmp/sqb-caddy-setup/ensure-caddy.py --site admin --apply
 ```
 
-Lệnh ss đầu tiên phải xác nhận 9080 chưa bị dịch vụ khác dùng. Chỉ thêm một dòng ở cuối Caddyfile hiện hành:
+Khi cài mới, cổng 9080 phải chưa bị dịch vụ khác dùng. Nếu listener SQB đã được cài, kiểm tra tiến trình Caddy và script sẽ xác nhận cấu hình hiện có. Khi thiếu listener, script tạo `/etc/caddy/sqb-admin.caddy`; nếu các import hiện có chưa nạp file này thì chỉ thêm dòng sau vào cuối Caddyfile:
 
 ```caddyfile
 import /etc/caddy/sqb-admin.caddy
 ```
 
-Sau đó:
+Script adapt/validate toàn bộ cấu hình trước reload. Cấu hình đã đủ thì không reload. Sau đó kiểm tra:
 
 ```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
 curl -I -H 'Host: admin.hieudv.id.vn' http://127.0.0.1:9080/login
 sudo ss -ltnp '( sport = :9080 )'
 ```
@@ -119,7 +118,7 @@ Tài liệu: [R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/).
 
 ## 6. Nghiệm thu admin rồi khóa đường cũ
 
-Đưa thay đổi lên Git và triển khai Compose/backend cùng frontend qua các workflow hiện có trước khi nghiệm thu. Chưa áp dụng `Caddyfile.cutover` ở bước này. Bản build mới sẽ chuyển người dùng vào khu quản trị qua hostname mới, nên không phát hành trước khi các bước Access/Tunnel sẵn sàng.
+Đưa thay đổi lên Git và triển khai Compose/backend cùng frontend qua các workflow hiện có trước khi nghiệm thu. Chưa chạy `--site public --apply` ở bước này. Bản build mới sẽ chuyển người dùng vào khu quản trị qua hostname mới, nên không phát hành trước khi các bước Access/Tunnel sẵn sàng.
 
 Tắt VPN khi thử bằng trình duyệt:
 
@@ -129,15 +128,18 @@ Tắt VPN khi thử bằng trình duyệt:
 - Refresh cookie Secure, HttpOnly, host admin, Path `/api/v1/auth`; không có Domain chia sẻ. Đăng nhập ở domain gốc không tự mang phiên sang admin.
 - F5 trang chi tiết, phiên SQB hết hạn, phiên Access hết hạn, tải ảnh huy hiệu, bằng chứng, xuất file và thông báo/WebSocket đều được kiểm tra. FCM/service worker và quyền thông báo thuộc origin mới; xin quyền lại nếu muốn dùng.
 
-Sau khi các ca trên qua, áp dụng **Caddyfile.cutover** (file đầy đủ đã giữ các site `topic*`, `cam*` theo cấu hình được cung cấp):
+Sau khi các ca trên qua, kiểm tra phần public của SQB:
 
 ```bash
-sudo caddy validate --config /tmp/sqb-Caddyfile.cutover --adapter caddyfile
-sudo install -o root -g root -m 0644 /tmp/sqb-Caddyfile.cutover /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+sudo python3 /tmp/sqb-caddy-setup/ensure-caddy.py --site public
+sudo python3 /tmp/sqb-caddy-setup/ensure-caddy.py --site public --apply
 ```
 
-Nếu file Caddy đang chạy đã có thay đổi khác kể từ bản cung cấp, ghép riêng block SQB và import, không ghi đè các thay đổi mới bằng file mẫu cũ.
+Trên VPS đã áp dụng cutover cũ, hai lệnh trên sẽ báo cấu hình đã có và không thay đổi gì. Không cần di chuyển block đang hoạt động chỉ để chạy script này.
+
+Nếu gặp **Existing SQB host configuration differs**, script dừng mà không append hoặc ghi đè. Trường hợp chuyển từ block SQB dùng Tailscale cũ, cần chỉnh một lần bằng `sudoedit`: chỉ thay block của đúng ba hostname `hieudv.id.vn, www.hieudv.id.vn, snsqb.duckdns.org` bằng nội dung `public-site.caddy`, hoặc tách block đó ra `/etc/caddy/sqb-public.caddy` và thay vị trí cũ bằng `import /etc/caddy/sqb-public.caddy`. Không giữ cả block inline và import vì sẽ khai báo trùng. Nếu block có hostname/cấu hình của project khác, ghép lại có rà soát; không xóa toàn block tự động.
+
+Khi chỉnh thủ công, chạy `sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` thành công rồi mới `sudo systemctl reload caddy`. Những lần cập nhật về sau chỉ sửa file SQB tương ứng; script không tự ghi đè file SQB đã tồn tại nhưng khác nội dung. Không có lệnh cài toàn bộ Caddyfile trong quy trình này.
 
 Kết quả cuối:
 
@@ -157,16 +159,24 @@ curl -I https://admin.hieudv.id.vn/
 
 Ba API public phải 403; curl không có phiên Access không được nhận trang ứng dụng admin. Dùng `curl --resolve` với IP origin thật để xác nhận gọi thẳng public origin cũng bị chặn, kể cả giả mạo header Access. Không có public listener admin; giả Host/SNI không được tới backend quản trị. Kiểm tra riêng các website khác sau reload.
 
-Xóa dòng hosts cũ cho domain gốc trên máy cá nhân một lần. Tailscale giữ cho SSH/Grafana và phục hồi VPS; không dùng để gọi ADMIN qua hostname public sau cutover.
+Xóa dòng hosts cũ cho domain gốc trên máy cá nhân một lần. Web ADMIN không cần Tailscale. Nếu gỡ VPN, phải thử đường SSH/console thay thế trước; monitoring/Grafana hiện tạm dừng vì RAM, không tự khởi động stack này khi cài Caddy.
 
-## Khôi phục
+## An toàn trên VPS dùng chung và khôi phục
 
-Nếu listener mới bị lỗi trong lúc chuẩn bị, khôi phục bản backup rồi validate/reload:
+- Script so sánh route JSON từ Caddy adapter, gồm host, listen/bind và toàn bộ handler của site SQB; không chỉ grep một hostname hoặc dòng comment. Group ID do adapter tự sinh được chuẩn hóa để các site khác không gây báo khác giả.
+- Site SQB đã đúng: giữ nguyên cả file gốc và file import, không reload. Thiếu site: tạo riêng file SQB, tận dụng import wildcard có sẵn hoặc append một import. File đích khác nội dung hoặc host SQB đã khai báo khác: dừng để người quản lý rà soát.
+- Trước append có bản backup tham chiếu `.Caddyfile.before-sqb-*` ngay cạnh Caddyfile. Validation/reload lỗi: chỉ gỡ phần append của lần chạy đó và file SQB vừa tạo nếu chưa có ai sửa chúng. Không lấy backup cũ ghi đè toàn bộ cấu hình hiện tại.
+- Script dùng advisory lock `/etc/caddy/.sqb-caddy.lock` và kiểm tra thay đổi trước khi ghi/reload. Quản trị viên khác cần phối hợp cùng lock hoặc tránh sửa/reload cùng lúc; lock không chặn được một người sửa trực tiếp bằng trình soạn thảo không dùng lock. Nếu phát hiện thay đổi đồng thời, giữ file hiện tại để rà soát, không phục hồi snapshot đè lên thay đổi mới.
+- Không chạy formatter ghi lại toàn bộ Caddyfile và không restart Caddy; chỉ reload sau validation thành công. Các file import tương đối của project khác vẫn được đọc từ vị trí Caddyfile thật.
+
+Nếu cần khôi phục thủ công, chỉ hoàn tác block/import hoặc file SQB vừa sửa sau khi đối chiếu cấu hình mới nhất, validate toàn bộ rồi reload. Không copy `Caddyfile.before-admin-access` hay bản backup cũ lên Caddyfile dùng chung.
+
+Nếu Access/Tunnel lỗi sau cutover, kiểm tra cloudflared, listener và backend qua SSH/console. Không gỡ chặn ADMIN API trên hostname công khai hoặc tắt kiểm tra JWT để sửa lỗi. Có thể tạm gỡ route admin trong Dashboard trong khi khôi phục. Khôi phục app/backend/frontend dùng phiên bản trước qua workflow, độc lập với cấu hình của project khác.
+
+Kiểm thử script trên máy phát triển có Caddy:
 
 ```bash
-sudo cp -a /etc/caddy/Caddyfile.before-admin-access /etc/caddy/Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+python3 .github/deploy/admin-access/test_ensure_caddy.py --caddy /path/to/caddy
 ```
 
-Nếu Access/Tunnel lỗi sau cutover, kiểm tra qua Tailscale/SSH trước. Khôi phục Caddyfile cũ chỉ là phương án chủ động tạm mở lại đường quản trị Tailscale trước đây; không xóa Access hoặc tắt kiểm tra JWT để sửa lỗi trên một hostname đã công bố. Có thể tạm gỡ route admin trong Dashboard trong khi khôi phục. Các bước trên không tự khôi phục image/backend hoặc frontend: dùng bản phát hành trước trong workflow nếu cần.
+Tài liệu: [Caddy import](https://caddyserver.com/docs/caddyfile/directives/import), [adapt/validate/reload](https://caddyserver.com/docs/command-line).

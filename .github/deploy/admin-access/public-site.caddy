@@ -1,0 +1,24 @@
+# SQB public hostnames only. Import this file; never replace the shared Caddyfile.
+hieudv.id.vn, www.hieudv.id.vn, snsqb.duckdns.org {
+	request_body {
+		max_size 50MB
+	}
+
+	route {
+		@blocked_admin_api path /api/v1/admin* /api/v1/auth/admin*
+		respond @blocked_admin_api "Administrative API is only available on admin.hieudv.id.vn" 403
+
+		@admin_page path_regexp admin_page (?i)^/admin(?:/|$)
+		redir @admin_page https://admin.hieudv.id.vn{uri} 302
+
+		handle /api/v1/* {
+			reverse_proxy localhost:8085
+		}
+
+		handle {
+			root * /var/www/sqb-frontend/dist
+			try_files {path} /index.html
+			file_server
+		}
+	}
+}
