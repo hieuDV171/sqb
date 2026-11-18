@@ -12,7 +12,7 @@ Chỉ hostname admin đi qua Tunnel này. Giữ nguyên DNS và đường phục
 
 ## 1. Chuẩn bị ứng dụng
 
-Mã frontend mới dùng cùng bản build tại `/var/www/sqb-frontend/dist` cho cả hai hostname. API và SockJS tự chọn origin hiện tại trên các hostname production, dù biến build cũ còn trỏ về domain gốc. Đặt GitHub Environment `production` → Variables:
+Mã frontend mới dùng cùng bản build tại `/var/www/sqb-frontend/dist` cho cả hai hostname. API và SockJS tự chọn origin hiện tại trên các hostname production, dù biến build cũ còn trỏ về domain gốc. Workflow đọc `${{ vars.* }}`: có thể dùng Repository Variables đã có, không bắt buộc tạo bản trùng trong Environment `production`. Đặt các giá trị sau tại nơi đang quản lý; nếu có cả hai cấp, đồng bộ giá trị để tránh phụ thuộc thời điểm nạp biến và thứ tự ưu tiên:
 
 ```text
 VITE_API_BASE_URL=/api/v1
@@ -20,6 +20,8 @@ FRONTEND_BASE_URL=https://hieudv.id.vn
 ```
 
 Giữ health check workflow ở domain công khai để không cần service token Access trong CI. Không đưa service token Access vào frontend hoặc biến `VITE_*`.
+
+`FRONTEND_BASE_URL=https://hieudv.id.vn` giữ nguyên nếu đã có. `VITE_API_BASE_URL` đổi từ URL tuyệt đối của domain gốc sang `/api/v1` khi phát hành nguồn mới; chỉ sửa Variables không tự build/deploy lại frontend.
 
 `docker-compose.prod.yml` mới bật `APP_COOKIE_SECURE=true` và thêm origin admin vào `APP_CORS_ALLOWED_ORIGINS`. `server.forward-headers-strategy=framework` đã có trong application.yaml. Listener Caddy mới đặt Host/X-Forwarded-Host admin và X-Forwarded-Proto HTTPS khi proxy tới backend.
 
@@ -29,11 +31,12 @@ Chuẩn bị các biến ở bước này; triển khai backend/Compose và fron
 
 1. Mở Cloudflare Zero Trust, chọn gói Free và đặt team name, ví dụ `sqb-hieu` nếu còn trống. Team name được dùng cho trang `<team>.cloudflareaccess.com`.
 2. Trong **Zero Trust → Integrations → Identity providers**, thêm phương thức đăng nhập. Để nghiệm thu ban đầu có thể dùng **One-time PIN** gửi tới email; email OTP không mặc nhiên tương đương MFA. Nếu dùng IdP/MFA, cấu hình và kiểm tra chính sách tương ứng.
+   - Nếu đã có **Cloudflare**, có thể dùng ngay tài khoản Cloudflare thay cho OTP. Mở provider để kiểm tra **Restrict to account members**; provider tự tạo cho tổ chức mới mặc định bật tùy chọn này. Chỉ người thuộc account đó xác thực được khi bật, và vẫn phải qua policy ứng dụng. Với quản trị viên bên ngoài chỉ cần truy cập SQB, có thể thêm OTP/IdP khác thay vì cấp quyền thành viên quản lý tài khoản Cloudflare.
 3. Vào **Access controls → Applications → Add an application → Self-hosted**.
 4. Đặt tên `SQB Administration`, public hostname **admin.hieudv.id.vn**, **để Path trống** để bảo vệ cả hostname, session đề xuất 8 giờ.
 5. Tạo policy **Allow**, Include **Emails** và điền từng email quản trị được cấp quyền. Không dùng Everyone, toàn bộ `@gmail.com`, hoặc Bypass. Chọn đúng login method ở bước 2.
 6. Lưu ứng dụng và ghi lại **Application Audience (AUD) Tag** cùng team name. Đây không phải JWT đăng nhập SQB.
-7. Bật **Return 401 response for non-browser traffic** nếu có trong Advanced settings. Frontend admin gửi `X-Requested-With: XMLHttpRequest` để nhận lỗi xác thực rõ ràng cho AJAX thay vì tự đi theo trang đăng nhập HTML. Khi có 401/403 ngoài envelope Spring, frontend yêu cầu tải lại trang để xác thực Access, không refresh hoặc xóa phiên SQB và không tự gửi lại thao tác ghi.
+7. Không cần bật **Return 401 Response** trong phần **Service Authentication failure**: tùy chọn đó chỉ áp dụng khi request bị Service Auth policy chặn, trong khi ứng dụng này dùng Allow theo danh tính người dùng. Tùy chọn **Return 401 response for non-browser traffic** tại **Access controls → Access settings → Cloudflare One Client authentication** cũng không cần cho mô hình web không dùng client này. Frontend admin mới gửi `X-Requested-With: XMLHttpRequest`; theo tài liệu AJAX, header này yêu cầu Access trả 401 khi phiên Access hết hạn. Khi có 401/403 ngoài envelope Spring, frontend yêu cầu tải lại trang để xác thực Access, không refresh hoặc xóa phiên SQB và không tự gửi lại thao tác ghi. Cần kiểm chứng phản hồi thật sau khi deploy frontend mới.
 
 Tài liệu: [Tạo ứng dụng Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/), [One-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/), [phiên và AJAX](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/session-management/).
 
@@ -76,7 +79,9 @@ Trang login trả 200; listener phải chỉ là `127.0.0.1:9080`, không phải
 ## 4. Tạo Tunnel trên Cloudflare
 
 1. Vào **Networking → Tunnels → Create a tunnel**, đặt tên `sqb-admin`.
-2. Chọn Linux/Ubuntu và đúng kiến trúc máy (`uname -m` trên VPS). Chạy lệnh cài chính thức Dashboard cung cấp và cài tunnel thành systemd service. Không gửi token connector vào chat/Git.
+2. Trên Dashboard chọn **Debian → 64-bit** cho Ubuntu 24.04 có `uname -m` là `x86_64` (gói amd64/x64). Ubuntu dùng gói Debian; không cần có nút Ubuntu riêng. Chạy lệnh cài chính thức Dashboard cung cấp trên VPS và cài tunnel thành systemd service. Không chọn Docker cho mô hình listener localhost này. Không gửi token connector vào chat/Git.
+   - Ô **Install cloudflared** chứa nhiều lệnh thêm key/repo và cài gói. Chạy `sudo -v` riêng, nhập mật khẩu và đợi trở lại prompt trước khi dán các lệnh; kiểm tra `cloudflared --version` để xác nhận gói đã cài. Nếu paste gặp prompt sudo và không có log apt, không kết luận đã cài xong; chạy lại từng dòng sau khi xác thực sudo.
+   - Sau khi có phiên bản, chỉ chạy lệnh **Install as service** và kiểm tra `sudo systemctl status cloudflared --no-pager`. Ô **Or, run tunnel (manual)** là phương án thay thế chạy foreground, không cần chạy thêm song song service.
 3. Đợi tunnel **Healthy**. Firewall phải cho cloudflared kết nối outbound tới Cloudflare (cổng 7844 TCP/UDP theo giao thức được dùng); không cần mở inbound cho tunnel.
 4. Trong **Routes → Add route → Published application**, dùng:
 
@@ -84,13 +89,17 @@ Trang login trả 200; listener phải chỉ là `127.0.0.1:9080`, không phải
 |---|---|
 | Public hostname | `admin.hieudv.id.vn` |
 | Path | Trống |
-| Service type | `HTTP` |
-| Service URL | `127.0.0.1:9080` |
+| Service type (nếu có ô riêng) | `HTTP` |
+| Service URL | `http://127.0.0.1:9080`; nếu GUI tách riêng type HTTP thì ô URL dùng `127.0.0.1:9080` |
 | HTTP Host Header | `admin.hieudv.id.vn` |
 | Protect with Access | **Bật** |
 | Team / AUD | Team và AUD của `SQB Administration` ở bước 2 |
 
+Giao diện mới có thể chỉ hiện **Service URL**, không có Service type: phải nhập đủ tiền tố `http://`. Trong Additional application settings, mở **HTTP** để điền Host header và **Access** để bật kiểm tra JWT/team/AUD; TLS giữ mặc định vì origin là HTTP loopback.
+
 5. Lưu route. Hostname admin phải dùng CNAME proxied của tunnel do Dashboard tạo. Nếu admin đã có A/AAAA/CNAME, xử lý bản ghi xung đột ở riêng hostname đó. Không tạo A về IP public VPS cho admin.
+
+Phân biệt các bước: tạo ứng dụng Access chỉ khai báo hostname cần bảo vệ, không tự tạo DNS. Published application route của Tunnel qua Dashboard mới tự tạo bản ghi DNS trỏ tới tunnel. Zone gốc hiện dùng nameserver Cloudflare, nên quản lý bản ghi tại Cloudflare DNS, không tại DNS iNET. iNET vẫn là nơi đăng ký/gia hạn tên miền. Lệnh curl tới `127.0.0.1` với Host admin chỉ thử vhost Caddy cục bộ, không kiểm tra DNS/HTTPS/Access từ Internet.
 
 **Access policy và kiểm tra JWT tại connector phải có trước khi đưa vào sử dụng.** Nếu giao diện không cho thiết lập Protect with Access/AUD, dừng công bố route để cấu hình kiểm tra token theo tài liệu; không coi một header có tên `Cf-Access-Jwt-Assertion` là bằng chứng xác thực chữ ký.
 
