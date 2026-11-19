@@ -8,6 +8,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.security.AccountState;
+import com.frozenheart.backend.core.security.AuthClientType;
 import com.frozenheart.backend.core.security.JwtService;
 import com.frozenheart.backend.core.security.TokenType;
 import com.frozenheart.backend.core.constant.ResponseCode;
@@ -144,7 +145,7 @@ class AuthServiceImplTest {
         when(userDeviceRepository.isFidBoundToAnotherDevice(fid, 26L, deviceId)).thenReturn(true);
         when(jwtService.generateAccessToken(anyMap(), eq(email))).thenReturn("access");
         when(jwtService.generateRefreshToken(eq(email), eq(26L), eq(deviceId),
-                org.mockito.ArgumentMatchers.anyString())).thenReturn("refresh");
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.isNull(), eq(AuthClientType.WEB))).thenReturn("refresh");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         AuthResponse response = service.login(new LoginRequest(

@@ -23,8 +23,10 @@ public interface AuthService {
     BulkImportResult bulkImportUsers(BulkImportRequest request);
 
     AuthResponse login(LoginRequest request);
+    AuthResponse loginNative(LoginRequest request);
 
     void logout();
+    void logoutNative();
 
     void changePassword(ChangePasswordRequest request);
 
@@ -33,6 +35,7 @@ public interface AuthService {
     void confirmEmailVerification(ConfirmEmailVerificationRequest request);
 
     RefreshTokenResponse refreshToken(RefreshTokenRequest request);
+    RefreshTokenResponse refreshNativeToken(RefreshTokenRequest request);
 
     void adminResetPassword(AdminResetPasswordRequest request);
 }

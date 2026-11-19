@@ -85,7 +85,10 @@ function expireSession(token: string): void {
 }
 
 async function requestRefresh(token: string): Promise<string | null> {
-    const run = () => fetchRotatedToken(token);
+    return withAuthSessionLock(() => fetchRotatedToken(token));
+}
+
+export function withAuthSessionLock<T>(run: () => Promise<T>): Promise<T> {
     return typeof navigator !== 'undefined' && navigator.locks
         ? navigator.locks.request('sqb-refresh-token', run)
         : run();
@@ -150,14 +153,16 @@ export async function revokeAccessSession(token: string, canRefresh: boolean): P
     // Let a concurrent rotation finish before revoking the refresh token for this device.
     const refresh = pendingRefresh?.token === token ? pendingRefresh.request : undefined;
     const rotatedToken = await refresh?.catch(() => null);
-    try {
-        await logout(rotatedToken ?? token);
-    } catch (error) {
-        const gatewayError = getAccessGatewayError(error);
-        if (gatewayError) throw gatewayError;
-        if (!canRefresh || refresh || !axios.isAxiosError(error) || error.response?.status !== 401) throw error;
-        const freshToken = await requestRefresh(token);
-        if (!freshToken) throw new Error('Refresh response does not match the session being signed out', { cause: error });
-        await logout(freshToken);
-    }
+    await withAuthSessionLock(async () => {
+        try {
+            await logout(rotatedToken ?? token);
+        } catch (error) {
+            const gatewayError = getAccessGatewayError(error);
+            if (gatewayError) throw gatewayError;
+            if (!canRefresh || refresh || !axios.isAxiosError(error) || error.response?.status !== 401) throw error;
+            const freshToken = await fetchRotatedToken(token);
+            if (!freshToken) throw new Error('Refresh response does not match the session being signed out', { cause: error });
+            await logout(freshToken);
+        }
+    });
 }

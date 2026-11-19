@@ -26,7 +26,7 @@ public record LoginRequest(
     @Schema(description = "Firebase Installation ID (FID) dùng để đẩy thông báo push", example = "fid_example_xyz")
     String fid,
                     
-    @Schema(description = "Nền tảng thiết bị đang đăng nhập", example = "WEB", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Metadata thiết bị: /auth/login chỉ WEB; /auth/native/login chỉ ANDROID/IOS/DESKTOP. Không xác thực danh tính ứng dụng.", example = "WEB", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "MISSING_REQUIRED_PARAMETER")
     DevicePlatform platform,
 

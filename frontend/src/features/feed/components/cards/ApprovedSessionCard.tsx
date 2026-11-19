@@ -38,6 +38,7 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
                 minute: '2-digit',
                 day: '2-digit',
                 month: '2-digit',
+                year: 'numeric',
               })}
             </p>
           </div>

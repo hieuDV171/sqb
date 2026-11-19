@@ -1,5 +1,5 @@
 import { axiosClient } from '@/api/axiosClient';
-import { revokeAccessSession } from '@/api/accessSession';
+import { revokeAccessSession, withAuthSessionLock } from '@/api/accessSession';
 import { useAuthStore } from '@/stores/useAuthStore';
 import type { AuthResponse, ChangePasswordRequest, LoginRequest, RefreshTokenResponse } from '../types/auth.types';
 import type { GlobalResponse } from '../types/response.types';
@@ -9,10 +9,10 @@ let pendingLogout: Promise<void> | undefined;
 export const authService = {
   login: async (data: LoginRequest): Promise<GlobalResponse<AuthResponse>> => {
     await pendingLogout?.catch(() => undefined);
-    return await axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data, {
+    return await withAuthSessionLock(() => axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data, {
       skipToast: true,
       skipAuthRefresh: true,
-    }) as unknown as GlobalResponse<AuthResponse>;
+    })) as unknown as GlobalResponse<AuthResponse>;
   },
 
   logout: (): Promise<void> => {

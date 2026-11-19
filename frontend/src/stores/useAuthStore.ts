@@ -1,5 +1,15 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+
+export const AUTH_EVENT_KEY = 'sqb-auth-event';
+
+function publishAuthEvent(type: 'login' | 'logout') {
+  try {
+    localStorage.setItem(AUTH_EVENT_KEY, JSON.stringify({ type, id: crypto.randomUUID() }));
+  } catch { /* Storage may be disabled; authentication remains in memory. */ }
+}
+
+// Remove credentials persisted by previous versions; never hydrate them into memory.
+try { localStorage.removeItem('sqb-auth-storage'); } catch { /* Storage may be disabled. */ }
 
 export type UserRole = 'STUDENT' | 'LECTURER' | 'ADMIN';
 export type AuthTokenType = 'ACCESS' | 'ONBOARDING';
@@ -22,18 +32,15 @@ interface AuthState {
   accountState: AccountState | null;
   isAuthenticated: boolean;
   user: UserInfo | null;
-  setAuth: (accessToken: string, user: UserInfo, tokenType: AuthTokenType, accountState: AccountState) => void;
+  setAuth: (accessToken: string, user: UserInfo, tokenType: AuthTokenType, accountState: AccountState, notify?: boolean) => void;
   setTokens: (accessToken: string) => void;
   setAccountState: (accountState: AccountState) => void;
   setUserRole: (role: UserRole) => void;
   updateUser: (partial: Partial<UserInfo>) => void;
-  logout: () => void;
+  logout: (notify?: boolean) => void;
 }
 
-type PersistedAuthState = Pick<AuthState, 'accessToken' | 'tokenType' | 'accountState' | 'isAuthenticated' | 'user'>;
-
 export const useAuthStore = create<AuthState>()(
-  persist(
     (set) => ({
       accessToken: null,
       tokenType: null,
@@ -41,7 +48,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       user: null,
 
-      setAuth: (accessToken, user, tokenType, accountState) => {
+      setAuth: (accessToken, user, tokenType, accountState, notify = true) => {
         set({
           accessToken,
           tokenType,
@@ -49,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           user: { ...user, role: user.role || 'STUDENT' },
         });
+        if (notify) publishAuthEvent('login');
       },
 
       setTokens: (accessToken) =>
@@ -70,38 +78,15 @@ export const useAuthStore = create<AuthState>()(
           user: state.user ? { ...state.user, ...partial } : null,
         })),
 
-      logout: () =>
+      logout: (notify = true) => {
         set({
           accessToken: null,
           tokenType: null,
           accountState: null,
           isAuthenticated: false,
           user: null,
-        }),
-    }),
-    {
-      name: 'sqb-auth-storage', // key in localStorage
-      version: 2,
-      // Refresh Token của web chỉ tồn tại trong HttpOnly cookie do Backend quản lý.
-      partialize: (state): PersistedAuthState => ({
-        accessToken: state.accessToken,
-        tokenType: state.tokenType,
-        accountState: state.accountState,
-        isAuthenticated: state.isAuthenticated,
-        user: state.user,
-      }),
-      migrate: (persistedState): PersistedAuthState => {
-        const persisted = persistedState as Partial<PersistedAuthState>;
-        const hasCurrentSessionContract = Boolean(persisted.tokenType && persisted.accountState);
-
-        return {
-          accessToken: hasCurrentSessionContract ? persisted.accessToken ?? null : null,
-          tokenType: hasCurrentSessionContract ? persisted.tokenType ?? null : null,
-          accountState: hasCurrentSessionContract ? persisted.accountState ?? null : null,
-          isAuthenticated: Boolean(hasCurrentSessionContract && persisted.isAuthenticated && persisted.accessToken),
-          user: hasCurrentSessionContract ? persisted.user ?? null : null,
-        };
+        });
+        if (notify) publishAuthEvent('logout');
       },
-    }
-  )
+    }),
 );

@@ -63,7 +63,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/refresh").permitAll()
+                        .requestMatchers("/auth/login", "/auth/refresh", "/auth/native/login", "/auth/native/refresh").permitAll()
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/docs/**", "/docs", "/api-docs/**").permitAll()
@@ -75,7 +75,7 @@ public class SecurityConfig {
                                 "/auth/email-verification/request",
                                 "/auth/email-verification/confirm",
                                 "/auth/change-password",
-                                "/auth/logout"
+                                "/auth/logout", "/auth/native/logout"
                         ).authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/auth/admin/**").hasRole("ADMIN")

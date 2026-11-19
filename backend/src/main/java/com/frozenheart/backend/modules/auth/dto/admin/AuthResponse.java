@@ -6,7 +6,7 @@ import com.frozenheart.backend.core.security.TokenType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
-@Builder
+@Builder(toBuilder = true)
 @Schema(description = "Thông tin phản hồi xác thực và bộ mã truy cập")
 public record AuthResponse(
         @Schema(description = "ID người dùng trong hệ thống", example = "101")
@@ -21,7 +21,7 @@ public record AuthResponse(
         @Schema(description = "JWT Access Token dùng cho các request tiếp theo", example = "eyJhbGciOiJIUzUxMiJ9...")
         String accessToken,
 
-        @Schema(description = "Refresh Token dùng để cấp mới Access Token", example = "4fae89b2-3e41-4c77-96a9-e8548981b29d")
+        @Schema(description = "Chỉ native nhận trong JSON. Web luôn null và dùng cookie HttpOnly. ONBOARDING không có refresh token.", example = "eyJhbGciOiJIUzUxMiJ9...")
         String refreshToken,
 
         @Schema(description = "Đường dẫn ảnh đại diện", example = "https://media.sqb.edu.vn/avatar/user101.webp")

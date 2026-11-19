@@ -62,6 +62,7 @@ public class JwtService {
                 .sessionEpoch(claims.get("sessionEpoch", Long.class))
                 .tokenType(readEnumClaim(claims, "tokenType", TokenType.class))
                 .accountState(readEnumClaim(claims, "accountState", AccountState.class))
+                .authClientType(readEnumClaim(claims, "authClientType", AuthClientType.class))
                 .issuedAt(claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant())
                 .build();
     }
@@ -96,11 +97,17 @@ public class JwtService {
     }
 
     public String generateRefreshToken(String subject, Long userId, String deviceId, String sessionId, Long sessionEpoch) {
+        return generateRefreshToken(subject, userId, deviceId, sessionId, sessionEpoch, null);
+    }
+
+    public String generateRefreshToken(String subject, Long userId, String deviceId, String sessionId,
+                                       Long sessionEpoch, AuthClientType clientType) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("tokenType", TokenType.REFRESH.name());
         extraClaims.put("userId", userId);
         extraClaims.put("deviceId", deviceId);
         extraClaims.put("sessionId", sessionId);
+        if (clientType != null) extraClaims.put("authClientType", clientType.name());
         if (sessionEpoch != null) extraClaims.put("sessionEpoch", sessionEpoch);
         return generateToken(extraClaims, subject, jwtProperties.getRefreshTokenExpiration());
     }

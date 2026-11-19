@@ -49,13 +49,14 @@ class R2StorageQuotaTest {
     private final AtomicReference<String> data = new AtomicReference<>();
     private final JsonMapper mapper = JsonMapper.builder().build();
     private R2StorageQuota quota;
+    private StringRedisTemplate redis;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         properties.setStorageQuotaEnabled(true);
         properties.setAccountId("fixture");
-        var redis = mock(StringRedisTemplate.class);
+        redis = mock(StringRedisTemplate.class);
         ValueOperations<String, String> values = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(values);
         when(values.get(anyString())).thenAnswer(call -> data.get());
@@ -95,6 +96,64 @@ class R2StorageQuotaTest {
         assertEquals(ResponseCode.STORAGE_QUOTA_EXCEEDED, assertThrows(AppException.class,
                 () -> quota.putObject(oneByteObject())).getResponseCode());
         verifyNoInteractions(storage);
+    }
+
+    @Test
+    void acceptsTheExactRemainingCapacityAndRejectsOneMoreByte() {
+        when(accountUsage.read(Set.of())).thenReturn(new R2AccountUsage.Usage(9_400_000_000L, Map.of()));
+        quota.reconcile();
+        quota.reservePresigned("sqb-public", List.of(new SizedUpload("fits", 100_000_000L)),
+                Instant.now().plusSeconds(60));
+
+        assertEquals(9_500_000_000L, state().projectedBytes());
+        assertEquals(ResponseCode.STORAGE_QUOTA_EXCEEDED, assertThrows(AppException.class,
+                () -> quota.reservePresigned("sqb-secret", List.of(new SizedUpload("too-much", 1)),
+                        Instant.now().plusSeconds(60))).getResponseCode());
+        assertEquals(1, state().holds().size());
+        verifyNoInteractions(storage, multipart);
+    }
+
+    @Test
+    void rejectsMoreThanTenGigabytesOnEveryWritePathWithoutUploadingAnyBytes() {
+        when(accountUsage.read(Set.of())).thenReturn(new R2AccountUsage.Usage(0, Map.of()));
+        quota.reconcile();
+        long hugeSize = 10_000_000_001L;
+        // Size metadata only: the stream contains zero bytes and is never sent anywhere.
+        var hugeObject = PutObjectArgs.builder().bucket("sqb-public").object("huge")
+                .stream(new ByteArrayInputStream(new byte[0]), hugeSize, -1L).build();
+
+        assertEquals(ResponseCode.STORAGE_QUOTA_EXCEEDED, assertThrows(AppException.class,
+                () -> quota.putObject(hugeObject)).getResponseCode());
+        assertEquals(ResponseCode.STORAGE_QUOTA_EXCEEDED, assertThrows(AppException.class,
+                () -> quota.reservePresigned("sqb-public", List.of(new SizedUpload("huge", hugeSize)),
+                        Instant.now().plusSeconds(60))).getResponseCode());
+        assertEquals(ResponseCode.STORAGE_QUOTA_EXCEEDED, assertThrows(AppException.class,
+                () -> quota.reserveMultipart("sqb-public", "huge-video", hugeSize,
+                        Instant.now().plusSeconds(60).toEpochMilli(), null)).getResponseCode());
+        assertEquals(0, state().projectedBytes());
+        assertTrue(state().holds().isEmpty());
+        verifyNoInteractions(storage, multipart);
+    }
+
+    @Test
+    void rejectsWritesWhenUsageIsStaleAndCloudflareCannotRefreshIt() {
+        data.set(mapper.writeValueAsString(new State(0,
+                Instant.now().minusSeconds(16 * 60).toEpochMilli(), Map.of())));
+        when(accountUsage.read(Set.of())).thenThrow(new IllegalStateException("Synthetic metrics outage"));
+        quota.reconcile();
+
+        assertEquals(ResponseCode.STORAGE_QUOTA_UNAVAILABLE, assertThrows(AppException.class,
+                () -> quota.putObject(oneByteObject())).getResponseCode());
+        verifyNoInteractions(storage, multipart);
+    }
+
+    @Test
+    void rejectsWritesWhenRedisCannotBeRead() {
+        when(redis.opsForValue()).thenThrow(new IllegalStateException("Synthetic Redis outage"));
+
+        assertEquals(ResponseCode.STORAGE_QUOTA_UNAVAILABLE, assertThrows(AppException.class,
+                () -> quota.putObject(oneByteObject())).getResponseCode());
+        verifyNoInteractions(storage, multipart);
     }
 
     @Test

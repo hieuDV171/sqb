@@ -32,10 +32,10 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @Operation(summary = "Đăng nhập hệ thống", description = "Xác thực tài khoản bằng Email và Mật khẩu. Hỗ trợ đa nền tảng (Web, Android, iOS), tự động lưu thông tin thiết bị và sinh cặp mã JWT Access Token & Refresh Token.")
+    @Operation(summary = "Web: đăng nhập bằng cookie HttpOnly", description = "Chỉ platform WEB, kể cả trình duyệt điện thoại/Flutter Web/PWA. JSON trả access_token; refresh_token null, RT chỉ trong cookie HttpOnly/Secure/SameSite Strict. Giữ AT trong memory. Native dùng /auth/native/login.")
     @SecurityRequirements // Public endpoint - không yêu cầu token trước khi gọi
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Đăng nhập thành công, trả về thông tin user và cặp token"),
+            @ApiResponse(responseCode = "200", description = "Thông tin user và AT trong JSON; RT chỉ ở cookie với tài khoản ACTIVE"),
             @ApiResponse(responseCode = "400", description = "Sai tài khoản hoặc mật khẩu (INCORRECT_IDENTIFIER)"),
             @ApiResponse(responseCode = "403", description = "Tài khoản bị khóa (ACCOUNT_NOT_ACTIVE)")
     })
@@ -46,7 +46,7 @@ public class AuthController {
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Đăng xuất tài khoản", description = "Xóa phiên đăng nhập hiện tại trên thiết bị, thu hồi Refresh Token trong Redis và vô hiệu hóa FCM Token đẩy thông báo.")
+    @Operation(summary = "Web: đăng xuất và xóa cookie", description = "Gửi Bearer AT WEB. Thu hồi refresh token/thiết bị và xóa cookie RT. Native dùng /auth/native/logout.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đăng xuất thành công khỏi thiết bị hiện tại"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn (TOKEN_INVALID_OR_EXPIRED)")
@@ -95,7 +95,7 @@ public class AuthController {
         return ResponseEntity.ok(GlobalResponse.success());
     }
 
-    @Operation(summary = "Cấp mới Access Token (Refresh)", description = "Sử dụng Refresh Token còn hiệu lực để cấp phát lại Access Token mới mà không cần người dùng nhập lại mật khẩu.")
+    @Operation(summary = "Web: refresh bằng cookie HttpOnly", description = "Không gửi refresh_token trong body; trình duyệt gửi credentials/cookie. Chỉ RT WEB hoặc cookie legacy được nhận. JSON trả AT mới, RT mới chỉ trong Set-Cookie. Native dùng /auth/native/refresh.")
     @SecurityRequirements // Public endpoint
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cấp mới Access Token thành công"),

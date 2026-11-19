@@ -26,6 +26,23 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class MediaPresignQuotaTest {
     @Test
     @SuppressWarnings("unchecked")
+    void rejectsADeclaredTenGigabyteFileBeforeQuotaReservationOrSigning() {
+        var properties = new R2Properties();
+        properties.setBucketName("sqb-public");
+        var signer = mock(R2MultipartClient.class);
+        var quota = mock(R2StorageQuota.class);
+        RedisTemplate<String, String> redis = mock(RedisTemplate.class);
+        var service = new MediaServiceImpl(null, properties, redis, quota, signer);
+
+        var error = assertThrows(AppException.class, () -> service.generatePresignedUrls(new PresignMediaRequest(List.of(
+                new PresignFileItem("huge.pdf", 10_000_000_001L, "application/pdf", MediaPurpose.DOCUMENT)))));
+
+        assertEquals(ResponseCode.INVALID_PARAMETER_VALUE, error.getResponseCode());
+        verifyNoInteractions(quota, signer, redis);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void rejectsTheWholeRequestBeforeSigningAnyLink() {
         var properties = new R2Properties();
         properties.setBucketName("sqb-public");

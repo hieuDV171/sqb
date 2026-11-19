@@ -66,9 +66,41 @@ public class OpenApiConfig {
                 ---
 
                 ### 🔑 Hướng dẫn xác thực:
-                1. Gọi API `/auth/login` để lấy JWT `access_token`.
+                1. Web/Flutter Web/PWA gọi `/auth/login`; Flutter native Android/iOS/desktop gọi `/auth/native/login` để lấy `access_token`.
                 2. Nhấn nút **Authorize** ở góc phải trên cùng màn hình, dán token vào ô `Value` (không cần gõ thêm chữ `Bearer `).
                 3. Nhấn **Authorize** để tự động gắn Header Authorization cho mọi API cần kiểm thử.
+
+                ### 🌐 Nhóm môn Web và nhóm môn Flutter dùng luồng nào?
+
+                Các đường dẫn bên dưới có tiền tố `/api/v1`. Cả hai dùng chung tài khoản, phân quyền và API nghiệp vụ.
+
+                | Client | Đăng nhập | Refresh | Logout | Nơi giữ refresh token |
+                | :--- | :--- | :--- | :--- | :--- |
+                | Web, trình duyệt điện thoại, PWA, Flutter Web | `/auth/login` với `platform=WEB` | `/auth/refresh`, không body, gửi cookie/credentials | `/auth/logout` với Bearer AT | Cookie HttpOnly, JSON RT null |
+                | Flutter native Android/iOS, desktop | `/auth/native/login` với `ANDROID`, `IOS` hoặc `DESKTOP` | `/auth/native/refresh` với JSON RT | `/auth/native/logout` với Bearer AT | Secure storage trên thiết bị, JSON trả RT |
+
+                **Ví dụ native login:**
+                ```json
+                {"email":"student@example.edu","password":"your-password","device_id":"a-unique-installation-uuid","platform":"ANDROID","device_name":"Flutter Android"}
+                ```
+                **Ví dụ native refresh:**
+                ```json
+                {"refresh_token":"the-latest-native-refresh-token"}
+                ```
+                Native thay cả AT và RT sau mỗi lần refresh thành công, chỉ chạy một refresh tại một thời điểm và không đưa token vào log/URL.
+                Web giữ AT trong memory, dùng cookie để khôi phục sau reload; không lưu token vào localStorage/sessionStorage/IndexedDB.
+                Token có kênh do server ký: RT WEB không đổi sang body/native; RT NATIVE không đổi sang cookie/web.
+                `platform` chỉ là metadata thiết bị, không chứng minh app chính chủ. Tách endpoint không làm tăng quyền tài khoản.
+                Phiên legacy thiếu kênh chỉ được chuyển tiếp bằng cookie WEB; native legacy phải đăng nhập lại.
+                Nếu `account_state` chưa ACTIVE, chỉ nhận AT `ONBOARDING`, không RT: gọi API xác minh email/đổi mật khẩu rồi đăng nhập lại đúng luồng.
+                ONBOARDING AT cũng chỉ ở memory trên web; reload giữa bước thiết lập yêu cầu đăng nhập lại.
+                Các phản hồi không chứa RT JSON cho web; Swagger Authorize dùng **access_token**, không dùng refresh_token.
+
+                **Triển khai frontend môn Web:** Cookie hiện giữ SameSite=Strict; chỉ thêm CORS không làm cookie hoạt động cross-site.
+                Chưa chốt origin của các nhóm: ưu tiên frontend/API cùng origin qua reverse proxy, hoặc cấu hình same-site và CORS allowlist cụ thể.
+                Frontend dùng `credentials: 'include'` / Axios `withCredentials: true`; production cần HTTPS.
+                Localhost gọi API production khác site không dùng được phiên cookie Strict hiện tại. Chốt triển khai với quản trị viên trước;
+                không chuyển web sang endpoint native hoặc tự nới cookie/CORS để né lỗi trình duyệt.
 
                 ---
 
@@ -76,7 +108,7 @@ public class OpenApiConfig {
                 Tất cả các REST API trong hệ thống đều trả về theo định dạng vỏ bọc thống nhất (snake_case):
                 ```json
                 {
-                  "code": "0000",
+                  "code": "1000",
                   "message": "Thành công",
                   "data": { ... Payload nghiệp vụ ... }
                 }

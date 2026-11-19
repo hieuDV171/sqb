@@ -7,6 +7,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.security.AccountState;
+import com.frozenheart.backend.core.security.AuthClientType;
 import com.frozenheart.backend.core.security.TokenType;
 
 import lombok.*;
@@ -28,6 +29,7 @@ public class JwtPayload {
     private Long sessionEpoch;
     private TokenType tokenType;
     private AccountState accountState;
+    private AuthClientType authClientType;
     private Instant issuedAt;
 
     public static JwtPayload getCurrentUserPayload() {

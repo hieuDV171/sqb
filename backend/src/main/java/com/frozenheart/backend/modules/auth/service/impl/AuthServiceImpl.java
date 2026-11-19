@@ -50,6 +50,7 @@ import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.DevicePlatform;
+import com.frozenheart.backend.core.security.AuthClientType;
 import com.frozenheart.backend.core.entity.user.PushPreferences;
 import com.frozenheart.backend.core.entity.user.UserGamification;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
@@ -98,6 +99,22 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        if (request.platform() != DevicePlatform.WEB) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Web dùng platform WEB; ứng dụng native dùng /auth/native/login.");
+        }
+        return loginForClient(request, AuthClientType.WEB);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginNative(LoginRequest request) {
+        if (request.platform() == null || request.platform() == DevicePlatform.WEB) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Native dùng platform ANDROID, IOS hoặc DESKTOP; trình duyệt dùng /auth/login.");
+        }
+        return loginForClient(request, AuthClientType.NATIVE);
+    }
+
+    private AuthResponse loginForClient(LoginRequest request, AuthClientType clientType) {
         String email = request.email();
 
         User user = userRepository.findByEmailForLogin(email)
@@ -134,35 +151,26 @@ public class AuthServiceImpl implements AuthService {
         saveOrUpdateUserDevice(user, request,
                 AccountState.from(user.isVerified(), userProfile.isProfileCompleted()));
 
-        AuthResponse authResponse = buildAuthResponse(request.deviceId(), user, userProfile);
+        AuthResponse authResponse = buildAuthResponse(request.deviceId(), user, userProfile, clientType);
         if (authResponse.tokenType() == TokenType.ONBOARDING) {
             log.info("[AuthService] Issued restricted onboarding session for userId={} state={}",
                     userId, authResponse.accountState());
         }
 
-        if (request.platform() == DevicePlatform.WEB && authResponse.tokenType() == TokenType.ACCESS) {
+        return presentAuthResponse(authResponse, clientType);
+    }
+
+    private AuthResponse presentAuthResponse(AuthResponse authResponse, AuthClientType clientType) {
+        if (clientType == AuthClientType.WEB && authResponse.tokenType() == TokenType.ACCESS) {
             cookieUtils.addHttpOnlyCookie(
                     "refreshToken",
                     authResponse.refreshToken(),
                     Duration.ofMillis(jwtService.getRefreshTokenExpiration()));
 
-            return AuthResponse.builder()
-                    .userId(authResponse.userId())
-                    .username(authResponse.username())
-                    .role(authResponse.role())
-                    .accessToken(authResponse.accessToken())
-                    .refreshToken(null) // WEB không nhận refreshToken trong JSON Body
-                    .avatarUrl(authResponse.avatarUrl())
-                    .coverUrl(authResponse.coverUrl())
-                    .frameUrl(authResponse.frameUrl())
-                    .verified(authResponse.verified())
-                    .profileCompleted(authResponse.profileCompleted())
-                    .tokenType(authResponse.tokenType())
-                    .accountState(authResponse.accountState())
-                    .build();
+            return authResponse.toBuilder().refreshToken(null).build();
         }
 
-        if (request.platform() == DevicePlatform.WEB) {
+        if (clientType == AuthClientType.WEB) {
             cookieUtils.clearCookie("refreshToken");
         }
 
@@ -315,7 +323,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntitySearchSyncEvent.EntityType.USER, user.getId()));
 
-        return buildAuthResponse(deviceId, user, userProfile);
+        return presentAuthResponse(buildAuthResponse(deviceId, user, userProfile, AuthClientType.WEB), AuthClientType.WEB);
 
     }
 
@@ -326,12 +334,14 @@ public class AuthServiceImpl implements AuthService {
             String deviceId,
             AccountState accountState,
             String sessionId,
-            Long sessionEpoch
+            Long sessionEpoch,
+            AuthClientType clientType
     ) {
 
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("userId", userId);
         extraClaims.put("deviceId", deviceId);
+        extraClaims.put("authClientType", clientType.name());
         if (sessionEpoch != null) extraClaims.put("sessionEpoch", sessionEpoch);
 
         String accessToken;
@@ -342,8 +352,7 @@ public class AuthServiceImpl implements AuthService {
             extraClaims.put("tokenType", TokenType.ACCESS.name());
             extraClaims.put("accountState", AccountState.ACTIVE.name());
             accessToken = jwtService.generateAccessToken(extraClaims, email);
-            refreshToken = sessionEpoch == null ? jwtService.generateRefreshToken(email, userId, deviceId, sessionId)
-                    : jwtService.generateRefreshToken(email, userId, deviceId, sessionId, sessionEpoch);
+            refreshToken = jwtService.generateRefreshToken(email, userId, deviceId, sessionId, sessionEpoch, clientType);
         } else {
             extraClaims.put("tokenType", TokenType.ONBOARDING.name());
             extraClaims.put("accountState", accountState.name());
@@ -357,7 +366,7 @@ public class AuthServiceImpl implements AuthService {
         return result;
     }
 
-    private AuthResponse buildAuthResponse(String deviceId, User user, UserProfile userProfile) {
+    private AuthResponse buildAuthResponse(String deviceId, User user, UserProfile userProfile, AuthClientType clientType) {
 
         Long userId = user.getId();
         UserRole role = user.getRole();
@@ -365,7 +374,7 @@ public class AuthServiceImpl implements AuthService {
 
         AccountState accountState = AccountState.from(user.isVerified(), userProfile.isProfileCompleted());
         Map<String, String> rtAtResult = generateAtAndRt(userId, role, email, deviceId, accountState,
-                UUID.randomUUID().toString(), user.getSessionEpoch());
+                UUID.randomUUID().toString(), user.getSessionEpoch(), clientType);
 
         String accessToken = rtAtResult.get("accessToken");
         String refreshToken = rtAtResult.get("refreshToken");
@@ -628,6 +637,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout() {
+        requireClientType(JwtPayload.getCurrentUserPayload(), AuthClientType.WEB);
+        logoutSession();
+        cookieUtils.clearCookie("refreshToken");
+    }
+
+    @Override
+    @Transactional
+    public void logoutNative() {
+        requireClientType(JwtPayload.getCurrentUserPayload(), AuthClientType.NATIVE);
+        logoutSession();
+    }
+
+    private void logoutSession() {
 
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
         Long currentUserId = payload.getUserId();
@@ -758,12 +780,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+        if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Web chỉ refresh bằng cookie HttpOnly; không gửi refresh_token trong JSON.");
+        }
+        return refreshForClient(cookieUtils.getCookieValue("refreshToken"), AuthClientType.WEB);
+    }
 
-        // Kiểm tra xem có Refresh Token trong Cookie không (Dành cho WEB)
-        String cookieRt = cookieUtils.getCookieValue("refreshToken");
-        boolean isWebClient = (cookieRt != null && !cookieRt.isBlank());
+    @Override
+    @Transactional
+    public RefreshTokenResponse refreshNativeToken(RefreshTokenRequest request) {
+        return refreshForClient(request == null ? null : request.refreshToken(), AuthClientType.NATIVE);
+    }
 
-        String incomingRt = isWebClient ? cookieRt : (request != null ? request.refreshToken() : null);
+    private void requireClientType(JwtPayload payload, AuthClientType expected) {
+        // Existing untyped sessions migrate only through the web cookie path.
+        AuthClientType actual = payload.getAuthClientType() == null ? AuthClientType.WEB : payload.getAuthClientType();
+        if (actual != expected) throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+    }
+
+    private RefreshTokenResponse refreshForClient(String incomingRt, AuthClientType clientType) {
+        boolean isWebClient = clientType == AuthClientType.WEB;
 
         if (incomingRt == null || incomingRt.isBlank()) {
             throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
@@ -782,6 +818,7 @@ public class AuthServiceImpl implements AuthService {
         if (payload.getTokenType() != TokenType.REFRESH) {
             throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
         }
+        requireClientType(payload, clientType);
 
         // Kiểm tra RT trong Redis
         String redisKey = "rt:" + email + ":" + deviceId;
@@ -822,7 +859,7 @@ public class AuthServiceImpl implements AuthService {
         // Sinh cặp Token mới (Refresh Token Rotation - RTR)
         String sessionId = payload.getSessionId() != null ? payload.getSessionId() : UUID.randomUUID().toString();
         Map<String, String> rtAtResult = generateAtAndRt(
-                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE, sessionId, user.getSessionEpoch());
+                user.getId(), user.getRole(), email, deviceId, AccountState.ACTIVE, sessionId, user.getSessionEpoch(), clientType);
         String newAccessToken = rtAtResult.get("accessToken");
         String newRefreshToken = rtAtResult.get("refreshToken");
 
