@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { stompClient } from '@/lib/stompClient';
-import { onForegroundMessage, syncCurrentFidIfAuthenticated } from '@/lib/firebase';
 import { toast } from '@/stores/useToastStore';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
@@ -69,22 +68,27 @@ export function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Xử lý cả yêu cầu hủy đang chờ khi quyền thông báo đã bị tắt.
-    syncCurrentFidIfAuthenticated().catch(() => {});
-
-    // 2. Lắng nghe thông báo khi người dùng đang mở tab (Foreground Toast)
+    // Push registration is independent of rendering the shell and page content.
+    let disposed = false;
     let unsubscribe: (() => void) | undefined;
-    onForegroundMessage((payload: unknown) => {
-      const message = readPushMessage(payload);
-      const title = message.notification?.title || message.data?.title || 'Thông báo mới từ SQB';
-      const body = message.notification?.body || message.data?.body || '';
-      toast.info(body || title, title);
-      void queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
-    }).then((unsub) => {
-      unsubscribe = unsub;
+    import('@/lib/firebase').then(async ({ syncCurrentFidIfAuthenticated, onForegroundMessage }) => {
+      if (disposed) return;
+      // Xử lý cả yêu cầu hủy đang chờ khi quyền thông báo đã bị tắt.
+      void syncCurrentFidIfAuthenticated().catch(() => {});
+      const unsub = await onForegroundMessage((payload: unknown) => {
+        if (disposed) return;
+        const message = readPushMessage(payload);
+        const title = message.notification?.title || message.data?.title || 'Thông báo mới từ SQB';
+        const body = message.notification?.body || message.data?.body || '';
+        toast.info(body || title, title);
+        void queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
+      });
+      if (disposed) unsub();
+      else unsubscribe = unsub;
     }).catch(() => {});
 
     return () => {
+      disposed = true;
       if (unsubscribe) unsubscribe();
     };
   }, [isAuthenticated, queryClient]);

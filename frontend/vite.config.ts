@@ -14,4 +14,18 @@ export default defineConfig({
             "@": path.resolve(import.meta.dirname, "./src"),
         },
     },
+    build: {
+        rolldownOptions: {
+            output: {
+                codeSplitting: {
+                    // Shared icons/primitives otherwise become dozens of tiny
+                    // requests before the first page can render on a cold load.
+                    groups: [
+                        { name: 'ui-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 },
+                        { name: 'ui-primitives', test: /node_modules[\\/]@base-ui[\\/]/, minShareCount: 2 },
+                    ],
+                },
+            },
+        },
+    },
 });

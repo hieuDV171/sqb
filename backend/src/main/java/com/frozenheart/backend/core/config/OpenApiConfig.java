@@ -90,7 +90,7 @@ public class OpenApiConfig {
                 2. Nhấn nút **Authorize** ở góc phải trên cùng màn hình, dán token vào ô `Value` (không cần gõ thêm chữ `Bearer `).
                 3. Nhấn **Authorize** để tự động gắn Header Authorization cho mọi API cần kiểm thử.
 
-                ### 🌐 Nhóm môn Web và nhóm môn Flutter dùng luồng nào?
+                ### 🌐 Client Web và client native dùng luồng nào?
 
                 Các đường dẫn bên dưới có tiền tố `/api/v1`. Cả hai dùng chung tài khoản, phân quyền và API nghiệp vụ.
 

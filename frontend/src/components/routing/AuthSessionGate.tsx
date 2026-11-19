@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
 import { AUTH_EVENT_KEY, useAuthStore } from '@/stores/useAuthStore';
 import { restoreWebSession } from '@/api/webSession';
 import { getAccessGatewayError } from '@/api/accessSession';
 import { queryClient } from '@/lib/queryClient';
 import { stompClient } from '@/lib/stompClient';
 import { Button } from '@/components/ui/button';
+import { SessionLoading } from './SessionLoading';
+import { warmInitialRoute } from './routeModules';
 
 export function AuthSessionGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -20,8 +21,14 @@ export function AuthSessionGate({ children }: { children: ReactNode }) {
       setStatus('loading');
       void restoreWebSession().then((session) => {
         if (disposed || current !== generation.current) return;
-        if (session) useAuthStore.getState().setAuth(session.accessToken, session.user, 'ACCESS', 'ACTIVE', false);
-        else useAuthStore.getState().logout(false);
+        if (session) {
+          // Load shell and page together, after auth traffic has finished. Starting
+          // these modulepreloads earlier can starve refresh/profile on slow links.
+          void warmInitialRoute(window.location.pathname).catch(() => undefined);
+          // Header/feed reuse the profile already validated during restoration.
+          queryClient.setQueryData(['userProfile', 'me'], session.profile);
+          useAuthStore.getState().setAuth(session.accessToken, session.user, 'ACCESS', 'ACTIVE', false);
+        } else useAuthStore.getState().logout(false);
         setStatus('ready');
       }).catch((failure: unknown) => {
         if (disposed || current !== generation.current) return;
@@ -47,16 +54,15 @@ export function AuthSessionGate({ children }: { children: ReactNode }) {
   }, [attempt]);
 
   if (status === 'ready') return children;
+  if (status === 'loading') return <SessionLoading />;
   return <main className="grid min-h-dvh place-items-center p-6">
-    {status === 'loading' ? <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Loader2 aria-hidden="true" className="size-5 motion-safe:animate-spin" /> Đang khôi phục phiên đăng nhập…
-    </p> : <div className="max-w-md space-y-4 text-center">
+    <div className="max-w-md space-y-4 text-center">
       <h1 className="text-xl font-semibold">Chưa thể khôi phục phiên</h1>
       <p role="alert" className="text-sm text-muted-foreground">{error}</p>
       <div className="flex flex-wrap justify-center gap-2">
         <Button onClick={() => setAttempt(attempt + 1)}>Thử lại</Button>
         <Button variant="outline" onClick={() => window.location.reload()}>Tải lại trang</Button>
       </div>
-    </div>}
+    </div>
   </main>;
 }

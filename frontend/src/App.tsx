@@ -1,46 +1,48 @@
 import { lazy } from "react";
+import { routeModules } from "./components/routing/routeModules";
+import { RouteContent } from "./components/routing/RouteContent";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LoginPage } from "./pages/auth/LoginPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ProtectedRoute } from "./components/routing/ProtectedRoute";
 import { PublicRoute } from "./components/routing/PublicRoute";
 import { OnboardingRoute } from "./components/routing/OnboardingRoute";
 import { AdminHostRoute } from "./components/routing/AdminHostRoute";
-import { AccountSetupPage } from "./pages/auth/AccountSetupPage";
 import { RoleGuard } from "./components/routing/RoleGuard";
 import { GlobalToastContainer } from "./components/ui/GlobalToastContainer";
 import { FeedbackButton } from "./features/feedback/components/FeedbackButton";
 import { useAuthStore } from "./stores/useAuthStore";
 
-const DeviceManagementPage = lazy(() => import("./pages/devices/DeviceManagementPage").then((module) => ({ default: module.DeviceManagementPage })));
-const LeaderboardPage = lazy(() => import("./pages/leaderboard/LeaderboardPage").then((module) => ({ default: module.LeaderboardPage })));
-const FeedRoute = lazy(() => import("./pages/feed/FeedPage").then((module) => ({ default: module.FeedRoute })));
-const PostDetailPage = lazy(() => import("./pages/feed/PostDetailPage").then((module) => ({ default: module.PostDetailPage })));
-const SessionsPage = lazy(() => import("./pages/session/SessionsPage").then((module) => ({ default: module.SessionsPage })));
-const SubmissionDetailPage = lazy(() => import("./pages/session/SubmissionDetailPage").then((module) => ({ default: module.SubmissionDetailPage })));
-const PracticeWorkspacePage = lazy(() => import("./pages/session/PracticeWorkspacePage").then((module) => ({ default: module.PracticeWorkspacePage })));
-const PracticeCatalogPage = lazy(() => import("./pages/session/PracticeCatalogPage").then((module) => ({ default: module.PracticeCatalogPage })));
-const MessagesPage = lazy(() => import("@/features/chat/pages/MessagesPage").then((module) => ({ default: module.MessagesPage })));
-const ShopPage = lazy(() => import("./pages/shop/ShopPage").then((module) => ({ default: module.ShopPage })));
-const ProfilePage = lazy(() => import("./pages/profile/ProfilePage").then((module) => ({ default: module.ProfilePage })));
-const FriendsPage = lazy(() => import("./pages/friends/FriendsPage").then((module) => ({ default: module.FriendsPage })));
-const BlockedUsersPage = lazy(() => import("./pages/profile/BlockedUsersPage").then((module) => ({ default: module.BlockedUsersPage })));
-const PendingReviewsPage = lazy(() => import("./pages/lecturer/PendingReviewsPage").then((module) => ({ default: module.PendingReviewsPage })));
-const ReviewWorkspacePage = lazy(() => import("./pages/lecturer/ReviewWorkspacePage").then((module) => ({ default: module.ReviewWorkspacePage })));
-const LecturerQuestionsPage = lazy(() => import("./pages/lecturer/LecturerQuestionsPage").then((module) => ({ default: module.LecturerQuestionsPage })));
-const LecturerExamsPage = lazy(() => import("./pages/lecturer/LecturerExamsPage").then((module) => ({ default: module.LecturerExamsPage })));
-const CourseClassesPage = lazy(() => import("./pages/lecturer/CourseClassesPage").then((module) => ({ default: module.CourseClassesPage })));
-const CourseClassDetailPage = lazy(() => import("./pages/lecturer/CourseClassDetailPage").then((module) => ({ default: module.CourseClassDetailPage })));
-const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage").then((module) => ({ default: module.AdminUsersPage })));
-const AdminReportsPage = lazy(() => import("./pages/admin/AdminReportsPage").then((module) => ({ default: module.AdminReportsPage })));
-const AdminReportDetailPage = lazy(() => import("./pages/admin/AdminReportDetailPage").then((module) => ({ default: module.AdminReportDetailPage })));
-const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage").then((module) => ({ default: module.AdminSettingsPage })));
-const AdminLeaderboardsPage = lazy(() => import("./pages/admin/AdminLeaderboardsPage").then((module) => ({ default: module.AdminLeaderboardsPage })));
-const AccountSettingsPage = lazy(() => import("./pages/settings/AccountSettingsPage").then((module) => ({ default: module.AccountSettingsPage })));
-const AdminBadgesPage = lazy(() => import("./pages/admin/AdminBadgesPage").then((module) => ({ default: module.AdminBadgesPage })));
-const NotificationsPage = lazy(() => import("./pages/notification/NotificationsPage").then((module) => ({ default: module.NotificationsPage })));
-const SearchPage = lazy(() => import("./pages/search/SearchPage").then((module) => ({ default: module.SearchPage })));
+const LoginPage = lazy(routeModules.LoginPage);
+const AccountSetupPage = lazy(routeModules.AccountSetupPage);
+const DeviceManagementPage = lazy(routeModules.DeviceManagementPage);
+const LeaderboardPage = lazy(routeModules.LeaderboardPage);
+const FeedRoute = lazy(routeModules.FeedRoute);
+const PostDetailPage = lazy(routeModules.PostDetailPage);
+const SessionsPage = lazy(routeModules.SessionsPage);
+const SubmissionDetailPage = lazy(routeModules.SubmissionDetailPage);
+const PracticeWorkspacePage = lazy(routeModules.PracticeWorkspacePage);
+const PracticeCatalogPage = lazy(routeModules.PracticeCatalogPage);
+const MessagesPage = lazy(routeModules.MessagesPage);
+const ShopPage = lazy(routeModules.ShopPage);
+const ProfilePage = lazy(routeModules.ProfilePage);
+const FriendsPage = lazy(routeModules.FriendsPage);
+const BlockedUsersPage = lazy(routeModules.BlockedUsersPage);
+const PendingReviewsPage = lazy(routeModules.PendingReviewsPage);
+const ReviewWorkspacePage = lazy(routeModules.ReviewWorkspacePage);
+const LecturerQuestionsPage = lazy(routeModules.LecturerQuestionsPage);
+const LecturerExamsPage = lazy(routeModules.LecturerExamsPage);
+const CourseClassesPage = lazy(routeModules.CourseClassesPage);
+const CourseClassDetailPage = lazy(routeModules.CourseClassDetailPage);
+const AdminUsersPage = lazy(routeModules.AdminUsersPage);
+const AdminReportsPage = lazy(routeModules.AdminReportsPage);
+const AdminReportDetailPage = lazy(routeModules.AdminReportDetailPage);
+const AdminSettingsPage = lazy(routeModules.AdminSettingsPage);
+const AdminLeaderboardsPage = lazy(routeModules.AdminLeaderboardsPage);
+const AccountSettingsPage = lazy(routeModules.AccountSettingsPage);
+const AdminBadgesPage = lazy(routeModules.AdminBadgesPage);
+const NotificationsPage = lazy(routeModules.NotificationsPage);
+const SearchPage = lazy(routeModules.SearchPage);
 
 export default function App() {
   const { isAuthenticated, user } = useAuthStore();
@@ -58,11 +60,11 @@ export default function App() {
         <Route element={<AdminHostRoute />}>
         {/* Public Routes (Không cho phép người đã login vào lại trang đăng nhập) */}
         <Route element={<PublicRoute />}>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<RouteContent routeKey="login"><LoginPage /></RouteContent>} />
         </Route>
 
         <Route element={<OnboardingRoute />}>
-          <Route path="/account-setup" element={<AccountSetupPage />} />
+          <Route path="/account-setup" element={<RouteContent routeKey="account-setup"><AccountSetupPage /></RouteContent>} />
         </Route>
 
         {/* Error Pages */}

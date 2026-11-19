@@ -156,11 +156,17 @@
 /* --------------------------------------------------------------------------
    3. BẢNG BIỂU MARKDOWN (CÂN ĐỐI TỶ LỆ CỘT, CHỐNG GIÃN TRÀN MÀN HÌNH)
    -------------------------------------------------------------------------- */
+.swagger-ui .markdown:has(table),
+.swagger-ui .renderedMarkdown:has(table) {
+    overflow-x: auto;
+}
+
 .swagger-ui .markdown table,
 .swagger-ui .renderedMarkdown table {
     width: 100% !important;
     max-width: 980px !important; /* Ngăn dãn bè quá mức trên màn hình lớn */
-    table-layout: fixed !important;
+    table-layout: auto !important;
+    min-width: 640px;
     border-collapse: separate !important;
     border-spacing: 0 !important;
     margin: 18px 0 !important;
@@ -181,6 +187,7 @@
     border-bottom: 1.5px solid #cbd5e1 !important;
     border-right: 1px solid #e2e8f0 !important;
     text-align: left !important;
+    min-width: 150px;
 }
 
 .swagger-ui .markdown table th:last-child,
@@ -216,32 +223,17 @@
     background-color: #f8fafc !important;
 }
 
-/* Căn chỉnh tỷ lệ cột cân đối cho Bảng 1: Publish Destinations */
-.swagger-ui .markdown table:first-of-type th:nth-child(1),
-.swagger-ui .renderedMarkdown table:first-of-type th:nth-child(1) {
-    width: 24% !important;
-}
-.swagger-ui .markdown table:first-of-type th:nth-child(2),
-.swagger-ui .renderedMarkdown table:first-of-type th:nth-child(2) {
-    width: 32% !important;
-}
-.swagger-ui .markdown table:first-of-type th:nth-child(3),
-.swagger-ui .renderedMarkdown table:first-of-type th:nth-child(3) {
-    width: 44% !important;
+/* Let all columns share the available space, regardless of table order/count.
+   A five-column auth table must not inherit the old three-column STOMP widths.
+   On narrow screens the table scrolls instead of crushing the last columns. */
+.swagger-ui .markdown table:has(th:nth-child(5)),
+.swagger-ui .renderedMarkdown table:has(th:nth-child(5)) {
+    min-width: 900px;
 }
 
-/* Căn chỉnh tỷ lệ cột cân đối cho Bảng 2: Subscribe Topics / Queues */
-.swagger-ui .markdown table:nth-of-type(2) th:nth-child(1),
-.swagger-ui .renderedMarkdown table:nth-of-type(2) th:nth-child(1) {
-    width: 34% !important;
-}
-.swagger-ui .markdown table:nth-of-type(2) th:nth-child(2),
-.swagger-ui .renderedMarkdown table:nth-of-type(2) th:nth-child(2) {
-    width: 36% !important;
-}
-.swagger-ui .markdown table:nth-of-type(2) th:nth-child(3),
-.swagger-ui .renderedMarkdown table:nth-of-type(2) th:nth-child(3) {
-    width: 30% !important;
+.swagger-ui .markdown table th:first-child,
+.swagger-ui .renderedMarkdown table th:first-child {
+    min-width: 180px;
 }
 
 

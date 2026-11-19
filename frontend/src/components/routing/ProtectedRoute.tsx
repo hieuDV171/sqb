@@ -2,8 +2,9 @@ import { lazy, type ReactNode } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { RouteContent } from './RouteContent';
+import { routeModules } from './routeModules';
 
-const AppLayout = lazy(() => import('@/layouts/AppLayout').then((module) => ({ default: module.AppLayout })));
+const AppLayout = lazy(routeModules.AppLayout);
 
 interface ProtectedRouteProps {
   children?: ReactNode;
