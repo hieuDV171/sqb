@@ -8,8 +8,7 @@ import lombok.Builder;
 public record RefreshTokenResponse(
         @Schema(description = "JWT Access Token mới", example = "eyJhbGciOiJIUzUxMiJ9...")
         String accessToken,
-
-        @Schema(description = "Refresh Token mới", example = "6cba92d1-4e12-4d88-87a1-f76123456789")
+        @Schema(description = "JWT RT mới cho native/LEGACY_JSON tạm thời; cookie WEB trả null và nhận RT qua Set-Cookie", example = "eyJhbGciOiJIUzUxMiJ9...")
         String refreshToken
 ) {
 

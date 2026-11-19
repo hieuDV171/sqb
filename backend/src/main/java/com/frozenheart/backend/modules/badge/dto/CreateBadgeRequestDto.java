@@ -35,14 +35,14 @@ public class CreateBadgeRequestDto {
     @NotNull(message = "Cấp bậc huy hiệu không được để trống")
     private BadgeTier badgeTier;
 
-    @Schema(description = "Sự kiện kích hoạt tự động trao huy hiệu", example = "PROPOSE_QUESTION")
+    @Schema(description = "Sự kiện xét thưởng, phải khớp kiểu criteria", example = "APPROVED_QUESTIONS")
     @NotNull(message = "Loại sự kiện kích hoạt (badgeTriggerEvent) không được để trống")
     private BadgeTriggerEvent badgeTriggerEvent;
 
     @Schema(description = "URL hình ảnh biểu tượng huy hiệu", example = "https://sqb.s3.ap-southeast-1.amazonaws.com/badges/proposer_gold.png")
     private String iconUrl;
 
-    @Schema(description = "Tiêu chí điều kiện xét duyệt huy hiệu")
+    @Schema(description = "Tiêu chí có discriminator type; ví dụ ngưỡng 50 câu hỏi được duyệt", example = "{\"type\":\"COUNTER_THRESHOLD\",\"threshold\":50,\"target_role\":\"ALL\"}")
     @NotNull(message = "Tiêu chí huy hiệu không được để trống")
     private BadgeCriteria criteria;
 }

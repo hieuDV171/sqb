@@ -141,7 +141,8 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       # HTTP reaches Caddy through a loopback tunnel; browser sessions remain HTTPS.
       - APP_COOKIE_SECURE=true
-      - APP_CORS_ALLOWED_ORIGINS=https://hieudv.id.vn,https://www.hieudv.id.vn,https://snsqb.duckdns.org,https://admin.hieudv.id.vn
+      - AUTH_LEGACY_JSON_ENABLED=${AUTH_LEGACY_JSON_ENABLED:-true}
+      - APP_CORS_ALLOWED_ORIGINS=https://hieudv.id.vn,https://www.hieudv.id.vn,https://snsqb.duckdns.org,https://admin.hieudv.id.vn,http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:5173,http://127.0.0.1:5174
 
       # Mail Service
       - MAIL_USERNAME=${MAIL_USERNAME}

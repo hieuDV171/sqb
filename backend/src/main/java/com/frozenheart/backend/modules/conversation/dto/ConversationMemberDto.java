@@ -29,6 +29,6 @@ public class ConversationMemberDto {
     @Schema(description = "Vai trò trong nhóm chat (CHIEF, VILLAGE_ELDER, VILLAGER)", example = "VILLAGER")
     private ConversationRole role;
 
-    @Schema(description = "Thời điểm tham gia nhóm chat")
+    @Schema(description = "Thời điểm tham gia nhóm chat", example = "2026-11-19T07:00:00Z")
     private Instant createdAt;
 }

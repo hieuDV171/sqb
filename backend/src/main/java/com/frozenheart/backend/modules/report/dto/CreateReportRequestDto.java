@@ -31,6 +31,7 @@ public class CreateReportRequestDto {
     @Size(max = 1)
     private List<@NotBlank @Size(max = 2048) String> evidenceUrls;
 
+    @Schema(description = "Tối đa một object key từ POST /report/evidence của chính người gửi; không gửi đồng thời evidence_urls", example = "[\"report-evidence/7/550e8400-e29b-41d4-a716-446655440000\"]")
     @Size(max = 1)
     private List<@NotBlank @Size(max = 160) String> evidenceKeys;
 

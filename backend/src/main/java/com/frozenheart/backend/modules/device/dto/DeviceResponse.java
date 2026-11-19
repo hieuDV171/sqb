@@ -9,28 +9,20 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record DeviceResponse(
         @Schema(description = "ID thiết bị trong CSDL", example = "12")
         Long userDeviceId,
-
         @Schema(description = "Mã định danh duy nhất của thiết bị", example = "web-browser-550e8400-e29b-41d4-a716-446655440000")
         String deviceId,
-
         @Schema(description = "Tên thiết bị hiển thị", example = "Chrome on Windows 11")
         String deviceName,
-
         @Schema(description = "Nền tảng thiết bị", example = "WEB")
         DevicePlatform platform,
-
         @Schema(description = "Phiên bản hệ điều hành", example = "Windows 11")
         String osVersion,
-
         @Schema(description = "Phiên bản ứng dụng Client", example = "1.0.0")
         String appVersion,
-
-        @Schema(description = "Thời điểm hoạt động gần nhất")
+        @Schema(description = "Thời điểm hoạt động gần nhất", example = "2026-11-19T07:00:00Z")
         Instant lastActiveAt,
-
         @Schema(description = "Trạng thái thiết bị đang hoạt động", example = "true")
         boolean isActive,
-
         @Schema(description = "Có phải thiết bị hiện tại đang gửi request không", example = "true")
         boolean isCurrentDevice
     ) {

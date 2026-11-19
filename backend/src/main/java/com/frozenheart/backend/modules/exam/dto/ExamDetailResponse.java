@@ -55,7 +55,7 @@ public class ExamDetailResponse {
         @Schema(description = "Nội dung câu hỏi (hỗ trợ LaTeX/Markdown)", example = "Thuật toán định thời nào sau đây có thể dẫn đến starvation?")
         private String content;
 
-        @Schema(description = "Danh sách URL hình ảnh minh họa cho câu hỏi")
+        @Schema(description = "Danh sách URL hình ảnh minh họa cho câu hỏi", example = "[\"https://media.example.com/question.png\"]")
         private List<String> imageUrls;
 
         @Schema(description = "Danh sách các lựa chọn đáp án")
@@ -81,7 +81,7 @@ public class ExamDetailResponse {
         @Schema(description = "Nội dung phương án", example = "Thuật toán Round Robin (RR)")
         private String text;
 
-        @Schema(description = "URL hình ảnh đáp án (nếu có)")
+        @Schema(description = "URL hình ảnh đáp án (nếu có)", example = "https://media.example.com/image.png")
         private String mediaUrl;
 
         @Schema(description = "Đáp án này có đúng hay không", example = "false")

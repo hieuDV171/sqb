@@ -15,7 +15,6 @@ import lombok.Builder;
 public record SubmissionsResponse(
         @Schema(description = "Danh sách các phiên đề xuất")
         List<SubmissionSessionSummaryDto> contents,
-
         @Schema(description = "Thông tin phân trang theo con trỏ cursor")
         CursorPaginationDto pagination
     ) {
@@ -24,54 +23,38 @@ public record SubmissionsResponse(
     public record SubmissionSessionSummaryDto(
             @Schema(description = "ID phiên đề xuất", example = "101")
             Long sessionId,
-
             @Schema(description = "Mã phiên nộp duy nhất", example = "IT3180_A7B2C1_1728200000000_101")
             String sessionCode,
-
             @Schema(description = "Tiêu đề phiên nộp", example = "Ôn tập Design Patterns")
             String title,
-
             @Schema(description = "Mô tả nội dung phiên", example = "5 câu trắc nghiệm Saga & CQRS")
             String content,
-
             @Schema(description = "ID môn học", example = "10")
             Long subjectId,
-
             @Schema(description = "Tên môn học", example = "Nhập môn Công nghệ phần mềm")
             String subjectName,
-
             @Schema(description = "Mã môn học", example = "IT3180")
             String subjectCode,
-
             @Schema(description = "ID lớp học phần", example = "100")
             Long courseClassId,
-
             @Schema(description = "Mã lớp học phần", example = "171146")
             String classCode,
-
             @Schema(description = "ID học kỳ", example = "2")
             Long semesterId,
-
             @Schema(description = "Tên học kỳ", example = "20261")
             String semesterName,
-
             @Schema(description = "Trạng thái thực tế của phiên đề xuất", example = "PENDING")
             SessionStatus status,
-
             @Schema(description = "Số lượng câu hỏi trong phiên", example = "5")
             int questionCounts,
-            @Schema(description = "Số câu được duyệt, chỉ trả cho người nộp sau khi xét duyệt")
+            @Schema(description = "Số câu được duyệt, chỉ trả cho người nộp sau khi xét duyệt", example = "10")
             Long approvedQuestionCount,
-
-            @Schema(description = "Thời điểm khởi tạo phiên nộp")
+            @Schema(description = "Thời điểm khởi tạo phiên nộp", example = "2026-11-19T07:00:00Z")
             Instant createdAt,
-
             @Schema(description = "Số lượt thả cảm xúc (react) cho phiên", example = "12")
             int reactCount,
-
             @Schema(description = "Cảm xúc của người gọi trên phiên, null nếu chưa thả cảm xúc", example = "LIKE")
             ReactionType myReaction,
-
             @Schema(description = "Số lượng bình luận trao đổi trong phiên", example = "4")
             int commentCount
         ) {

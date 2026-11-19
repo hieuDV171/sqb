@@ -46,7 +46,7 @@ public class QuestionReviewController {
     public ResponseEntity<GlobalResponse<ReviewableSessionsResponse>> getReviewableSessions(
             @Parameter(description = "ID phiên cuối cùng của trang trước (cursor)", example = "50")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) Long before,
+            @Parameter(description = "ID cursor cho chiều before; dùng pagination.before, trang đầu bỏ trống", example = "42") @RequestParam(required = false) Long before,
 
             @Parameter(description = "Số lượng phiên tối đa mỗi trang (mặc định 10, tối đa 50)", example = "10")
             @RequestParam(required = false) Integer limit,
@@ -56,7 +56,7 @@ public class QuestionReviewController {
 
             @Parameter(description = "Tiêu chí sắp xếp", example = "created_at")
             @RequestParam(required = false, name = "sort_by") String sortBy,
-            @RequestParam(name = "q", required = false) String keyword) {
+            @Parameter(description = "Lọc tiêu đề/mã bộ câu hỏi, môn học, mã lớp, tên học kỳ hoặc ID phiên; bỏ trống để không lọc", example = "Cơ sở dữ liệu") @RequestParam(name = "q", required = false) String keyword) {
 
         ReviewableSessionsResponse response = questionReviewService
                 .getReviewableSessions(after, before, limit, courseClassId, sortBy, keyword);

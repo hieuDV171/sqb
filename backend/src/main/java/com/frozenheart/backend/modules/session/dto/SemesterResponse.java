@@ -10,20 +10,15 @@ import java.time.LocalDate;
 public record SemesterResponse(
         @Schema(description = "ID học kỳ", example = "1")
         Long semesterId,
-
         @Schema(description = "Tên học kỳ", example = "20241")
         String name,
-
         @Schema(description = "Ngày khai giảng của học kỳ, nếu đã được nhập", example = "2026-09-07")
         LocalDate startDate,
-
         @Schema(description = "Trạng thái đang kích hoạt phục vụ học tập/thi", example = "true")
         boolean active,
-
         @Schema(description = "Trạng thái đã chốt sổ/tổng kết học kỳ (không thể kích hoạt lại)", example = "false")
         boolean isFinalize,
-
-        @Schema(description = "Thời điểm khởi tạo học kỳ")
+        @Schema(description = "Thời điểm khởi tạo học kỳ", example = "2026-11-19T07:00:00Z")
         Instant createdAt
     ) {
 }

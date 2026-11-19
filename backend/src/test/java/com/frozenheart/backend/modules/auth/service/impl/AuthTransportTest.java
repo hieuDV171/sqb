@@ -28,6 +28,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -42,6 +43,7 @@ class AuthTransportTest {
     @Mock RedisTemplate<String, String> redisTemplate;
     @Mock ValueOperations<String, String> values;
     @Mock JwtService jwtService;
+    @Mock AuthCompatibilityPolicy authCompatibilityPolicy;
     @Mock CookieUtils cookieUtils;
     @Mock MetricService metricService;
     @InjectMocks AuthServiceImpl service;
@@ -51,6 +53,96 @@ class AuthTransportTest {
     @Test void webRejectsNativePlatformBeforeCheckingCredentials() {
         assertCode(ResponseCode.INVALID_PARAMETER_VALUE, () -> service.login(login(DevicePlatform.ANDROID)));
         verifyNoInteractions(userRepository, jwtService, cookieUtils);
+    }
+
+    @Test void compatibilityLoginIssuesSignedLegacyJsonTokensWithoutCookies() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        prepareLogin(AuthClientType.LEGACY_JSON);
+        var response = service.login(login(DevicePlatform.ANDROID));
+        assertEquals("access", response.accessToken());
+        assertEquals("new-refresh", response.refreshToken());
+        verify(jwtService).generateAccessToken(argThat(c -> "LEGACY_JSON".equals(c.get("authClientType"))), eq("fixture@sqb.test"));
+        verifyNoInteractions(cookieUtils);
+    }
+
+    @Test void compatibilityStillRequiresValidCredentials() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        when(userRepository.findByEmailForLogin("fixture@sqb.test")).thenReturn(Optional.of(user()));
+        assertCode(ResponseCode.INCORRECT_IDENTIFIER, () -> service.login(login(DevicePlatform.ANDROID)));
+        verify(passwordEncoder).matches("password", "hash");
+        verifyNoInteractions(jwtService, cookieUtils, redisTemplate, userProfileRepository);
+    }
+
+    @Test void compatibilityOnboardingDoesNotIssueRefreshTokens() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        var user = user();
+        user.setVerified(false);
+        when(userRepository.findByEmailForLogin(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "hash")).thenReturn(true);
+        when(userProfileRepository.findByUserId(7L)).thenReturn(Optional.of(UserProfile.builder().user(user).profileCompleted(true).build()));
+        when(jwtService.generateOnboardingToken(anyMap(), eq(user.getEmail()))).thenReturn("onboarding");
+        var response = service.login(login(DevicePlatform.ANDROID));
+        assertEquals(TokenType.ONBOARDING, response.tokenType());
+        assertNull(response.refreshToken());
+        verifyNoInteractions(cookieUtils, redisTemplate);
+    }
+
+    @Test void compatibilityRotatesLegacyJsonTokensThroughOldEndpoint() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        prepareRefresh(AuthClientType.LEGACY_JSON, AuthClientType.LEGACY_JSON, 1L);
+        var response = service.refreshToken(new RefreshTokenRequest("old-refresh"));
+        assertEquals("new-refresh", response.refreshToken());
+        verify(cookieUtils, never()).addHttpOnlyCookie(anyString(), anyString(), any());
+        verify(cookieUtils, never()).clearCookie(anyString());
+    }
+
+    @Test void compatibilityMigratesUntypedOldJsonRefreshTokens() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        prepareRefresh(null, AuthClientType.LEGACY_JSON, 1L);
+        assertEquals("new-refresh", service.refreshToken(new RefreshTokenRequest("old-refresh")).refreshToken());
+    }
+
+    @Test void disablingCompatibilityRejectsPreviouslyIssuedJsonRefreshTokens() {
+        var enabled = new AtomicBoolean(true);
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenAnswer(_ -> enabled.get());
+        prepareRefresh(AuthClientType.LEGACY_JSON, AuthClientType.LEGACY_JSON, 1L);
+        var response = service.refreshToken(new RefreshTokenRequest("old-refresh"));
+        enabled.set(false);
+        assertCode(ResponseCode.INVALID_PARAMETER_VALUE, () -> service.refreshToken(new RefreshTokenRequest(response.refreshToken())));
+        verify(jwtService, never()).decodeToken("new-refresh");
+    }
+
+    @Test void compatibilityCannotExchangeSignedWebOrNativeTokensForLegacyJson() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        for (var type : List.of(AuthClientType.WEB, AuthClientType.NATIVE)) {
+            when(jwtService.decodeToken("old-refresh")).thenReturn(payload(type));
+            assertCode(ResponseCode.TOKEN_INVALID_OR_EXPIRED, () -> service.refreshToken(new RefreshTokenRequest("old-refresh")));
+        }
+        verifyNoInteractions(redisTemplate, userRepository);
+    }
+
+    @Test void compatibilityPreservesCookiePriorityWithoutExposingWebRefreshInJson() {
+        when(authCompatibilityPolicy.isLegacyJsonEnabled()).thenReturn(true);
+        when(cookieUtils.getCookieValue("refreshToken")).thenReturn("old-refresh");
+        prepareRefresh(AuthClientType.WEB, AuthClientType.WEB, 1L);
+        assertNull(service.refreshToken(new RefreshTokenRequest("ignored-body")).refreshToken());
+        verify(jwtService, never()).decodeToken("ignored-body");
+        verify(cookieUtils).addHttpOnlyCookie(eq("refreshToken"), eq("new-refresh"), any(Duration.class));
+    }
+
+    @Test void legacyJsonRefreshCannotEnterTheCookieOrNativeChannel() {
+        when(cookieUtils.getCookieValue("refreshToken")).thenReturn("old-refresh");
+        when(jwtService.decodeToken("old-refresh")).thenReturn(payload(AuthClientType.LEGACY_JSON));
+        assertCode(ResponseCode.TOKEN_INVALID_OR_EXPIRED, () -> service.refreshToken(null));
+        assertCode(ResponseCode.TOKEN_INVALID_OR_EXPIRED, () -> service.refreshNativeToken(new RefreshTokenRequest("old-refresh")));
+        verifyNoInteractions(redisTemplate, userRepository);
+    }
+
+    @Test void legacyJsonLogoutStillRevokesSessionAfterCompatibilityIsDisabled() {
+        authenticate(payload(AuthClientType.LEGACY_JSON));
+        service.logout();
+        verify(redisTemplate).delete("rt:fixture@sqb.test:device");
+        verifyNoInteractions(cookieUtils);
     }
 
     @Test void nativeRejectsWebPlatform() {
@@ -186,6 +278,7 @@ class AuthTransportTest {
     }
 
     private void authenticate(JwtPayload payload) {
+        payload.setTokenType(TokenType.ACCESS);
         var auth = new UsernamePasswordAuthenticationToken("fixture", null, List.of());
         auth.setDetails(payload);
         SecurityContextHolder.getContext().setAuthentication(auth);

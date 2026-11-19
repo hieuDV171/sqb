@@ -7,6 +7,9 @@ import com.frozenheart.backend.modules.report.dto.ReportResponseDto;
 import com.frozenheart.backend.modules.report.service.ReportService;
 import com.frozenheart.backend.modules.report.service.ReportEvidenceStorage;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,8 +31,18 @@ public class ReportController {
     private final ReportService reportService;
     private final ReportEvidenceStorage evidence;
 
+    @Operation(summary = "Tải một ảnh bằng chứng vào kho riêng tư", description = "Người dùng đăng nhập gửi multipart field file, ảnh PNG/JPEG/GIF/WebP hợp lệ, tối đa 5 MiB. Nhận object key thuộc chính tài khoản để gửi evidence_keys khi tạo báo cáo trong 23 giờ; tối đa một ảnh/báo cáo, không gửi đồng thời evidence_keys và evidence_urls. Đây không phải URL xem ảnh công khai. Có giới hạn số lần tải và quota R2.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Ảnh staging đã tải; dùng data.key trong evidence_keys", content = @Content(examples = @ExampleObject(value = "{\"code\":\"1000\",\"message\":\"Thành công\",\"data\":{\"key\":\"report-evidence/7/550e8400-e29b-41d4-a716-446655440000\"}}"))),
+            @ApiResponse(responseCode = "400", description = "Sai định dạng/nội dung ảnh hoặc dung lượng"),
+            @ApiResponse(responseCode = "401", description = "Chưa đăng nhập hoặc AT hết hạn"),
+            @ApiResponse(responseCode = "429", description = "Quá số lần tải bằng chứng cho phép"),
+            @ApiResponse(responseCode = "507", description = "Vượt quota lưu trữ R2"),
+            @ApiResponse(responseCode = "503", description = "Kho lưu trữ hoặc quota chưa khả dụng")
+    })
     @PostMapping(value = "/report/evidence", consumes = "multipart/form-data")
-    public ResponseEntity<GlobalResponse<Map<String, String>>> uploadEvidence(@RequestPart("file") MultipartFile file) {
+    public ResponseEntity<GlobalResponse<Map<String, String>>> uploadEvidence(
+            @Parameter(description = "Binary ảnh bằng chứng, >0 và <=5 MiB, đúng MIME và chữ ký tệp") @RequestPart("file") MultipartFile file) {
         String key = evidence.upload(JwtPayload.getCurrentUserPayload().getUserId(), file);
         return ResponseEntity.status(HttpStatus.CREATED).body(GlobalResponse.success(Map.of("key", key)));
     }

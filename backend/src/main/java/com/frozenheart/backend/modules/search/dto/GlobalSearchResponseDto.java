@@ -87,10 +87,10 @@ public class GlobalSearchResponseDto {
         @Schema(description = "URL khung avatar của tác giả", example = "https://sqb.s3.../frame.png")
         private String authorFrameUrl;
 
-        @Schema(description = "Loại bài viết", example = "QUESTION_SHARING")
+        @Schema(description = "Loại bài viết", example = "SOCIAL_POST")
         private PostType postType;
 
-        @Schema(description = "Danh sách URL hình ảnh đính kèm bài viết")
+        @Schema(description = "Danh sách URL hình ảnh đính kèm bài viết", example = "[\"https://media.example.com/image.png\"]")
         private List<String> mediaUrls;
 
         @Schema(description = "Số lượt tương tác cảm xúc", example = "12")
@@ -189,7 +189,7 @@ public class GlobalSearchResponseDto {
         @Schema(description = "Danh sách các lựa chọn đáp án")
         private List<QuestionOptionDto> options;
 
-        @Schema(description = "Danh sách URL hình ảnh minh họa trong câu hỏi")
+        @Schema(description = "Danh sách URL hình ảnh minh họa trong câu hỏi", example = "[\"https://media.example.com/question.png\"]")
         private List<String> imageUrls;
 
         @Schema(description = "Điểm đánh giá trung bình từ cộng đồng [1.0 - 5.0]", example = "4.6")
@@ -252,7 +252,7 @@ public class GlobalSearchResponseDto {
         @Schema(description = "Tên môn học", example = "Lập trình C# cơ bản")
         private String subjectName;
 
-        @Schema(description = "Trạng thái phiên", example = "ACTIVE")
+        @Schema(description = "Trạng thái phiên", example = "RESOLVED")
         private SessionStatus status;
 
         @Schema(description = "Số lượng câu hỏi đã nộp vào phiên", example = "24")

@@ -61,6 +61,7 @@ import com.frozenheart.backend.core.entity.user.UserPushSetting;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.security.JwtService;
+import com.frozenheart.backend.core.security.AuthCompatibilityPolicy;
 import com.frozenheart.backend.core.security.AccountState;
 import com.frozenheart.backend.core.security.TokenType;
 import com.frozenheart.backend.core.util.CookieUtils;
@@ -83,6 +84,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, String> redisTemplate;
     private final JwtService jwtService;
+    private final AuthCompatibilityPolicy authCompatibilityPolicy;
     private final EmailService emailService;
     private final MetricService metricService;
 
@@ -100,7 +102,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request) {
         if (request.platform() != DevicePlatform.WEB) {
-            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Web dùng platform WEB; ứng dụng native dùng /auth/native/login.");
+            if (request.platform() == null || !authCompatibilityPolicy.isLegacyJsonEnabled()) {
+                throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Web dùng platform WEB; ứng dụng native dùng /auth/native/login.");
+            }
+            return loginForClient(request, AuthClientType.LEGACY_JSON);
         }
         return loginForClient(request, AuthClientType.WEB);
     }
@@ -637,7 +642,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout() {
-        requireClientType(JwtPayload.getCurrentUserPayload(), AuthClientType.WEB);
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        // Allow a legacy client to revoke its own session even after compatibility is disabled.
+        if (payload.getAuthClientType() == AuthClientType.LEGACY_JSON) {
+            logoutSession();
+            return;
+        }
+        requireClientType(payload, AuthClientType.WEB);
         logoutSession();
         cookieUtils.clearCookie("refreshToken");
     }
@@ -780,10 +791,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
-        if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
+        String bodyRt = request == null ? null : request.refreshToken();
+        boolean hasBodyRt = bodyRt != null && !bodyRt.isBlank();
+        if (hasBodyRt && !authCompatibilityPolicy.isLegacyJsonEnabled()) {
             throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Web chỉ refresh bằng cookie HttpOnly; không gửi refresh_token trong JSON.");
         }
-        return refreshForClient(cookieUtils.getCookieValue("refreshToken"), AuthClientType.WEB);
+        String cookieRt = cookieUtils.getCookieValue("refreshToken");
+        if (cookieRt != null && !cookieRt.isBlank()) {
+            // Preserve the old cookie-first contract; never exchange a WEB cookie for JSON RT.
+            return refreshForClient(cookieRt, AuthClientType.WEB);
+        }
+        return hasBodyRt
+                ? refreshForClient(bodyRt, AuthClientType.LEGACY_JSON)
+                : refreshForClient(cookieRt, AuthClientType.WEB);
     }
 
     @Override
@@ -793,6 +813,13 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void requireClientType(JwtPayload payload, AuthClientType expected) {
+        if (expected == AuthClientType.LEGACY_JSON) {
+            if (!authCompatibilityPolicy.isLegacyJsonEnabled()
+                    || (payload.getAuthClientType() != null && payload.getAuthClientType() != AuthClientType.LEGACY_JSON)) {
+                throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+            }
+            return;
+        }
         // Existing untyped sessions migrate only through the web cookie path.
         AuthClientType actual = payload.getAuthClientType() == null ? AuthClientType.WEB : payload.getAuthClientType();
         if (actual != expected) throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);

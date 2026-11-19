@@ -64,7 +64,7 @@ public class ExamController {
     public ResponseEntity<GlobalResponse<ExamListResponse>> getMyExams(
             @Parameter(description = "ID đề thi cuối cùng của trang trước (cursor)", example = "20")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) Long before,
+            @Parameter(description = "ID cursor cho chiều before; dùng pagination.before, trang đầu bỏ trống", example = "42") @RequestParam(required = false) Long before,
 
             @Parameter(description = "Số lượng bản ghi tối đa mỗi trang (mặc định 10, tối đa 20)", example = "10")
             @RequestParam(defaultValue = "10") Integer limit,

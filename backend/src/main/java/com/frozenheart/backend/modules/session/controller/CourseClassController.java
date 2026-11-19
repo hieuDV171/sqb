@@ -58,8 +58,8 @@ public class CourseClassController {
     })
     @GetMapping("/my-classes")
     public ResponseEntity<GlobalResponse<List<CourseClassResponse>>> getMyCourseClasses(
-            @RequestParam(required = false, name = "semester_id") Long semesterId,
-            @RequestParam(defaultValue = "false", name = "include_history") boolean includeHistory) {
+            @Parameter(description = "Lọc lớp theo học kỳ cụ thể; bỏ trống để dùng phạm vi mặc định/include_history", example = "42") @RequestParam(required = false, name = "semester_id") Long semesterId,
+            @Parameter(description = "Lấy cả lớp trong lịch sử nếu không chọn semester_id; mặc định false chỉ học kỳ đang hoạt động", example = "false") @RequestParam(defaultValue = "false", name = "include_history") boolean includeHistory) {
         List<CourseClassResponse> response = courseClassManagementService
                 .getMyCourseClasses(semesterId, includeHistory);
         return ResponseEntity.ok(GlobalResponse.success(response));

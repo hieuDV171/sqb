@@ -72,7 +72,7 @@ public class FriendshipController {
             @ApiResponse(responseCode = "409", description = "Lời mời đã được chấp nhận (ALREADY_FRIENDS)")
     })
     @DeleteMapping("/requests/sent/{receiverId}")
-    public ResponseEntity<GlobalResponse<Void>> cancelSentRequest(@PathVariable Long receiverId) {
+    public ResponseEntity<GlobalResponse<Void>> cancelSentRequest(@Parameter(description = "ID tài khoản nhận lời mời kết bạn đang chờ do người gọi đã gửi", example = "42") @PathVariable Long receiverId) {
         friendshipService.cancelSentRequest(receiverId);
         return ResponseEntity.ok(GlobalResponse.success());
     }
@@ -100,7 +100,7 @@ public class FriendshipController {
     public ResponseEntity<GlobalResponse<FriendListResponseDto>> getMyFriends(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp trang sau", example = "1728200000000")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor thời gian|ID từ next_cursor; gửi nguyên chuỗi, ưu tiên hơn after legacy", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng bạn bè mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
         FriendListResponseDto response = friendshipService.getMyFriends(after, cursor, limit);
@@ -116,7 +116,7 @@ public class FriendshipController {
     public ResponseEntity<GlobalResponse<FriendRequestReceivedListResponseDto>> getReceivedFriendRequests(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor thời gian|ID từ next_cursor; gửi nguyên chuỗi, ưu tiên hơn after legacy", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng lời mời mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
         FriendRequestReceivedListResponseDto response = friendshipService.getReceivedFriendRequests(after, cursor, limit);
@@ -132,7 +132,7 @@ public class FriendshipController {
     public ResponseEntity<GlobalResponse<FriendRequestSentListResponseDto>> getSentFriendRequests(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor thời gian|ID từ next_cursor; gửi nguyên chuỗi, ưu tiên hơn after legacy", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng lời mời mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
         FriendRequestSentListResponseDto response = friendshipService.getSentFriendRequests(after, cursor, limit);

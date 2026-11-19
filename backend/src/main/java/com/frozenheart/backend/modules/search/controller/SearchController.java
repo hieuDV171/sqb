@@ -26,7 +26,7 @@ public class SearchController {
     public ResponseEntity<GlobalResponse<GlobalSearchResponseDto>> search(
             @Parameter(description = "Từ khóa tìm kiếm", example = "lập trình java") @RequestParam(required = false) String query,
             @Parameter(description = "Loại thực thể cần tìm kiếm (ALL, POST, USER, QUESTION, SESSION, SUBJECT)") @RequestParam(required = false, defaultValue = "ALL") SearchType type,
-            @Parameter(description = "Vị trí bắt đầu tìm kiếm (from offset)") @RequestParam(required = false) Long after,
+            @Parameter(description = "Vị trí bắt đầu tìm kiếm (from offset)", example = "42") @RequestParam(required = false) Long after,
             @Parameter(description = "Số lượng bản ghi mỗi trang (tối đa 50)", example = "10") @RequestParam(required = false, defaultValue = "10") Integer limit
     ) {
         GlobalSearchResponseDto response = searchService.search(query, type, after, limit);

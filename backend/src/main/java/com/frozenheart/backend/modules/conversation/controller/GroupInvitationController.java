@@ -30,12 +30,12 @@ public class GroupInvitationController {
             @ApiResponse(responseCode = "404", description = "Không tìm thấy nhóm")
     })
     public GlobalResponse<CursorResponse<GroupCandidateDto>> candidates(
-            @Parameter(description = "ID nhóm hiện có. Bỏ qua khi tạo nhóm.")
+            @Parameter(description = "ID nhóm hiện có. Bỏ qua khi tạo nhóm.", example = "42")
             @RequestParam(name = "conversation_id", required = false) Long conversationId,
-            @Parameter(description = "Con trỏ ID người dùng từ trang trước")
+            @Parameter(description = "Con trỏ ID người dùng từ trang trước", example = "0")
             @RequestParam(defaultValue = "0") long after,
-            @Parameter(description = "Từ khóa tìm theo tên") @RequestParam(defaultValue = "") String search,
-            @Parameter(description = "Số người mỗi trang, tối đa 50") @RequestParam(defaultValue = "20") int limit) {
+            @Parameter(description = "Từ khóa tìm theo tên", example = "Anh") @RequestParam(defaultValue = "") String search,
+            @Parameter(description = "Số người mỗi trang, tối đa 50", example = "20") @RequestParam(defaultValue = "20") int limit) {
         return GlobalResponse.success(service.candidates(conversationId, after, search, limit));
     }
 
@@ -47,31 +47,31 @@ public class GroupInvitationController {
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
     })
     public GlobalResponse<CursorResponse<GroupInvitationDto>> incoming(
-            @Parameter(description = "Con trỏ ID lời mời từ trang trước") @RequestParam(defaultValue = "0") long after,
-            @Parameter(description = "Số lời mời mỗi trang, tối đa 50") @RequestParam(defaultValue = "20") int limit) {
+            @Parameter(description = "Con trỏ ID lời mời từ trang trước", example = "0") @RequestParam(defaultValue = "0") long after,
+            @Parameter(description = "Số lời mời mỗi trang, tối đa 50", example = "20") @RequestParam(defaultValue = "20") int limit) {
         return GlobalResponse.success(service.incoming(after, limit));
     }
 
     @PostMapping("/invitations/{id}/accept")
-    @Operation(summary = "Chấp nhận lời mời và nhận ID hội thoại")
+    @Operation(summary = "Chấp nhận lời mời và nhận ID hội thoại", description = "Chỉ người nhận được chấp nhận lời mời còn hạn; giới hạn nhóm 200 thành viên. Thêm vào nhóm với vai trò VILLAGER, xóa lời mời và trả conversation_id trong data. Lời mời không còn hợp lệ trả 404.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đã tham gia nhóm"),
             @ApiResponse(responseCode = "400", description = "Nhóm đã đạt giới hạn thành viên"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy lời mời còn hiệu lực của người dùng hiện tại")
     })
-    public GlobalResponse<Long> accept(@Parameter(description = "ID lời mời") @PathVariable Long id) {
+    public GlobalResponse<Long> accept(@Parameter(description = "ID lời mời", example = "42") @PathVariable Long id) {
         return GlobalResponse.success(service.accept(id));
     }
 
     @DeleteMapping("/invitations/{id}")
-    @Operation(summary = "Từ chối lời mời gửi tới tài khoản hiện tại")
+    @Operation(summary = "Từ chối lời mời gửi tới tài khoản hiện tại", description = "Xóa lời mời thuộc người đang đăng nhập mà không tham gia nhóm. ID không tồn tại hoặc không thuộc người gọi trả 404; không dùng conversation_id thay invitation ID.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đã từ chối lời mời"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy lời mời của người dùng hiện tại")
     })
-    public GlobalResponse<Void> decline(@Parameter(description = "ID lời mời") @PathVariable Long id) {
+    public GlobalResponse<Void> decline(@Parameter(description = "ID lời mời", example = "42") @PathVariable Long id) {
         service.decline(id);
         return GlobalResponse.success("Đã từ chối lời mời", null);
     }

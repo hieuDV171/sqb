@@ -35,7 +35,7 @@ public class CosmeticController {
             @Parameter(description = "Lọc theo loại vật phẩm (AVATAR_FRAME, CHAT_BUBBLE, BADGE_EFFECT...)") @RequestParam(value = "type", required = false) CosmeticType type,
             @Parameter(description = "Lọc theo độ hiếm (COMMON, RARE, EPIC, LEGENDARY)") @RequestParam(value = "rarity", required = false) CosmeticRarity rarity,
             @Parameter(description = "Chỉ lấy các vật phẩm đã mở khóa", example = "true") @RequestParam(value = "only_unlocked", required = false, defaultValue = "true") boolean onlyUnlocked,
-            @Parameter(description = "Con trỏ phân trang (ID vật phẩm cuối cùng của trang trước)") @RequestParam(value = "after", required = false) Long after,
+            @Parameter(description = "Con trỏ phân trang (ID vật phẩm cuối cùng của trang trước)", example = "42") @RequestParam(value = "after", required = false) Long after,
             @Parameter(description = "Số lượng bản ghi mỗi trang (tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit) {
         MyInventoryResponseDto response = cosmeticService.getMyInventory(type, rarity, onlyUnlocked, after, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));
@@ -47,7 +47,7 @@ public class CosmeticController {
     public ResponseEntity<GlobalResponse<CosmeticShopResponseDto>> getShop(
             @Parameter(description = "Lọc theo loại vật phẩm (AVATAR_FRAME, CHAT_BUBBLE...)") @RequestParam(value = "type", required = false) CosmeticType type,
             @Parameter(description = "Tiêu chí sắp xếp (NEWEST, PRICE_ASC, PRICE_DESC, RARITY)") @RequestParam(value = "sort_by", required = false, defaultValue = "NEWEST") CosmeticSortBy sortBy,
-            @Parameter(description = "Con trỏ phân trang (ID vật phẩm)") @RequestParam(value = "after", required = false) Long after,
+            @Parameter(description = "Con trỏ phân trang (ID vật phẩm)", example = "42") @RequestParam(value = "after", required = false) Long after,
             @Parameter(description = "Số lượng bản ghi mỗi trang", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit) {
         CosmeticShopResponseDto response = cosmeticService.getShop(type, sortBy, after, limit);
         return ResponseEntity.ok(GlobalResponse.success(response));

@@ -2,6 +2,7 @@ package com.frozenheart.backend.core.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.frozenheart.backend.core.security.AuthCompatibilityPolicy;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -43,6 +44,11 @@ import java.util.List;
 public class OpenApiConfig {
 
     public static final String SECURITY_SCHEME_NAME = "bearerAuth";
+    private final AuthCompatibilityPolicy authCompatibilityPolicy;
+
+    public OpenApiConfig(AuthCompatibilityPolicy authCompatibilityPolicy) {
+        this.authCompatibilityPolicy = authCompatibilityPolicy;
+    }
 
     /**
      * Cấu hình ModelResolver của OpenAPI sinh schema chuẩn snake_case.
@@ -59,9 +65,23 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         String description = """
-                Tài liệu đặc tả và kiểm thử tương tác toàn bộ 143+ REST API & Giao thức WebSocket STOMP của nền tảng SQB (Social Network Student-Generated Question Bank).
+                Tài liệu đặc tả và kiểm thử tương tác REST API & Giao thức WebSocket STOMP của nền tảng SQB (Social Network Student-Generated Question Bank).
 
-                > ⚠️ **LƯU Ý:** Các API dành cho admin không cần gọi và không được gọi.
+                > ⚠️ **LƯU Ý CHO NHÓM CLIENT SINH VIÊN:** Không gọi các API dành cho admin. Browser chỉ được gọi trực tiếp từ origin trong allowlist của backend: các domain SQB/admin đã cấu hình và localhost theo cổng bên dưới. HTTP client native thông thường không chịu CORS của browser; vẫn phải xác thực và có quyền phù hợp.
+
+                ### ✅ Client Web chạy localhost và client native bắt đầu ở đây
+
+                - **Client chạy local:** cấu hình SQB cho phép HTTP `localhost` và `127.0.0.1` ở các cổng **3000, 3001, 5173, 5174**.
+                  Nếu banner đầu Swagger báo tương thích **ĐANG BẬT**, client cũ có thể gọi trực tiếp `/auth/login` với platform non-WEB,
+                  nhận AT/RT JSON và refresh qua body tại `/auth/refresh`, không phụ thuộc cookie khác site. Không gửi cookie cho nhánh JSON.
+                - **Native Android/iOS/desktop:** HTTP client native thông thường không chịu CORS của browser; dùng `/auth/native/login`,
+                  `/auth/native/refresh`, `/auth/native/logout`. Client cũ được dùng nhánh tương thích nêu trên trong khi cờ còn bật.
+                  Flutter Web/JavaScript trong WebView vẫn có thể chịu quy tắc browser.
+                - Sau khi nhận AT, API nghiệp vụ dùng chung `Authorization: Bearer <AT>`. AT hạn **15 phút**; refresh phải thay cả cặp token,
+                  gom request đồng thời và retry nghiệp vụ tối đa một lần. Vẫn kiểm tra mật khẩu, trạng thái tài khoản, quyền và hạn mức.
+                - Chỉ áp dụng khi server đã triển khai bản backend/Compose tương ứng. Domain Vercel/domain riêng, cổng local khác hoặc HTTPS local
+                  cần đăng ký origin riêng; không mặc nhiên được cho phép. Upload trực tiếp R2 còn cần CORS bucket phù hợp.
+                - WEB cookie của chính SQB vẫn Strict/HttpOnly; không dùng `platform=WEB` rồi kỳ vọng cookie tự hoạt động cross-site.
 
                 ---
 
@@ -79,6 +99,24 @@ public class OpenApiConfig {
                 | Web, trình duyệt điện thoại, PWA, Flutter Web | `/auth/login` với `platform=WEB` | `/auth/refresh`, không body, gửi cookie/credentials | `/auth/logout` với Bearer AT | Cookie HttpOnly, JSON RT null |
                 | Flutter native Android/iOS, desktop | `/auth/native/login` với `ANDROID`, `IOS` hoặc `DESKTOP` | `/auth/native/refresh` với JSON RT | `/auth/native/logout` với Bearer AT | Secure storage trên thiết bị, JSON trả RT |
 
+                ### ⚠️ Tương thích tạm thời cho client đã dùng contract cũ
+
+                Chỉ khi banner đầu trang báo **ĐANG BẬT** (`AUTH_LEGACY_JSON_ENABLED=true`):
+                - `/auth/login` còn nhận `platform=ANDROID/IOS/DESKTOP`, trả AT/RT JSON cho tài khoản ACTIVE; đây là lựa chọn transport, không chứng minh app native.
+                - `/auth/refresh` vẫn ưu tiên cookie. Nếu không có cookie, body `{"refresh_token":"..."}` nhận RT LEGACY_JSON hoặc RT cũ thiếu claim kênh.
+                - RT mới của nhánh này có kênh **LEGACY_JSON**. Không đổi RT đã ký WEB/NATIVE sang nhánh tương thích; không trộn cookie với body của tài khoản khác.
+                - Login/refresh của nhánh JSON trả HTTP 200, `code=1000` và message **CẢNH BÁO**. Client xét code/status, không so message đúng bằng “Thành công”.
+                - `/auth/logout` nhận AT LEGACY_JSON để thu hồi phiên, kể cả khi cờ đã tắt. Luồng chuẩn native mới vẫn dùng `/auth/native/*`.
+
+                **Kế hoạch sau bảo vệ:** sẽ phát hành phiên bản backend loại bỏ toàn bộ cơ chế tương thích xác thực cũ,
+                gồm luồng `LEGACY_JSON`, cờ/mã hỗ trợ và việc tiếp nhận RT thiếu claim kênh qua cookie lẫn body.
+                Client dùng phiên cũ phải đăng nhập lại theo contract hiện hành. Luồng WEB cookie và `/auth/native/*` chuẩn tiếp tục được hỗ trợ.
+                Khi đó, `/auth/login` chỉ nhận WEB; `/auth/refresh` chỉ nhận RT WEB qua cookie, không nhận RT body.
+                Đây là kế hoạch cho bản phát hành sau bảo vệ, không tự thay đổi theo ngày. Hiện tại có thể chặn nhánh JSON bằng
+                `AUTH_LEGACY_JSON_ENABLED=false`; thao tác này không xóa code/cờ hay fallback RT thiếu kênh qua cookie WEB.
+                CORS vẫn cần origin phù hợp; chế độ này không tự cho phép mọi website. Giữ HTTPS, AT 15 phút và cookie WEB Strict/HttpOnly hiện hành.
+                Client nhận RT JSON chịu trách nhiệm bảo vệ token; JavaScript có thể đọc token nếu XSS. Không log token/đưa token vào URL.
+
                 **Ví dụ native login:**
                 ```json
                 {"email":"student@example.edu","password":"your-password","device_id":"a-unique-installation-uuid","platform":"ANDROID","device_name":"Flutter Android"}
@@ -91,34 +129,32 @@ public class OpenApiConfig {
                 Web giữ AT trong memory, dùng cookie để khôi phục sau reload; không lưu token vào localStorage/sessionStorage/IndexedDB.
                 Token có kênh do server ký: RT WEB không đổi sang body/native; RT NATIVE không đổi sang cookie/web.
                 `platform` chỉ là metadata thiết bị, không chứng minh app chính chủ. Tách endpoint không làm tăng quyền tài khoản.
-                Phiên legacy thiếu kênh chỉ được chuyển tiếp bằng cookie WEB; native legacy phải đăng nhập lại.
+                Hiện tại RT cũ thiếu claim kênh vẫn được migrate qua cookie WEB; khi bật tương thích còn được migrate qua body ở endpoint cũ.
+                Bản phát hành dọn tương thích sau bảo vệ sẽ từ chối RT thiếu claim kênh ở cả hai đường, yêu cầu đăng nhập lại.
                 Nếu `account_state` chưa ACTIVE, chỉ nhận AT `ONBOARDING`, không RT: gọi API xác minh email/đổi mật khẩu rồi đăng nhập lại đúng luồng.
                 ONBOARDING AT cũng chỉ ở memory trên web; reload giữa bước thiết lập yêu cầu đăng nhập lại.
-                Các phản hồi không chứa RT JSON cho web; Swagger Authorize dùng **access_token**, không dùng refresh_token.
-
-                **Triển khai frontend môn Web:** Cookie hiện giữ SameSite=Strict; chỉ thêm CORS không làm cookie hoạt động cross-site.
-                Chưa chốt origin của các nhóm: ưu tiên frontend/API cùng origin qua reverse proxy, hoặc cấu hình same-site và CORS allowlist cụ thể.
-                Frontend dùng `credentials: 'include'` / Axios `withCredentials: true`; production cần HTTPS.
-                Localhost gọi API production khác site không dùng được phiên cookie Strict hiện tại. Chốt triển khai với quản trị viên trước;
-                không chuyển web sang endpoint native hoặc tự nới cookie/CORS để né lỗi trình duyệt.
+                Luồng cookie WEB không chứa RT JSON; nhánh tương thích non-WEB là ngoại lệ tạm thời đã nêu trên. Swagger Authorize dùng **access_token**, không dùng refresh_token.
 
                 ---
 
                 ### 📦 Cấu trúc phản hồi chuẩn (GlobalResponse Envelope):
-                Tất cả các REST API trong hệ thống đều trả về theo định dạng vỏ bọc thống nhất (snake_case):
+                Các API JSON dùng vỏ bọc thống nhất (snake_case); endpoint trả 204 hoặc dữ liệu khác sẽ ghi riêng trong response:
                 ```json
                 {
                   "code": "1000",
                   "message": "Thành công",
-                  "data": { ... Payload nghiệp vụ ... }
+                  "data": null
                 }
                 ```
+                `data` theo schema của từng endpoint; có thể là object, danh sách, trang cursor hoặc null.
+                ID, URL và token trong ví dụ chỉ minh họa: dùng ID thực từ API và URL upload do backend cấp khi kiểm thử.
+                Với lỗi validation, data có thể chứa danh sách field/message. Đọc cả HTTP status và code; message có thể thay đổi/có cảnh báo.
 
                 ---
 
                 ### 📡 Đặc tả giao thức Realtime WebSocket STOMP (Chat & Trực tuyến):
 
-                - **Endpoint kết nối Handshake:** `ws://<domain>/api/v1/ws` (Client có thể dùng `@stomp/stompjs` hoặc `sockjs-client`).
+                - **Endpoint SockJS:** dùng base URL HTTP(S), ví dụ `new SockJS('https://<domain>/api/v1/ws')`, qua `webSocketFactory` của `@stomp/stompjs`. Không truyền URL `ws://` vào SockJS; khi chạy local HTTP dùng `http://<host>:<port>/api/v1/ws`.
                 - **Header xác thực khi CONNECT:** `Authorization: Bearer <jwt_access_token>`.
                 - **Tiền tố Application (Client -> Server):** `/app`
                 - **Tiền tố Broker (Server -> Client):** `/user` (kênh riêng tư) và `/topic` (kênh nhóm/cộng đồng)
@@ -127,9 +163,25 @@ public class OpenApiConfig {
 
                 | STOMP Destination | Mô tả nghiệp vụ | Payload DTO & Các trường chính (snake_case) |
                 | :--- | :--- | :--- |
-                | `/app/chat.send` | Gửi tin nhắn mới trong hội thoại | `SendWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `content` (String)<br>• `message_type` (TEXT / IMAGE / FILE)<br>• `media_urls` (List&lt;String&gt;)<br>• `reply_to_message_id` (Long) |
+                | `/app/chat.send` | Gửi tin nhắn mới trong hội thoại | `SendWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `content` (String)<br>• `message_type` (TEXT / IMAGE / VIDEO / GIF)<br>• `media_urls` (List&lt;String&gt;)<br>• `reply_to_message_id` (Long, tùy chọn) |
                 | `/app/chat.read` | Báo đã đọc tin nhắn trong cuộc hội thoại | `ReadWsMessageRequestDto`<br>• `conversation_id` (Long)<br>• `message_id` (Long) |
                 | `/app/chat.typing` | Phát sự kiện đang soạn / dừng soạn tin nhắn | `TypingWsRequestDto`<br>• `conversation_id` (Long)<br>• `typing` (Boolean) |
+
+                Ví dụ body của frame STOMP **SEND** (không phải HTTP POST). CONNECT bằng AT hợp lệ, SUBSCRIBE kênh nhận trước khi gửi;
+                dùng ID hội thoại/tin nhắn thực mà tài khoản có quyền truy cập. Người gửi được xác định từ JWT.
+
+                `/app/chat.send`:
+                ```json
+                {"conversation_id":42,"content":"Cùng trao đổi bài học nhé","message_type":"TEXT","media_urls":[],"reply_to_message_id":null}
+                ```
+                `/app/chat.read`:
+                ```json
+                {"conversation_id":42,"message_id":1005}
+                ```
+                `/app/chat.typing`:
+                ```json
+                {"conversation_id":42,"typing":true}
+                ```
 
                 #### 2. Kênh Client đăng ký lắng nghe (Subscribe Topics / Queues):
 
@@ -151,7 +203,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Hệ Thống Mạng Xã Hội Học Tập & Ngân Hàng Đề Thi - SQB")
-                        .description(description)
+                        .description(authCompatibilityPolicy.swaggerNotice() + description)
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("Đội ngũ phát triển SQB HUST")

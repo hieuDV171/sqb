@@ -60,7 +60,7 @@ public record ReviewableSessionsResponse(
             Instant createdAt) {
     }
 
-    @Schema(description = "Thông tin ẩn danh của tác giả đề xuất")
+    @Schema(name = "ReviewableSessionAuthor", description = "Thông tin ẩn danh của tác giả đề xuất; khác thông tin tác giả công khai của bài viết")
     @Builder
     public record AuthorDto(
             @Schema(description = "ID tác giả", example = "42")

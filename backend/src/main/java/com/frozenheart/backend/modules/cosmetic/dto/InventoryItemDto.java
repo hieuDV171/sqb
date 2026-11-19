@@ -40,6 +40,6 @@ public class InventoryItemDto {
     @Schema(description = "Phương thức đạt được vật phẩm", example = "SHOP_PURCHASE")
     private CosmeticAcquireMethod acquireMethod;
 
-    @Schema(description = "Thời hạn sở hữu hoặc thời hạn sự kiện (null nếu vĩnh viễn)", example = "null")
+    @Schema(description = "Thời hạn sở hữu hoặc thời hạn sự kiện (null nếu vĩnh viễn)", nullable = true, example = "2026-12-31T23:59:59Z")
     private Instant availableUntil;
 }

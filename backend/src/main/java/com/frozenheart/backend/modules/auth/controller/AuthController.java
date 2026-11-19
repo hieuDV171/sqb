@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
+import com.frozenheart.backend.core.entity.user.DevicePlatform;
+import com.frozenheart.backend.core.security.AuthCompatibilityPolicy;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,10 +34,10 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @Operation(summary = "Web: đăng nhập bằng cookie HttpOnly", description = "Chỉ platform WEB, kể cả trình duyệt điện thoại/Flutter Web/PWA. JSON trả access_token; refresh_token null, RT chỉ trong cookie HttpOnly/Secure/SameSite Strict. Giữ AT trong memory. Native dùng /auth/native/login.")
+    @Operation(summary = "Web: đăng nhập; có chế độ JSON tương thích tạm thời", description = "WEB nhận AT JSON, RT cookie HttpOnly/Secure/SameSite Strict. Khi AUTH_LEGACY_JSON_ENABLED=true, endpoint cũ còn nhận ANDROID/IOS/DESKTOP và trả RT JSON cho client chưa chuyển đổi, message thành công có cảnh báo. Khi tắt, non-WEB bị từ chối. Native mới dùng /auth/native/login. Xem trạng thái thực ở đầu Swagger.")
     @SecurityRequirements // Public endpoint - không yêu cầu token trước khi gọi
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Thông tin user và AT trong JSON; RT chỉ ở cookie với tài khoản ACTIVE"),
+            @ApiResponse(responseCode = "200", description = "WEB: RT cookie, JSON RT null. Luồng tương thích non-WEB khi bật: RT JSON + message cảnh báo. ONBOARDING không RT."),
             @ApiResponse(responseCode = "400", description = "Sai tài khoản hoặc mật khẩu (INCORRECT_IDENTIFIER)"),
             @ApiResponse(responseCode = "403", description = "Tài khoản bị khóa (ACCOUNT_NOT_ACTIVE)")
     })
@@ -43,10 +45,12 @@ public class AuthController {
     public ResponseEntity<GlobalResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
 
-        return ResponseEntity.ok(GlobalResponse.success(response));
+        return ResponseEntity.ok(request.platform() != DevicePlatform.WEB
+                ? GlobalResponse.success(AuthCompatibilityPolicy.WARNING_MESSAGE, response)
+                : GlobalResponse.success(response));
     }
 
-    @Operation(summary = "Web: đăng xuất và xóa cookie", description = "Gửi Bearer AT WEB. Thu hồi refresh token/thiết bị và xóa cookie RT. Native dùng /auth/native/logout.")
+    @Operation(summary = "Web: đăng xuất và xóa cookie", description = "Gửi Bearer AT WEB để thu hồi RT/thiết bị và xóa cookie. AT LEGACY_JSON dùng endpoint này để thu hồi phiên JSON, không sửa cookie, kể cả sau khi tắt chế độ tương thích. Native dùng /auth/native/logout.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đăng xuất thành công khỏi thiết bị hiện tại"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn (TOKEN_INVALID_OR_EXPIRED)")
@@ -95,7 +99,7 @@ public class AuthController {
         return ResponseEntity.ok(GlobalResponse.success());
     }
 
-    @Operation(summary = "Web: refresh bằng cookie HttpOnly", description = "Không gửi refresh_token trong body; trình duyệt gửi credentials/cookie. Chỉ RT WEB hoặc cookie legacy được nhận. JSON trả AT mới, RT mới chỉ trong Set-Cookie. Native dùng /auth/native/refresh.")
+    @Operation(summary = "Web: refresh cookie; có chế độ JSON tương thích tạm thời", description = "Luồng chuẩn: không body, RT WEB/legacy trong cookie, RT mới chỉ Set-Cookie. Khi AUTH_LEGACY_JSON_ENABLED=true: cookie luôn ưu tiên; nếu không có cookie, nhận body refresh_token thuộc LEGACY_JSON hoặc RT cũ thiếu kênh, rotate trả AT/RT JSON với message cảnh báo. RT đã ký WEB/NATIVE không đổi sang LEGACY_JSON. Khi tắt, mọi body RT tại endpoint này bị từ chối. Native mới dùng /auth/native/refresh.")
     @SecurityRequirements // Public endpoint
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Cấp mới Access Token thành công"),
@@ -107,7 +111,9 @@ public class AuthController {
             @Valid @RequestBody(required = false) RefreshTokenRequest request
     ) {
         RefreshTokenResponse response = authService.refreshToken(request);
-        return ResponseEntity.ok(GlobalResponse.success(response));
+        return ResponseEntity.ok(response.refreshToken() != null
+                ? GlobalResponse.success(AuthCompatibilityPolicy.WARNING_MESSAGE, response)
+                : GlobalResponse.success(response));
     }
 
 }

@@ -31,7 +31,7 @@ public class UpdateBadgeRequestDto {
     @Schema(description = "Cấp bậc huy hiệu", example = "PLATINUM")
     private BadgeTier badgeTier;
 
-    @Schema(description = "Sự kiện kích hoạt trao huy hiệu", example = "PROPOSE_QUESTION")
+    @Schema(description = "Sự kiện kích hoạt trao huy hiệu, phải khớp kiểu criteria", example = "APPROVED_QUESTIONS")
     private BadgeTriggerEvent badgeTriggerEvent;
 
     @Schema(description = "URL hình ảnh biểu tượng huy hiệu", example = "https://sqb.s3.ap-southeast-1.amazonaws.com/badges/proposer_platinum.png")

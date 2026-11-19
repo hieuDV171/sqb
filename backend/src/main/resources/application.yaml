@@ -91,6 +91,8 @@ r2:
   lecture-video-max-file-size: ${LECTURE_VIDEO_MAX_FILE_SIZE:2GB}
 
 app:
+  auth:
+    legacy-json-enabled: ${AUTH_LEGACY_JSON_ENABLED:false}
   admin:
     username: ${ADMIN_USERNAME}
     password: ${ADMIN_PASSWORD}
@@ -108,8 +110,14 @@ app:
     secure: false
   cors:
     allowed-origins:
-      - http://localhost:5173
       - http://localhost:3000
+      - http://localhost:3001
+      - http://localhost:5173
+      - http://localhost:5174
+      - http://127.0.0.1:3000
+      - http://127.0.0.1:3001
+      - http://127.0.0.1:5173
+      - http://127.0.0.1:5174
     allowed-methods:
       - GET
       - POST

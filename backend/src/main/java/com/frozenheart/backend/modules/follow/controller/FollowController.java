@@ -58,7 +58,7 @@ public class FollowController {
     public ResponseEntity<GlobalResponse<FollowingListResponseDto>> getFollowing(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor thời gian|ID từ next_cursor; gửi nguyên chuỗi, ưu tiên hơn after legacy", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
         FollowingListResponseDto response = followService.getFollowing(after, cursor, limit);
@@ -74,7 +74,7 @@ public class FollowController {
     public ResponseEntity<GlobalResponse<FollowerListResponseDto>> getFollowers(
             @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) String cursor,
+            @Parameter(description = "Cursor thời gian|ID từ next_cursor; gửi nguyên chuỗi, ưu tiên hơn after legacy", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor,
             @Parameter(description = "Số lượng mỗi trang (mặc định 20, tối đa 50)", example = "20")
             @RequestParam(required = false, defaultValue = "20") Integer limit) {
         FollowerListResponseDto response = followService.getFollowers(after, cursor, limit);

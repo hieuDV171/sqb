@@ -9,6 +9,7 @@ import com.frozenheart.backend.core.entity.user.DevicePlatform;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.security.AccountState;
 import com.frozenheart.backend.core.security.AuthClientType;
+import com.frozenheart.backend.core.security.AuthCompatibilityPolicy;
 import com.frozenheart.backend.core.security.JwtService;
 import com.frozenheart.backend.core.security.TokenType;
 import com.frozenheart.backend.core.constant.ResponseCode;
@@ -64,6 +65,7 @@ class AuthServiceImplTest {
     @Mock RedisTemplate<String, String> redisTemplate;
     @Mock ValueOperations<String, String> valueOperations;
     @Mock JwtService jwtService;
+    @Mock AuthCompatibilityPolicy authCompatibilityPolicy;
     @Mock EmailService emailService;
     @Mock MetricService metricService;
     @Mock ApplicationEventPublisher eventPublisher;

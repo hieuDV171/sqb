@@ -12,26 +12,19 @@ import lombok.Builder;
 public record ProposeSessionResponse(
         @Schema(description = "ID phiên đề xuất", example = "101")
         Long sessionId,
-
         @Schema(description = "Mã phiên nộp duy nhất", example = "IT3180_A7B2C1_1728200000000_101")
         String sessionCode,
-
         @Schema(description = "ID môn học", example = "10")
         Long subjectId,
-
         @Schema(description = "ID lớp học phần", example = "100")
         Long courseClassId,
-
         @Schema(description = "Tên học kỳ", example = "20261")
         String semesterName,
-
         @Schema(description = "Số lượng câu hỏi trong phiên", example = "5")
         int questionCount,
-
         @Schema(description = "Trạng thái phiên đề xuất (PENDING, APPROVED, REJECTED, RESOLVED)", example = "PENDING")
         SessionStatus status,
-
-        @Schema(description = "Thời điểm khởi tạo phiên")
+        @Schema(description = "Thời điểm khởi tạo phiên", example = "2026-11-19T07:00:00Z")
         Instant createdAt
     ) {
 

@@ -110,7 +110,7 @@ public class GamificationController {
     public ResponseEntity<GlobalResponse<MyPredictionsResponse>> getMyPredictions(
             @Parameter(description = "ID lượt dự đoán cuối ở trang trước (cursor)", example = "1050")
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) Long before,
+            @Parameter(description = "ID cursor cho chiều before; dùng pagination.before, trang đầu bỏ trống", example = "42") @RequestParam(required = false) Long before,
 
             @Parameter(description = "Số lượng bản ghi tối đa mỗi trang (mặc định 10, tối đa 50)", example = "10")
             @RequestParam(defaultValue = "10") Integer limit) {

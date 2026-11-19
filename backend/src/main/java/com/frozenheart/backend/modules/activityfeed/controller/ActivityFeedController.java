@@ -25,7 +25,7 @@ public class ActivityFeedController {
 
     private final ActivityFeedService activityFeedService;
 
-    @Operation(summary = "Lấy dòng hoạt động cá nhân hóa", description = "Trả về bảng tin sự kiện được cá nhân hóa theo mạng lưới bạn bè và người đang theo dõi của người dùng hiện tại (có loại trừ người bị chặn).")
+    @Operation(summary = "Lấy dòng hoạt động cá nhân hóa", description = "Trả về bảng tin cá nhân hóa theo bạn bè/theo dõi, loại người bị chặn. Mỗi item có target_type/target_id/action_type và content là map metadata/tương tác, không phải một PostResponseDto đầy đủ. Dựa vào target_type/action_type để dựng đúng thẻ; cần chi tiết thì gọi API đối tượng. Sự kiện duyệt phiên legacy có thể được chuẩn hóa sang target POST khi bài thông báo đã tồn tại.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy dòng hoạt động thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")

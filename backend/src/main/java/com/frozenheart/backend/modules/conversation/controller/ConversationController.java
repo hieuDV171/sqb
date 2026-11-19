@@ -33,7 +33,7 @@ public class ConversationController {
         public ResponseEntity<GlobalResponse<ConversationListResponseDto>> getConversations(
                         @Parameter(description = "Con trỏ timestamp tin nhắn cuối để lấy tiếp", example = "1728200000000") @RequestParam(value = "after", required = false) Long after,
                         @Parameter(description = "Số lượng hội thoại mỗi trang (mặc định 20, tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit,
-                        @Parameter(description = "Con trỏ đầy đủ từ next_cursor của trang trước") @RequestParam(required = false) String cursor) {
+                        @Parameter(description = "Con trỏ đầy đủ từ next_cursor của trang trước", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor) {
                 ConversationListResponseDto response = conversationService.getConversations(after, cursor, limit);
                 return ResponseEntity.ok(GlobalResponse.success(response));
         }
@@ -124,7 +124,7 @@ public class ConversationController {
                                 conversationService.unlockHiddenChat(request)));
         }
 
-        @Operation(summary = "Khóa kho trò chuyện ẩn của phiên hiện tại")
+        @Operation(summary = "Khóa kho trò chuyện ẩn của phiên hiện tại", description = "Thu hồi quyền mở kho ẩn của session JWT đang gọi. Không xóa PIN, hội thoại hoặc tin nhắn; sau đó phải unlock bằng PIN để xem lại. Không khóa thay phiên khác của cùng tài khoản.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Đã khóa kho ẩn"),
                         @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn")
@@ -145,7 +145,7 @@ public class ConversationController {
         public ResponseEntity<GlobalResponse<ConversationListResponseDto>> getHiddenConversations(
                         @Parameter(description = "Con trỏ timestamp để lấy tiếp", example = "1728200000000") @RequestParam(value = "after", required = false) Long after,
                         @Parameter(description = "Số lượng hội thoại mỗi trang (mặc định 20, tối đa 50)", example = "20") @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit,
-                        @Parameter(description = "Con trỏ đầy đủ từ next_cursor của trang trước") @RequestParam(required = false) String cursor) {
+                        @Parameter(description = "Con trỏ đầy đủ từ next_cursor của trang trước", example = "2026-11-19T00:00:00Z|42") @RequestParam(required = false) String cursor) {
                 ConversationListResponseDto response = conversationService.getHiddenConversations(after, cursor, limit);
                 return ResponseEntity.ok(GlobalResponse.success(response));
         }

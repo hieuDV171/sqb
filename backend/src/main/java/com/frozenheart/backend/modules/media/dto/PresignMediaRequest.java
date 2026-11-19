@@ -21,28 +21,28 @@ public record PresignMediaRequest(
     @Size(max = 10, message = "Chỉ được yêu cầu tải lên tối đa 10 tệp cùng lúc")
     @Valid
     List<PresignFileItem> files
-    
+
 ) {
     @Schema(description = "Thông tin một tệp tin cần xin presigned URL")
     public record PresignFileItem(
 
-        @Schema(description = "Tên gốc của tệp tin", example = "de_thi_cuoi_ky.pdf")
+        @Schema(description = "Tên gốc của tệp tin, phần mở rộng phù hợp content_type", example = "avatar.webp")
         @NotBlank(message = "Tên tệp không được để trống")
         String fileName,
-                
-        @Schema(description = "Kích thước tệp tính bằng byte (tối đa 15MB)", example = "2048576")
+
+        @Schema(description = "Kích thước tệp tính bằng byte (trần DTO 15 MiB, còn chịu giới hạn riêng theo purpose)", example = "204800")
         @NotNull(message = "Dung lượng tệp không được để trống")
         @Positive(message = "Dung lượng tệp phải lớn hơn 0")
         @Max(value = 15 * 1024 * 1024L, message = "Dung lượng tệp không được vượt quá 15MB")
         Long fileSize,
-                
+
         @Schema(description = "MIME Content-Type của tệp", example = "image/webp")
         @NotBlank(message = "Định dạng tệp không được để trống")
         String contentType,
-                
+
         @Schema(description = "Mục đích tải lên (AVATAR, COVER, POST, QUESTION, CHAT...)", example = "AVATAR")
         @NotNull(message = "Mục đích upload không được để trống")
         MediaPurpose purpose
-        
+
     ) {}
 }

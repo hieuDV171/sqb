@@ -51,7 +51,7 @@ public class ExamListResponse {
         @Schema(description = "Thống kê câu hỏi theo độ khó")
         private Statistic statistic;
 
-        @Schema(description = "URL tải file PDF đề thi (nếu có)")
+        @Schema(description = "URL tải file PDF đề thi (nếu có)", example = "https://r2.example.com/export.pdf?signature=example")
         private String downloadUrl;
     }
 

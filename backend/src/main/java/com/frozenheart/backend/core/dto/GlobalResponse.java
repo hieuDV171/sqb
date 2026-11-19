@@ -1,5 +1,7 @@
 package com.frozenheart.backend.core.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import com.frozenheart.backend.core.constant.ResponseCode;
 
 import lombok.AllArgsConstructor;
@@ -13,9 +15,13 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "Vỏ phản hồi chuẩn: code/message và data nghiệp vụ; dùng HTTP status cùng code để xét kết quả")
 public class GlobalResponse<T> {
+    @Schema(description = "Mã kết quả dạng chuỗi; 1000 là thành công, các mã lỗi xem ResponseCode và HTTP status", example = "1000")
     private String code;
+    @Schema(description = "Thông báo kết quả; không dùng so sánh chuỗi message để xác định thành công", example = "Thành công")
     private String message;
+    @Schema(description = "Payload nghiệp vụ theo kiểu response của endpoint; có thể null với thao tác không trả dữ liệu")
     private T data;
 
     // Phản hồi thành công có data

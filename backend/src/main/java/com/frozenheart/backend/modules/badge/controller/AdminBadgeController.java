@@ -92,18 +92,20 @@ public class AdminBadgeController {
         return ResponseEntity.ok(GlobalResponse.success(null));
     }
 
-    @Operation(summary = "Tìm tài khoản để trao hoặc thu hồi huy hiệu")
+    @Operation(summary = "Tìm tài khoản để trao hoặc thu hồi huy hiệu", description = "ADMIN tìm theo tên/email, tối đa 100 ký tự. holders=true chỉ người đang giữ huy hiệu, false chọn tài khoản hoạt động chưa giữ để trao. Mỗi trang tối đa 20 tài khoản theo ID tăng dần; gửi pagination.after cho trang kế tiếp. Huy hiệu không tồn tại trả 404.")
+    @ApiResponse(responseCode = "200", description = "Trang tài khoản phù hợp với bộ lọc")
     @GetMapping("/{badgeId}/accounts")
-    public GlobalResponse<CursorResponse<BadgeAccountResponse>> searchBadgeAccounts(@PathVariable Long badgeId,
-            @RequestParam(defaultValue = "false") boolean holders,
-            @RequestParam(defaultValue = "") String query,
-            @RequestParam(required = false) Long after) {
+    public GlobalResponse<CursorResponse<BadgeAccountResponse>> searchBadgeAccounts(@Parameter(description = "ID huy hiệu cần tìm người giữ/trao/thu hồi", example = "42") @PathVariable Long badgeId,
+            @Parameter(description = "true để tìm người đang giữ huy hiệu, false để tìm người chưa giữ; mặc định false", example = "false") @RequestParam(defaultValue = "false") boolean holders,
+            @Parameter(description = "Từ khóa tên/email, tối đa 100 ký tự; bỏ trống để không lọc", example = "Anh") @RequestParam(defaultValue = "") String query,
+            @Parameter(description = "ID cursor từ pagination.after của trang trước; trang đầu bỏ trống", example = "42") @RequestParam(required = false) Long after) {
         return GlobalResponse.success(badgeService.searchBadgeAccounts(badgeId, holders, query, after));
     }
 
-    @Operation(summary = "Thu hồi huy hiệu của các tài khoản đã chọn")
+    @Operation(summary = "Thu hồi huy hiệu của các tài khoản đã chọn", description = "ADMIN thu hồi các lượt trao đang hiệu lực cho user_ids, giảm thống kê huy hiệu và gửi thông báo người bị thu hồi. Tài khoản không đang giữ huy hiệu được bỏ qua; giữ lịch sử trao/thu hồi. Gọi lại không trừ số lượng nhiều lần.")
+    @ApiResponse(responseCode = "200", description = "Đã thu hồi các lượt trao còn hiệu lực; data null")
     @PostMapping("/{badgeId}/revoke")
-    public GlobalResponse<Void> revokeBadge(@PathVariable Long badgeId, @Valid @RequestBody RevokeBadgeRequest request) {
+    public GlobalResponse<Void> revokeBadge(@Parameter(description = "ID huy hiệu cần tìm người giữ/trao/thu hồi", example = "42") @PathVariable Long badgeId, @Valid @RequestBody RevokeBadgeRequest request) {
         badgeService.revokeBadge(badgeId, request.userIds());
         return GlobalResponse.success();
     }

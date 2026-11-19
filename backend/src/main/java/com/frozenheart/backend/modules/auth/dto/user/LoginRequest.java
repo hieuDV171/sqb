@@ -14,28 +14,21 @@ public record LoginRequest(
     @NotBlank(message = "MISSING_REQUIRED_PARAMETER")
     @Email(message = "INVALID_PARAMETER_VALUE")
     String email,
-
     @Schema(description = "Mật khẩu tài khoản", example = "20224980", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "MISSING_REQUIRED_PARAMETER")
     String password,
-
     @Schema(description = "Định danh thiết bị duy nhất (UUID hoặc Device Fingerprint)", example = "web-browser-550e8400-e29b-41d4-a716-446655440000", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "MISSING_REQUIRED_PARAMETER")
     String deviceId,
-    
     @Schema(description = "Firebase Installation ID (FID) dùng để đẩy thông báo push", example = "fid_example_xyz")
     String fid,
-                    
-    @Schema(description = "Metadata thiết bị: /auth/login chỉ WEB; /auth/native/login chỉ ANDROID/IOS/DESKTOP. Không xác thực danh tính ứng dụng.", example = "WEB", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Metadata thiết bị: WEB cho cookie; ANDROID/IOS/DESKTOP cho /auth/native/login. /auth/login còn nhận non-WEB qua nhánh JSON tạm thời khi AUTH_LEGACY_JSON_ENABLED=true. Không xác thực danh tính ứng dụng.", example = "WEB", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "MISSING_REQUIRED_PARAMETER")
     DevicePlatform platform,
-
     @Schema(description = "Tên hiển thị của thiết bị", example = "Chrome on Windows 11")
     String deviceName,
-
     @Schema(description = "Phiên bản hệ điều hành", example = "Windows 11 Build 22631")
     String osVersion,
-
     @Schema(description = "Phiên bản ứng dụng client", example = "1.0.0")
     String appVersion
 
