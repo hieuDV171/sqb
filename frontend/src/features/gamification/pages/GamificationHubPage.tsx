@@ -6,7 +6,7 @@ import { LeaderboardTab } from '../components/LeaderboardTab';
 import { ShopInventoryTab } from '../components/ShopInventoryTab';
 import { PredictionArenaTab } from '../components/PredictionArenaTab';
 import { BadgesTab } from '../components/BadgesTab';
-import { useGamificationStore, type GamificationTab } from '../stores/useGamificationStore';
+import type { GamificationTab } from '../stores/useGamificationStore';
 import { useShop, useCheckInStatus } from '../hooks/useGamification';
 
 interface GamificationHubPageProps {
@@ -23,7 +23,6 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
   const [searchParams] = useSearchParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { activeTab, setActiveTab } = useGamificationStore();
 
   const tabParam = searchParams.get('tab');
   const legacyErrorHunter = tabParam === 'error-hunter';
@@ -32,9 +31,6 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
       : initialTab ?? 'leaderboard';
 
   useEffect(() => {
-    if (activeTab !== currentTab) {
-      setActiveTab(currentTab);
-    }
     const targetPath = tabPath(currentTab);
     if (pathname !== targetPath || tabParam !== currentTab) {
       const next = new URLSearchParams(searchParams);
@@ -42,7 +38,7 @@ export function GamificationHubPage({ initialTab }: GamificationHubPageProps) {
       if (legacyErrorHunter) next.set('game', 'game5');
       navigate({ pathname: targetPath, search: next.toString() }, { replace: true });
     }
-  }, [currentTab, activeTab, setActiveTab, searchParams, tabParam, pathname, legacyErrorHunter, navigate]);
+  }, [currentTab, searchParams, tabParam, pathname, legacyErrorHunter, navigate]);
 
   const handleTabChange = (tab: GamificationTab) => {
     if (tab === currentTab) return;

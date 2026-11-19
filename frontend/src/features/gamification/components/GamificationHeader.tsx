@@ -14,14 +14,14 @@ interface GamificationHeaderProps {
   userCoins?: number;
   streakCount?: number;
   hasCheckedInToday?: boolean;
-  currentTab?: GamificationTab;
-  onTabChange?: (tab: GamificationTab) => void;
+  currentTab: GamificationTab;
+  onTabChange: (tab: GamificationTab) => void;
   onRetryCheckIn?: () => void;
 }
 
 export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, currentTab, onTabChange, onRetryCheckIn }: GamificationHeaderProps) {
-  const { activeTab, setActiveTab, setCheckInModalOpen } = useGamificationStore();
-  const selectedTab = currentTab ?? activeTab;
+  const setCheckInModalOpen = useGamificationStore(state => state.setCheckInModalOpen);
+  const selectedTab = currentTab;
 
   return (
     <header className="space-y-4">
@@ -75,7 +75,7 @@ export function GamificationHeader({ userCoins, streakCount, hasCheckedInToday, 
           <Button key={id} type="button" aria-current={selectedTab === id ? 'page' : undefined}
             variant={selectedTab === id ? 'secondary' : 'ghost'}
             className={`min-h-11 ${selectedTab === id ? 'bg-academic-soft text-academic' : 'text-muted-foreground'}`}
-            onClick={() => { setActiveTab(id); onTabChange?.(id); }}>
+            onClick={() => onTabChange(id)}>
             <Icon aria-hidden="true" /> {label}
           </Button>
         ))}

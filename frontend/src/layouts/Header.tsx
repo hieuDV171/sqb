@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { hasActiveOverlay } from '@/lib/overlayLifecycle';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -57,6 +58,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const [openPanel, setOpenPanel] = useState<'profile' | 'notifications' | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setIsSearchOpen(false), []);
   const profilePanelRef = useRef<HTMLDivElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
   const profileTriggerRef = useRef<HTMLButtonElement>(null);
@@ -71,6 +73,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        if (!isSearchOpen && hasActiveOverlay()) return;
         activeSearchTriggerRef.current = window.innerWidth >= 768
           ? desktopSearchTriggerRef.current
           : mobileSearchTriggerRef.current;
@@ -81,7 +84,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, []);
+  }, [isSearchOpen]);
 
   useEffect(() => {
     if (!openPanel) return;
@@ -296,7 +299,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
         onClose={() => setIsChangePasswordOpen(false)}
         onSuccess={() => useAuthStore.getState().updateUser({ profileCompleted: true })}
       />
-      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} initialQuery={searchQuery} triggerRef={activeSearchTriggerRef} />
+      <GlobalSearchModal isOpen={isSearchOpen} onClose={closeSearch} initialQuery={searchQuery} triggerRef={activeSearchTriggerRef} />
     </>
   );
 }

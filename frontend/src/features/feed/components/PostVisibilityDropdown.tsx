@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import type { PostVisibility } from '@/types/post.types';
 import { Globe, Users, Lock, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,8 +58,10 @@ export const PostVisibilityDropdown: React.FC<PostVisibilityDropdownProps> = ({
     VISIBILITY_OPTIONS.find((opt) => opt.value === value) || VISIBILITY_OPTIONS[0];
   const CurrentIcon = currentOption.icon;
 
-  useEffect(() => {
-    if (isOpen && dropdownRef.current) {
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const updatePosition = () => {
+      if (!dropdownRef.current) return;
       const rect = dropdownRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       if (spaceBelow < 220 && rect.top > 220) {
@@ -67,7 +69,14 @@ export const PostVisibilityDropdown: React.FC<PostVisibilityDropdownProps> = ({
       } else {
         setOpenUpward(false);
       }
-    }
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [isOpen]);
 
   useEffect(() => {

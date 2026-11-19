@@ -15,9 +15,9 @@ export const courseClassService = {
       '/lecturer/course-classes', { params: { semesterId } },
     ),
 
-  getMyClasses: async (includeHistory = true): Promise<GlobalResponse<CourseClassResponse[]>> =>
+  getMyClasses: async (includeHistory = true, signal?: AbortSignal): Promise<GlobalResponse<CourseClassResponse[]>> =>
     (await axiosClient.get('/lecturer/course-classes/my-classes', {
-      params: { includeHistory },
+      params: { includeHistory }, signal,
     })) as never,
 
   getDetail: async (courseClassId: number): Promise<GlobalResponse<CourseClassResponse>> =>

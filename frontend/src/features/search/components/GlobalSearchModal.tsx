@@ -6,6 +6,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { acquireBodyScrollLock, registerOverlayLayer, trapOverlayTab } from '@/lib/overlayLifecycle';
 import {
   Search,
   X,
@@ -59,7 +60,11 @@ function getUserIdentifier(user: UserSearchResultDto) {
   return user.studentLecturerCode?.trim() || user.email?.trim();
 }
 
-export function GlobalSearchModal({
+export function GlobalSearchModal(props: GlobalSearchModalProps) {
+  return props.isOpen ? <OpenGlobalSearchModal {...props} /> : null;
+}
+
+function OpenGlobalSearchModal({
   isOpen,
   onClose,
   initialQuery = '',
@@ -67,7 +72,7 @@ export function GlobalSearchModal({
 }: GlobalSearchModalProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const wasOpenRef = useRef(false);
+  const panelRef = useRef<HTMLElement>(null);
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [isDesktop, setIsDesktop] = useState(
@@ -83,25 +88,33 @@ export function GlobalSearchModal({
   }, [searchTerm]);
 
   useEffect(() => {
-    if (isOpen) {
-      wasOpenRef.current = true;
-      const focusTimer = window.setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 50);
-      return () => window.clearTimeout(focusTimer);
-    }
-
-    const resetTimer = window.setTimeout(() => {
-      setSearchTerm(initialQuery);
-      setDebouncedQuery(initialQuery);
-    }, 0);
-    if (wasOpenRef.current) {
-      wasOpenRef.current = false;
-      window.setTimeout(() => triggerRef?.current?.focus(), 0);
-    }
-    return () => window.clearTimeout(resetTimer);
-  }, [initialQuery, isOpen, triggerRef]);
+    const layer = registerOverlayLayer();
+    const returnFocus = triggerRef?.current ?? document.activeElement as HTMLElement | null;
+    const focusTimer = window.setTimeout(() => {
+      if (!layer.isTopmost()) return;
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 50);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !layer.isTopmost()) return;
+      if (event.key === 'Tab' && window.innerWidth < DESKTOP_BREAKPOINT) {
+        trapOverlayTab(panelRef.current, event);
+        return;
+      }
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', handleEscape);
+      const wasTopmost = layer.isTopmost();
+      layer.release();
+      if (wasTopmost && returnFocus?.isConnected) returnFocus.focus();
+    };
+  }, [onClose, triggerRef]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -123,32 +136,19 @@ export function GlobalSearchModal({
       });
     };
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    };
-
     updateLayout();
     window.addEventListener('resize', updateLayout);
     window.addEventListener('scroll', updateLayout, true);
-    window.addEventListener('keydown', handleEscape);
 
     return () => {
       window.removeEventListener('resize', updateLayout);
       window.removeEventListener('scroll', updateLayout, true);
-      window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose, triggerRef]);
+  }, [isOpen, triggerRef]);
 
   useEffect(() => {
     if (!isOpen || isDesktop) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    return acquireBodyScrollLock();
   }, [isDesktop, isOpen]);
 
   const {
@@ -251,6 +251,7 @@ export function GlobalSearchModal({
       }}
     >
       <section
+        ref={panelRef}
         id="global-search-panel"
         role="dialog"
         aria-label="Tìm kiếm toàn cục SQB"

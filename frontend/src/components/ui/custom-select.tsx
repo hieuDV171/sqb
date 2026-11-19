@@ -41,6 +41,7 @@ export function CustomSelect({
 
   // Đóng dropdown khi nhấp chuột ra ngoài
   useEffect(() => {
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -50,12 +51,13 @@ export function CustomSelect({
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       // Focus vào ô tìm kiếm khi mở
-      setTimeout(() => {
+      focusTimer = setTimeout(() => {
         searchInputRef.current?.focus();
       }, 50);
     }
 
     return () => {
+      if (focusTimer !== undefined) clearTimeout(focusTimer);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);

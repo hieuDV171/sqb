@@ -31,23 +31,23 @@ export const sessionService = {
    * 14b.1 Lấy danh mục tất cả môn học trong hệ thống
    * GET /api/v1/subjects
    */
-  getAllSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
-    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects')) as never;
+  getAllSubjects: async (signal?: AbortSignal): Promise<GlobalResponse<SubjectResponse[]>> => {
+    return (await axiosClient.get<GlobalResponse<SubjectResponse[]>>('/subjects', { signal })) as never;
   },
 
   /**
    * Lấy danh sách lớp học phần hiện tại và lịch sử của sinh viên.
    * GET /api/v1/sessions/my-enrolled-course-classes
    */
-  getMyEnrolledCourseClasses: async (): Promise<GlobalResponse<CourseClassOptionResponse[]>> => {
+  getMyEnrolledCourseClasses: async (signal?: AbortSignal): Promise<GlobalResponse<CourseClassOptionResponse[]>> => {
     return (await axiosClient.get<GlobalResponse<CourseClassOptionResponse[]>>(
-      '/sessions/my-enrolled-course-classes'
+      '/sessions/my-enrolled-course-classes', { signal }
     )) as never;
   },
 
   /** Danh sách môn học duy nhất, suy ra từ các lớp học phần để dùng cho bộ lọc. */
-  getMyEnrolledSubjects: async (): Promise<GlobalResponse<SubjectResponse[]>> => {
-    const response = await sessionService.getMyEnrolledCourseClasses();
+  getMyEnrolledSubjects: async (signal?: AbortSignal): Promise<GlobalResponse<SubjectResponse[]>> => {
+    const response = await sessionService.getMyEnrolledCourseClasses(signal);
     const subjects = Array.from(
       new Map(
         (response.data || []).map((courseClass) => [

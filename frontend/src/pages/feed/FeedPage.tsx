@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useActivityFeed, type FeedFilter } from '@/features/feed/hooks/useActivityFeed';
 import { useNewFeedCount } from '@/features/feed/hooks/useNewFeedCount';
 import { useLectureVideos } from '@/features/feed/hooks/useLectureVideos';
@@ -13,8 +13,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Button } from '@/components/ui/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { FeedSidebarRight } from './components/FeedSidebarRight';
-import { sessionService } from '@/features/session/services/sessionService';
-import type { SubjectItem } from '@/types/post.types';
+import { useSubjectOptions } from '@/features/session/hooks/useSubjectOptions';
 import { MessageSquarePlus, Loader2, Sparkles } from 'lucide-react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -33,12 +32,13 @@ export function FeedRoute() {
 export function FeedPage() {
   const [currentFilter, setCurrentFilter] = useState<FeedFilter>('ALL');
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
-  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const refreshInFlight = useRef(false);
   const role = useAuthStore((state) => state.user?.role);
   const showVideos = currentFilter === 'VIDEOS';
+  const subjectQuery = useSubjectOptions(showVideos && (role === 'LECTURER' || role === 'ADMIN') ? 'catalog' : 'enrolled');
+  const subjects = (subjectQuery.data ?? []).map(subject => ({ id: subject.subjectId, code: subject.code, name: subject.name }));
   const videos = useLectureVideos(selectedSubjectId, showVideos);
 
   const {
@@ -56,24 +56,6 @@ export function FeedPage() {
   } = useActivityFeed(currentFilter);
 
   const { newCount, markRefreshed } = useNewFeedCount(!showVideos);
-
-  useEffect(() => {
-    let current = true;
-    const loadSubjects = showVideos && (role === 'LECTURER' || role === 'ADMIN')
-      ? sessionService.getAllSubjects : sessionService.getMyEnrolledSubjects;
-    loadSubjects().then((res) => {
-      if (current && res?.data) {
-        setSubjects(
-          res.data.map((s) => ({
-            id: s.subjectId,
-            code: s.code,
-            name: s.name,
-          }))
-        );
-      }
-    }).catch(() => { if (current) setSubjects([]); });
-    return () => { current = false; };
-  }, [role, showVideos]);
 
   const handleRefresh = async () => {
     if (refreshInFlight.current) return;
@@ -192,6 +174,9 @@ export function FeedPage() {
         <div className="sticky top-[calc(var(--app-header-height)+var(--space-4))] hidden lg:col-span-4 lg:block">
           <FeedSidebarRight
             subjects={subjects}
+            subjectsPending={subjectQuery.isPending}
+            subjectsError={subjectQuery.isError}
+            onRetrySubjects={() => void subjectQuery.refetch()}
             selectedSubjectId={selectedSubjectId}
             onSelectSubject={setSelectedSubjectId}
           />

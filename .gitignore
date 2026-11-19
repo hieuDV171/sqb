@@ -20,3 +20,9 @@ PGNV_Đồng Văn Hiếu_20224980.xlsx
 ADMIN_ACCESS_GUIDE.md
 FRONTEND_ROADMAP.md
 /backend/scripts/migrate-question-reports.sql
+
+# Local deployment notes, test reports, and scaffold documentation
+/.github/**/*.md
+/backend/docs/**/*.md
+/frontend/docs/**/*.md
+/frontend/README.md

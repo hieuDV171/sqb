@@ -1,13 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { useLectureVideoUpload } from '../hooks/useLectureVideoUpload';
-import { sessionService } from '@/features/session/services/sessionService';
+import { useSubjectOptions } from '@/features/session/hooks/useSubjectOptions';
 import { mediaService } from '@/services/mediaService';
 import { toast } from '@/stores/useToastStore';
-import type { SubjectResponse } from '@/features/session/types/session.types';
 import type { PostVisibility, PostType, MediaItem } from '@/types/post.types';
 import {
   Image as ImageIcon,
@@ -20,7 +19,6 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { courseClassService } from '@/features/course-class/services/courseClassService';
 import { PostVisibilityDropdown } from './PostVisibilityDropdown';
 import { SubjectSelectDropdown } from './SubjectSelectDropdown';
 
@@ -36,7 +34,8 @@ export const CreatePostBox: React.FC = () => {
   const [draftPostType, setPostType] = useState<PostType>('SOCIAL_POST');
   const postType = isLecturerOrAdmin ? draftPostType : 'SOCIAL_POST';
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
-  const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
+  const subjectQuery = useSubjectOptions('publishing');
+  const subjects = subjectQuery.data ?? [];
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const lectureVideo = useLectureVideoUpload();
@@ -48,53 +47,6 @@ export const CreatePostBox: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Chỉ tải danh sách môn học khi là Giảng viên / Admin
-    if (isLecturerOrAdmin) {
-      const loadSubjects = async () => {
-        try {
-          // 1. Thử lấy danh sách môn học đang tham gia
-          const res = await sessionService.getMyEnrolledSubjects();
-          if (res?.data && res.data.length > 0) {
-            setSubjects(res.data);
-            return;
-          }
-
-          // 2. Nếu là Giảng viên, lấy từ danh sách lớp học phần giảng dạy
-          if (user?.role === 'LECTURER') {
-            const classRes = await courseClassService.getMyClasses(false);
-            if (Array.isArray(classRes.data)) {
-              const uniqueMap = new Map<number, SubjectResponse>();
-              classRes.data.forEach((c) => {
-                if (c.subjectId && !uniqueMap.has(c.subjectId)) {
-                  uniqueMap.set(c.subjectId, {
-                    subjectId: c.subjectId,
-                    code: c.subjectCode || '',
-                    name: c.subjectName || '',
-                  });
-                }
-              });
-              if (uniqueMap.size > 0) {
-                setSubjects(Array.from(uniqueMap.values()));
-                return;
-              }
-            }
-          }
-
-          // 3. Nếu là Admin, lấy tất cả môn học trong hệ thống
-          if (user?.role === 'ADMIN') {
-            const adminRes = await sessionService.getAllSubjects();
-            setSubjects(adminRes.data ?? []);
-          }
-        } catch (err) {
-          console.warn('Không thể tải danh sách môn học:', err);
-        }
-      };
-
-      loadSubjects();
-    }
-  }, [isLecturerOrAdmin, user?.role]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -384,8 +336,15 @@ export const CreatePostBox: React.FC = () => {
                   subjects={subjects}
                   value={selectedSubjectId}
                   onChange={setSelectedSubjectId}
-                  disabled={isCreating}
+                  disabled={isCreating || subjectQuery.isPending}
+                  placeholder={subjectQuery.isPending ? 'Đang tải môn học…' : undefined}
                 />
+                {subjectQuery.isError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    Không thể tải danh sách môn học.{' '}
+                    <button type="button" className="underline" onClick={() => void subjectQuery.refetch()}>Thử lại</button>
+                  </p>
+                )}
               </div>
             )}
           </div>

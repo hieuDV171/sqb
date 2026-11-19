@@ -24,6 +24,7 @@ import {toast} from '@/stores/useToastStore';
 import type {ProposeSessionRequest, ProposeSessionResponse, QuestionProposeDto,} from '@/features/session';
 import {useEnrolledCourseClasses, useSessionMutations} from '@/features/session';
 import { QuestionDifficultySelect } from './QuestionDifficultySelect';
+import { createDraftAutosave } from '../lib/draftAutosave';
 
 interface ProposeSessionFormProps {
   onSuccessNavigate?: () => void;
@@ -31,6 +32,14 @@ interface ProposeSessionFormProps {
 }
 
 const DRAFT_KEY = 'sqb_propose_session_draft_v3';
+
+interface SessionDraft {
+  selectedCourseClassId: number | null;
+  title: string;
+  content: string;
+  sourceUrl: string;
+  questions: QuestionProposeDto[];
+}
 
 export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   onSuccessNavigate,
@@ -57,6 +66,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
 
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
   const submitInFlight = useRef(false);
+  const [draftAutosave] = useState(() => createDraftAutosave<SessionDraft>(DRAFT_KEY));
+  const draftWasEdited = useRef(false);
   const [verifyingMedia, setVerifyingMedia] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
@@ -108,33 +119,28 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     };
   }
 
-  // Save draft periodically
+  // Keep an untouched existing draft available until the user restores/discards it.
   useEffect(() => {
+    if (successResponse || submitInFlight.current) return draftAutosave.cancel;
     const hasData =
       title.trim() ||
       content.trim() ||
-      questions.some((q) => q.content.trim() || (q.mediaUrls && q.mediaUrls.length > 0));
+      sourceUrl.trim() ||
+      questions.some((q) => q.content.trim() || q.explanation?.trim() || q.mediaUrls?.length
+        || q.options.some((option) => option.text.trim() || option.mediaUrl?.trim()));
 
-    if (!hasData) return;
-
-    const timer = setTimeout(() => {
-      try {
-        const draft = {
-          selectedCourseClassId,
-          title,
-          content,
-          sourceUrl,
-          questions,
-          updatedAt: new Date().toISOString(),
-        };
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-      } catch (e) {
-        console.warn('Lỗi ghi bản nháp', e);
+    if (!hasData) {
+      if (draftWasEdited.current) {
+        draftAutosave.clear();
+        draftWasEdited.current = false;
       }
-    }, 1000);
+      return draftAutosave.cancel;
+    }
 
-    return () => clearTimeout(timer);
-  }, [selectedCourseClassId, title, content, sourceUrl, questions]);
+    draftWasEdited.current = true;
+    draftAutosave.schedule({ selectedCourseClassId, title, content, sourceUrl, questions });
+    return draftAutosave.cancel;
+  }, [selectedCourseClassId, title, content, sourceUrl, questions, successResponse, draftAutosave]);
 
   const handleRestoreDraft = () => {
     try {
@@ -156,7 +162,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   };
 
   const handleDiscardDraft = () => {
-    localStorage.removeItem(DRAFT_KEY);
+    draftAutosave.clear();
     setDraftInfo(null);
     toast.info('Đã hủy bỏ bản nháp cũ');
   };
@@ -373,6 +379,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     };
 
     submitInFlight.current = true;
+    // Preserve the latest input if the request fails, and stop the pending timer.
+    draftAutosave.saveNow({ selectedCourseClassId, title, content, sourceUrl, questions });
     try {
       const urls = payload.questions.flatMap((question) => [
         ...(question.mediaUrls ?? []),
@@ -409,7 +417,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
         }
       }
 
-      localStorage.removeItem(DRAFT_KEY);
+      draftAutosave.clear();
 
       setSuccessResponse({
         session: sessionRes,

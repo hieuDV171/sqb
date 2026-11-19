@@ -5,12 +5,18 @@ import { useLeaderboard } from '@/features/gamification/hooks/useGamification';
 
 interface FeedSidebarRightProps {
   subjects: SubjectItem[];
+  subjectsPending?: boolean;
+  subjectsError?: boolean;
+  onRetrySubjects?: () => void;
   selectedSubjectId?: number;
   onSelectSubject: (subjectId?: number) => void;
 }
 
 export function FeedSidebarRight({
   subjects,
+  subjectsPending,
+  subjectsError,
+  onRetrySubjects,
   selectedSubjectId,
   onSelectSubject,
 }: FeedSidebarRightProps) {
@@ -43,7 +49,14 @@ export function FeedSidebarRight({
         </div>
 
         <div className="space-y-1">
-          {subjects.length === 0 && (
+          {subjectsPending ? (
+            <p role="status" className="animate-pulse p-3 text-sm text-muted-foreground">Đang tải môn học…</p>
+          ) : subjectsError ? (
+            <p role="alert" className="p-3 text-sm text-destructive">
+              Không thể tải môn học.{' '}
+              <button type="button" className="underline" onClick={onRetrySubjects}>Thử lại</button>
+            </p>
+          ) : subjects.length === 0 && (
             <div className="rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
               Chưa có lớp học phần nào gắn với tài khoản để lọc bảng tin.
             </div>
