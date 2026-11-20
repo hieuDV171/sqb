@@ -79,9 +79,9 @@ services:
     container_name: sqb-backend
     restart: unless-stopped
     # Giữ tổng bộ nhớ JVM + metaspace + thread stack + direct buffer trong phạm vi SQB.
-    # memswap_limit chỉ cho phép tối đa 128 MiB swap ngoài giới hạn RAM 1152 MiB.
-    mem_limit: 1152m
-    memswap_limit: 1280m
+    # memswap_limit là tổng RAM + swap: 1536 MiB RAM và tối đa 128 MiB swap.
+    mem_limit: 1536m
+    memswap_limit: 1664m
     depends_on:
       postgres:
         condition: service_healthy
