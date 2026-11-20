@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b1220" />
+      <stop offset="1" stop-color="#172c46" />
+    </linearGradient>
+  </defs>
+  <path fill="url(#background)" d="M0 0h1200v630H0z" />
+  <path stroke="#2dd4bf" stroke-width="5" d="M96 161h63" />
+  <g font-family="Arial, sans-serif">
+    <text x="96" y="276" font-size="78" font-weight="700" fill="#f1f5f9">Học viện SQB</text>
+    <text x="96" y="357" font-size="43" fill="#cbd5e1">Ngân hàng câu hỏi</text>
+    <text x="96" y="411" font-size="43" fill="#cbd5e1">và cộng đồng học tập</text>
+    <text x="96" y="526" font-size="32" font-weight="700" fill="#2dd4bf">hieudv.id.vn</text>
+  </g>
+  <g stroke="#345271" stroke-width="2">
+    <rect x="760" y="123" width="384" height="384" rx="90" />
+    <rect x="792" y="155" width="320" height="320" rx="72" />
+  </g>
+  <rect x="830" y="194" width="242" height="242" rx="56" fill="#60a5fa" />
+  <g transform="translate(874 238) scale(6.5)" stroke="#0b1220" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v16" />
+    <path d="m16 12 2 2 4-4" />
+    <path d="M22 6V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2h4.001A2 2 0 0022 17v-1.344" />
+  </g>
+</svg>

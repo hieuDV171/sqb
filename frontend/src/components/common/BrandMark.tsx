@@ -11,7 +11,6 @@ export function BrandMark({ compact = false, className }: BrandMarkProps) {
     <span className={cn('inline-flex min-w-0 items-center gap-3', className)}>
       <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-[var(--shadow-primitive-sm)]">
         <BookOpenCheck className="size-5" aria-hidden="true" />
-        <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-card bg-academic" />
       </span>
       {!compact && (
         <span className="min-w-0 leading-none">
