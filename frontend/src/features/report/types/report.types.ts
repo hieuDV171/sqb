@@ -88,7 +88,6 @@ export interface AdminReportDetail {
   allowedActions: ReportDecision[];
   history: ModerationAction[];
   hasEvidence: boolean;
-  hasLegacyEvidence: boolean;
 }
 
 export interface ResolveReportRequest {

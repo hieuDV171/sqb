@@ -73,12 +73,6 @@ public class AdminReportController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(GlobalResponse.success(reports.evidence(id)));
     }
 
-    @Operation(summary = "Nhập bằng chứng legacy vào kho riêng tư", description = "ADMIN chuyển ảnh legacy còn trong thời hạn giữ bằng chứng sang private storage, gắn với chủ báo cáo rồi cấp URL GET 120 giây/no-store. Nếu đã có private evidence thì trả URL mới; không có ảnh đủ điều kiện thì 404. Có thể chịu quota R2 507/503.")
-    @PostMapping("/reports/{id}/evidence/import")
-    public ResponseEntity<GlobalResponse<Evidence>> importEvidence(@Parameter(description = "ID báo cáo chứa ảnh legacy", example = "120") @PathVariable Long id) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(GlobalResponse.success(reports.importEvidence(id)));
-    }
-
     @Operation(summary = "Đóng báo cáo và áp dụng quyết định kiểm duyệt", description = "Gửi version mới nhất từ Detail cùng action/reason. Chỉ PENDING được xử lý; version/trạng thái đã thay đổi trả 409. HIDE_CONTENT cho POST/COMMENT; WARN_ACCOUNT/SUSPEND_ACCOUNT cho USER, không xử phạt ADMIN. SUSPEND_ACCOUNT yêu cầu suspension_days thuộc 1/7/30; action khác phải bỏ trường này. Trả Detail mới, ghi lịch sử và thông báo người liên quan.")
     @PostMapping("/reports/{id}/resolve")
     public GlobalResponse<Detail> resolve(@Parameter(description = "ID báo cáo PENDING cần xử lý", example = "120") @PathVariable Long id, @Valid @RequestBody ResolveRequest request) {

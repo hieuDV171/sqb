@@ -1,7 +1,6 @@
 package com.frozenheart.backend.modules.report.service;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
-import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.dto.pagination.CursorPaginationDto;
 import com.frozenheart.backend.core.dto.pagination.CursorResponse;
@@ -57,7 +56,6 @@ public class AdminReportService {
     private final UserDeviceRepository devices;
     private final NotificationWriter notifications;
     private final ReportEvidenceStorage evidence;
-    private final R2Properties storageProperties;
     private final ApplicationEventPublisher events;
 
     @Transactional(readOnly = true)
@@ -90,24 +88,6 @@ public class AdminReportService {
         Report report = reports.findById(id).orElseThrow(AdminReportService::missing);
         if (report.getPrivateEvidenceKey() == null) throw missing();
         return new Evidence(evidence.readUrl(report.getPrivateEvidenceKey()));
-    }
-
-    @Transactional
-    public Evidence importEvidence(Long id) {
-        requireAdmin();
-        Report report = reports.findForReview(id).orElseThrow(AdminReportService::missing);
-        if (report.getPrivateEvidenceKey() != null) return new Evidence(evidence.readUrl(report.getPrivateEvidenceKey()));
-        if (!canImportEvidence(report) || report.getReporter() == null) throw missing();
-        String sourceUrl = report.getEvidenceUrls().getFirst().url();
-        String key = evidence.attachHistorical(report.getReporter().getId(), sourceUrl);
-        report.setPrivateEvidenceKey(key);
-        return new Evidence(evidence.readUrl(key));
-    }
-
-    private boolean canImportEvidence(Report report) {
-        return report.getEvidenceUrls() != null && !report.getEvidenceUrls().isEmpty()
-                && (report.getReviewedAt() == null || !report.getReviewedAt().isBefore(Instant.now()
-                    .minus(Math.max(1, storageProperties.getReportEvidenceRetentionDays()), ChronoUnit.DAYS)));
     }
 
     @Transactional
@@ -278,7 +258,7 @@ public class AdminReportService {
                 report.getDescription(), person(report.getReporter(), people), person(report.getReviewer(), people),
                 report.getReviewedAt(), report.getResolutionNote(), report.getSnapshot(), current.snapshot(),
                 current.suspendedUntil(), current.actionId(), allowed(report, current), actionHistory,
-                report.getPrivateEvidenceKey() != null, canImportEvidence(report));
+                report.getPrivateEvidenceKey() != null);
     }
 
     private static List<Decision> allowed(Report report, View target) {

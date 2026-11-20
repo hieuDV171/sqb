@@ -8,14 +8,12 @@ import com.frozenheart.backend.modules.session.dto.ExcelStudentRow;
 import com.frozenheart.backend.modules.session.service.ExcelParserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.text.Normalizer;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,9 +24,6 @@ public class ExcelParserServiceImpl implements ExcelParserService {
 
     private static final Pattern DOB_PATTERN = Pattern.compile("(\\d{1,2})[-/.](\\d{1,2})[-/.](\\d{4})");
     private static final Pattern MAJOR_PATTERN = Pattern.compile("^(.*?)(?:\\s+\\d+)?-K\\d+$", Pattern.CASE_INSENSITIVE);
-
-    @Value("${app.security.default-user-password}")
-    private String defaultUserPassword;
 
     @Override
     public ExcelParsedClassData parseCourseClassExcel(MultipartFile file) {
@@ -108,10 +103,10 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                     lecturerName = getCellValue(row, colMap.get("lecturer"), formatter);
                 }
 
-                // Bóc tách ngày sinh và tạo mật khẩu mặc định ddMMyyyy (an toàn khi file thiếu cột ngày sinh)
+                // Bóc tách ngày sinh; mật khẩu được sinh độc lập tại service tạo tài khoản.
                 Integer dobCol = colMap.get("dob");
                 Cell dobCell = (dobCol != null && dobCol >= 0) ? row.getCell(dobCol) : null;
-                ParsedDob parsedDob = parseDateOfBirth(dobCell, formatter, mssv);
+                LocalDate dateOfBirth = parseDateOfBirth(dobCell, formatter);
 
                 // Giới tính
                 String rawGender = getCellValue(row, colMap.get("gender"), formatter);
@@ -131,8 +126,7 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                         .studentCode(cleanString(mssv))
                         .fullName(cleanString(fullName))
                         .gender(gender)
-                        .dateOfBirth(parsedDob.dateOfBirth())
-                        .defaultPassword(parsedDob.defaultPassword())
+                        .dateOfBirth(dateOfBirth)
                         .email(email != null ? email.trim() : "")
                         .className(cleanString(rawClassName))
                         .major(cleanString(major))
@@ -268,33 +262,18 @@ public class ExcelParserServiceImpl implements ExcelParserService {
         return "";
     }
 
-    private ParsedDob parseDateOfBirth(Cell cell, DataFormatter formatter, String fallbackMssv) {
-        if (cell != null) {
-            try {
-                if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-                    LocalDate ld = cell.getLocalDateTimeCellValue().toLocalDate();
-                    String pwd = ld.format(DateTimeFormatter.ofPattern("ddMMyyyy"));
-                    return new ParsedDob(ld, pwd);
-                }
-            } catch (Exception ignored) {}
-
-            String text = formatter.formatCellValue(cell).trim();
-            if (!text.isBlank()) {
-                Matcher m = DOB_PATTERN.matcher(text);
-                if (m.find()) {
-                    int day = Integer.parseInt(m.group(1));
-                    int month = Integer.parseInt(m.group(2));
-                    int year = Integer.parseInt(m.group(3));
-                    LocalDate ld = LocalDate.of(year, month, day);
-                    String pwd = String.format("%02d%02d%04d", day, month, year);
-                    return new ParsedDob(ld, pwd);
-                }
-            }
+    private LocalDate parseDateOfBirth(Cell cell, DataFormatter formatter) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell))
+                return cell.getLocalDateTimeCellValue().toLocalDate();
+        } catch (RuntimeException ignored) {
+            // Fall back to the displayed text, as before removing the password derivation.
         }
-
-        // Fallback nếu không có ngày sinh hợp lệ: dùng MSSV hoặc mật khẩu mặc định an toàn
-        String fallbackPwd = (fallbackMssv != null && !fallbackMssv.isBlank()) ? fallbackMssv.trim() : defaultUserPassword;
-        return new ParsedDob(null, fallbackPwd);
+        Matcher match = DOB_PATTERN.matcher(formatter.formatCellValue(cell).trim());
+        if (match.find()) return LocalDate.of(Integer.parseInt(match.group(3)),
+                Integer.parseInt(match.group(2)), Integer.parseInt(match.group(1)));
+        return null;
     }
 
     private Gender parseGender(String rawGender) {
@@ -386,5 +365,4 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                 .replace("đ", "d");
     }
 
-    private record ParsedDob(LocalDate dateOfBirth, String defaultPassword) {}
 }

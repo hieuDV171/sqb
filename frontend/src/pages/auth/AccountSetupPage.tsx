@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordRequirements, PasswordConfirmation } from '@/components/auth/PasswordRequirements';
+import { getPasswordError, passwordsMatch } from '@/lib/passwordPolicy';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -17,7 +19,7 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 export function AccountSetupPage() {
-  const { logout } = useAuth();
+  const { logout, finishPasswordChange } = useAuth();
   const { user, accountState, updateUser, setAccountState } = useAuthStore();
   const needsEmailVerification = accountState === 'EMAIL_VERIFICATION_REQUIRED';
   const [otp, setOtp] = useState('');
@@ -67,11 +69,12 @@ export function AccountSetupPage() {
   const changePassword = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    if (newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    const passwordError = getPasswordError(newPassword, oldPassword);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (!passwordsMatch(newPassword, confirmPassword)) {
       setError('Xác nhận mật khẩu mới không trùng khớp.');
       return;
     }
@@ -83,7 +86,7 @@ export function AccountSetupPage() {
     setBusyAction('password');
     try {
       await authService.changePassword({ oldPassword, newPassword });
-      logout();
+      finishPasswordChange();
       toast.success('Hãy đăng nhập lại bằng mật khẩu mới.', 'Thiết lập tài khoản hoàn tất');
     } catch (caught) {
       setError(errorMessage(caught, 'Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.'));
@@ -127,7 +130,7 @@ export function AccountSetupPage() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {needsEmailVerification
                   ? 'Nhận mã 6 chữ số qua email trường. Mỗi mã có hiệu lực 2 phút và tối đa 5 lần nhập.'
-                  : 'Dùng ít nhất 8 ký tự và không sử dụng lại mật khẩu tạm thời.'}
+                  : 'Dùng ít nhất 12 ký tự, đủ chữ hoa, chữ thường, số và ký tự đặc biệt. Không sử dụng lại mật khẩu tạm thời.'}
               </p>
 
               {error && (
@@ -165,7 +168,9 @@ export function AccountSetupPage() {
                 <form onSubmit={changePassword} className="mt-6 space-y-4">
                   <PasswordField id="setup-current-password" label="Mật khẩu tạm thời" value={oldPassword} onChange={setOldPassword} visible={showPasswords} autoComplete="current-password" />
                   <PasswordField id="setup-new-password" label="Mật khẩu mới" value={newPassword} onChange={setNewPassword} visible={showPasswords} autoComplete="new-password" />
+                  <PasswordRequirements id="setup-password-requirements" password={newPassword} currentPassword={oldPassword} />
                   <PasswordField id="setup-confirm-password" label="Xác nhận mật khẩu mới" value={confirmPassword} onChange={setConfirmPassword} visible={showPasswords} autoComplete="new-password" />
+                  <PasswordConfirmation password={newPassword} confirmation={confirmPassword} />
                   <button type="button" onClick={() => setShowPasswords((value) => !value)} className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
                     {showPasswords ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     {showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
@@ -198,7 +203,7 @@ function PasswordField({ id, label, value, onChange, visible, autoComplete }: { 
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={visible ? 'text' : 'password'} autoComplete={autoComplete} value={value} onChange={(event) => onChange(event.target.value)} minLength={8} required />
+      <Input id={id} type={visible ? 'text' : 'password'} autoComplete={autoComplete} value={value} onChange={(event) => onChange(event.target.value)} autoCapitalize="none" spellCheck={false} aria-describedby={id === 'setup-new-password' ? 'setup-password-requirements' : undefined} required />
     </div>
   );
 }

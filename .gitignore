@@ -2,6 +2,7 @@
 .vscode
 .env
 .env.prod
+/.env.rabbitmq
 /.deploy-images/
 /.deploy-staging/
 /.deploy-tools/

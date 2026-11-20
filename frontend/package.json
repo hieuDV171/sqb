@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:admin-access": "node --test scripts/admin-access.test.mjs scripts/admin-access.integration.test.mjs",
     "test:auth-memory": "node --test scripts/auth-memory.test.mjs scripts/web-session.integration.test.mjs",
+    "test:passwords": "node --test scripts/password-policy.test.mjs",
     "test:effects": "node --test scripts/effect-lifecycle.test.mjs scripts/subject-options.integration.test.mjs",
     "preview": "vite preview"
   },
@@ -22,6 +23,7 @@
     "axios": "^1.21.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fflate": "0.8.3",
     "firebase": "^13.0.0",
     "humps": "^2.0.1",
     "lucide-react": "^1.31.0",

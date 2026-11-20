@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
+import com.frozenheart.backend.core.dto.IssuedAccountCredential;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -77,21 +79,21 @@ public class AdminController {
             @Valid @RequestBody BulkImportRequest request) {
         BulkImportResult result = authService.bulkImportUsers(request);
 
-        return ResponseEntity.ok(GlobalResponse.success(result));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(GlobalResponse.success(result));
     }
 
-    @Operation(summary = "Đặt lại mật khẩu cho người dùng (Reset Password)", description = "Quản trị viên đặt lại mật khẩu cho tài khoản người dùng về mật khẩu chỉ định hoặc mật khẩu mặc định của trường. Tự động xóa sạch Refresh Token trên Redis để đăng xuất khỏi tất cả thiết bị.")
+    @Operation(summary = "Đặt lại mật khẩu cho người dùng (Reset Password)", description = "Quản trị viên đặt lại mật khẩu cho tài khoản người dùng về mật khẩu chỉ định hoặc mật khẩu ngẫu nhiên. Buộc đổi mật khẩu, tăng sessionEpoch để vô hiệu AT/RT cũ và trả mật khẩu tạm một lần cho ADMIN.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Đặt lại mật khẩu thành công"),
             @ApiResponse(responseCode = "403", description = "Không có quyền Quản trị viên (ACCESS_DENIED)"),
             @ApiResponse(responseCode = "404", description = "Email người dùng không tồn tại (USER_NOT_FOUND)")
     })
     @PostMapping("/reset-password")
-    public ResponseEntity<GlobalResponse<Void>> adminResetPassword(
+    public ResponseEntity<GlobalResponse<IssuedAccountCredential>> adminResetPassword(
             @Valid @RequestBody AdminResetPasswordRequest request
         ) {
-            authService.adminResetPassword(request);
-            return ResponseEntity.ok(GlobalResponse.success());
+            var credential = authService.adminResetPassword(request);
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(GlobalResponse.success(credential));
     }
 
 }

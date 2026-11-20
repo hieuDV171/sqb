@@ -1,6 +1,8 @@
 package com.frozenheart.backend.modules.session.service.impl;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.dto.IssuedAccountCredential;
+import com.frozenheart.backend.core.security.PasswordPolicy;
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
@@ -422,16 +424,17 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .collect(Collectors.toSet());
 
         // Chống N+1: Query 1 câu kiểm tra các email đã có trong hệ thống
-        Set<String> existingEmails = userRepository.findExistingEmailsByEmailIn(fileEmails).stream()
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
+        Map<String, User> existingUsersByEmail = userRepository.findAllByEmailIn(fileEmails).stream()
+                .collect(Collectors.toMap(u -> u.getEmail().toLowerCase(), u -> u, (a, b) -> a));
+        Set<String> existingEmails = existingUsersByEmail.keySet();
 
-        // Chống N+1: Query 1 câu kiểm tra các MSSV đã có trong hệ thống
         Map<String, UserProfile> existingProfilesByMssv = userProfileRepository.findAllByStudentLecturerCodeIn(fileMssvs)
                 .stream()
                 .collect(Collectors.toMap(UserProfile::getStudentLecturerCode, p -> p, (p1, _) -> p1));
 
         List<User> usersToSave = new ArrayList<>();
+        Map<String, String> issuedPasswords = new HashMap<>();
+        List<IssuedAccountCredential> credentials = new ArrayList<>();
         List<ExcelStudentRow> rowsToSaveProfiles = new ArrayList<>();
         List<User> allStudentUsers = new ArrayList<>();
         Instant now = Instant.now();
@@ -450,7 +453,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 if (existingProfile != null) {
                     allStudentUsers.add(existingProfile.getUser());
                 } else {
-                    userRepository.findByEmail(emailLower).ifPresent(allStudentUsers::add);
+                    allStudentUsers.add(existingUsersByEmail.get(emailLower));
                 }
                 continue;
             }
@@ -460,10 +463,8 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 continue;
             }
 
-            // Tạo mật khẩu mã hóa BCrypt từ ngày tháng năm sinh viết liền (ddMMyyyy)
-            String rawPassword = (row.defaultPassword() != null && !row.defaultPassword().isBlank())
-                    ? row.defaultPassword()
-                    : mssv;
+            String rawPassword = PasswordPolicy.generateTemporary();
+            issuedPasswords.put(emailLower, rawPassword);
 
             User newUser = User.builder()
                     .email(row.email().trim())
@@ -495,6 +496,8 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
             for (int i = 0; i < savedUsers.size(); i++) {
                 User savedUser = savedUsers.get(i);
                 ExcelStudentRow row = rowsToSaveProfiles.get(i);
+                credentials.add(new IssuedAccountCredential(savedUser.getId(), savedUser.getEmail(), row.fullName(),
+                        row.studentCode(), issuedPasswords.get(savedUser.getEmail().toLowerCase())));
                 savedUserIds.add(savedUser.getId());
 
                 UserProfile profile = UserProfile.builder()
@@ -664,6 +667,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .existingUsersFound(existingUsersFound)
                 .newEnrollments(newEnrollments.size())
                 .alreadyEnrolledCount(alreadyEnrolledIds.size())
+                .credentials(List.copyOf(credentials))
                 .build();
     }
 

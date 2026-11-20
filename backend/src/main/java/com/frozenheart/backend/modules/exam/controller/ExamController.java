@@ -92,12 +92,9 @@ public class ExamController {
             @RequestParam(defaultValue = "pdf") String format,
 
             @Parameter(description = "Có xuất kèm bảng đáp án đúng hay không", example = "false")
-            @RequestParam(defaultValue = "false", name = "include_answer_key") Boolean includeAnswerKey,
+            @RequestParam(defaultValue = "false", name = "include_answer_key") Boolean includeAnswerKey) {
 
-            @Parameter(description = "Khổ giấy in", example = "A4")
-            @RequestParam(defaultValue = "A4", name = "paper_size") String paperSize) {
-
-        ExportResponse response = examService.exportExam(examId, format, includeAnswerKey, paperSize);
+        ExportResponse response = examService.exportExam(examId, format, includeAnswerKey);
         return ResponseEntity.ok(GlobalResponse.success(response));
     }
 }

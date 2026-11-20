@@ -12,7 +12,6 @@ public record ExcelStudentRow(
         String fullName,
         Gender gender,
         LocalDate dateOfBirth,
-        String defaultPassword,
         String email,
         String className,
         String major

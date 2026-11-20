@@ -83,14 +83,15 @@ class AuthServiceImplTest {
         User user = User.builder().id(21L).email("student@sqb.edu.vn").passwordHash("old-hash").verified(true).build();
         UserProfile profile = UserProfile.builder().user(user).profileCompleted(false).build();
 
-        when(userRepository.findById(21L)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(user));
         when(userProfileRepository.findByUserId(21L)).thenReturn(Optional.of(profile));
         when(passwordEncoder.matches("temporary", "old-hash")).thenReturn(true);
-        when(passwordEncoder.encode("private-password")).thenReturn("new-hash");
+        when(passwordEncoder.encode("Private-Password123!")).thenReturn("new-hash");
 
-        service.changePassword(new ChangePasswordRequest("temporary", "private-password"));
+        service.changePassword(new ChangePasswordRequest("temporary", "Private-Password123!"));
 
         assertTrue(profile.isProfileCompleted());
+        assertEquals(1L, user.getSessionEpoch());
         verify(userRepository).save(user);
         verify(userProfileRepository).save(profile);
     }
@@ -201,12 +202,12 @@ class AuthServiceImplTest {
         User user = User.builder().id(23L).email("unverified@sqb.edu.vn").verified(false).build();
         UserProfile profile = UserProfile.builder().user(user).profileCompleted(false).build();
 
-        when(userRepository.findById(23L)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(23L)).thenReturn(Optional.of(user));
         when(userProfileRepository.findByUserId(23L)).thenReturn(Optional.of(profile));
 
         AppException exception = assertThrows(
                 AppException.class,
-                () -> service.changePassword(new ChangePasswordRequest("temporary", "private-password"))
+                () -> service.changePassword(new ChangePasswordRequest("temporary", "Private-Password123!"))
         );
 
         assertEquals(ResponseCode.ACCOUNT_ONBOARDING_REQUIRED, exception.getResponseCode());

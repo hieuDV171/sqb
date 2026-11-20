@@ -95,10 +95,10 @@ class ExamServiceImplTest {
         Exam exam = ownedExam();
         when(examRepository.findWithDetailsById(EXAM_ID)).thenReturn(Optional.of(exam));
         var exported = ExportResponse.builder().downloadUrl("https://example.test/exam.pdf").build();
-        when(documentExportService.exportExam(exam, "pdf", true, "A4")).thenReturn(exported);
+        when(documentExportService.exportExam(exam, "pdf", true)).thenReturn(exported);
 
         assertEquals(EXAM_ID, service.getExamDetail(EXAM_ID).getExamId());
-        assertSame(exported, service.exportExam(EXAM_ID, "pdf", true, "A4"));
+        assertSame(exported, service.exportExam(EXAM_ID, "pdf", true));
     }
 
     @Test
@@ -138,7 +138,7 @@ class ExamServiceImplTest {
         assertEquals(ResponseCode.ACCESS_DENIED,
                 assertThrows(AppException.class, () -> service.getExamDetail(EXAM_ID)).getResponseCode());
         assertEquals(ResponseCode.ACCESS_DENIED,
-                assertThrows(AppException.class, () -> service.exportExam(EXAM_ID, "pdf", true, "A4")).getResponseCode());
+                assertThrows(AppException.class, () -> service.exportExam(EXAM_ID, "pdf", true)).getResponseCode());
     }
 
     private Exam ownedExam() {

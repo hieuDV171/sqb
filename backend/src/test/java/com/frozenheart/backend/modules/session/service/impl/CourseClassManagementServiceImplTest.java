@@ -84,6 +84,43 @@ class CourseClassManagementServiceImplTest {
     @InjectMocks
     private CourseClassManagementServiceImpl service;
 
+    @Test
+    void importIssuesCredentialsOnlyForNewAccountsAndPreservesExistingPassword() {
+        setCurrentAdmin(1L);
+        var file = org.mockito.Mockito.mock(MultipartFile.class);
+        var oldRow = ExcelStudentRow.builder().studentCode("00123").email("old@example.edu")
+                .fullName("Sinh viên cũ").build();
+        var newRow = ExcelStudentRow.builder().studentCode("00456").email("new@example.edu")
+                .fullName("Sinh viên mới").build();
+        var data = ExcelParsedClassData.builder().classCode("171146").subjectCode("IT4409")
+                .students(List.of(oldRow, newRow)).build();
+        var oldUser = User.builder().id(7L).email(oldRow.email()).passwordHash("unchanged").build();
+        var semester = Semester.builder().id(61L).name("20261").build();
+        var subject = Subject.builder().id(11L).code("IT4409").name("Môn học").build();
+        var courseClass = CourseClass.builder().id(21L).classCode("171146").semester(semester).subject(subject).build();
+        when(excelParserService.parseCourseClassExcel(file)).thenReturn(data);
+        when(userRepository.findAllByEmailIn(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(oldUser));
+        when(userProfileRepository.findAllByStudentLecturerCodeIn(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+        when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("new-hash");
+        when(userRepository.saveAll(org.mockito.ArgumentMatchers.anyList())).thenAnswer(call -> {
+            List<User> users = call.getArgument(0); users.getFirst().setId(8L); return users;
+        });
+        when(currentSemesterService.requireCurrentSemester()).thenReturn(semester);
+        when(subjectRepository.findByCode("IT4409")).thenReturn(Optional.of(subject));
+        when(courseClassRepository.findByClassCodeAndSemesterId("171146", 61L)).thenReturn(Optional.of(courseClass));
+        var result = service.importAndEnrollFromExcel(file, null);
+        assertEquals(1, result.newUsersCreated());
+        assertEquals(1, result.existingUsersFound());
+        assertEquals(1, result.credentials().size());
+        var issued = result.credentials().getFirst();
+        assertEquals(newRow.email(), issued.email());
+        assertEquals(16, issued.temporaryPassword().length());
+        assertEquals(issued.temporaryPassword(), com.frozenheart.backend.core.security.PasswordPolicy.requireValid(issued.temporaryPassword()));
+        verify(passwordEncoder).encode(issued.temporaryPassword());
+        assertEquals("unchanged", oldUser.getPasswordHash());
+        verify(userRepository, never()).findByEmail(org.mockito.ArgumentMatchers.anyString());
+    }
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
@@ -167,7 +204,7 @@ class CourseClassManagementServiceImplTest {
                 .build();
 
         when(excelParserService.parseCourseClassExcel(file)).thenReturn(parsedData);
-        when(userRepository.findExistingEmailsByEmailIn(any())).thenReturn(Set.of(row.email()));
+        when(userRepository.findAllByEmailIn(any())).thenReturn(List.of(student));
         when(userProfileRepository.findAllByStudentLecturerCodeIn(any())).thenReturn(List.of(studentProfile));
         when(currentSemesterService.requireCurrentSemester()).thenReturn(semester);
         when(subjectRepository.findByCode("IT4788")).thenReturn(Optional.of(subject));

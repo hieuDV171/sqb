@@ -1,4 +1,4 @@
-import React, { useId, useState, useRef } from "react";
+import React, { useId, useState, useRef, useEffect } from "react";
 import { Combobox } from "@base-ui/react/combobox";
 import { Select } from "@base-ui/react/select";
 import { useQuery } from "@tanstack/react-query";
@@ -8,12 +8,16 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PasswordRequirements, PasswordConfirmation } from "@/components/auth/PasswordRequirements";
+import { getPasswordError, passwordsMatch } from "@/lib/passwordPolicy";
+import { CredentialHandoff } from "@/features/admin/components/CredentialHandoff";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader } from "./AdminPageHeader";
 import { adminService } from "@/services/adminService";
 import { toast } from "@/stores/useToastStore";
 import type {
   BulkImportResult,
+  IssuedAccountCredential,
   ExcelImportClassResult,
   Gender,
   LecturerSummary,
@@ -216,9 +220,9 @@ function AccountPasswordField({ id, label, value, onChange, required, invalid, d
 }
 
 function getPasswordConfirmationError(password: string | undefined, confirmation: string) {
-  if (!password?.trim()) return confirmation ? "Hãy nhập mật khẩu tùy chỉnh trước." : null;
+  if (!password) return confirmation ? "Hãy nhập mật khẩu tùy chỉnh trước." : null;
   if (!confirmation) return "Hãy nhập lại mật khẩu.";
-  return password === confirmation ? null : "Mật khẩu xác nhận không khớp.";
+  return passwordsMatch(password, confirmation) ? null : "Mật khẩu xác nhận không khớp.";
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -228,6 +232,9 @@ function errorMessage(error: unknown, fallback: string) {
 
 export function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("excel");
+  const [credentials, setCredentials] = useState<IssuedAccountCredential[]>([]);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   // =========================================================================
   // TAB 1: EXCEL IMPORT STATE
@@ -240,7 +247,7 @@ export function AdminUsersPage() {
     enabled: activeTab === "excel",
   });
   const [isExcelUploading, setIsExcelUploading] = useState(false);
-  const [excelResult, setExcelResult] = useState<ExcelImportClassResult | null>(null);
+  const [excelResult, setExcelResult] = useState<Omit<ExcelImportClassResult, "credentials"> | null>(null);
   const [excelError, setExcelError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -281,6 +288,7 @@ export function AdminUsersPage() {
       return;
     }
 
+    setCredentials([]);
     setIsExcelUploading(true);
     setExcelError(null);
     setExcelResult(null);
@@ -288,7 +296,10 @@ export function AdminUsersPage() {
     try {
       const parsedLecturerId = lecturerId ? parseInt(lecturerId, 10) : undefined;
       const res = await adminService.importExcelCourseClass(selectedFile, parsedLecturerId);
-      setExcelResult(res.data);
+      if (!mounted.current) return;
+      const { credentials: issued, ...summary } = res.data;
+      setCredentials(issued);
+      setExcelResult(summary);
       toast.success(
         `Import thành công lớp ${res.data.classCode}: Tạo mới ${res.data.newUsersCreated} SV, ghi danh ${res.data.newEnrollments} SV`,
         "Import Excel Thành Công"
@@ -320,7 +331,7 @@ export function AdminUsersPage() {
     },
   ]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<BulkImportResult | null>(null);
+  const [bulkResult, setBulkResult] = useState<Omit<BulkImportResult, "credentials"> | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const handleAddUserRow = () => {
@@ -368,7 +379,7 @@ export function AdminUsersPage() {
         setBulkError(`Dòng #${i + 1}: Email và Họ tên là bắt buộc!`);
         return;
       }
-      const passwordError = getPasswordConfirmationError(u.password, passwordConfirmation);
+      const passwordError = (u.password ? getPasswordError(u.password) : null) ?? getPasswordConfirmationError(u.password, passwordConfirmation);
       if (passwordError) {
         setBulkError(`Tài khoản ${i + 1}. ${passwordError}`);
         document.getElementById(`account-${id}-confirm-password`)?.focus();
@@ -376,10 +387,10 @@ export function AdminUsersPage() {
       }
     }
 
-    // Chuẩn hóa payload: biến chuỗi rỗng thành undefined để backend tự động fallback mật khẩu & ngày sinh
+    // Chuẩn hóa payload: biến chuỗi rỗng thành undefined để backend sinh mật khẩu ngẫu nhiên & xử lý ngày sinh
     const sanitizedUsers = usersToImport.map(({ user: u }) => ({
       ...u,
-      password: u.password?.trim() ? u.password.trim() : undefined,
+      password: u.password || undefined,
       dateOfBirth: u.dateOfBirth?.trim() ? u.dateOfBirth.trim() : undefined,
       studentLecturerCode: u.studentLecturerCode?.trim() ? u.studentLecturerCode.trim() : undefined,
       className: u.className?.trim() ? u.className.trim() : undefined,
@@ -387,10 +398,15 @@ export function AdminUsersPage() {
       major: u.major?.trim() ? u.major.trim() : undefined,
     }));
 
+    setCredentials([]);
     setIsBulkLoading(true);
     try {
       const res = await adminService.bulkImportUsers({ users: sanitizedUsers });
-      setBulkResult(res.data);
+      if (!mounted.current) return;
+      const { credentials: issued, ...summary } = res.data;
+      setCredentials(issued);
+      setBulkResult(summary);
+      setUsersToImport(previous => previous.map(draft => ({ ...draft, passwordConfirmation: "", user: { ...draft.user, password: "" } })));
       if (res.data.totalSuccess > 0) {
         toast.success(
           `Đã tạo thành công ${res.data.totalSuccess} tài khoản!`,
@@ -439,30 +455,38 @@ export function AdminUsersPage() {
       return;
     }
 
-    const passwordError = getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation);
+    const passwordError = (customNewPassword ? getPasswordError(customNewPassword) : null) ?? getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation);
     if (passwordError) {
       setResetError(passwordError);
       document.getElementById("reset-confirm-password")?.focus();
       return;
     }
 
+    setCredentials([]);
     setIsResetLoading(true);
     setResetLogs([]);
     const newLogs: ResetResult[] = [];
+    const issued: IssuedAccountCredential[] = [];
 
-    for (const email of rawEmails) {
+    for (const email of new Set(rawEmails.map(email => email.toLowerCase()))) {
+      if (!mounted.current) break;
       try {
-        await adminService.adminResetPassword({
+        const response = await adminService.adminResetPassword({
           email,
-          newPassword: customNewPassword.trim() || null,
+          newPassword: customNewPassword || null,
         });
+        issued.push(response.data);
+        if (mounted.current) setCredentials([...issued]);
         newLogs.push({ email });
       } catch (err) {
         newLogs.push({ email, error: errorMessage(err, "Không thể cấp lại mật khẩu.") });
       }
     }
 
+    if (!mounted.current) return;
     setResetLogs(newLogs);
+    setCustomNewPassword("");
+    setResetPasswordConfirmation("");
     setIsResetLoading(false);
     toast.info("Đã xử lý danh sách email.", "Cấp lại mật khẩu");
   };
@@ -476,11 +500,14 @@ export function AdminUsersPage() {
         {accountTabs.map(({ value, label, icon: Icon }) => (
           <Button key={value} id={`admin-account-tab-${value}`} type="button" variant={activeTab === value ? "secondary" : "ghost"}
             aria-pressed={activeTab === value} className="min-h-11"
-            onClick={() => setActiveTab(value)}>
+            disabled={isExcelUploading || isBulkLoading || isResetLoading}
+            onClick={() => { setActiveTab(value); setCredentials([]); setCustomNewPassword(""); setResetPasswordConfirmation(""); setUsersToImport(previous => previous.map(draft => ({ ...draft, passwordConfirmation: "", user: { ...draft.user, password: "" } }))); }}>
             <Icon aria-hidden="true" /> {label}
           </Button>
         ))}
       </div>
+
+      {credentials.length > 0 && <CredentialHandoff credentials={credentials} onClose={() => setCredentials([])} />}
 
       {activeTab === "excel" && (
         <Card className={panelClass}>
@@ -683,17 +710,19 @@ export function AdminUsersPage() {
                         <div className="space-y-2 border-t border-border pt-4">
                           <div className="grid gap-4 sm:grid-cols-2">
                             <AccountPasswordField id={`${fieldPrefix}-password`} label="Mật khẩu tùy chỉnh" value={user.password ?? ""}
-                              describedBy={`${fieldPrefix}-password-hint`} onChange={(value) => handleUserFieldChange(id, "password", value)} />
+                              describedBy={`${fieldPrefix}-password-hint ${fieldPrefix}-requirements`} onChange={(value) => handleUserFieldChange(id, "password", value)} />
                             <AccountPasswordField id={`${fieldPrefix}-confirm-password`} label="Xác nhận mật khẩu" value={passwordConfirmation}
-                              required={Boolean(user.password?.trim())} invalid={Boolean(confirmationError)}
+                              required={Boolean(user.password)} invalid={Boolean(confirmationError)}
                               describedBy={confirmationError ? `${fieldPrefix}-password-error` : `${fieldPrefix}-password-hint`}
                               onChange={(value) => setUsersToImport((previous) => previous.map((draft) => draft.id === id
                                 ? { ...draft, passwordConfirmation: value }
                                 : draft))} />
                           </div>
+                          <PasswordRequirements id={`${fieldPrefix}-requirements`} password={user.password ?? ""} />
+                          <PasswordConfirmation password={user.password ?? ""} confirmation={passwordConfirmation} />
                           {confirmationError && <p id={`${fieldPrefix}-password-error`} className="text-sm text-destructive">{confirmationError}</p>}
                           <p id={`${fieldPrefix}-password-hint`} className="text-sm text-muted-foreground">
-                            Nếu để trống, hệ thống sẽ chọn mật khẩu theo thứ tự ưu tiên ngày sinh (ddMMyyyy), mã SV/CB, rồi mật khẩu mặc định.
+                            Để trống để sinh mật khẩu tạm ngẫu nhiên 16 ký tự riêng cho từng tài khoản.
                           </p>
                         </div>
                       </fieldset>
@@ -758,13 +787,13 @@ export function AdminUsersPage() {
               <ShieldCheck aria-hidden="true" className="size-5" />
             </span>
             <h2 className="text-sm font-semibold">Lần đăng nhập đầu</h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">Người dùng đăng nhập bằng mật khẩu tạm, sau đó đổi mật khẩu và xác thực email.</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">Người dùng đăng nhập bằng mật khẩu tạm, sau đó xác thực email và đổi mật khẩu cá nhân.</p>
           </aside>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: RESET MẬT KHẨU VỀ MẶC ĐỊNH CHO SINH VIÊN / GIẢNG VIÊN              */}
+      {/* TAB 3: CẤP LẠI MẬT KHẨU TẠM              */}
       {/* ========================================================================= */}
       {activeTab === "reset" && (
         <Card className={panelClass}>
@@ -786,21 +815,23 @@ export function AdminUsersPage() {
                 <div className="space-y-2 border-t border-border pt-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <AccountPasswordField id="reset-new-password" label="Mật khẩu tùy chỉnh" value={customNewPassword}
-                      describedBy="reset-password-hint" onChange={setCustomNewPassword} />
+                      describedBy="reset-password-hint reset-password-requirements" onChange={setCustomNewPassword} />
                     <AccountPasswordField id="reset-confirm-password" label="Xác nhận mật khẩu" value={resetPasswordConfirmation}
-                      required={Boolean(customNewPassword.trim())} invalid={Boolean(resetConfirmationError)}
+                      required={Boolean(customNewPassword)} invalid={Boolean(resetConfirmationError)}
                       describedBy={resetConfirmationError ? "reset-password-error" : "reset-password-hint"}
                       onChange={setResetPasswordConfirmation} />
                   </div>
+                  <PasswordRequirements id="reset-password-requirements" password={customNewPassword} />
+                  <PasswordConfirmation password={customNewPassword} confirmation={resetPasswordConfirmation} />
                   {resetConfirmationError && <p id="reset-password-error" className="text-sm text-destructive">{resetConfirmationError}</p>}
                   <p id="reset-password-hint" className="text-sm text-muted-foreground">
-                    Để trống cả hai ô để dùng mật khẩu mặc định.
+                    Để trống cả hai ô để sinh mật khẩu tạm ngẫu nhiên 16 ký tự riêng cho từng tài khoản.
                   </p>
                 </div>
               </fieldset>
               <p className="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning-soft p-3.5 text-sm text-warning">
                 <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                Khi cấp lại mật khẩu, các phiên đăng nhập hiện tại của tài khoản sẽ bị thu hồi.
+                Khi cấp lại mật khẩu, các phiên đăng nhập hiện tại bị thu hồi. Người dùng phải đổi mật khẩu khi đăng nhập lại.
               </p>
 
               <div className="flex justify-end">
@@ -814,6 +845,9 @@ export function AdminUsersPage() {
             {resetLogs.length > 0 && (
               <div className="rounded-xl border border-border bg-surface-subtle p-4" role="status">
                 <h3 className="font-semibold">Kết quả cấp lại mật khẩu</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Thành công: {resetLogs.filter(result => !result.error).length} · Thất bại: {resetLogs.filter(result => result.error).length}
+                </p>
                 <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto">
                   {resetLogs.map(({ email, error }, index) => (
                     <li key={`${email}-${index}`} className="flex items-start gap-2 py-2">

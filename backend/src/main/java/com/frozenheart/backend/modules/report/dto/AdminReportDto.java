@@ -95,9 +95,7 @@ public final class AdminReportDto {
             @Schema(description = "Lịch sử các biện pháp kiểm duyệt liên quan")
             List<Action> history,
             @Schema(description = "Báo cáo có bằng chứng riêng tư để xin URL xem", example = "true")
-            boolean hasEvidence,
-            @Schema(description = "Có ảnh legacy còn đủ điều kiện thử nhập vào kho riêng tư", example = "true")
-            boolean hasLegacyEvidence) {}
+            boolean hasEvidence) {}
 
     @Schema(description = "Quyết định đóng báo cáo PENDING; gửi version hiện tại để phát hiện xử lý đồng thời")
     public record ResolveRequest(

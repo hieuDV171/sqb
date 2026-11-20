@@ -2,6 +2,8 @@ package com.frozenheart.backend.modules.session.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
+import java.util.List;
+import com.frozenheart.backend.core.dto.IssuedAccountCredential;
 
 @Builder
 @Schema(description = "Kết quả import lớp học phần và ghi danh sinh viên từ file Excel")
@@ -34,6 +36,8 @@ public record ExcelImportClassResult(
         int newEnrollments,
 
         @Schema(description = "Số lượng sinh viên đã ghi danh vào lớp này từ trước", example = "2")
-        int alreadyEnrolledCount
+        int alreadyEnrolledCount,
+
+        List<IssuedAccountCredential> credentials
     ) {
 }

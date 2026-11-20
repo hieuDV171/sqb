@@ -96,7 +96,6 @@ export interface ExportResponse {
 export interface ExportExamParams {
   format?: 'pdf' | 'excel';
   includeAnswerKey?: boolean;
-  paperSize?: 'A4' | 'Letter';
 }
 
 export interface ExportQuestionsParams {

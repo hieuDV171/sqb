@@ -11,7 +11,7 @@ public record AdminResetPasswordRequest(
         @Email(message = "INVALID_PARAMETER_VALUE") 
         String email,
 
-        @Schema(description = "Mật khẩu mới chỉ định (để trống nếu muốn khôi phục về mật khẩu mặc định của trường)", example = "20224980")
+        @Schema(description = "Mật khẩu mới chỉ định (để trống để sinh mật khẩu tạm ngẫu nhiên 16 ký tự)", example = "NewSecurePass@2026")
         String newPassword
 ) {
 

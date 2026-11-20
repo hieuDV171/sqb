@@ -12,11 +12,9 @@ interface ExportExamModalProps {
 }
 
 const formatOptions = [{ value: 'pdf', label: 'PDF' }, { value: 'excel', label: 'Excel' }];
-const paperOptions = [{ value: 'A4', label: 'A4' }, { value: 'Letter', label: 'Letter' }];
 
 export function ExportExamModal({ examId, examTitle, onClose }: ExportExamModalProps) {
   const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
-  const [paperSize, setPaperSize] = useState<'A4' | 'Letter'>('A4');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
   const exportExam = useExportExam();
   const downloadUrl = exportExam.data?.data?.downloadUrl;
@@ -26,16 +24,12 @@ export function ExportExamModal({ examId, examTitle, onClose }: ExportExamModalP
       icon={FileDown} className="max-w-md" busy={exportExam.isPending} onClose={onClose}>
       <form className="flex min-h-0 flex-col" onSubmit={(event) => {
         event.preventDefault();
-        if (!exportExam.isPending) exportExam.mutate({ examId, params: { format, paperSize, includeAnswerKey } });
+        if (!exportExam.isPending) exportExam.mutate({ examId, params: { format, includeAnswerKey } });
       }}>
         <div className="min-h-0 space-y-3 overflow-y-auto p-4 sm:px-5">
           <fieldset disabled={exportExam.isPending} className="min-w-0 space-y-3">
             <FilterSelect label="Định dạng" value={format} options={formatOptions}
               disabled={exportExam.isPending} onChange={(value) => setFormat(value === 'excel' ? 'excel' : 'pdf')} />
-            {format === 'pdf' && (
-              <FilterSelect label="Khổ giấy" value={paperSize} options={paperOptions}
-                disabled={exportExam.isPending} onChange={(value) => setPaperSize(value === 'Letter' ? 'Letter' : 'A4')} />
-            )}
             <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-input px-3 py-2 text-sm">
               <input type="checkbox" checked={includeAnswerKey} onChange={(event) => setIncludeAnswerKey(event.target.checked)} className="size-4 shrink-0 accent-academic" />
               Kèm đáp án

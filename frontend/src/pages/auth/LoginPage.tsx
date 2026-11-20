@@ -77,7 +77,7 @@ function AccountHelpDialog({ open, onClose }: AccountHelpDialogProps) {
           <p className="text-sm font-semibold text-foreground">Dành cho sinh viên</p>
           <ol className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
             <li className="flex gap-3"><span className="font-bold text-primary">01</span><span>Liên hệ giảng viên phụ trách lớp học phần để xác nhận danh tính.</span></li>
-            <li className="flex gap-3"><span className="font-bold text-primary">02</span><span>Giảng viên gửi yêu cầu đến quản trị viên để cấp lại mật khẩu mặc định.</span></li>
+            <li className="flex gap-3"><span className="font-bold text-primary">02</span><span>Giảng viên gửi yêu cầu đến quản trị viên để cấp lại mật khẩu tạm thời.</span></li>
             <li className="flex gap-3"><span className="font-bold text-primary">03</span><span>Đăng nhập và đổi mật khẩu ngay trong menu tài khoản.</span></li>
           </ol>
         </div>

@@ -96,8 +96,6 @@ app:
   admin:
     username: ${ADMIN_USERNAME}
     password: ${ADMIN_PASSWORD}
-  security:
-    default-user-password: ${DEFAULT_USER_PASSWORD}
   firebase:
     config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-service-account.json}
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}

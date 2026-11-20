@@ -34,6 +34,7 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
     private final UserDetailsService users;
 
     public record AccountSuspended(Long userId) {}
+    public record CredentialsChanged(Long userId) {}
 
     private final Map<String, WebSocketSession> sockets = new ConcurrentHashMap<>();
     private final Map<String, JwtPayload> accounts = new ConcurrentHashMap<>();
@@ -97,6 +98,11 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
 
     @TransactionalEventListener
     public void onAccountSuspended(AccountSuspended event) {
+        disconnect(Set.of(event.userId()));
+    }
+
+    @TransactionalEventListener
+    public void onCredentialsChanged(CredentialsChanged event) {
         disconnect(Set.of(event.userId()));
     }
 

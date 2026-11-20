@@ -37,7 +37,9 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserPushSettingRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.frozenheart.backend.core.dto.IssuedAccountCredential;
+import com.frozenheart.backend.core.security.PasswordPolicy;
+import com.frozenheart.backend.core.security.AccountWebSocketSessions;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -90,9 +92,6 @@ public class AuthServiceImpl implements AuthService {
 
     private final ApplicationEventPublisher eventPublisher;
 
-    @Value("${app.security.default-user-password}")
-    private String defaultUserPassword;
-
     private static final String OTP_PREFIX = "otp:";
     private static final String RESEND_LOCK_PREFIX = "resend_lock:";
     private static final String OTP_ATTEMPT_PREFIX = "otp_attempt:";
@@ -128,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
                     return new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không chính xác");
                 });
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!PasswordPolicy.matches(passwordEncoder, request.password(), user.getPasswordHash())) {
             log.warn("[AuthServiceImpl]: {}", ResponseCode.INCORRECT_IDENTIFIER);
             metricService.incrementCounter("sqb.auth.login", "status", "failed", "reason", "bad_credentials");
             throw new AppException(ResponseCode.INCORRECT_IDENTIFIER, "Tài khoản hoặc mật khẩu không chính xác");
@@ -214,6 +213,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void register(RegisterRequest request) {
+        String password = PasswordPolicy.requireValid(request.password());
         // kiểm tra email tồn tại
         String email = request.email();
 
@@ -228,7 +228,7 @@ public class AuthServiceImpl implements AuthService {
         // Tạo tài khoản (chưa xác thực OTP)
         User user = User.builder()
                 .email(email)
-                .passwordHash(passwordEncoder.encode(request.password()))
+                .passwordHash(passwordEncoder.encode(password))
                 .role(role)
                 .verified(false)
                 .active(true)
@@ -445,7 +445,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public BulkImportResult bulkImportUsers(BulkImportRequest request) {
         if (request == null || request.users() == null || request.users().isEmpty()) {
-            return new BulkImportResult(0, 0, List.of());
+            return new BulkImportResult(0, 0, List.of(), List.of());
         }
 
         List<String> errorMessages = new ArrayList<>();
@@ -455,8 +455,12 @@ public class AuthServiceImpl implements AuthService {
 
         // 1. Kiểm tra trùng lặp ngay trong payload gửi lên
         for (SingleUserImportDto dto : request.users()) {
-            if (dto.email() == null || dto.email().isBlank()) {
+            if (dto == null || dto.email() == null || dto.email().isBlank()) {
                 errorMessages.add("Email không được để trống.");
+                continue;
+            }
+            if (dto.fullName() == null || dto.fullName().isBlank()) {
+                errorMessages.add("Họ tên không được để trống cho email " + dto.email() + ".");
                 continue;
             }
             String emailLower = dto.email().trim().toLowerCase();
@@ -475,7 +479,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (validDtos.isEmpty()) {
-            return new BulkImportResult(0, errorMessages.size(), errorMessages);
+            return new BulkImportResult(0, errorMessages.size(), errorMessages, List.of());
         }
 
         // 2. Query DB đúng 1 câu duy nhất kiểm tra email và mã cán bộ đã tồn tại (Chống N+1)
@@ -498,6 +502,7 @@ public class AuthServiceImpl implements AuthService {
                         .collect(Collectors.toSet());
 
         List<User> usersToSave = new ArrayList<>();
+        Map<String, String> issuedPasswords = new HashMap<>();
         List<SingleUserImportDto> dtosToProcess = new ArrayList<>();
         Instant now = Instant.now();
 
@@ -518,17 +523,8 @@ public class AuthServiceImpl implements AuthService {
                 // Role: Nếu không chỉ định -> Mặc định là LECTURER (tối ưu cho import Giảng viên)
                 UserRole ur = (dto.role() != null) ? UserRole.valueOf(dto.role().name()) : UserRole.LECTURER;
 
-                // Password: Nếu không chỉ định -> Tự sinh thông minh: Ngày sinh ddMMyyyy -> Mã CB -> mật khẩu mặc định
-                String rawPassword;
-                if (dto.password() != null && !dto.password().isBlank()) {
-                    rawPassword = dto.password().trim();
-                } else if (dto.dateOfBirth() != null) {
-                    rawPassword = dto.dateOfBirth().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
-                } else if (!code.isBlank()) {
-                    rawPassword = code;
-                } else {
-                    rawPassword = defaultUserPassword;
-                }
+                String rawPassword = dto.password() == null || dto.password().isEmpty()
+                        ? PasswordPolicy.generateTemporary() : PasswordPolicy.requireValid(dto.password());
 
                 User user = User.builder()
                         .email(dto.email().trim())
@@ -539,6 +535,7 @@ public class AuthServiceImpl implements AuthService {
                         .createdAt(now)
                         .updatedAt(now)
                         .build();
+                issuedPasswords.put(emailLower, rawPassword);
                 usersToSave.add(user);
                 dtosToProcess.add(dto);
             } catch (Exception e) {
@@ -547,7 +544,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (usersToSave.isEmpty()) {
-            return new BulkImportResult(0, errorMessages.size(), errorMessages);
+            return new BulkImportResult(0, errorMessages.size(), errorMessages, List.of());
         }
 
         // 3. Batch Save Users
@@ -632,7 +629,14 @@ public class AuthServiceImpl implements AuthService {
         eventPublisher
                 .publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.USER, savedUserIds));
 
-        return new BulkImportResult(savedUsers.size(), errorMessages.size(), errorMessages);
+        List<IssuedAccountCredential> credentials = new ArrayList<>();
+        for (int i = 0; i < savedUsers.size(); i++) {
+            User saved = savedUsers.get(i);
+            SingleUserImportDto dto = dtosToProcess.get(i);
+            credentials.add(new IssuedAccountCredential(saved.getId(), saved.getEmail(), dto.fullName().trim(),
+                    dto.studentLecturerCode(), issuedPasswords.get(saved.getEmail().toLowerCase())));
+        }
+        return new BulkImportResult(savedUsers.size(), errorMessages.size(), errorMessages, List.copyOf(credentials));
     }
 
     private PushPreferences createDefaultPushPreferences() {
@@ -686,8 +690,12 @@ public class AuthServiceImpl implements AuthService {
         JwtPayload payload = JwtPayload.getCurrentUserPayload();
         Long userId = payload.getUserId();
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        // Recheck after acquiring the lock: a reset may have committed after the HTTP filter ran.
+        if (!Objects.equals(payload.getSessionEpoch(), user.getSessionEpoch())) {
+            throw new AppException(ResponseCode.TOKEN_INVALID_OR_EXPIRED);
+        }
 
         UserProfile userProfile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
@@ -699,17 +707,23 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        if (!passwordEncoder.matches(request.oldPassword(), user.getPasswordHash())) {
+        if (!PasswordPolicy.matches(passwordEncoder, request.oldPassword(), user.getPasswordHash())) {
             throw new AppException(ResponseCode.INCORRECT_IDENTIFIER);
         }
 
-        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        String newPassword = PasswordPolicy.requireValid(request.newPassword());
+        if (PasswordPolicy.matches(passwordEncoder, newPassword, user.getPasswordHash())) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setUpdatedAt(Instant.now());
 
         userRepository.save(user);
 
         userProfile.setProfileCompleted(true);
         userProfileRepository.save(userProfile);
+        revokeAccountSessions(user);
+        if (payload.getAuthClientType() == AuthClientType.WEB) cookieUtils.clearCookie("refreshToken");
         if (user.isVerified()) {
             log.info("[AuthService] Account setup completed for userId={}; re-login required", userId);
         }
@@ -924,23 +938,28 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void adminResetPassword(AdminResetPasswordRequest request) {
-        User user = userRepository.findByEmail(request.email())
+    public IssuedAccountCredential adminResetPassword(AdminResetPasswordRequest request) {
+        User user = userRepository.findByEmailForLogin(request.email())
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
-
-        String targetPassword = (request.newPassword() != null && !request.newPassword().isBlank())
-                ? request.newPassword()
-                : defaultUserPassword;
-
+        UserProfile profile = userProfileRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        String targetPassword = request.newPassword() == null || request.newPassword().isEmpty()
+                ? PasswordPolicy.generateTemporary() : PasswordPolicy.requireValid(request.newPassword());
         user.setPasswordHash(passwordEncoder.encode(targetPassword));
         user.setUpdatedAt(Instant.now());
+        profile.setProfileCompleted(false);
+        userProfileRepository.save(profile);
+        revokeAccountSessions(user);
         userRepository.save(user);
+        return new IssuedAccountCredential(user.getId(), user.getEmail(), profile.getFullName(),
+                profile.getStudentLecturerCode(), targetPassword);
+    }
 
-        // Đăng xuất khỏi tất cả các thiết bị
-        Set<String> keys = redisTemplate.keys("rt:" + request.email() + ":*");
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
+    private void revokeAccountSessions(User user) {
+        user.setSessionEpoch(user.getSessionEpoch() == null ? 1L : user.getSessionEpoch() + 1);
+        userDeviceRepository.deactivateForAccounts(List.of(user.getId()));
+        // Epoch invalidates both AT and RT; no Redis KEYS scan or per-token blacklist is needed.
+        eventPublisher.publishEvent(new AccountWebSocketSessions.CredentialsChanged(user.getId()));
     }
 
 }

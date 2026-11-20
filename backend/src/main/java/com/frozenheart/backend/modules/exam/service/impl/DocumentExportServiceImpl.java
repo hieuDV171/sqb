@@ -110,7 +110,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
 
     @Override
     @Transactional(readOnly = true)
-    public ExportResponse exportExam(Exam exam, String format, Boolean includeAnswerKey, String paperSize) {
+    public ExportResponse exportExam(Exam exam, String format, Boolean includeAnswerKey) {
         String bucket = privateExportBucket();
         boolean withAnswer = includeAnswerKey != null && includeAnswerKey;
         String ext = "excel".equalsIgnoreCase(format) || "xlsx".equalsIgnoreCase(format) ? "xlsx" : "pdf";

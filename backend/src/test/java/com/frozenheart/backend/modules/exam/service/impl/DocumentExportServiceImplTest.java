@@ -152,7 +152,7 @@ class DocumentExportServiceImplTest {
     @ValueSource(booleans = {true, false})
     void rendersSortedExamWorkbookAndSignsItInPrivateBucket(boolean withAnswer) throws Exception {
         var file = captureUpload();
-        service.exportExam(unsortedExam(questionWithImages()), "xlsx", withAnswer, "A4");
+        service.exportExam(unsortedExam(questionWithImages()), "xlsx", withAnswer);
 
         verifyNewPrivateExport("exports/exams/v2/exam_19_ans_" + withAnswer + ".xlsx", "de-thi-19.xlsx");
         try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(file.get()))) {
@@ -173,7 +173,7 @@ class DocumentExportServiceImplTest {
         var cached = mock(StatObjectResponse.class);
         when(minioClient.statObject(any(StatObjectArgs.class))).thenReturn(cached);
 
-        service.exportExam(Exam.builder().id(19L).build(), "pdf", true, "A4");
+        service.exportExam(Exam.builder().id(19L).build(), "pdf", true);
 
         String key = "exports/exams/v2/exam_19_ans_true.pdf";
         verifyPrivateLookupAndLink(key);
@@ -186,7 +186,7 @@ class DocumentExportServiceImplTest {
     void rendersExamPdfWithVietnameseTextAndImages(boolean withAnswer) throws Exception {
         var pdf = captureUpload();
 
-        service.exportExam(unsortedExam(questionWithImages()), "pdf", withAnswer, "A4");
+        service.exportExam(unsortedExam(questionWithImages()), "pdf", withAnswer);
 
         verifyNewPrivateExport("exports/exams/v2/exam_19_ans_" + withAnswer + ".pdf", "de-thi-19.pdf");
         String text = readPdfWithImages(pdf.get(), 1);
@@ -238,7 +238,7 @@ class DocumentExportServiceImplTest {
                 assertThrows(AppException.class, () -> service.exportQuestions(SUBJECT_ID, "pdf", true)).getResponseCode());
         assertEquals(ResponseCode.FILE_UPLOAD_FAILED,
                 assertThrows(AppException.class,
-                        () -> service.exportExam(Exam.builder().id(19L).build(), "pdf", true, "A4")).getResponseCode());
+                        () -> service.exportExam(Exam.builder().id(19L).build(), "pdf", true)).getResponseCode());
         verifyNoInteractions(courseClassRepository, questionRepository, minioClient, mediaService);
     }
 
@@ -286,6 +286,8 @@ class DocumentExportServiceImplTest {
         var reader = new PdfReader(pdf);
         try {
             assertTrue(reader.getNumberOfPages() >= minimumPages);
+            assertEquals(595f, reader.getPageSize(1).getWidth(), 0.1f);
+            assertEquals(842f, reader.getPageSize(1).getHeight(), 0.1f);
             var images = reader.getPageN(1).getAsDict(PdfName.RESOURCES).getAsDict(PdfName.XOBJECT);
             assertEquals(2, images.size());
             var extractor = new PdfTextExtractor(reader);

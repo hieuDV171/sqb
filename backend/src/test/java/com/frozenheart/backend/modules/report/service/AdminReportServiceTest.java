@@ -1,6 +1,5 @@
 package com.frozenheart.backend.modules.report.service;
 
-import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.post.Post;
@@ -51,7 +50,6 @@ class AdminReportServiceTest {
     @Mock UserDeviceRepository devices;
     @Mock NotificationWriter notifications;
     @Mock ReportEvidenceStorage evidence;
-    @Mock R2Properties storageProperties;
     @Mock ApplicationEventPublisher events;
     @InjectMocks AdminReportService service;
 
@@ -84,6 +82,29 @@ class AdminReportServiceTest {
                 () -> service.resolve(10L, new ResolveRequest(1L, Decision.HIDE_CONTENT, "Spam", null)))
                 .getResponseCode()).isEqualTo(ResponseCode.REPORT_CONFLICT);
         verifyNoInteractions(posts, actions);
+    }
+
+    @Test
+    void readsExistingPrivateEvidenceWithoutCopyingIt() {
+        var report = report("POST");
+        report.setPrivateEvidenceKey("report-evidence/302/existing");
+        when(reports.findById(10L)).thenReturn(Optional.of(report));
+        when(evidence.readUrl("report-evidence/302/existing")).thenReturn("https://fixture.invalid/signed");
+
+        assertThat(service.evidence(10L).url()).isEqualTo("https://fixture.invalid/signed");
+        verify(evidence).readUrl("report-evidence/302/existing");
+        verifyNoMoreInteractions(evidence);
+        verify(reports, never()).save(any());
+    }
+
+    @Test
+    void evidenceWithoutAPrivateCopyDoesNotFallBackToPublicStorage() {
+        when(reports.findById(10L)).thenReturn(Optional.of(report("POST")));
+
+        assertThrows(AppException.class, () -> service.evidence(10L));
+
+        verifyNoInteractions(evidence);
+        verify(reports, never()).save(any());
     }
 
     @Test

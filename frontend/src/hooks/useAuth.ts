@@ -66,6 +66,13 @@ export function useAuth() {
         }
     };
 
+    const finishPasswordChange = () => {
+        stompClient.disconnect();
+        logoutStore();
+        queryClient.clear();
+        navigate('/login', { replace: true });
+    };
+
     const logout = () => {
         void authService.logout().catch(() => {
             toast.warning('Đã thoát trên trình duyệt. Máy chủ chưa xác nhận thu hồi phiên.');
@@ -76,6 +83,6 @@ export function useAuth() {
         navigate('/login', { replace: true });
     };
 
-    return { login, logout, isLoading, error }
+    return { login, logout, finishPasswordChange, isLoading, error }
 
 }

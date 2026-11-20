@@ -70,10 +70,19 @@ export interface BulkImportRequest {
     users: SingleUserImportDto[];
 }
 
+export interface IssuedAccountCredential {
+    userId: number;
+    email: string;
+    fullName: string | null;
+    studentLecturerCode: string | null;
+    temporaryPassword: string;
+}
+
 export interface BulkImportResult {
     totalSuccess: number;
     totalFailed: number;
     errors: string[];
+    credentials: IssuedAccountCredential[];
 }
 
 export interface AdminResetPasswordRequest {
@@ -92,6 +101,7 @@ export interface ExcelImportClassResult {
     existingUsersFound: number;
     newEnrollments: number;
     alreadyEnrolledCount: number;
+    credentials: IssuedAccountCredential[];
 }
 
 export interface LecturerSummary {

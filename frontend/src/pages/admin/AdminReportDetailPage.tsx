@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type SubmitEvent, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ChevronDown, Image, Minus, Plus, ShieldAlert, X, ZoomIn } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
@@ -54,24 +54,22 @@ function Snapshot({ value, empty }: { value: ReportSnapshot | null; empty: strin
 }
 
 function Evidence({ report }: { report: AdminReportDetail }) {
-  const client = useQueryClient();
   const [imageFailed, setImageFailed] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
   const [aspectRatio, setAspectRatio] = useState(1);
   const viewport = useRef<HTMLDivElement>(null);
   const image = useMutation({
-    mutationFn: () => report.hasEvidence ? reportService.evidence(report.report.id) : reportService.importEvidence(report.report.id),
+    mutationFn: () => reportService.evidence(report.report.id),
     onSuccess: () => {
       setImageFailed(false);
       setPreviewFailed(false);
       setZoomPercent(100);
-      if (!report.hasEvidence) void client.invalidateQueries({ queryKey: ['admin-reports', 'detail', report.report.id] });
     },
   });
   const url = image.data?.data.url;
   return <Section title="Ảnh bằng chứng">
-    {report.hasEvidence || report.hasLegacyEvidence ? <>
+    {report.hasEvidence ? <>
       {url && !imageFailed && <Dialog.Root onOpenChange={(open) => {
         if (open) {
           setZoomPercent(100);
@@ -155,8 +153,7 @@ function Evidence({ report }: { report: AdminReportDetail }) {
         </Dialog.Portal>
       </Dialog.Root>}
       <Button type="button" variant="outline" className="min-h-11" disabled={image.isPending} onClick={() => image.mutate()}>
-        <Image aria-hidden="true" /> {image.isPending ? 'Đang tải ảnh…' : image.data ? 'Tải lại ảnh'
-          : report.hasEvidence ? 'Xem ảnh bằng chứng' : 'Chuyển và xem ảnh cũ'}
+        <Image aria-hidden="true" /> {image.isPending ? 'Đang tải ảnh…' : image.data ? 'Tải lại ảnh' : 'Xem ảnh bằng chứng'}
       </Button>
       {(image.isError || imageFailed) && <p role="alert" className="text-sm text-destructive">
         {reportErrorMessage(image.error, 'Ảnh không tải được hoặc liên kết đã hết hạn.')}

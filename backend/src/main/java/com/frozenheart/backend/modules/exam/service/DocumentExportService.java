@@ -13,5 +13,5 @@ public interface DocumentExportService {
     /**
      * Export a generated exam for lecturers
      */
-    ExportResponse exportExam(Exam exam, String format, Boolean includeAnswerKey, String paperSize);
+    ExportResponse exportExam(Exam exam, String format, Boolean includeAnswerKey);
 }

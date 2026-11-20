@@ -34,9 +34,6 @@ export const reportService = {
   evidence(id: number) {
     return axiosClient.get<unknown, GlobalResponse<{ url: string }>>(`/admin/reports/${id}/evidence`, quiet);
   },
-  importEvidence(id: number) {
-    return axiosClient.post<unknown, GlobalResponse<{ url: string }>>(`/admin/reports/${id}/evidence/import`, undefined, quiet);
-  },
   resolve(id: number, request: ResolveReportRequest) {
     return axiosClient.post<unknown, GlobalResponse<AdminReportDetail>>(`/admin/reports/${id}/resolve`, request, quiet);
   },

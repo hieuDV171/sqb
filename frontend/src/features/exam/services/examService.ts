@@ -73,7 +73,6 @@ export const examService = {
         params: {
           format: params?.format ?? 'pdf',
           include_answer_key: params?.includeAnswerKey ?? false,
-          paper_size: params?.paperSize ?? 'A4',
         },
       }
     );

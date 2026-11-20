@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.auth.service;
 
+import com.frozenheart.backend.core.dto.IssuedAccountCredential;
 import com.frozenheart.backend.modules.auth.dto.admin.AdminResetPasswordRequest;
 import com.frozenheart.backend.modules.auth.dto.admin.AuthResponse;
 import com.frozenheart.backend.modules.auth.dto.admin.RegisterRequest;
@@ -37,5 +38,5 @@ public interface AuthService {
     RefreshTokenResponse refreshToken(RefreshTokenRequest request);
     RefreshTokenResponse refreshNativeToken(RefreshTokenRequest request);
 
-    void adminResetPassword(AdminResetPasswordRequest request);
+    IssuedAccountCredential adminResetPassword(AdminResetPasswordRequest request);
 }

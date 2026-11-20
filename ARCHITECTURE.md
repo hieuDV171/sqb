@@ -616,3 +616,44 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Dữ liệu môn dùng TanStack Query với key gồm user ID, role và scope `enrolled`/`catalog`/`publishing`, truyền AbortSignal xuống HTTP. Giữ nguyên phạm vi bảng tin và thứ tự fallback của ô đăng bài: môn tham gia trước, sau đó lớp đang dạy của giảng viên (`includeHistory=false`) hoặc danh mục cho admin. Lỗi truy vấn được thể hiện riêng, không chuyển thành empty success. Không thay API/quyền server.
 - Tab thành tích lấy URL làm nguồn dữ liệu duy nhất, bỏ bản sao `activeTab` trong Zustand; vẫn giữ chuẩn hóa URL và điều hướng Back. Đo hướng mở dropdown bằng layout effect trước paint, gỡ listener khi đóng.
 - Kiểm chứng bằng test timer/owner/Query và trình duyệt trên fixture tổng hợp cục bộ. Không đổi auth/cookie/TTL, Cloudflare, upload/permanent, backend query/entity/schema hoặc Liquibase; chưa deploy.
+
+### [ADR-073] Thời hạn lưu kết quả của tác vụ import/export dự kiến
+
+- **Ngày 20/11/2026 — yêu cầu đã chốt, chưa triển khai:** Trong khi lập kế hoạch chuyển import/export sang tác vụ nền, người dùng chọn giữ file xuất và kết quả import **24 giờ**. Đây là chính sách cho luồng job sẽ xây dựng; không mô tả hành vi runtime hiện tại và không thay thời hạn bằng chứng báo cáo.
+- Thời hạn giữ file/kết quả khác thời hạn URL ký tải. Kế hoạch đề xuất tính từ lúc job kết thúc, giới hạn URL theo thời gian còn lại và có cleanup đúng bucket; mốc tính cụ thể, vòng đời input/metadata và cách thu hồi cần hoàn thiện khi chốt contract.
+- Người dùng chưa chọn PostgreSQL queue/Redis Streams/broker và chưa chọn atomic/partial import; các phương án trong `.tmp/IMPORT_EXPORT_ASYNC_PLAN.md` là đề xuất để so sánh. Không tự quyết định thay đổi kiến trúc hàng đợi, nghiệp vụ import, schema/index hoặc Liquibase trong lượt rà soát.
+
+### [ADR-074] PDF cố định A4 và bỏ tham số chọn khổ giấy
+
+- **Ngày 20/11/2026 — theo yêu cầu người dùng:** Giữ PDF mặc định A4; bỏ `paper_size` khỏi endpoint export đề thi, signature service, params/types frontend và form xuất đề. Không thêm lựa chọn Letter; mẫu PDF A4 hiện có giữ nguyên.
+- Cập nhật các consumer/test và API specification; regression renderer kiểm kích thước trang 595×842 point, tiếng Việt/ảnh/đáp án/thứ tự câu. Không đổi query/entity/schema/Liquibase, phạm vi quyền export hoặc quy trình private R2/quota/confirmMediaPermanent.
+- Người dùng nghiêng về một transaction cho toàn bộ phần ghi DB của Excel; hàng đợi vẫn chưa chọn. Không đặt hard cap 200 câu hoặc triển khai queue trong thay đổi này. Phân tích riêng PostgreSQL/Redis Streams/RabbitMQ theo VPS2vCPU/6GB nằm trong `.tmp/FILE_JOB_QUEUE_COMPARISON.md`; giới hạn batch/part là đề xuất cần đo.
+- Người dùng yêu cầu xem trực quan quá trình kiểm thử: mở browser local/staging, phân biệt fixture/backend thật, trình bày trạng thái/request và bằng chứng hình ảnh trong các lượt kiểm thử tiếp theo. Lượt A4 đã thao tác form thật trên Chrome với API giả lập local; backend renderer được kiểm bằng unit test riêng, không gọi R2/DB production.
+
+### [ADR-075] Gỡ API chuyển bằng chứng lịch sử sau khi người dùng xác nhận dữ liệu
+
+- **Ngày20/11/2026:** Người dùng xác nhận hệ thống chỉ có một báo cáo và ảnh của báo cáo đã nằm trong kho riêng sqb-secret, đồng ý bỏ POST `/admin/reports/{id}/evidence/import`. Đây là xác nhận của chủ hệ thống kèm ảnh, không phải kết quả kiểm DB/R2 production của agent.
+- Gỡ endpoint/helper chỉ dành cho copy lịch sử, DTO flag hasLegacyEvidence và nhánh/nút/service frontend tương ứng. GET xin URL ảnh riêng, upload/attach report mới và retention90 ngày tiếp tục dùng; không xóa report/object/cột DB. Nhánh tương thích evidence_urls khi tạo report vẫn kiểm ownership và xác nhận permanent.
+
+### [ADR-076] Chọn RabbitMQ cho tác vụ nhập xuất file và chuẩn bị broker độc lập
+
+- **Ngày20/11/2026 — lựa chọn đã chốt, pipeline chưa triển khai:** Người dùng chọn thử RabbitMQ trên VPS2vCPU/6GB cho import/export. PostgreSQL dự kiến lưu job và transactional outbox; Rabbit chỉ mang job_id/schema_version; worker có idempotency/lease, ack sau commit kết quả, retry hữu hạn. Chưa tạo Entity/migration hoặc thay các API synchronous thành job trong lượt chuẩn bị.
+- Broker được chuẩn bị trong Compose project riêng sqb-file-jobs, dùng network sqb-network hiện có, volume/node name cố định, không publish AMQP ra host; management chỉ bind loopback và dùng SSH tunnel. Ngân sách thử512MiB/0,5CPU, memory alarm256MiB; image4.4.1-management-alpine đã đối chiếu Docker Official Images, cần nghiệm thu runtime và pin digest khi pull trên VPS.
+- Giữ G1/Xmx640m và container1152MiB của backend để có baseline khi thêm broker. Câu hỏi gỡ cap/quay ZGC chưa là quyết định đổi runtime; ZGC phải được đo riêng cùng workload/cap và không sửa live-set của renderer. Không thay cấu hình GC/RAM/Cloudflare của VPS trong lượt này.
+- Loại queue, mốc tính24h, snapshot và deadline/byte/temp disk/backlog limit còn là phần contract cần hoàn thiện trước module job. Hướng dẫn triển khai, đo tải trực quan và quay lại nằm tại `.github/deploy/file-jobs/README.md`; không coi broker chạy được đồng nghĩa pipeline job đã sẵn sàng.
+- Kiểm chứng broker local bằng đúng image/config, override riêng tên container/network/volume và port QA: boot healthy, user management/vhost/quyền namespace đúng, hai message persistent qua Management API còn sau restart, tiêu thụ một còn một. Đây không phải kiểm AMQP publisher confirm/Spring worker hoặc benchmark VPS. Các mẫu Docker stats132,7MiB và82,28MiB không phải peak; chưa đo pipeline10.000 câu.
+
+### [ADR-077] Phát triển RabbitMQ ở local, hoãn production đến khi có VPS riêng
+
+- **Ngày20/11/2026 — theo quyết định người dùng:** Giữ lựa chọn RabbitMQ cho import/export, trước mắt phát triển và kiểm thử ở local. Không bật broker trên VPS dùng chung hiện tại; triển khai production chờ người dùng thuê VPS riêng khi có ngân sách.
+- Quyết định dựa trên snapshot VPS người dùng cung cấp: available967MiB, swap dùng2,5GiB và backend957,4MiB/1152MiB. Chưa có phép đo áp lực bộ nhớ theo thời gian hoặc benchmark pipeline trên VPS; không kết luận RabbitMQ không thể khởi động.
+- Runbook VPS giữ cho giai đoạn sau, phải đo lại tài nguyên và rà topology/backend/worker/DB/broker theo máy mới. Không tự quyết định mọi dịch vụ sẽ chuyển sang VPS mới. Local test phải trình bày trực quan và phân biệt kết quả broker với kết quả toàn bộ pipeline; chưa thay API synchronous hoặc cấu hình production.
+
+
+### [ADR-078] Chính sách mật khẩu A và bàn giao mật khẩu tạm riêng từng tài khoản
+
+- **Ngày 20/11/2026 — đã triển khai theo yêu cầu người dùng:** Mật khẩu mới tối thiểu12 code point sau Unicode NFC, tối đa72 byte UTF-8, đủ chữ hoa/thường Unicode, số0–9 và dấu câu/ký hiệu Unicode. Chữ Việt có dấu tính vào nhóm hoa/thường; dấu kết hợp/khoảng trắng không tính special, chặn điều khiển/ẩn. FE dùng validator/checklist chung ở onboarding/modal/Admin tạo/reset; BE kiểm tại service cả register/bulk/reset/change. Không trim/cắt chuỗi; login giữ thử chuỗi gốc cho hash cũ, rồi NFC cho mật khẩu mới. BCrypt không đổi; không áp policy mới để chặn login mật khẩu cũ.
+- ImportExcel tạo tài khoản mới, bulk tạo thủ công khi bỏ trống và reset khi bỏ trống đều sinh SecureRandom16 ký tựASCII đủ4nhóm, không loại O/0/I/l/1. Bỏ DOB/MSSV/default-user-password và biến DEFAULT_USER_PASSWORD trong .env.prod; không đụng tài khoản bootstrapAdmin. Import giữ nguyên mật khẩu userđãtồntại.
+- Ba API trả credential mới thành công cho ADMIN sau transaction qua proxy đã commit, Cache-Control:no-store. Bulk/Excel thêm credentials; reset từVoid thành IssuedAccountCredential. FE giữ dữ liệu một lần trong localstate, tách khỏi summary và querycache, xóa khi đóng/chuyển tab/rời màn; hiển thị/ẩn/sao chép và tảiXLSX từ đúng dữ liệu đó. Không lưu file hoặc plaintext phía server, không cơ chế tải lại/TTL24h; reload/mấtresponse cần reset cấp mới. FileExcel là bản bàn giao có mật khẩu tạm doAdmin tự tải. XLSX dùng text/sharedstrings, escapeXML/OOXML, giữ zerođầu/khoảngtrắng và không côngthức, fflate0.8.3 tải động.
+- Reset khóaUser rồi đổi hash + profileCompleted=false + tăngsessionEpoch(null→1 hoặc+1) cùngtransaction; giữ verified/hồsơ. Đổi mật khẩu cá nhân cũng tăngepoch, profileCompleted=true; từchối dùng lại mật khẩu hiện tại. Tái sử dụng kiểmepoch AT/RT hiệncó, không thêmblacklist hay schema; deactiveUserDevice theo batch và CredentialsChanged đóngWebSocket saucommit. WEBchange xóaRTcookie và FE xóaRAM/cache/chuyểnlogin, không gọilogout bằng tokenvừavôhiệu. Khônghủy requestđãxácthực đangchạy.
+- N+1: import tảiUsers theo email IN và profiles theo MSSV IN JOIN FETCH user, bỏ findByEmail trongloop. Không thêmEntity/index/Liquibase hoặcmediaupload, không chuyển import sangasync trong thayđổi này. API spec cập nhật contract; kiểm thử local/unit/mock không thay thế nghiệm thu DB/Redis/VPSthật. Frontend/backend cần phát hành đồng bộ do reset response đổi kiểu và client cần credentials mới.

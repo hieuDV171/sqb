@@ -26,7 +26,8 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
     @Query("SELECT up FROM UserProfile up JOIN FETCH up.user WHERE up.userId = :userId")
     Optional<UserProfile> findByUserIdWithUser(@Param("userId") Long userid);
 
-    List<UserProfile> findAllByStudentLecturerCodeIn(Collection<String> studentCodes);
+    @Query("SELECT up FROM UserProfile up JOIN FETCH up.user WHERE up.studentLecturerCode IN :studentCodes")
+    List<UserProfile> findAllByStudentLecturerCodeIn(@Param("studentCodes") Collection<String> studentCodes);
 
     @Query("SELECT up FROM UserProfile up JOIN FETCH up.user u WHERE LOWER(TRIM(up.fullName)) = LOWER(TRIM(:fullName)) AND u.role = 'LECTURER' AND u.active = true")
     List<UserProfile> findActiveLecturersByFullName(@Param("fullName") String fullName);

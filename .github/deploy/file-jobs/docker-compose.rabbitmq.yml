@@ -1,0 +1,43 @@
+# Independent broker only. Existing APIs remain synchronous until the job module is deployed.
+services:
+  rabbitmq:
+    image: ${SQB_RABBITMQ_IMAGE:-rabbitmq:4.4.1-management-alpine}
+    container_name: sqb-rabbitmq
+    hostname: sqb-rabbitmq
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: '0.50'
+    stop_grace_period: 60s
+    environment:
+      RABBITMQ_NODENAME: rabbit@sqb-rabbitmq
+      RABBITMQ_DEFAULT_USER: sqb_file_jobs
+      RABBITMQ_DEFAULT_PASS: ${SQB_RABBITMQ_PASSWORD:?Set SQB_RABBITMQ_PASSWORD in the private env file}
+      RABBITMQ_DEFAULT_VHOST: sqb-file-jobs
+    ports:
+      - '127.0.0.1:15672:15672'
+    volumes:
+      - sqb_rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/20-sqb-file-jobs.conf:ro
+    networks:
+      - sqb-network
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'check_running']
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  sqb-network:
+    external: true
+    name: ${SQB_RABBITMQ_NETWORK:-sqb-network}
+
+volumes:
+  sqb_rabbitmq_data:
+    name: sqb_rabbitmq_data

@@ -34,6 +34,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE LOWER(u.email) = LOWER(:email)")
     Optional<User> findByEmailForLogin(@Param("email") String email);
 
+    @Query("SELECT u FROM User u WHERE LOWER(u.email) IN :emails")
+    List<User> findAllByEmailIn(@Param("emails") Collection<String> emails);
+
     @Query("SELECT COUNT(u) > 0 FROM User u WHERE LOWER(u.email) = LOWER(:email)")
     boolean existsByEmail(@Param("email") String email);
 

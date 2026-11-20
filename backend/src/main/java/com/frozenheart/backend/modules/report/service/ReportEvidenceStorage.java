@@ -76,12 +76,8 @@ public class ReportEvidenceStorage {
         if (hasKeys && hasUrls) throw invalidEvidence();
         if (!hasKeys && !hasUrls) return null;
 
-        String key = hasKeys ? keys.getFirst() : importLegacy(ownerId, legacyUrls.getFirst(), true);
+        String key = hasKeys ? keys.getFirst() : importLegacy(ownerId, legacyUrls.getFirst());
         return attachStaged(ownerId, key);
-    }
-
-    String attachHistorical(Long ownerId, String url) {
-        return attachStaged(ownerId, importLegacy(ownerId, url, false));
     }
 
     private String attachStaged(Long ownerId, String key) {
@@ -153,13 +149,13 @@ public class ReportEvidenceStorage {
         }
     }
 
-    private String importLegacy(Long ownerId, String url, boolean requireUploadOwner) {
+    private String importLegacy(Long ownerId, String url) {
         String key = mediaService.extractObjectKey(url);
         if (key == null || !key.matches("posts/[0-9]{4}/[0-9]{2}/[a-f0-9-]{36}\\.[A-Za-z0-9]{1,5}")
                 || !Objects.equals(url, mediaService.buildPublicUrl(key))) {
             throw invalidEvidence();
         }
-        if (requireUploadOwner && !Objects.equals(ownerId.toString(),
+        if (!Objects.equals(ownerId.toString(),
                 redisTemplate.opsForValue().get(LEGACY_OWNER_PREFIX + key))) {
             throw invalidEvidence();
         }

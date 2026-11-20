@@ -265,9 +265,9 @@ public class ExamServiceImpl implements ExamService {
 
     @Override
     @Transactional(readOnly = true)
-    public ExportResponse exportExam(Long examId, String format, Boolean includeAnswerKey, String paperSize) {
+    public ExportResponse exportExam(Long examId, String format, Boolean includeAnswerKey) {
         Exam exam = loadExamForManagement(examId);
-        return documentExportService.exportExam(exam, format, includeAnswerKey, paperSize);
+        return documentExportService.exportExam(exam, format, includeAnswerKey);
     }
 
     private Exam loadExamForManagement(Long examId) {

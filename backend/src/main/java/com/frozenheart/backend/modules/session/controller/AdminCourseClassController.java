@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,7 +41,7 @@ public class AdminCourseClassController {
             @RequestParam(value = "lecturer_id", required = false) Long lecturerId) {
 
         ExcelImportClassResult response = courseClassManagementService.importAndEnrollFromExcel(file, lecturerId);
-        return ResponseEntity.ok(GlobalResponse.success(response));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(GlobalResponse.success(response));
     }
 
 }

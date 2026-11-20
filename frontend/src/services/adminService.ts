@@ -1,6 +1,7 @@
 import { axiosClient } from '@/api/axiosClient';
 import type {
   AdminResetPasswordRequest,
+  IssuedAccountCredential,
   AdminSubjectResponse,
   BulkImportRequest,
   BulkImportResult,
@@ -61,13 +62,13 @@ export const adminService = {
   },
 
   /**
-   * Reset mật khẩu sinh viên / giảng viên về mật khẩu mặc định (hoặc mật khẩu chỉ định)
-   * Đồng thời xóa sạch refresh token để thu hồi phiên trên toàn bộ thiết bị
+   * Cấp mật khẩu tạm ngẫu nhiên hoặc chỉ định, trả một lần cho Admin
+   * Tăng sessionEpoch, thu hồi phiên và buộc đổi mật khẩu
    */
   adminResetPassword: async (
     data: AdminResetPasswordRequest
-  ): Promise<GlobalResponse<void>> => {
-    return axiosClient.post<unknown, GlobalResponse<void>>(
+  ): Promise<GlobalResponse<IssuedAccountCredential>> => {
+    return axiosClient.post<unknown, GlobalResponse<IssuedAccountCredential>>(
       '/auth/admin/reset-password',
       data
     );

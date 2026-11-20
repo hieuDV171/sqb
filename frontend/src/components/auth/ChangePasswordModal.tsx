@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useModalFocusTrap } from '@/hooks/useModalFocusTrap';
+import { PasswordRequirements, PasswordConfirmation } from './PasswordRequirements';
+import { getPasswordError, passwordsMatch } from '@/lib/passwordPolicy';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/stores/useToastStore';
 import { authService } from '@/services/authService';
 
 interface ChangePasswordModalProps {
@@ -20,6 +24,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export function ChangePasswordModal({ isOpen, onClose, required = false, onSuccess }: ChangePasswordModalProps) {
+  const { finishPasswordChange } = useAuth();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,11 +42,12 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
     setError(null);
     setSuccess(false);
 
-    if (newPassword.length < 8) {
-      setError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    const passwordError = getPasswordError(newPassword, oldPassword);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (!passwordsMatch(newPassword, confirmPassword)) {
       setError('Xác nhận mật khẩu mới không trùng khớp.');
       return;
     }
@@ -54,6 +60,8 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      toast.success('Hãy đăng nhập lại bằng mật khẩu mới.', 'Đổi mật khẩu thành công');
+      finishPasswordChange();
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError));
     } finally {
@@ -65,6 +73,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
     if (isLoading || required) return;
     setError(null);
     setSuccess(false);
+    setOldPassword(''); setNewPassword(''); setConfirmPassword('');
     onClose();
   };
 
@@ -76,7 +85,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
         role="dialog"
         aria-modal="true"
         aria-labelledby="change-password-title"
-        className="relative z-10 w-full max-w-md rounded-3xl border border-border bg-popover p-5 text-popover-foreground shadow-[var(--shadow-primitive-md)] sm:p-6"
+        className="relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-border bg-popover p-5 text-popover-foreground shadow-[var(--shadow-primitive-md)] sm:p-6"
       >
         {!required && (
           <button
@@ -100,7 +109,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {required
               ? 'Tài khoản của bạn được tạo bởi nhà trường. Hãy đổi mật khẩu tạm thời trước khi tiếp tục.'
-              : 'Sử dụng ít nhất 8 ký tự và tránh dùng lại mật khẩu ở dịch vụ khác.'}
+              : 'Sử dụng ít nhất 12 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt. Tránh dùng lại mật khẩu ở dịch vụ khác.'}
           </p>
         </div>
 
@@ -113,7 +122,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
         {success && (
           <div role="status" className="mt-5 flex items-start gap-3 rounded-2xl border border-success/20 bg-success-soft p-3.5 text-sm text-success">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <span>Mật khẩu đã được cập nhật. Bạn có thể đóng hộp thoại này.</span>
+            <span>Mật khẩu đã được cập nhật. Hãy đăng nhập lại bằng mật khẩu mới.</span>
           </div>
         )}
 
@@ -155,7 +164,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 className="pr-12"
-                minLength={8}
+                autoCapitalize="none" spellCheck={false} aria-describedby="new-password-requirements"
                 required
               />
               <button
@@ -171,10 +180,12 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
           </div>
 
           <div className="space-y-2">
+            <PasswordRequirements id="new-password-requirements" password={newPassword} currentPassword={oldPassword} />
             <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
             <Input
               id="confirmPassword"
               name="confirm-password"
+              aria-describedby="confirm-password-status" autoCapitalize="none" spellCheck={false}
               type="password"
               autoComplete="new-password"
               value={confirmPassword}
@@ -183,6 +194,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
             />
           </div>
 
+          <PasswordConfirmation id="confirm-password-status" password={newPassword} confirmation={confirmPassword} />
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             {!required && <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>Hủy</Button>}
             <Button type="submit" disabled={isLoading || success} aria-busy={isLoading}>

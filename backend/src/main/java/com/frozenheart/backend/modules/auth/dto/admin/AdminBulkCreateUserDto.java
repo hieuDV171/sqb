@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.auth.dto.admin;
 
 import java.time.LocalDate;
+import com.frozenheart.backend.core.dto.IssuedAccountCredential;
 import java.util.List;
 
 import com.frozenheart.backend.core.entity.user.Gender;
@@ -17,7 +18,7 @@ public class AdminBulkCreateUserDto {
             @Email(message = "INVALID_PARAMETER_VALUE") 
             String email,
 
-            @Schema(description = "Mật khẩu ban đầu (bỏ trống để tự sinh theo ngày sinh ddMMyyyy hoặc mã số)", example = "123456789")
+            @Schema(description = "Mật khẩu ban đầu (bỏ trống để sinh ngẫu nhiên 16 ký tự)", example = "NewSecurePass@2026")
             String password,
 
             @Schema(description = "Họ và tên đầy đủ", example = "Nguyễn Văn An", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -67,7 +68,8 @@ public class AdminBulkCreateUserDto {
         int totalFailed,
 
         @Schema(description = "Danh sách chi tiết các thông báo lỗi nếu có", example = "[\"Email hieu.dv224980@sis.hust.edu.vn đã tồn tại\"]")
-        List<String> errors
+        List<String> errors,
+        List<IssuedAccountCredential> credentials
     ) {
     }
 }
