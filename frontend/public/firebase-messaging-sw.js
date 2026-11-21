@@ -27,7 +27,7 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     const notificationTitle = payload.notification?.title || payload.data?.title || 'Thông báo mới từ SQB';
     const notificationOptions = {
       body: payload.notification?.body || payload.data?.body || '',
-      icon: '/favicon.svg?v=sqb-2',
+      icon: '/favicon.svg?v=sqb-3',
       data: payload.data,
     };
 
