@@ -69,7 +69,7 @@ public class LectureVideoUploadService {
             throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Vui lòng chọn video MP4 hoặc WebM.");
         }
         long maximum = Math.min(properties.getLectureVideoMaxFileSize().toBytes(), PART_SIZE * MAX_PARTS);
-        if (request.fileSize() <= 0 || request.fileSize() > maximum) {
+        if (request.fileSize() > maximum) {
             throw new AppException(ResponseCode.FILE_SIZE_EXCEEDED,
                     "Video phải có dung lượng lớn hơn 0 và tối đa %.2f GiB."
                             .formatted(maximum / (1024.0 * 1024 * 1024)));

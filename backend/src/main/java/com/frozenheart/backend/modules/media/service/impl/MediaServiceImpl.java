@@ -27,7 +27,6 @@ import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.media.MediaPurpose;
 import com.frozenheart.backend.core.entity.media.MediaType;
-import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.media.dto.MediaUploadResponse;

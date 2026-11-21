@@ -15,7 +15,6 @@ import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.user.UserGamification;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
-import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.media.service.MediaService;

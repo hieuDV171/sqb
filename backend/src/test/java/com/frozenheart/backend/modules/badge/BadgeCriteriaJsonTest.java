@@ -18,12 +18,11 @@ public class BadgeCriteriaJsonTest {
                 .build();
 
         String json = mapper.writeValueAsString(streak);
-        System.out.println("Serialized JSON: " + json);
 
         // Try deserializing as BadgeCriteria
         BadgeCriteria deserialized = mapper.readValue(json, BadgeCriteria.class);
         assertNotNull(deserialized);
-        assertTrue(deserialized instanceof StreakCriteria);
+        assertInstanceOf(StreakCriteria.class, deserialized);
         assertEquals(7, ((StreakCriteria) deserialized).getStreakDays());
     }
 

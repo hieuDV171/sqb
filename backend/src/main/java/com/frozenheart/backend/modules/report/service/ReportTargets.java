@@ -121,7 +121,7 @@ public class ReportTargets {
                 case QUESTION -> {
                     var question = questions.findByIdFetchSessionAndCourseClass(comment.getTargetId())
                             .orElseThrow(ReportTargets::missing);
-                    if (question.getSession() == null || !question.getSession().isPracticeVisibleTo(viewer.getUserId())) {
+                    if (question.getSession() == null || question.getSession().isPracticeInvisibleTo(viewer.getUserId())) {
                         throw missing();
                     }
                 }

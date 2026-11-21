@@ -38,7 +38,7 @@ public class InteractionTargetValidator {
             case SESSION -> {
                 var session = sessionRepository.findByIdFetchProposer(targetId)
                         .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy phiên đề xuất câu hỏi"));
-                if (!session.isPracticeVisibleTo(JwtPayload.getCurrentUserPayload().getUserId())) {
+                if (session.isPracticeInvisibleTo(JwtPayload.getCurrentUserPayload().getUserId())) {
                     throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn chưa có quyền thảo luận về bộ câu hỏi này");
                 }
             }
