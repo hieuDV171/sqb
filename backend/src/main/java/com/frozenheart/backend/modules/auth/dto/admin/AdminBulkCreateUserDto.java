@@ -69,6 +69,7 @@ public class AdminBulkCreateUserDto {
 
         @Schema(description = "Danh sách chi tiết các thông báo lỗi nếu có", example = "[\"Email hieu.dv224980@sis.hust.edu.vn đã tồn tại\"]")
         List<String> errors,
+        @Schema(description = "Thông tin đăng nhập tạm bàn giao một lần cho các tài khoản vừa tạo thành công")
         List<IssuedAccountCredential> credentials
     ) {
     }

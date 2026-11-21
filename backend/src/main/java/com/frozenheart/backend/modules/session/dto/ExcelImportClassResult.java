@@ -38,6 +38,7 @@ public record ExcelImportClassResult(
         @Schema(description = "Số lượng sinh viên đã ghi danh vào lớp này từ trước", example = "2")
         int alreadyEnrolledCount,
 
+        @Schema(description = "Thông tin đăng nhập tạm bàn giao một lần cho các tài khoản mới tạo từ file Excel")
         List<IssuedAccountCredential> credentials
     ) {
 }
