@@ -35,7 +35,7 @@ export function LecturerQuestionsPage() {
           <p className="text-sm text-muted-foreground">Quản lý chủ đề, xuất tài liệu ôn tập và xem các lớp học phần phụ trách.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button nativeButton={false} variant="outline" render={<Link to="/lecturer/pending-reviews" />}>
+          <Button nativeButton={false} variant="outline" render={<Link to="/lecturer/sessions" />}>
             <ClipboardCheck aria-hidden="true" /> Duyệt câu hỏi
           </Button>
           <Button nativeButton={false} render={<Link to="/lecturer/exams" />}>
