@@ -110,7 +110,7 @@ export function ReviewQuestionCard({
       {!readOnly && <footer className="space-y-2 border-t border-border pt-3">
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" className="min-h-11" disabled={disabled}
-            aria-describedby={`${id}-btprop-note`} onClick={() => onRefine(question)}>AI tinh chỉnh</Button>
+            onClick={() => onRefine(question)}>AI tinh chỉnh</Button>
           <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => onEdit(question)}>
             <Pencil aria-hidden="true" /> Biên tập
           </Button>
@@ -124,9 +124,6 @@ export function ReviewQuestionCard({
             </Button>
           )}
         </div>
-        <p id={`${id}-btprop-note`} className="text-right text-sm text-muted-foreground">
-          Hiện chưa có API key cho AI nên chưa thể kiểm chứng bằng BTProp.
-        </p>
       </footer>}
       <Dialog.Root open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <Dialog.Portal>

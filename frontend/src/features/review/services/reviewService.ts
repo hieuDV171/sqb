@@ -13,8 +13,9 @@ import type {
 } from '../types/review.types';
 
 export const reviewService = {
-  refineQuestion: (questionId: number, prompt: string) =>
-    axiosClient.post<unknown, GlobalResponse<AiRefinement>>(`/questions/${questionId}/ai-refine`, { prompt }, { skipToast: true }),
+  refineQuestion: (questionId: number, prompt: string, previousEditLogId?: number) =>
+    axiosClient.post<unknown, GlobalResponse<AiRefinement>>(`/questions/${questionId}/ai-refine`,
+      { prompt, previousEditLogId }, { skipToast: true, timeout: 85_000 }),
 
   applyRefinement: (questionId: number, editLogId: number, approve: boolean, auditAcknowledged: boolean) =>
     axiosClient.post<unknown, GlobalResponse<unknown>>(`/questions/${questionId}/ai-apply`,

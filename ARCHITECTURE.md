@@ -478,6 +478,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 ### [ADR-051] Áp dụng bản AI trong phiên duyệt và quản trị huy hiệu
 
 - Giảng viên phụ trách lớp và Admin xem bản tinh chỉnh cùng kết quả BTProp trong phiên đang mở. Cảnh báo hoặc kết quả chưa kiểm chứng cần xác nhận tự rà soát. BE khóa phiên khi áp dụng, kiểm tra bản đề xuất còn chờ và câu hỏi chưa được sửa sau khi tạo bản AI. Tệp ảnh đáp án lấy từ câu hỏi gốc theo khóa lựa chọn.
+- Hộp thoại giữ các lượt trao đổi trong lần mở hiện tại. API tinh chỉnh nhận tùy chọn `previous_edit_log_id` của bản đề xuất còn chờ, thuộc cùng câu hỏi và người duyệt. Backend đối chiếu thời điểm câu hỏi cập nhật và dùng nội dung văn bản của bản đó cùng câu gốc khi sinh bản kế tiếp.
+- Dịch vụ sinh đề xuất nhận `AI_SERVER_URL`, `AI_MODEL` và `AI_SERVER_API_KEY` nếu cần xác thực. Nếu dịch vụ thiếu cấu hình hoặc gặp lỗi, luồng duyệt báo 503 trước khi lưu bản đề xuất hoặc gọi BTProp. Giới hạn kết nối/đọc khi sinh lần lượt là 3/20 giây. BTProp dùng cấu hình riêng với giới hạn 10/45 giây; frontend giới hạn thời gian chờ một lượt tinh chỉnh ở 85 giây.
 - Admin được trao thủ công mọi huy hiệu đang hoạt động. Vô hiệu hóa giữ các lượt đã trao. Danh mục và màn Admin lấy số người đạt theo lô; JSON tiêu chí ghi duy nhất trường phân loại `type`.
 - Hồ sơ dùng tải trực tiếp cho ảnh đại diện và ảnh bìa. Đề xuất phiên dùng presign và kiểm tra tồn tại theo lô trước khi nộp. Khi lưu nghiệp vụ, BE xác nhận tệp vĩnh viễn. API thống kê quan hệ giữ tương thích và được đánh dấu deprecated.
 

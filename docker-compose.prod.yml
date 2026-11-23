@@ -112,8 +112,9 @@ services:
 
       # AI Services
       - AI_SIDECAR_URL=http://ai-sidecar:8000
-      - AI_SERVER_URL=${AI_SERVER_URL:-http://ai-sidecar:8000}
-      - AI_MODEL=${AI_MODEL:-text-embedding-3-small}
+      - AI_SERVER_URL=${AI_SERVER_URL:-}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_SERVER_API_KEY=${AI_SERVER_API_KEY:-}
 
       # Cloudflare R2 Storage (Zero Object Tagging)
       - R2_ENDPOINT=${R2_ENDPOINT}

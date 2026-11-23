@@ -101,8 +101,9 @@ app:
     credentials-base64: ${FIREBASE_CREDENTIALS_BASE64:}
 
   ai-server:
-    url: ${AI_SERVER_URL}
-    model: ${AI_MODEL}
+    url: ${AI_SERVER_URL:}
+    model: ${AI_MODEL:}
+    api-key: ${AI_SERVER_API_KEY:}
   salt: ${SECRET_SALT}
   cookie:
     secure: false

@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLog;
+import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLogStatus;
 
 @Repository
 public interface QuestionEditLogRepository extends JpaRepository<QuestionEditLog, Long> {
@@ -16,6 +17,8 @@ public interface QuestionEditLogRepository extends JpaRepository<QuestionEditLog
     List<QuestionEditLog> findByQuestionIdOrderByCreatedAtDesc(Long questionId);
 
     Optional<QuestionEditLog> findTopByQuestionIdOrderByCreatedAtDesc(Long questionId);
+    Optional<QuestionEditLog> findByIdAndQuestionIdAndActorIdAndStatus(
+            Long id, Long questionId, Long actorId, QuestionEditLogStatus status);
 
     List<QuestionEditLog> findByQuestionIdInOrderByCreatedAtDesc(List<Long> questionIds);
 

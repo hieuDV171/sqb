@@ -14,6 +14,7 @@ import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.ai.client.LocalAiClient;
 import com.frozenheart.backend.modules.ai.dto.AiApplyRequest;
 import com.frozenheart.backend.modules.ai.dto.AiRefineRequest;
+import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
 import com.frozenheart.backend.modules.ai.service.impl.AiIntegrationServiceImpl;
 import com.frozenheart.backend.modules.session.repository.QuestionEditLogRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
@@ -32,7 +33,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -40,8 +45,9 @@ class AiRefinementReviewTest {
     private final LocalAiClient ai = mock(LocalAiClient.class);
     private final QuestionRepository questions = mock(QuestionRepository.class);
     private final QuestionEditLogRepository logs = mock(QuestionEditLogRepository.class);
+    private final BtpropHallucinationCheckerService checker = mock(BtpropHallucinationCheckerService.class);
     private final AiIntegrationServiceImpl service = new AiIntegrationServiceImpl(ai,
-            mock(BtpropHallucinationCheckerService.class), questions, mock(SessionRepository.class), logs,
+            checker, questions, mock(SessionRepository.class), logs,
             mock(UserRepository.class), JsonMapper.builder().build(), mock(ApplicationEventPublisher.class));
 
     @AfterEach
@@ -54,9 +60,74 @@ class AiRefinementReviewTest {
         authenticate(2L);
         when(questions.findByIdFetchSessionAndCourseClass(7L)).thenReturn(Optional.of(question()));
         assertThatExceptionOfType(AppException.class)
-                .isThrownBy(() -> service.refineQuestion(7L, new AiRefineRequest("Làm rõ câu hỏi", null), EditActorType.LECTURER))
+                .isThrownBy(() -> service.refineQuestion(7L, new AiRefineRequest("Làm rõ câu hỏi", null, null), EditActorType.LECTURER))
                 .satisfies(error -> assertThat(error.getResponseCode()).isEqualTo(ResponseCode.REVIEW_PERMISSION_DENIED));
         verifyNoInteractions(ai, logs);
+    }
+
+    @Test
+    void unavailableGeneratorDoesNotAuditOrStorePlaceholder() {
+        authenticate(1L);
+        when(questions.findByIdFetchSessionAndCourseClass(7L)).thenReturn(Optional.of(question()));
+        when(ai.generateRequiredCompletion(anyString(), anyString()))
+                .thenThrow(new AppException(ResponseCode.AI_SERVICE_UNAVAILABLE));
+
+        assertThatExceptionOfType(AppException.class)
+                .isThrownBy(() -> service.refineQuestion(7L, new AiRefineRequest("Làm rõ câu hỏi", null, null), EditActorType.LECTURER))
+                .satisfies(error -> assertThat(error.getResponseCode()).isEqualTo(ResponseCode.AI_SERVICE_UNAVAILABLE));
+        verifyNoInteractions(checker, logs);
+    }
+
+    @Test
+    void sidecarOnlyConfigurationIsNotUsedAsTheGenerator() {
+        var client = new LocalAiClient("http://ai-sidecar:8000/", "text-embedding-3-small", "",
+                "http://ai-sidecar:8000");
+
+        assertThatExceptionOfType(AppException.class)
+                .isThrownBy(() -> client.generateRequiredCompletion("system", "prompt"))
+                .satisfies(error -> {
+                    assertThat(error.getResponseCode()).isEqualTo(ResponseCode.AI_SERVICE_UNAVAILABLE);
+                    assertThat(error.getMessage()).contains("chưa được cấu hình");
+                });
+    }
+
+    @Test
+    void followUpIncludesPreviousDraftAndStillAuditsTheNewProposal() {
+        authenticate(1L);
+        var question = question();
+        when(questions.findByIdFetchSessionAndCourseClass(7L)).thenReturn(Optional.of(question));
+        var draft = QuestionEditLog.builder().afterState(Map.of("content", "Bản trước", "options", List.of(
+                Map.of("key", "A", "text", "Đúng", "is_correct", true),
+                Map.of("key", "B", "text", "Sai", "is_correct", false)))).build();
+        when(logs.findByIdAndQuestionIdAndActorIdAndStatus(5L, 7L, 1L, QuestionEditLogStatus.PROPOSED))
+                .thenReturn(Optional.of(draft));
+        when(ai.generateRequiredCompletion(anyString(), argThat(prompt ->
+                prompt.contains("Câu gốc") && prompt.contains("Bản trước") && prompt.contains("Rút ngắn lời giải"))))
+                .thenReturn(LocalAiClient.LocalAiResponse.builder().model("test")
+                        .content("""
+                                {"content":"Bản mới","options":[{"key":"A","text":"Đúng","is_correct":true},
+                                {"key":"B","text":"Sai","is_correct":false}]}
+                                """).build());
+        when(checker.audit(any(), any())).thenReturn(AiRefineResponse.BtpropAuditDto.builder().build());
+        when(logs.save(any())).thenReturn(QuestionEditLog.builder().id(6L).build());
+
+        var response = service.refineQuestion(7L, new AiRefineRequest("Rút ngắn lời giải", null, 5L), EditActorType.LECTURER);
+
+        assertThat(response.editLogId()).isEqualTo(6L);
+        assertThat(response.suggestedQuestion().content()).isEqualTo("Bản mới");
+        verify(checker).audit(question, response.suggestedQuestion());
+    }
+
+    @Test
+    void cannotUseDraftOutsideTheReviewerScope() {
+        authenticate(1L);
+        when(questions.findByIdFetchSessionAndCourseClass(7L)).thenReturn(Optional.of(question()));
+
+        assertThatExceptionOfType(AppException.class)
+                .isThrownBy(() -> service.refineQuestion(7L, new AiRefineRequest("Rút ngắn lời giải", null, 5L), EditActorType.LECTURER))
+                .satisfies(error -> assertThat(error.getResponseCode()).isEqualTo(ResponseCode.INVALID_PARAMETER_VALUE));
+        verify(logs).findByIdAndQuestionIdAndActorIdAndStatus(5L, 7L, 1L, QuestionEditLogStatus.PROPOSED);
+        verifyNoInteractions(ai, checker);
     }
 
     @Test

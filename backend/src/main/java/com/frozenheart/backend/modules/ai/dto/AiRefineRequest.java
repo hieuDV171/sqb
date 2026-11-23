@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.ai.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
@@ -14,5 +15,8 @@ public record AiRefineRequest(
         String prompt,
 
         @Schema(description = "ID phiên chat AI liên quan (nếu có)", example = "session_xyz123")
-        String chatSessionId
+        String chatSessionId,
+
+        @Schema(description = "ID bản đề xuất trước đó của cùng người duyệt nếu đang tinh chỉnh tiếp")
+        @Positive Long previousEditLogId
 ) {}

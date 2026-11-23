@@ -19,7 +19,7 @@ def audit_question(req: QuestionAuditRequest):
     - Chạy thuật toán cây niềm tin Belief Tree Propagation (BTProp)
     """
     try:
-        api_key = os.getenv("OPENAI_API_KEY", "")
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
         if not api_key:
             logger.warning("[BTProp] Chưa cấu hình OPENAI_API_KEY. Trả về fallback unverified.")
             return BtpropAuditResponse(

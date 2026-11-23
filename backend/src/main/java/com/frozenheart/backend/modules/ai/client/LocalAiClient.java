@@ -1,15 +1,22 @@
 package com.frozenheart.backend.modules.ai.client;
 
+import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
-import com.frozenheart.backend.modules.ai.constant.Ai;
+import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.exception.AppException;
 
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 public class LocalAiClient {
 
     private final RestClient restClient;
+    private final String modelName;
+    private final boolean configured;
 
     @Builder
     public record LocalAiResponse(
@@ -30,13 +39,48 @@ public class LocalAiClient {
             long processingTimeMs
     ) {}
 
-    public LocalAiClient(@Value("${app.ai-server.url}") String aiServerUrl) {
+    public LocalAiClient(@Value("${app.ai-server.url}") String aiServerUrl,
+            @Value("${app.ai-server.model}") String modelName,
+            @Value("${app.ai-server.api-key}") String apiKey,
+            @Value("${ai.sidecar.url}") String sidecarUrl) {
+        String baseUrl = aiServerUrl.strip().replaceAll("/+$", "");
+        this.modelName = modelName.strip();
+        this.configured = !baseUrl.isBlank() && !this.modelName.isBlank()
+                && !baseUrl.equals(sidecarUrl.strip().replaceAll("/+$", ""));
+
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(20));
         this.restClient = RestClient.builder()
-                .baseUrl(aiServerUrl)
+                .baseUrl(baseUrl)
+                .requestFactory(factory)
+                .defaultHeaders(headers -> {
+                    if (!apiKey.isBlank()) headers.setBearerAuth(apiKey.strip());
+                })
                 .build();
     }
 
     public LocalAiResponse generateCompletion(String systemPrompt, String userPrompt) {
+        long startTime = System.currentTimeMillis();
+        try {
+            return generateRequiredCompletion(systemPrompt, userPrompt);
+        } catch (AppException e) {
+            // Game 6 vẫn có thể dùng dữ liệu mẫu khi máy chủ sinh nội dung không sẵn sàng.
+            String fallbackContent = generateFallbackResponse();
+            return LocalAiResponse.builder()
+                    .content(fallbackContent)
+                    .model(modelName)
+                    .totalTokens(estimateFallbackTokens(userPrompt + fallbackContent))
+                    .processingTimeMs(System.currentTimeMillis() - startTime)
+                    .build();
+        }
+    }
+
+    public LocalAiResponse generateRequiredCompletion(String systemPrompt, String userPrompt) {
+        if (!configured) {
+            throw unavailable("Dịch vụ tạo đề xuất chưa được cấu hình. Bạn có thể biên tập câu hỏi trực tiếp.");
+        }
+
         long startTime = System.currentTimeMillis();
         try {
             List<Map<String, String>> messages = new ArrayList<>();
@@ -49,7 +93,7 @@ public class LocalAiClient {
             }
 
             Map<String, Object> requestBody = Map.of(
-                    "model", Ai.modelName,
+                    "model", modelName,
                     "messages", messages,
                     "temperature", 0.3 // Mức độ sáng tạo <= 0.3: khoa học, >= 0.8: viết văn
             );
@@ -64,7 +108,7 @@ public class LocalAiClient {
             long processingTime = System.currentTimeMillis() - startTime;
 
             if (response != null) {
-                String model = response.containsKey("model") ? (String) response.get("model") : Ai.modelName;
+                String model = response.get("model") instanceof String name ? name : modelName;
                 int promptTokens = 0;
                 int completionTokens = 0;
                 int totalTokens = 0;
@@ -79,16 +123,16 @@ public class LocalAiClient {
                 }
 
                 String content = null;
-                if (response.containsKey("choices")) {
-                    List<?> choices = (List<?>) response.get("choices");
+                if (response.get("choices") instanceof List<?> choices) {
                     if (!choices.isEmpty() && choices.getFirst() instanceof Map<?, ?> choiceMap) {
-                        if (choiceMap.get("message") instanceof Map<?, ?> messageMap) {
-                            content = (String) messageMap.get("content");
+                        if (choiceMap.get("message") instanceof Map<?, ?> messageMap
+                                && messageMap.get("content") instanceof String message) {
+                            content = message;
                         }
                     }
                 }
 
-                if (content != null) {
+                if (content != null && !content.isBlank()) {
                     return LocalAiResponse.builder()
                             .content(content)
                             .model(model)
@@ -99,20 +143,31 @@ public class LocalAiClient {
                             .build();
                 }
             }
-        } catch (Exception e) {
-            log.warn("[LocalAiClient] Cannot connect to Local AI Server: {}. Falling back to default AI generator.", e.getMessage());
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+            log.warn("[LocalAiClient] Máy chủ sinh nội dung trả về HTTP {}", status);
+            throw unavailable(switch (status) {
+                case 401, 403 -> "Dịch vụ tạo đề xuất chưa được cấp quyền. Hãy liên hệ quản trị viên.";
+                case 404 -> "Dịch vụ tạo đề xuất chưa có endpoint hoặc mô hình phù hợp. Hãy liên hệ quản trị viên.";
+                case 429 -> "Dịch vụ tạo đề xuất đã chạm giới hạn sử dụng. Hãy thử lại sau.";
+                default -> "Dịch vụ tạo đề xuất đang gặp lỗi. Hãy thử lại sau.";
+            });
+        } catch (ResourceAccessException e) {
+            log.warn("[LocalAiClient] Không liên lạc được với máy chủ sinh nội dung: {}",
+                    e.getMostSpecificCause().getClass().getSimpleName());
+            throw unavailable(e.getMostSpecificCause() instanceof SocketTimeoutException
+                    ? "Dịch vụ tạo đề xuất phản hồi quá lâu. Bạn có thể thử lại hoặc biên tập trực tiếp."
+                    : "Không kết nối được với dịch vụ tạo đề xuất. Hãy thử lại sau.");
+        } catch (RestClientException | IllegalArgumentException e) {
+            log.warn("[LocalAiClient] Không đọc được phản hồi từ máy chủ sinh nội dung: {}", e.getClass().getSimpleName());
+            throw unavailable("Dịch vụ tạo đề xuất đang gặp lỗi. Hãy thử lại sau.");
         }
 
-        long processingTime = System.currentTimeMillis() - startTime;
-        String fallbackContent = generateFallbackResponse();
-        return LocalAiResponse.builder()
-                .content(fallbackContent)
-                .model(Ai.modelName)
-                .promptTokens(0)
-                .completionTokens(0)
-                .totalTokens(estimateFallbackTokens(userPrompt + fallbackContent))
-                .processingTimeMs(processingTime)
-                .build();
+        throw unavailable("Dịch vụ AI trả về phản hồi trống. Hãy thử lại.");
+    }
+
+    private AppException unavailable(String message) {
+        return new AppException(ResponseCode.AI_SERVICE_UNAVAILABLE, message);
     }
 
     private int estimateFallbackTokens(String text) {
