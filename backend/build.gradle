@@ -26,6 +26,7 @@ ext['httpcore5.version'] = '5.4.4' // CVE-2026-54428, CVE-2026-54399; matches Ht
 ext['opentelemetry.version'] = '1.68.0' // CVE-2026-45292, CVE-2026-118259
 
 dependencies {
+    runtimeOnly 'com.twelvemonkeys.imageio:imageio-webp:3.15.3'
     constraints {
         add('implementation', 'com.google.guava:guava:33.8.0-jre') {
             because 'CVE-2026-118042: hash-flooding protection'

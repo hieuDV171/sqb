@@ -23,6 +23,11 @@ public class Topic {
 
     @Column(length = 10, nullable = false, unique = true)
     String code;
+    private Boolean archived;
+
+    public boolean isActive() {
+        return !Boolean.TRUE.equals(archived);
+    }
     // -------------------
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")

@@ -58,6 +58,9 @@ public record MySubmissionDetailResponse(
     public record MySubmissionQuestionDto(
             @Schema(description = "ID câu hỏi", example = "1001")
             Long questionId,
+
+            Long topicId,
+            String topicName,
             @Schema(description = "Nội dung câu hỏi", example = "Pattern nào sau đây giải quyết bài toán phân tán giao dịch?")
             String content,
             @Schema(description = "Danh sách URL ảnh đính kèm câu hỏi", example = "[\"https://minio.sqb.edu.vn/media/q1.png\"]")

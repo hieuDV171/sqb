@@ -31,6 +31,7 @@ export interface QuestionOption {
 }
 
 export interface QuestionProposeDto {
+  topicId?: number | null;
   content: string;
   mediaUrls?: string[];
   options: QuestionOption[];
@@ -104,6 +105,8 @@ export interface SubmissionsResponse {
 }
 
 export interface MySubmissionQuestionDto {
+  topicId?: number | null;
+  topicName?: string | null;
   questionId: number;
   content: string;
   imageUrls: string[];
@@ -142,6 +145,8 @@ export interface MySubmissionDetailResponse {
 }
 
 export interface QuestionUpdateDto {
+  topicId?: number | null;
+  clearTopic?: boolean;
   questionId?: number;
   content: string;
   mediaUrls?: string[];

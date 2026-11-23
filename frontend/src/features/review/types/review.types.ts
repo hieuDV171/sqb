@@ -54,10 +54,15 @@ export type DuplicateDetectionTier =
   | 'IMAGE_EMBEDDING';
 
 export interface DuplicateWarning {
-  questionIndex: number;
+  questionId?: number | null;
+  questionIndex?: number | null;
+  scope?: 'SAME_SESSION' | 'QUESTION_BANK' | null;
+  kind?: 'EXACT' | 'ANSWER_CONFLICT' | 'SIMILAR' | null;
   similarQuestionId: number;
-  similarityScore: number;
+  similarityScore?: number | null;
+  hammingDistance?: number | null;
   tier: DuplicateDetectionTier;
+  matchedSnippet?: string;
   matchedSnipet?: string;
   mediaUrl?: string;
 }
@@ -84,6 +89,11 @@ export interface AiRefinement {
 }
 
 export interface SessionQuestionReviewDto {
+  topicId?: number | null;
+  topicName?: string | null;
+  canRetryDuplicateCheck?: boolean;
+  duplicateCheckStatus?: 'PENDING' | 'RETRY' | 'COMPLETE' | 'NEEDS_REVIEW' | null;
+  qualityWarning?: string | null;
   questionId: number;
   content: string;
   imageUrls?: string[];
@@ -98,6 +108,8 @@ export interface SessionQuestionReviewDto {
 }
 
 export interface SessionDetailReviewResponse {
+  subjectId?: number;
+  qualityWarning?: string | null;
   sessionStatus: SessionStatus;
   items: SessionQuestionReviewDto[];
   duplicateWarnings: DuplicateWarning[];
@@ -140,6 +152,8 @@ export type RejectionReasonCode =
 // ==========================================
 
 export interface EditQuestionRequest {
+  topicId?: number | null;
+  clearTopic?: boolean;
   content?: string;
   options?: QuestionOption[];
   explanation?: string;

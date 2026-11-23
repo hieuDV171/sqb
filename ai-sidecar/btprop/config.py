@@ -1,7 +1,7 @@
 import math
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
-VERSION = "sqb-btprop-1.0.0"
+VERSION = "sqb-btprop-1.1.0"
 PROMPT_VERSION = "sqb-multi-subject-2026-09-30-v1"
 LOGIC_VERSION = "2026-09-30-multi-answer-r1"
 CORROBORATION_RISK = 50.0

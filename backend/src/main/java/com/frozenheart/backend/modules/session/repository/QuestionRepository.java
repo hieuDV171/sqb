@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.session.repository;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +22,15 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     List<Question> findBySessionIdIn(List<Long> sessionIds);
 
+    @Query("""
+            SELECT DISTINCT q.session.id FROM Question q JOIN q.session s
+            WHERE s.status IN ('PENDING', 'REVIEWING') AND q.status = 'PENDING'
+              AND (q.duplicateCheckStatus IS NULL OR q.duplicateCheckStatus = 'PENDING'
+                OR (q.duplicateCheckStatus = 'RETRY' AND q.duplicateCheckNextAttemptAt <= :now))
+            ORDER BY q.session.id
+            """)
+    List<Long> findDuplicateCheckSessions(@Param("now") Instant now, org.springframework.data.domain.Pageable pageable);
+
     @Query("SELECT DISTINCT q.session.id FROM Question q WHERE q.id IN :ids AND q.session IS NOT NULL")
     List<Long> findSessionIdsForReview(@Param("ids") List<Long> ids);
 
@@ -39,6 +49,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("""
             SELECT q FROM Question q
             LEFT JOIN FETCH q.ownedMedias
+            LEFT JOIN FETCH q.topic
             WHERE q.session.id = :sessionId
             ORDER BY q.displayOrder ASC
             """)
@@ -76,7 +87,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE q.id IN :ids")
     List<Question> findByIdInFetchDetailsForSearch(@Param("ids") List<Long> ids);
 
-    @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.subject LEFT JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer WHERE q.id IN :ids")
+    @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.subject LEFT JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer LEFT JOIN FETCH q.topic WHERE q.id IN :ids")
     List<Question> findByIdInFetchSessionCourseClassAndProposer(@Param("ids") List<Long> ids);
 
     @Query("SELECT COUNT(q) FROM Question q WHERE q.session.courseClass.subject.id = :subjectId AND q.status = :status AND q.session.status = 'RESOLVED'")
@@ -96,6 +107,13 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE sub.id = :subjectId AND q.status = 'APPROVED' AND s.status = 'RESOLVED'")
     List<Question> findApprovedBySubjectId(@Param("subjectId") Long subjectId);
+
+    @Query("""
+            SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc
+            JOIN FETCH cc.subject sub LEFT JOIN FETCH q.topic LEFT JOIN FETCH q.ownedMedias
+            WHERE sub.id IN :subjectIds AND q.status = 'APPROVED'
+            """)
+    List<Question> findApprovedForAutoReview(@Param("subjectIds") List<Long> subjectIds);
 
     @Query("SELECT COUNT(q) FROM Question q WHERE q.session.proposer.id = :userId AND q.session.courseClass.subject.id = :subjectId AND q.status = 'APPROVED' AND q.session.status = 'RESOLVED'")
     long countApprovedQuestionsByUserAndSubject(@Param("userId") Long userId, @Param("subjectId") Long subjectId);

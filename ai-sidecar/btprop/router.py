@@ -11,7 +11,7 @@ logger = logging.getLogger("btprop_router")
 router = APIRouter()
 
 @router.post("/audit", response_model=BtpropAuditResponse, summary="Kiểm chứng câu hỏi bằng Cây Niềm Tin (BTProp)")
-async def audit_question(req: QuestionAuditRequest):
+def audit_question(req: QuestionAuditRequest):
     """
     Endpoint kiểm tra ảo giác và sai sót kiến thức của câu hỏi trắc nghiệm.
     - Hỗ trợ đa môn học (subject, topic)
@@ -24,8 +24,8 @@ async def audit_question(req: QuestionAuditRequest):
             logger.warning("[BTProp] Chưa cấu hình OPENAI_API_KEY. Trả về fallback unverified.")
             return BtpropAuditResponse(
                 is_hallucinated=False,
-                confidence_score=0.5,
-                risk_score=50.0,
+                confidence_score=None,
+                risk_score=None,
                 risk_label="chưa cấu hình API Key",
                 belief_tree_depth=0,
                 violations=[],
@@ -36,7 +36,7 @@ async def audit_question(req: QuestionAuditRequest):
             )
 
         model = os.getenv("BTPROP_MODEL", "gpt-4.1-2025-04-14")
-        depth = 1 if req.fast_mode else int(os.getenv("BTPROP_DEPTH", "2"))
+        depth = int(os.getenv("BTPROP_DEPTH", "2"))
         cfg = Config(model=model, depth=depth)
         
         backend = OpenAIBackend(api_key=api_key, cfg=cfg, subject=req.subject, topic=req.topic)
@@ -51,8 +51,8 @@ async def audit_question(req: QuestionAuditRequest):
         # Thay vì trả về 500 làm sập luồng, trả về audit status error
         return BtpropAuditResponse(
             is_hallucinated=False,
-            confidence_score=0.5,
-            risk_score=50.0,
+            confidence_score=None,
+            risk_score=None,
             risk_label="lỗi kiểm thử",
             belief_tree_depth=0,
             violations=[],

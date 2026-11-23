@@ -32,7 +32,7 @@ import com.frozenheart.backend.modules.session.repository.QuestionMediaRepositor
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
-import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
+import com.frozenheart.backend.modules.session.service.DuplicateCheckRequested;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -45,6 +45,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -77,8 +78,6 @@ class SessionServiceImplTest {
     @Mock
     private QuestionMediaRepository questionMediaRepository;
     @Mock
-    private DuplicateDetectionService duplicateDetectionService;
-    @Mock
     private CounterMetricsService counterMetricsService;
     @Mock
     private MetricService metricService;
@@ -90,6 +89,9 @@ class SessionServiceImplTest {
     private CurrentSemesterService currentSemesterService;
     @Mock
     private ReactRepository reactRepository;
+
+    @Mock
+    private ApplicationEventPublisher publisher;
 
     @InjectMocks
     private SessionServiceImpl sessionService;
@@ -147,7 +149,7 @@ class SessionServiceImplTest {
         assertEquals(2, response.questionCount());
         verify(questionRepository).saveAll(anyList());
         verify(counterMetricsService).incrementProposedQuestions(userId, 2);
-        verify(duplicateDetectionService).asyncCheckDuplicates(101L);
+        verify(publisher).publishEvent(new DuplicateCheckRequested(101L));
     }
 
     @Test
@@ -410,14 +412,8 @@ class SessionServiceImplTest {
         option.setText("Đáp án đúng");
         option.setIsCorrect(true);
 
-        return new ProposeSessionRequest.QuestionProposeDto(
-                content,
-                null,
-                List.of(option),
-                null,
-                difficulty,
-                false,
-                3.0);
+        return ProposeSessionRequest.QuestionProposeDto.builder()
+                .content(content).options(List.of(option)).difficulty(difficulty).confidence(3.0).build();
     }
 
     private void setCurrentUser(Long userId) {

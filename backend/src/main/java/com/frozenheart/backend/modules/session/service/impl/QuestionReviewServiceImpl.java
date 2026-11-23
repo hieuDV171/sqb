@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.frozenheart.backend.core.constant.Point;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.modules.session.service.TopicService;
+import com.frozenheart.backend.modules.session.service.QuestionQualityCheck;
+import com.frozenheart.backend.modules.session.service.DuplicateCheckRequested;
 import com.frozenheart.backend.core.dto.pagination.IdCursorPage;
 import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.core.entity.media.QuestionMedia;
@@ -83,6 +86,7 @@ import org.springframework.context.ApplicationEventPublisher;
 public class QuestionReviewServiceImpl implements QuestionReviewService {
 
     private final SessionRepository sessionRepository;
+    private final TopicService topicService;
     private final QuestionRepository questionRepository;
     private final QuestionEditLogRepository questionEditLogRepository;
     private final UserRepository userRepository;
@@ -232,6 +236,11 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
             return SessionDetailReviewResponse.SessionQuestionReviewDto.builder()
                     .questionId(q.getId())
+                    .topicId(q.getTopic() == null ? null : q.getTopic().getId())
+                    .topicName(q.getTopic() == null ? null : q.getTopic().getName())
+                    .duplicateCheckStatus(q.getDuplicateCheckStatus() == null ? null : q.getDuplicateCheckStatus().name())
+                    .qualityWarning(QuestionQualityCheck.warning(q))
+                    .canRetryDuplicateCheck(q.getStatus() == QuestionStatus.PENDING && q.getDuplicateCheckAttempts() != null)
                     .content(q.getContent())
                     .imageUrls(imageUrls)
                     .options(q.getOptions())
@@ -251,6 +260,8 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .toList();
 
         return SessionDetailReviewResponse.builder()
+                .subjectId(session.getCourseClass().getSubject().getId())
+                .qualityWarning(QuestionQualityCheck.sessionWarning(questions))
                 .sessionStatus(session.getStatus())
                 .items(items)
                 .duplicateWarnings(allWarnings)
@@ -318,6 +329,12 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         Question question = loadAuthorizedQuestions(List.of(questionId), payload).getFirst();
 
+        if (request.topicId() != null) {
+            question.setTopic(topicService.select(question.getSession().getCourseClass().getSubject().getId(),
+                    request.topicId(), question.getTopic()));
+        } else if (Boolean.TRUE.equals(request.clearTopic())) {
+            question.setTopic(null);
+        }
         if (request.content() != null) {
             question.setContent(request.content());
         }
@@ -340,6 +357,11 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         question.setRejectionReason(null);
 
         question.setUpdatedAt(now);
+        if (request.content() != null || request.options() != null
+                || request.topicId() != null || Boolean.TRUE.equals(request.clearTopic())) {
+            question.queueDuplicateCheck(request.content() != null || request.options() != null);
+            eventPublisher.publishEvent(new DuplicateCheckRequested(question.getSession().getId()));
+        }
         questionRepository.save(question);
 
         return EditQuestionResponse.builder()
@@ -348,6 +370,18 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .reviewedBy(currentUserId)
                 .reviewedAt(now)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void retryDuplicateCheck(Long questionId) {
+        var question = loadAuthorizedQuestions(List.of(questionId), requireReviewerPayload()).getFirst();
+        if (question.getStatus() != QuestionStatus.PENDING
+                || question.getDuplicateCheckAttempts() == null) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Câu hỏi không có lượt dò lỗi để thử lại");
+        }
+        question.queueDuplicateCheck(false);
+        eventPublisher.publishEvent(new DuplicateCheckRequested(question.getSession().getId()));
     }
 
     @Override

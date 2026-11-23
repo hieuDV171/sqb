@@ -84,6 +84,9 @@ export const reviewService = {
    * 16.5 Giảng viên trực tiếp chỉnh sửa câu hỏi
    * PUT /api/v1/lecturer/questions/{questionId}
    */
+  retryDuplicateCheck: (questionId: number) =>
+    axiosClient.post(`/lecturer/questions/${questionId}/retry-duplicate-check`),
+
   editQuestion: async (
     questionId: number,
     data: EditQuestionRequest

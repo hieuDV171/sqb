@@ -4,13 +4,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
@@ -56,7 +59,10 @@ import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.media.service.MediaService;
-import com.frozenheart.backend.modules.session.service.DuplicateDetectionService;
+import com.frozenheart.backend.modules.session.service.DuplicateCheckRequested;
+import com.frozenheart.backend.modules.session.service.TopicService;
+import com.frozenheart.backend.core.entity.session.Topic;
+import com.frozenheart.backend.core.entity.session.DuplicateCheckStatus;
 import com.frozenheart.backend.modules.session.service.SessionService;
 import com.frozenheart.backend.modules.session.service.SessionCodeSearch;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -83,7 +89,7 @@ public class SessionServiceImpl implements SessionService {
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
     private final QuestionMediaRepository questionMediaRepository;
-    private final DuplicateDetectionService duplicateDetectionService;
+    private final TopicService topicService;
     private final CounterMetricsService counterMetricsService;
     private final MediaService mediaService;
     private final ApplicationEventPublisher eventPublisher;
@@ -119,6 +125,9 @@ public class SessionServiceImpl implements SessionService {
         CourseClass courseClass = resolveAuthorizedActiveCourseClass(
                 userId, proposer.getRole(), request.courseClassId());
         Subject subject = courseClass.getSubject();
+        var topicIds = requestedQuestions.stream().map(QuestionProposeDto::topicId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, Topic> selectedTopics = topicIds.isEmpty() ? Map.of() : topicService.lookup(subject.getId(), topicIds);
 
         // Mã ẩn danh 6 ký tự của tác giả
         String authorCode = anonymizerUtil.encodeUserId(userId);
@@ -177,6 +186,8 @@ public class SessionServiceImpl implements SessionService {
                     Instant now = Instant.now();
                     return Question.builder()
                             .session(finalSession) // Gán mối quan hệ với Session
+                            .topic(q.topicId() == null ? null : TopicService.requireActive(selectedTopics.get(q.topicId()), null))
+                            .duplicateCheckStatus(DuplicateCheckStatus.PENDING)
 
                             .content(textContent)
 
@@ -215,6 +226,7 @@ public class SessionServiceImpl implements SessionService {
                     if (mediaUrl != null && !mediaUrl.isBlank()) {
                         QuestionMedia media = QuestionMedia.builder()
                                 .url(mediaUrl)
+                                .objectKey(mediaService.extractObjectKey(mediaUrl))
                                 .mediaTarget(MediaTarget.CONTENT)
                                 .question(q)
                                 .owner(proposer)
@@ -233,6 +245,7 @@ public class SessionServiceImpl implements SessionService {
                     if (opt != null && opt.getMediaUrl() != null && !opt.getMediaUrl().isBlank()) {
                         QuestionMedia media = QuestionMedia.builder()
                                 .url(opt.getMediaUrl())
+                                .objectKey(mediaService.extractObjectKey(opt.getMediaUrl()))
                                 .mediaTarget(MediaTarget.OPTION)
                                 .question(q)
                                 .owner(proposer)
@@ -287,7 +300,7 @@ public class SessionServiceImpl implements SessionService {
         metricService.incrementCounter("sqb.exam.questions.proposed", requestedQuestions.size(), "subject", subject.getCode());
 
         // BẮN TASK CHẠY NGẦM CHECK TRÙNG 3 TẦNG
-        duplicateDetectionService.asyncCheckDuplicates(session.getId());
+        eventPublisher.publishEvent(new DuplicateCheckRequested(session.getId()));
 
         return ProposeSessionResponse.builder()
                 .sessionId(session.getId())
@@ -431,6 +444,8 @@ public class SessionServiceImpl implements SessionService {
 
                     return MySubmissionDetailResponse.MySubmissionQuestionDto.builder()
                             .questionId(q.getId())
+                            .topicId(q.getTopic() == null ? null : q.getTopic().getId())
+                            .topicName(q.getTopic() == null ? null : q.getTopic().getName())
                             .difficulty(Objects.requireNonNullElse(q.getDifficulty(), QuestionDifficulty.UNCLASSIFIED))
                             .content(q.getContent())
                             .imageUrls(imageUrls)
@@ -490,7 +505,7 @@ public class SessionServiceImpl implements SessionService {
     @Transactional
     public void updateMySubmissionSession(Long sessionId, UpdateSubmissionSessionRequest request) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-
+        sessionRepository.lockReviewSessions(List.of(sessionId), false);
         Session session = getSession(currentUserId, sessionId);
 
         // Không thể sửa nếu đang là PENDING
@@ -511,6 +526,7 @@ public class SessionServiceImpl implements SessionService {
             session.setSourceUrl(request.sourceUrl());
         }
 
+        Long originalSubjectId = session.getCourseClass().getSubject().getId();
         if (request.courseClassId() != null) {
             CourseClass courseClass = resolveAuthorizedActiveCourseClass(
                     currentUserId, session.getProposer().getRole(), request.courseClassId());
@@ -521,18 +537,35 @@ public class SessionServiceImpl implements SessionService {
         Session savedSession = sessionRepository.save(session);
 
         // Cập nhật/Thêm/Xóa danh sách câu hỏi nếu DTO gửi lên câu hỏi
-        if (request.questions() != null) {
-            List<Question> existingQuestions = questionRepository.findBySessionId(sessionId);
+        boolean subjectChanged = !Objects.equals(originalSubjectId, savedSession.getCourseClass().getSubject().getId());
+        if (request.questions() != null || subjectChanged) {
+            List<Question> existingQuestions = questionRepository.findQuestionsBySessionId(sessionId);
+            if (existingQuestions.stream().anyMatch(q -> q.getStatus() != QuestionStatus.PENDING)) {
+                throw new AppException(ResponseCode.ACCESS_DENIED, "Phiên đã có câu được xử lý");
+            }
+            if (request.questions() == null) {
+                for (Question question : existingQuestions) {
+                    question.setTopic(null);
+                    question.queueDuplicateCheck(false);
+                }
+                eventPublisher.publishEvent(new DuplicateCheckRequested(sessionId));
+                return;
+            }
             Map<Long, Question> existingMap = existingQuestions.stream()
                     .collect(Collectors.toMap(Question::getId, q -> q));
 
             Set<Long> processedQuestionIds = new HashSet<>();
             List<Question> questionsToSave = new ArrayList<>();
+            List<QuestionMedia> attachmentsToRemove = new ArrayList<>();
+            List<QuestionMedia> attachmentsToAdd = new ArrayList<>();
 
             String authorCode = anonymizerUtil.encodeUserId(currentUserId);
             Subject finalSubject = savedSession.getCourseClass().getSubject();
 
             List<UpdateSubmissionSessionRequest.QuestionUpdateDto> dtoList = request.questions();
+            var topicIds = dtoList.stream().map(UpdateSubmissionSessionRequest.QuestionUpdateDto::topicId)
+                    .filter(Objects::nonNull).collect(Collectors.toSet());
+            Map<Long, Topic> selectedTopics = topicIds.isEmpty() ? Map.of() : topicService.lookup(finalSubject.getId(), topicIds);
             int size = dtoList.size();
             for (int i = 0; i < size; i++) {
                 UpdateSubmissionSessionRequest.QuestionUpdateDto qDto = dtoList.get(i);
@@ -589,6 +622,21 @@ public class SessionServiceImpl implements SessionService {
                             .build();
                 }
 
+                if (qDto.topicId() != null) {
+                    q.setTopic(TopicService.requireActive(selectedTopics.get(qDto.topicId()), q.getTopic()));
+                } else if (subjectChanged || Boolean.TRUE.equals(qDto.clearTopic())) {
+                    q.setTopic(null);
+                }
+                q.queueDuplicateCheck(qDto.content() != null || qDto.options() != null);
+                if (qDto.mediaUrls() != null) {
+                    reconcileAttachments(q, savedSession.getProposer(), MediaTarget.CONTENT, qDto.mediaUrls(),
+                            attachmentsToAdd, attachmentsToRemove);
+                }
+                if (qDto.options() != null) {
+                    var urls = qDto.options().stream().filter(Objects::nonNull).map(QuestionOption::getMediaUrl).toList();
+                    reconcileAttachments(q, savedSession.getProposer(), MediaTarget.OPTION, urls,
+                            attachmentsToAdd, attachmentsToRemove);
+                }
                 questionsToSave.add(q);
             }
 
@@ -597,12 +645,15 @@ public class SessionServiceImpl implements SessionService {
                     .toList();
 
             if (!questionsToDelete.isEmpty()) {
+                questionMediaRepository.deleteAll(questionsToDelete.stream()
+                        .flatMap(question -> question.getOwnedMedias().stream()).toList());
                 counterMetricsService.incrementProposedQuestions(currentUserId, -questionsToDelete.size());
                 questionRepository.deleteAll(questionsToDelete);
             }
 
             // Không đánh index (đang PENDING)
             List<Question> savedQuestions = questionRepository.saveAll(questionsToSave);
+            saveUpdatedAttachments(attachmentsToAdd, attachmentsToRemove, savedQuestions);
 
             for (Question q : savedQuestions) {
                 if (q.getQuestionCode() == null || q.getQuestionCode().isBlank()) {
@@ -610,7 +661,49 @@ public class SessionServiceImpl implements SessionService {
                 }
             }
 
-            duplicateDetectionService.asyncCheckDuplicates(sessionId);
+            eventPublisher.publishEvent(new DuplicateCheckRequested(sessionId));
+        }
+    }
+
+    private void reconcileAttachments(Question question, User owner, MediaTarget target, List<String> requestedUrls,
+            List<QuestionMedia> additions, List<QuestionMedia> removals) {
+        Set<String> requested = requestedUrls.stream().filter(Objects::nonNull).filter(url -> !url.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        for (QuestionMedia attachment : question.getOwnedMedias()) {
+            if (attachment.getMediaTarget() != target || attachment.getDeletedAt() != null) continue;
+            if (!requested.remove(attachment.getUrl())) removals.add(attachment);
+        }
+        for (String url : requested) {
+            additions.add(QuestionMedia.builder().question(question).owner(owner).url(url)
+                    .objectKey(mediaService.extractObjectKey(url)).mediaTarget(target)
+                    .processingStatus(ProcessingStatus.PENDING).uploadedAt(Instant.now()).build());
+        }
+    }
+
+    private void saveUpdatedAttachments(List<QuestionMedia> additions, List<QuestionMedia> removals,
+            List<Question> savedQuestions) {
+        if (!additions.isEmpty()) {
+            List<String> urls = additions.stream().map(QuestionMedia::getUrl).distinct().toList();
+            if (!mediaService.findMissingObjects(urls).isEmpty()) {
+                throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Một số ảnh không còn tồn tại. Vui lòng tải lại.");
+            }
+            questionMediaRepository.saveAll(additions);
+            mediaService.confirmMediaPermanent(urls);
+        }
+        if (!removals.isEmpty()) questionMediaRepository.deleteAll(removals);
+
+        Map<Long, Map<String, Long>> mediaIds = new HashMap<>();
+        Stream.concat(additions.stream(), savedQuestions.stream().flatMap(question -> question.getOwnedMedias().stream())
+                .filter(attachment -> !removals.contains(attachment)))
+                .filter(attachment -> attachment.getMediaTarget() == MediaTarget.OPTION && attachment.getId() != null)
+                .forEach(attachment -> mediaIds.computeIfAbsent(attachment.getQuestion().getId(), id -> new HashMap<>())
+                        .put(attachment.getUrl(), attachment.getId()));
+        for (Question question : savedQuestions) {
+            if (question.getOptions() == null) continue;
+            Map<String, Long> optionIds = mediaIds.getOrDefault(question.getId(), Map.of());
+            for (QuestionOption option : question.getOptions()) {
+                if (option != null) option.setMediaId(option.getMediaUrl() == null ? null : optionIds.get(option.getMediaUrl()));
+            }
         }
     }
 
@@ -618,7 +711,7 @@ public class SessionServiceImpl implements SessionService {
     @Transactional
     public void deleteMySubmissionSession(Long sessionId) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-
+        sessionRepository.lockReviewSessions(List.of(sessionId), false);
         Session session = getSession(currentUserId, sessionId);
 
         // Không xóa PENDING
@@ -628,6 +721,9 @@ public class SessionServiceImpl implements SessionService {
         }
 
         List<Question> questions = questionRepository.findBySessionId(sessionId);
+        if (questions.stream().anyMatch(q -> q.getStatus() != QuestionStatus.PENDING)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Phiên đã có câu được xử lý");
+        }
         if (!questions.isEmpty()) {
             List<Long> qIds = questions.stream().map(Question::getId).toList();
             List<QuestionMedia> medias = questionMediaRepository.findByQuestionIdIn(qIds);

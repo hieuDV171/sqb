@@ -127,14 +127,14 @@ Không dùng Offset pagination (`page`, `size`) vì hiệu năng kém khi bảng
     - Cờ `isCorrect` trong `options` bị xóa (`null`) để chống gian lận.
     - Đáp án đúng (`correctAnswer`) và lời giải (`explanation`) chỉ được trả về nếu người dùng **đã từng nộp câu trả lời** (`myInteraction.answered == true`).
 
-### 4.2. Hệ thống Phát hiện Trùng lặp 3 Tầng (3-Tier Duplicate Detection)
-Chạy bất đồng bộ (`@Async`) ngay sau khi phiên được nộp:
-1. **Tầng 1 (Rule-based):** So sánh chính xác mã câu hỏi, text hash, tập hợp đáp án.
-2. **Tầng 2 (Trigram Similarity):** Dùng toán tử `%` và hàm `similarity()` của PostgreSQL extension `pg_trgm` trên cột `content` (ngưỡng tương đồng $\ge 0.75$).
-3. **Tầng 3 (Vector Embedding):**
-   - Gọi Sidecar Python để tính vector embedding của văn bản đề bài (Sentence-BERT, 384 chiều) và ảnh (CLIP, 512 chiều).
-   - Truy vấn Cosine Distance trên PostgreSQL PgVector (`<=>` operator) với index `HNSW`.
-   - Kết quả cảnh báo trùng lặp được lưu vào trường JSONB `duplicateWarnings` của câu hỏi để giảng viên xem xét khi duyệt.
+### 4.2. Dò trùng câu hỏi và tự duyệt phiên
+
+- Sau commit nộp hoặc sửa phiên, worker tải theo lô câu cùng phiên và ngân hàng đã duyệt cùng môn. Chủ đề được ưu tiên khi xếp kết quả. Worker lưu kết quả cùng với phiên bản câu hỏi đã đọc để tác vụ cũ không ghi đè dữ liệu mới.
+- **Tầng 1** so đề bài, bộ lựa chọn và ảnh đi kèm. Thứ tự A/B/C/D được bỏ qua. Nếu đề và lựa chọn khớp nhưng đáp án đúng khác nhau, kết quả là mâu thuẫn đáp án.
+- **Tầng 2** dùng trigram với ngưỡng thử 0,85 và pHash ảnh với khoảng cách Hamming tối đa 5 bit. **Tầng 3** dùng cosine của text embedding với ngưỡng thử 0,90. Vector và pHash được lưu để tái sử dụng. Worker hiện tính điểm trong bộ nhớ trên tập đã giới hạn theo môn. Chọn index trigram/vector trong PostgreSQL sau khi đo trên dữ liệu thật.
+- Cảnh báo lưu trong `duplicateWarnings` theo ID câu và phạm vi đối sánh. Chênh độ dài đáp án và lệch vị trí đáp án hiển thị riêng. Mâu thuẫn đáp án và câu chỉ khớp gần được chuyển giảng viên xem.
+- Lỗi tạo embedding hoặc đọc ảnh được thử lại sau 15 phút, 1 giờ và 6 giờ. Hết lượt, câu vẫn chờ và giảng viên có thể yêu cầu chạy lại. Khi câu đã đủ kết quả, scheduler ngày 6 phê duyệt câu sạch hoặc từ chối bản sao chính xác. Phiên chốt và đồng bộ ngân hàng sau khi mọi câu có quyết định. Lúc tự duyệt, scheduler đối chiếu lại trùng chính xác với các câu đã duyệt cùng môn để xử lý nhiều phiên cùng ngày.
+
 
 ### 4.3. Phân hệ Mạng Xã Hội (Social Subsystem)
 - **Bài viết & Bảng tin:** Post hỗ trợ text, video, multi-image. Feed hiển thị theo cơ chế tổng hợp bài viết từ bạn bè, người đang follow và bài viết công khai của các môn học đang tham gia.
@@ -671,3 +671,12 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Những bản vá chưa có trong BOM dùng property override theo cả họ thư viện: Commons Codec `1.23.0`, HttpClient `5.6.5` + HttpCore `5.4.4`, OpenTelemetry BOM `1.68.0`; dùng constraint có lý do CVE cho Guava `33.8.0-jre`, BCprov `1.87`, Snappy `1.1.10.12`, Batik `1.20`. Rà để gỡ override khi BOM đã cung cấp bản vá phù hợp; không tự chuyển lên Boot 4.2 hoặc phiên bản beta.
 - MsgPack giữ `0.9.12` vì chưa xác minh được bản vá phát hành; Jackson YAML đi theo BOM nhưng chưa coi WS-2026-0134 được vá trên nhánh 2.x. Cần xác minh đường gọi và theo dõi upstream riêng, không suppress cảnh báo hoặc đổi định dạng/xóa Redis cache trong lần nâng này. Test fixture cache từ Jackson 2.21.4 kiểm tra đọc dữ liệu cũ sau nâng.
 - Không thay API, entity/query, schema/Liquibase hoặc luồng media. Resolve dependency và kiểm thử local không thay thế nghiệm thu kết nối PostgreSQL/Redis/Elasticsearch/R2/Firebase trên môi trường đích; thay đổi chỉ có hiệu lực production sau rebuild và triển khai backend.
+
+### [ADR-081] Tự duyệt từng câu theo kết quả dò trùng và dùng danh mục chủ đề theo môn
+
+- **Ngày 23/11/2026 — đã triển khai trong mã nguồn:** Bỏ tác vụ tự gọi AI tinh chỉnh sau 3 ngày. Tinh chỉnh do giảng viên chủ động yêu cầu tiếp tục theo ADR-051. Sáu ngày là mốc bắt đầu tự xử lý câu còn chờ; câu gặp lỗi kỹ thuật có thể tiếp tục chờ sau mốc này.
+- Dò trong phiên và với các câu đã duyệt cùng môn. Kết quả gắn với phiên bản nội dung đã kiểm tra. Phân biệt đang chờ, lỗi kỹ thuật và đã kiểm tra xong để scheduler tự duyệt câu sạch, từ chối bản sao chính xác và đánh giá thêm cặp chỉ có tín hiệu tương đồng. Câu chưa có kết quả được giữ để thử lại hoặc giảng viên xử lý; phiên có thể chốt tự động sau khi các câu đều có quyết định. Lịch thử lại là 15 phút, 1 giờ và 6 giờ tính từ mỗi lượt lỗi. Sau đó giảng viên có thể xem hoặc chủ động thử lại.
+- ADMIN hoặc giảng viên được phân quyền theo môn quản lý danh mục `Topic`. Sinh viên chọn chủ đề theo từng câu và có thể nộp khi chưa có chủ đề phù hợp. Giảng viên gán được chủ đề lúc duyệt; đổi tên giữ ID, ngừng dùng giữ liên kết câu cũ. Khi dò trùng, dùng môn làm phạm vi và ưu tiên cùng chủ đề khi có.
+- Cảnh báo đối sánh dùng ID ổn định của câu và ghi rõ phạm vi trong phiên hoặc ngân hàng. Cảnh báo chất lượng về vị trí đáp án và độ dài đáp án có phạm vi riêng và chỉ hỗ trợ người duyệt. Hai tiêu chí độ khó theo mục tiêu và độ bám bài giảng nằm ngoài phạm vi thay đổi này.
+- BTProp dùng một chế độ. Sidecar giới hạn độ sâu tối đa bằng `BTPROP_DEPTH` (mặc định 2) và trả độ sâu đã duyệt. Bản chấm dở có điểm rủi ro và độ tin cậy rỗng ở API sidecar. Java hiển thị cảnh báo cần tự rà soát khi áp dụng bản AI.
+- Schema bổ sung `topics.archived` và `questions.duplicate_check_status`, `duplicate_check_attempts`, `duplicate_check_next_attempt_at`. `archived = NULL` có nghĩa đang dùng. Câu cũ đang chờ với trạng thái kiểm tra rỗng được poller đưa vào hàng chờ. Các cột ảnh và embedding hiện có được tái sử dụng. Changeset do người dùng tạo trước khi chạy backend trên database đã có dữ liệu.

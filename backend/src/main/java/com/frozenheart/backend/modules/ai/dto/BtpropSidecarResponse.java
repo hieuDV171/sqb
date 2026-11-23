@@ -7,8 +7,8 @@ import java.util.List;
 @Builder
 public record BtpropSidecarResponse(
         boolean isHallucinated,
-        double confidenceScore,
-        double riskScore,
+        Double confidenceScore,
+        Double riskScore,
         String riskLabel,
         int beliefTreeDepth,
         List<ViolationDto> violations,

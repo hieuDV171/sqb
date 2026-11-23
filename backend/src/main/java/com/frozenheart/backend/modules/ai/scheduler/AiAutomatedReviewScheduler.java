@@ -3,7 +3,9 @@ package com.frozenheart.backend.modules.ai.scheduler;
 import com.frozenheart.backend.core.constant.Point;
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.entity.post.Post;
-import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
+import com.frozenheart.backend.core.entity.session.DuplicateCheckStatus;
+import com.frozenheart.backend.core.entity.session.DuplicateWarning;
+import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
 import com.frozenheart.backend.core.entity.session.Question;
@@ -16,14 +18,15 @@ import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
-import com.frozenheart.backend.modules.ai.dto.AiRefineRequest;
-import com.frozenheart.backend.modules.ai.service.AiIntegrationService;
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
+import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.modules.session.service.impl.QuestionReviewServiceImpl;
+import com.frozenheart.backend.modules.session.service.impl.QuestionDuplicateComparison;
+import com.frozenheart.backend.modules.session.service.impl.QuestionDuplicateComparison.ExactIdentity;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
 import com.frozenheart.backend.core.dto.event.PushNotificationEvent;
@@ -33,8 +36,6 @@ import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.modules.notification.service.NotificationWriter;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -47,9 +48,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Luồng tự động hóa kiểm duyệt phiên đề xuất sau 3 ngày & 6 ngày nếu không có
@@ -62,14 +67,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiAutomatedReviewScheduler {
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
+    private final SubjectRepository subjectRepository;
     private final PostRepository postRepository;
     private final NotificationWriter notificationWriter;
-    private final AiIntegrationService aiIntegrationService;
     private final CounterMetricsService counterMetricsService;
     private final GamificationService gamificationService;
     private final ActivityFeedService activityFeedService;
@@ -79,48 +81,10 @@ public class AiAutomatedReviewScheduler {
     @Scheduled(cron = "0 0 2 * * *", zone = Time.DEFAULT_TIMEZONE) // Chạy hàng ngày vào lúc 2:00 AM (Asia/Ho_Chi_Minh)
     @Transactional
     public void runAutomatedFallbackReviewWorkflow() {
-        log.info("Starting 3-day and 6-day automated AI review fallback workflow...");
-
         Instant now = Instant.now();
-        Instant threeDaysAgo = now.minus(3, ChronoUnit.DAYS);
         Instant sixDaysAgo = now.minus(6, ChronoUnit.DAYS);
-
-        Pageable batchLimit = PageRequest.of(0, 50);
-
-        // ==========================================
-        // GIAI ĐOẠN 1: TỰ ĐỘNG AI REFINEMENT SAU 3 NGÀY
-        // ==========================================
-        List<Session> pendingSessionsThreeDays = loadReviewBatch(threeDaysAgo, batchLimit, false);
-
-        for (Session session : pendingSessionsThreeDays) {
-            if (session.getQuestions() == null)
-                continue;
-            for (Question q : session.getQuestions()) {
-                // Nếu câu hỏi có cảnh báo trùng lặp
-                if (q.getDuplicateWarnings() != null && !q.getDuplicateWarnings().isEmpty()) {
-                    try {
-                        aiIntegrationService.refineQuestion(
-                                q.getId(),
-                                new AiRefineRequest(
-                                        "Câu hỏi gốc bị cảnh báo trùng lặp với câu hỏi trong ngân hàng đề, bạn hãy sửa câu hỏi sao cho vẫn giữ được tính thần cốt lõi của câu hỏi",
-                                        null),
-                                EditActorType.SYSTEM);
-                    } catch (Exception e) {
-                        log.warn("Failed to auto-refine question ID {}: {}", q.getId(), e.getMessage());
-                    }
-                }
-            }
-        }
-
-        // ==========================================
-        // GIAI ĐOẠN 2: TỰ ĐỘNG CHẤP NHẬN / TỪ CHỐI SAU 6 NGÀY
-        // ==========================================
-        if (!pendingSessionsThreeDays.isEmpty()) {
-            // Load fresh questions after the lock, even for sessions read during refinement.
-            entityManager.flush();
-            entityManager.clear();
-        }
-        List<Session> targetSessions = loadReviewBatch(sixDaysAgo, batchLimit, true);
+        List<Session> targetSessions = loadReviewBatch(sixDaysAgo, PageRequest.of(0, 50));
+        Map<Long, Set<ExactIdentity>> approvedKeys = loadApprovedKeys(targetSessions);
 
         List<Question> allQuestionsToUpdate = new ArrayList<>();
         List<Long> finalizedQuestionIds = new ArrayList<>();
@@ -130,7 +94,7 @@ public class AiAutomatedReviewScheduler {
         List<Post> autoPostsToSave = new ArrayList<>();
         List<Notification> autoNotificationsToSave = new ArrayList<>();
 
-        for (Session session : targetSessions) {
+        for (Session session : targetSessions.stream().sorted(Comparator.comparing(Session::getId)).toList()) {
             List<Question> questionsList = session.getQuestions() != null ? new ArrayList<>(session.getQuestions())
                     : List.of();
             if (questionsList.isEmpty()) {
@@ -138,28 +102,35 @@ public class AiAutomatedReviewScheduler {
             }
 
             int approvedInSession = 0;
+            Set<ExactIdentity> subjectKeys = approvedKeys.computeIfAbsent(subjectId(session), ignored -> new HashSet<>());
             for (Question question : questionsList) {
-                finalizedQuestionIds.add(question.getId());
                 if (question.getStatus() == QuestionStatus.APPROVED) {
                     approvedInSession++;
                     continue;
                 }
+                if (question.getStatus() != QuestionStatus.PENDING
+                        || question.getDuplicateCheckStatus() != DuplicateCheckStatus.COMPLETE) continue;
 
-                if (question.getStatus() == QuestionStatus.PENDING) {
-                    boolean hasDuplicateWarning = question.getDuplicateWarnings() != null
-                            && !question.getDuplicateWarnings().isEmpty();
-                    if (!hasDuplicateWarning) {
-                        question.setDifficulty(QuestionDifficulty.UNCLASSIFIED);
-                        question.setStatus(QuestionStatus.APPROVED);
-                        approvedInSession++;
-                    } else {
-                        question.setStatus(QuestionStatus.REJECTED);
-                    }
-                    question.setUpdatedAt(now);
-                    allQuestionsToUpdate.add(question);
+                boolean exactDuplicate = question.getDuplicateWarnings() != null && question.getDuplicateWarnings().stream()
+                        .anyMatch(warning -> warning.kind() == DuplicateWarning.Kind.EXACT);
+                ExactIdentity identity = QuestionDuplicateComparison.exactIdentity(question);
+                exactDuplicate |= !identity.content().isBlank() && subjectKeys.contains(identity);
+                if (exactDuplicate) {
+                    question.setStatus(QuestionStatus.REJECTED);
+                    question.setRejectionCode(QuestionRejectionCode.DUPLICATE);
+                    question.setRejectionReason("Hệ thống phát hiện bản sao chính xác.");
+                } else {
+                    question.setDifficulty(QuestionDifficulty.UNCLASSIFIED);
+                    question.setStatus(QuestionStatus.APPROVED);
+                    if (!identity.content().isBlank()) subjectKeys.add(identity);
+                    approvedInSession++;
                 }
+                question.setUpdatedAt(now);
+                allQuestionsToUpdate.add(question);
             }
 
+            if (questionsList.stream().anyMatch(question -> question.getStatus() == QuestionStatus.PENDING)) continue;
+            questionsList.stream().map(Question::getId).forEach(finalizedQuestionIds::add);
             session.setStatus(SessionStatus.RESOLVED);
             session.setReviewedAt(now);
             allSessionsToUpdate.add(session);
@@ -246,18 +217,30 @@ public class AiAutomatedReviewScheduler {
         log.info("Automated AI review fallback workflow completed successfully.");
     }
 
-    private List<Session> loadReviewBatch(Instant cutoff, Pageable batchLimit, boolean finalize) {
-        List<Long> sessionIds = sessionRepository.findIdsByStatusAndCreatedAtBefore(
-                SessionStatus.PENDING,
-                cutoff,
-                batchLimit);
-        if (finalize && !sessionIds.isEmpty()) {
-            // A lecturer may have opened the session since the scheduler selected these IDs.
-            sessionIds = sessionRepository.lockReviewSessions(sessionIds, true);
+    private Map<Long, Set<ExactIdentity>> loadApprovedKeys(List<Session> sessions) {
+        Map<Long, Set<ExactIdentity>> result = new LinkedHashMap<>();
+        List<Long> ids = sessions.stream().map(AiAutomatedReviewScheduler::subjectId)
+                .filter(Objects::nonNull).distinct().sorted().toList();
+        if (ids.isEmpty()) return result;
+        subjectRepository.lockForAutoReview(ids);
+        for (Question question : questionRepository.findApprovedForAutoReview(ids)) {
+            ExactIdentity identity = QuestionDuplicateComparison.exactIdentity(question);
+            if (!identity.content().isBlank()) {
+                result.computeIfAbsent(subjectId(question.getSession()), ignored -> new HashSet<>()).add(identity);
+            }
         }
-        if (sessionIds.isEmpty()) {
-            return List.of();
-        }
-        return sessionRepository.findByIdInFetchAutomatedReviewDetails(sessionIds);
+        return result;
+    }
+
+    private static Long subjectId(Session session) {
+        return session.getCourseClass() == null || session.getCourseClass().getSubject() == null ? null
+                : session.getCourseClass().getSubject().getId();
+    }
+
+    private List<Session> loadReviewBatch(Instant cutoff, Pageable batchLimit) {
+        List<Long> sessionIds = sessionRepository.findReadyForAutoReview(cutoff, batchLimit);
+        if (sessionIds.isEmpty()) return List.of();
+        sessionIds = sessionRepository.lockReviewSessions(sessionIds, true);
+        return sessionIds.isEmpty() ? List.of() : sessionRepository.findByIdInFetchAutomatedReviewDetails(sessionIds);
     }
 }

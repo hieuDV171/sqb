@@ -89,20 +89,28 @@ public class BtpropHallucinationCheckerService {
                 .content(suggested.content() != null ? suggested.content() : "")
                 .options(sidecarOptions)
                 .explanation(suggested.explanation() != null ? suggested.explanation() : "")
-                .fastMode(false)
                 .build();
 
         // 3. Gọi sang AI Sidecar để thẩm định qua Cây Niềm Tin
         BtpropSidecarResponse response = aiSidecarClientService.auditQuestion(request);
 
         // Fallback an toàn (Graceful Degradation): Nếu AI Sidecar gặp lỗi hoặc timeout, không chặn đứng luồng làm việc
-        if (response == null || "error".equalsIgnoreCase(response.status()) || "unverified".equalsIgnoreCase(response.status())) {
+        if (response == null || !"complete".equalsIgnoreCase(response.status()) || response.confidenceScore() == null) {
             log.warn("[BTProp] AI Sidecar phản hồi không sẵn sàng. Fallback sang cảnh báo UNVERIFIED.");
             return fallbackAudit(response);
         }
 
+        return AiRefineResponse.BtpropAuditDto.builder()
+                .isHallucinated(response.isHallucinated())
+                .confidenceScore(response.confidenceScore())
+                .beliefTreeDepth(response.beliefTreeDepth())
+                .violations(toViolations(response))
+                .build();
+    }
+
+    private List<AiRefineResponse.ViolationDto> toViolations(BtpropSidecarResponse response) {
         List<AiRefineResponse.ViolationDto> violations = new ArrayList<>();
-        if (response.violations() != null) {
+        if (response != null && response.violations() != null) {
             for (BtpropSidecarResponse.ViolationDto v : response.violations()) {
                 violations.add(AiRefineResponse.ViolationDto.builder()
                         .type(v.type())
@@ -113,12 +121,7 @@ public class BtpropHallucinationCheckerService {
             }
         }
 
-        return AiRefineResponse.BtpropAuditDto.builder()
-                .isHallucinated(response.isHallucinated())
-                .confidenceScore(response.confidenceScore())
-                .beliefTreeDepth(response.beliefTreeDepth())
-                .violations(violations)
-                .build();
+        return violations;
     }
 
     private AiRefineResponse.BtpropAuditDto fallbackAudit(BtpropSidecarResponse response) {
@@ -126,16 +129,18 @@ public class BtpropHallucinationCheckerService {
                 ? String.join("; ", response.issues())
                 : "Không thể kết nối đến AI Sidecar BTProp hoặc Sidecar chưa cấu hình API Key. Cần giảng viên tự rà soát.";
 
+        List<AiRefineResponse.ViolationDto> violations = toViolations(response);
+        violations.addFirst(AiRefineResponse.ViolationDto.builder()
+                .type("UNVERIFIED")
+                .nodeStatement("Dịch vụ kiểm chứng chưa hoàn tất")
+                .detail(detail)
+                .severity("LOW")
+                .build());
         return AiRefineResponse.BtpropAuditDto.builder()
                 .isHallucinated(false)
                 .confidenceScore(0.5)
-                .beliefTreeDepth(0)
-                .violations(List.of(AiRefineResponse.ViolationDto.builder()
-                        .type("UNVERIFIED")
-                        .nodeStatement("Dịch vụ kiểm chứng chưa hoàn tất")
-                        .detail(detail)
-                        .severity("LOW")
-                        .build()))
+                .beliefTreeDepth(response != null ? response.beliefTreeDepth() : 0)
+                .violations(violations)
                 .build();
     }
 }

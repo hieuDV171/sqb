@@ -45,6 +45,8 @@ public record ProposeSessionRequest(
             @NotBlank(message = "Nội dung câu hỏi không được để trống")
             String content,
 
+            Long topicId,
+
             @Schema(description = "Danh sách URL ảnh đính kèm minh họa đề bài", example = "[\"https://minio.sqb.edu.vn/media/questions/q1_diagram.png\"]")
             List<String> mediaUrls,
 

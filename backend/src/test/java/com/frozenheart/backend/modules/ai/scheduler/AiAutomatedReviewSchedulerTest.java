@@ -7,7 +7,8 @@ import com.frozenheart.backend.core.entity.session.Session;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
-import com.frozenheart.backend.modules.ai.service.AiIntegrationService;
+import com.frozenheart.backend.core.entity.session.DuplicateCheckStatus;
+import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.modules.gamification.service.GamificationService;
 import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
@@ -39,7 +40,6 @@ class AiAutomatedReviewSchedulerTest {
     @Mock QuestionRepository questionRepository;
     @Mock PostRepository postRepository;
     @Mock NotificationWriter notificationWriter;
-    @Mock AiIntegrationService aiIntegrationService;
     @Mock CounterMetricsService counterMetricsService;
     @Mock GamificationService gamificationService;
     @Mock ActivityFeedService activityFeedService;
@@ -50,30 +50,24 @@ class AiAutomatedReviewSchedulerTest {
 
     @Test
     void pagesIdsBeforeBatchFetchingTheEntityGraph() {
-        when(sessionRepository.findIdsByStatusAndCreatedAtBefore(
-                eq(SessionStatus.PENDING), any(Instant.class), any(Pageable.class)))
+        when(sessionRepository.findReadyForAutoReview(any(Instant.class), any(Pageable.class)))
                 .thenReturn(List.of(11L, 12L));
-        when(sessionRepository.findByIdInFetchAutomatedReviewDetails(List.of(11L, 12L)))
-                .thenReturn(List.of());
         when(sessionRepository.lockReviewSessions(List.of(11L, 12L), true)).thenReturn(List.of(12L));
 
         scheduler.runAutomatedFallbackReviewWorkflow();
 
-        verify(sessionRepository, times(2)).findIdsByStatusAndCreatedAtBefore(
-                eq(SessionStatus.PENDING), any(Instant.class), any(Pageable.class));
-        verify(sessionRepository).findByIdInFetchAutomatedReviewDetails(List.of(11L, 12L));
+        verify(sessionRepository).findReadyForAutoReview(any(Instant.class), any(Pageable.class));
         verify(sessionRepository).findByIdInFetchAutomatedReviewDetails(List.of(12L));
     }
 
     @Test
     void automatedApprovalOnlyKeepsDifficultyThatWasAlreadyApproved() {
-        Question pending = Question.builder().id(21L).status(QuestionStatus.PENDING).difficulty(QuestionDifficulty.EASY).build();
+        Question pending = Question.builder().id(21L).status(QuestionStatus.PENDING).duplicateCheckStatus(DuplicateCheckStatus.COMPLETE).difficulty(QuestionDifficulty.EASY).build();
         Question approved = Question.builder().id(22L).status(QuestionStatus.APPROVED).difficulty(QuestionDifficulty.HARD).build();
         Session session = Session.builder().id(12L).status(SessionStatus.PENDING)
                 .questions(new java.util.LinkedHashSet<>(List.of(pending, approved))).build();
-        when(sessionRepository.findIdsByStatusAndCreatedAtBefore(
-                eq(SessionStatus.PENDING), any(Instant.class), any(Pageable.class)))
-                .thenReturn(List.of(), List.of(12L));
+        when(sessionRepository.findReadyForAutoReview(any(Instant.class), any(Pageable.class)))
+                .thenReturn(List.of(12L));
         when(sessionRepository.lockReviewSessions(List.of(12L), true)).thenReturn(List.of(12L));
         when(sessionRepository.findByIdInFetchAutomatedReviewDetails(List.of(12L))).thenReturn(List.of(session));
 
@@ -83,5 +77,30 @@ class AiAutomatedReviewSchedulerTest {
         assertEquals(QuestionDifficulty.UNCLASSIFIED, pending.getDifficulty());
         assertEquals(QuestionDifficulty.HARD, approved.getDifficulty());
         verify(questionRepository).saveAll(List.of(pending));
+    }
+
+    @Test
+    void daySixDecidesCleanAndExactButLeavesPendingTechnicalFailures() {
+        Question clean = Question.builder().id(31L).status(QuestionStatus.PENDING)
+                .duplicateCheckStatus(DuplicateCheckStatus.COMPLETE).build();
+        Question duplicate = Question.builder().id(32L).status(QuestionStatus.PENDING)
+                .duplicateCheckStatus(DuplicateCheckStatus.COMPLETE)
+                .duplicateWarnings(List.of(DuplicateWarning.builder().kind(DuplicateWarning.Kind.EXACT).build())).build();
+        Question failed = Question.builder().id(33L).status(QuestionStatus.PENDING)
+                .duplicateCheckStatus(DuplicateCheckStatus.RETRY).build();
+        Session session = Session.builder().id(12L).status(SessionStatus.PENDING)
+                .questions(new java.util.LinkedHashSet<>(List.of(clean, duplicate, failed))).build();
+        when(sessionRepository.findReadyForAutoReview(any(Instant.class), any(Pageable.class))).thenReturn(List.of(12L));
+        when(sessionRepository.lockReviewSessions(List.of(12L), true)).thenReturn(List.of(12L));
+        when(sessionRepository.findByIdInFetchAutomatedReviewDetails(List.of(12L))).thenReturn(List.of(session));
+
+        scheduler.runAutomatedFallbackReviewWorkflow();
+
+        assertEquals(QuestionStatus.APPROVED, clean.getStatus());
+        assertEquals(QuestionStatus.REJECTED, duplicate.getStatus());
+        assertEquals(QuestionStatus.PENDING, failed.getStatus());
+        assertEquals(SessionStatus.PENDING, session.getStatus());
+        verify(questionRepository).saveAll(List.of(clean, duplicate));
+        org.mockito.Mockito.verifyNoInteractions(gamificationService, counterMetricsService);
     }
 }

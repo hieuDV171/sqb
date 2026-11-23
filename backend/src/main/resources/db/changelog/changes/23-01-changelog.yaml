@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1795398351962-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: archived
+                  type: BOOLEAN
+            tableName: topics
+  - changeSet:
+      id: 1795398351962-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: duplicate_check_attempts
+                  type: INT
+              - column:
+                  name: duplicate_check_next_attempt_at
+                  type: java.sql.Types.TIMESTAMP_WITH_TIMEZONE
+              - column:
+                  name: duplicate_check_status
+                  type: VARCHAR(20)
+            tableName: questions
+

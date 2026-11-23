@@ -20,6 +20,8 @@ public interface QuestionReviewService {
 
     EditQuestionResponse editQuestion(Long questionId, EditQuestionRequest request);
 
+    void retryDuplicateCheck(Long questionId);
+
     void completeSessionReview(Long sessionId);
 
 }

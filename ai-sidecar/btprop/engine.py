@@ -144,6 +144,7 @@ def build_tree(statement: str, backend: OpenAIBackend, cfg: Config,
     parts = unique_texts(decomposition.get("claims", []))
     if len(parts) > 1 and decomposition.get("joint_equivalence") and decomposition.get("complete"):
         if len(parts) <= cfg.max_decomposition and not any(x in ancestors + (statement,) for x in parts):
+            check_decomposition_context(statement, parts)
             node.method = "decompose"
             node.children = [
                 build_tree(p, backend, cfg, depth + 1, ancestors + (statement,), counter, context)
@@ -194,177 +195,169 @@ def aggregate_risk(checks: List[dict], cfg: Config) -> dict:
 def consistency_statement(question_data: dict) -> str:
     return (
         "Kiểm tra tính nhất quán của dữ liệu câu hỏi trắc nghiệm dưới đây. "
-        "Phát biểu cần đánh giá: Lời giải thích ủng hộ và chứng minh cho TẤT CẢ các lựa chọn được đánh dấu is_correct=true, "
-        "đồng thời phân biệt/chỉ rõ lý do không chọn các lựa chọn is_correct=false theo đúng yêu cầu của đề bài. "
+        "Phát biểu cần đánh giá: Lời giải thích ủng hộ và chứng minh cho các lựa chọn được đánh dấu is_correct=true "
+        "theo đúng yêu cầu của đề và không tự mâu thuẫn. Không bắt buộc phân tích mọi phương án nhiễu. "
         "DỮ LIỆU NGUYÊN VĂN: " + canonical(question_data)
     )
 
 # ===== HÀM ĐÁNH GIÁ CHÍNH (MAIN AUDIT PIPELINE) =====
+
+
+def max_tree_depth(node: BeliefNode) -> int:
+    return max((1 + max_tree_depth(child) for child in node.children), default=0)
+
+
+def true_false_expectation(content: str, options: List[OptionDto]) -> Optional[bool]:
+    labels = {"đúng": True, "true": True, "sai": False, "false": False}
+    values = [labels.get(unicodedata.normalize("NFC", opt.text).strip().casefold()) for opt in options]
+    marked = [label for label, opt in zip(values, options) if opt.is_correct]
+    if len(values) == 2 and set(values) == {True, False} and len(marked) == 1:
+        if "?" not in content and not re.match(r"^(chọn|hãy chọn|which|is|does)\b", content, re.IGNORECASE):
+            return marked[0]
+    return None
+
+
+def verified_claims(result: dict, field: str, source: str) -> List[str]:
+    if not result["coverage_complete"]:
+        raise EvaluationError("Phân tích chưa đầy đủ")
+    claims = []
+    for claim in result[field]:
+        statement = claim["statement"].strip()
+        quote = claim["source_quote"]
+        if not statement or not quote.strip() or quote not in source:
+            raise EvaluationError("Trích đoạn không khớp với dữ liệu gốc")
+        claims.append(statement)
+    return claims
+
+
 def evaluate_question(req: QuestionAuditRequest, backend: OpenAIBackend, cfg: Config) -> BtpropAuditResponse:
-    # 1. Chuẩn hóa & Validate câu hỏi (Hỗ trợ >= 2 options, >= 1 đáp án đúng)
     content = req.content.strip()
-    if not content:
-        raise ValueError("Nội dung câu hỏi không được rỗng")
-    if len(req.options) < 2:
-        raise ValueError("Câu hỏi phải có ít nhất 2 lựa chọn")
-    
-    correct_count = sum(1 for opt in req.options if opt.is_correct)
-    if correct_count < 1:
-        raise ValueError("Câu hỏi phải có ít nhất 1 phương án được đánh dấu đúng")
+    options = req.options
+    option_keys = {opt.key for opt in options}
+    if not content or len(options) < 2 or not any(opt.is_correct for opt in options):
+        raise ValueError("Cần nội dung câu hỏi, ít nhất hai lựa chọn và một đáp án đúng")
+    if len(option_keys) != len(options) or any(not key.strip() for key in option_keys):
+        raise ValueError("Khóa lựa chọn phải khác nhau và không được để trống")
 
     checks = []
     issues = []
     violations = []
+    depth = 0
+    incomplete = False
+    truth = true_false_expectation(content, options)
+    context = content if truth is None else None
 
-    # 2. Phân tích khách quan (Blind Analysis - Giấu nhãn đáp án và explanation)
-    blind_input = {
-        "content": content,
-        "options": [{"key": opt.key, "text": opt.text} for opt in req.options]
-    }
-    analysis = backend.json("analyze", blind_input)
-    by_key = {x["key"]: x["statement"] for x in analysis.get("options", [])}
+    def check(check_id, category, statement, expected, *, direct=False):
+        nonlocal depth, incomplete
+        try:
+            if direct:
+                probability = backend.confidence(statement)
+            else:
+                tree = build_tree(statement, backend, cfg, context=context)
+                probability = posterior_true(tree, cfg)
+                depth = max(depth, max_tree_depth(tree))
+            risk = 100 * (1 - probability if expected else probability)
+            checks.append({"id": check_id, "category": category, "statement": statement,
+                           "risk": risk, "posterior_true": probability})
+        except EvaluationError as exc:
+            incomplete = True
+            issues.append(f"{check_id}: {exc}")
 
-    # Thẩm định mơ hồ
-    raw_ambiguities = analysis.get("ambiguities", [])
-    if raw_ambiguities:
-        amb_review = backend.json("ambiguity", {"question": blind_input, "warnings": raw_ambiguities})
-        for rev in amb_review.get("reviews", []):
-            if rev.get("material"):
-                issues.append(f"Mơ hồ/thiếu ngữ cảnh: {rev.get('reason')}")
+    blind = {"content": content, "options": [{"key": opt.key, "text": opt.text} for opt in options]}
+    try:
+        analysis = backend.json("analyze", blind)
+        premises = verified_claims(analysis, "premises", content)
+        claims_by_key = {item["key"]: item["statement"].strip() for item in analysis["options"]}
+        if (len(analysis["options"]) != len(options) or set(claims_by_key) != option_keys
+                or not all(claims_by_key.values())):
+            raise EvaluationError("Phân tích thiếu hoặc trùng lựa chọn")
+        ambiguities = list(dict.fromkeys(analysis["ambiguities"]))
+        if ambiguities:
+            reviews = backend.json("ambiguity", {"question": blind, "warnings": ambiguities})["reviews"]
+            if len(reviews) != len(ambiguities) or {item["warning"] for item in reviews} != set(ambiguities):
+                raise EvaluationError("Thẩm định thiếu cảnh báo ngữ cảnh")
+            for item in reviews:
+                if not item["material"]:
+                    continue
+                a, b = set(item["suitable_keys_a"]), set(item["suitable_keys_b"])
+                if (not item["context_a"].strip() or not item["context_b"].strip()
+                        or item["context_a"].strip() == item["context_b"].strip()
+                        or a == b or (a | b) - option_keys):
+                    raise EvaluationError("Chưa xác minh được cảnh báo ngữ cảnh")
+                incomplete = True
+                violations.append(ViolationDto(type="AMBIGUITY", node_statement=content,
+                                                detail=item["reason"], severity="MEDIUM"))
+        for opt in options:
+            check(f"option:{opt.key}", "answer_assignment", claims_by_key[opt.key], opt.is_correct)
+        if truth is not None:
+            check("claim", "content", content, truth)
+        else:
+            for index, premise in enumerate(premises, 1):
+                check(f"premise:{index}", "content", premise, True)
+    except EvaluationError as exc:
+        incomplete = True
+        issues.append(f"Đề bài: {exc}")
+
+    explanation = (req.explanation or "").strip()
+    if not explanation:
+        incomplete = True
+        issues.append("Thiếu lời giải thích")
+    else:
+        try:
+            claims = verified_claims(backend.json("explanation", {"content": content, "explanation": explanation}),
+                                     "claims", explanation)
+            for index, claim in enumerate(claims, 1):
+                check(f"explanation:{index}", "explanation", claim, True)
+            check("explanation:consistency", "explanation", consistency_statement({
+                "content": content, "options": [opt.model_dump() for opt in options], "explanation": explanation,
+            }), True, direct=True)
+        except EvaluationError as exc:
+            incomplete = True
+            issues.append(f"Lời giải: {exc}")
+
+    scores = {row["id"][7:]: row["posterior_true"] for row in checks if row["category"] == "answer_assignment"}
+    suitable_keys = []
+    if len(scores) == len(options) and not incomplete:
+        suitable_keys = [opt.key for opt in options if scores[opt.key] >= 0.7]
+        missed = [opt.key for opt in options if not opt.is_correct and opt.key in suitable_keys]
+        wrong = [opt.key for opt in options if opt.is_correct and scores[opt.key] <= 0.3]
+        if missed:
+            violations.append(ViolationDto(type="MULTIPLE_ANSWERS", node_statement=content,
+                                            detail=f"Có thể thiếu đáp án đúng: {', '.join(missed)}", severity="HIGH"))
+        if wrong:
+            violations.append(ViolationDto(type="WRONG_ANSWER", node_statement=content,
+                                            detail=f"Có thể đánh dấu sai: {', '.join(wrong)}", severity="HIGH"))
+        if all(score <= 0.3 for score in scores.values()):
+            violations.append(ViolationDto(type="NO_ANSWER", node_statement=content,
+                                            detail="Mọi lựa chọn đều có độ tin cậy thấp", severity="HIGH"))
+
+    for row in checks:
+        if row["risk"] >= cfg.low_threshold:
+            issues.append(f"{row['id']}: rủi ro {row['risk']:.1f}/100 — {row['statement'][:100]}")
+            if row["category"] in ("content", "explanation") and row["risk"] >= cfg.high_threshold:
                 violations.append(ViolationDto(
-                    type="AMBIGUITY",
-                    node_statement="Đề bài thiếu điều kiện",
-                    detail=rev.get("reason", "Thiếu điều kiện làm đổi đáp án"),
-                    severity="MEDIUM"
+                    type="PREMISE_ERROR" if row["category"] == "content" else "EXPLANATION_ERROR",
+                    node_statement=row["statement"], detail=f"Rủi ro {row['risk']:.1f}/100", severity="HIGH",
                 ))
 
-    # 3. Tạo các bài kiểm tra cho từng Lựa chọn (Option Answer Assignment)
-    for opt in req.options:
-        stmt = by_key.get(opt.key, f"Lựa chọn {opt.key}: {opt.text} đáp ứng yêu cầu của câu hỏi.")
-        check_row = {
-            "id": f"option:{opt.key}",
-            "category": "answer_assignment",
-            "statement": stmt,
-            "expected_true": opt.is_correct,
-            "option_key": opt.key,
-            "posterior_true": None,
-            "risk": None,
-            "error": None
-        }
-        try:
-            tree = build_tree(stmt, backend, cfg, depth=0 if req.fast_mode else cfg.depth, context=content)
-            prob = posterior_true(tree, cfg)
-            risk = 100.0 * (1.0 - prob if opt.is_correct else prob)
-            check_row["posterior_true"] = prob
-            check_row["risk"] = risk
-        except Exception as e:
-            check_row["error"] = str(e)
-            issues.append(f"Lỗi kiểm tra option {opt.key}: {e}")
-        checks.append(check_row)
-
-    # 4. Kiểm tra Lời giải thích (Explanation)
-    explanation = (req.explanation or "").strip()
-    if explanation:
-        try:
-            expl_data = backend.json("explanation", {"content": content, "explanation": explanation})
-            for idx, claim in enumerate(expl_data.get("claims", []), 1):
-                c_stmt = claim.get("statement", "")
-                c_row = {
-                    "id": f"explanation:{idx}",
-                    "category": "explanation",
-                    "statement": c_stmt,
-                    "expected_true": True,
-                    "posterior_true": None,
-                    "risk": None,
-                    "error": None
-                }
-                try:
-                    c_tree = build_tree(c_stmt, backend, cfg, depth=0 if req.fast_mode else cfg.depth, context=content)
-                    c_prob = posterior_true(c_tree, cfg)
-                    c_row["posterior_true"] = c_prob
-                    c_row["risk"] = 100.0 * (1.0 - c_prob)
-                except Exception as e:
-                    c_row["error"] = str(e)
-                checks.append(c_row)
-
-            # Meta check tính nhất quán của lời giải
-            const_stmt = consistency_statement({"content": content, "options": [opt.model_dump() for opt in req.options], "explanation": explanation})
-            const_conf = backend.confidence(const_stmt)
-            checks.append({
-                "id": "explanation:consistency",
-                "category": "explanation",
-                "statement": const_stmt,
-                "expected_true": True,
-                "posterior_true": const_conf,
-                "risk": 100.0 * (1.0 - const_conf),
-                "error": None
-            })
-        except Exception as e:
-            issues.append(f"Lỗi phân tích lời giải: {e}")
+    risk_score = None if incomplete else aggregate_risk(checks, cfg)["risk"]
+    if risk_score is None:
+        risk_label = "chưa kiểm chứng xong"
+    elif risk_score < cfg.low_threshold:
+        risk_label = "thấp"
+    elif risk_score < cfg.high_threshold:
+        risk_label = "trung bình"
     else:
-        issues.append("Câu hỏi chưa có lời giải thích")
-
-    # 5. So sánh tập hợp để phát hiện Thừa / Thiếu / Sai đáp án đúng
-    option_checks = [c for c in checks if c["category"] == "answer_assignment" and c["posterior_true"] is not None]
-    expected_correct = {opt.key for opt in req.options if opt.is_correct}
-    suitable_keys = [c["option_key"] for c in option_checks if c["posterior_true"] >= 0.7]
-
-    extra_keys = set(suitable_keys) - expected_correct
-    if extra_keys:
-        msg = f"Nghi ngờ thiếu đáp án đúng: các lựa chọn {sorted(list(extra_keys))} cũng có khả năng đúng nhưng chưa được tích chọn."
-        issues.append(msg)
-        violations.append(ViolationDto(
-            type="MULTIPLE_ANSWERS",
-            node_statement="Thiếu sót đáp án đúng",
-            detail=msg,
-            severity="HIGH"
-        ))
-
-    wrong_marked = expected_correct - set(suitable_keys)
-    # Lọc ra những option có posterior thấp thực sự (< 0.4)
-    really_wrong = [k for k in wrong_marked if any(c["option_key"] == k and c["posterior_true"] <= 0.4 for c in option_checks)]
-    if really_wrong:
-        msg = f"Nghi ngờ đánh dấu sai: các lựa chọn {really_wrong} được đánh dấu đúng nhưng cây niềm tin đánh giá rủi ro sai cao."
-        issues.append(msg)
-        violations.append(ViolationDto(
-            type="WRONG_ANSWER",
-            node_statement="Đánh dấu đáp án sai",
-            detail=msg,
-            severity="HIGH"
-        ))
-
-    if not suitable_keys and option_checks:
-        msg = "Nghi ngờ không có lựa chọn nào đúng hoặc đề bài sai hoàn toàn."
-        issues.append(msg)
-        violations.append(ViolationDto(
-            type="NO_ANSWER",
-            node_statement="Không có đáp án phù hợp",
-            detail=msg,
-            severity="HIGH"
-        ))
-
-    # 6. Tính tổng hợp điểm rủi ro toàn câu
-    agg = aggregate_risk(checks, cfg)
-    risk_score = agg["risk"]
-    is_hallucinated = risk_score >= cfg.high_threshold
-    risk_label = "thấp" if risk_score < cfg.low_threshold else ("trung bình" if risk_score < cfg.high_threshold else "cao")
-
-    # Ghi nhận các checks có risk cao vào violations nếu chưa có
-    for c in checks:
-        if c.get("risk") and c["risk"] >= cfg.low_threshold:
-            issues.append(f"{c['id']}: rủi ro {c['risk']:.1f}/100 — {c['statement'][:100]}...")
-
-    confidence_score = max(0.0, min(1.0, (100.0 - risk_score) / 100.0))
-
+        risk_label = "cao"
     return BtpropAuditResponse(
-        is_hallucinated=is_hallucinated,
-        confidence_score=round(confidence_score, 3),
-        risk_score=round(risk_score, 1),
+        is_hallucinated=risk_score is not None and risk_score >= cfg.high_threshold,
+        confidence_score=None if risk_score is None else round(1 - risk_score / 100, 3),
+        risk_score=None if risk_score is None else round(risk_score, 1),
         risk_label=risk_label,
-        belief_tree_depth=0 if req.fast_mode else cfg.depth,
+        belief_tree_depth=depth,
         violations=violations,
         issues=issues,
         likely_suitable_options=suitable_keys,
-        status="complete",
-        mode=backend.mode
+        status="incomplete" if incomplete else "complete",
+        mode=backend.mode,
     )

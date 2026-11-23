@@ -10,8 +10,7 @@ public record BtpropSidecarRequest(
         String topic,
         String content,
         List<OptionDto> options,
-        String explanation,
-        boolean fastMode
+        String explanation
 ) {
     @Builder
     public record OptionDto(

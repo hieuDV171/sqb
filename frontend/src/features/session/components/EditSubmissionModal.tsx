@@ -6,6 +6,7 @@ import {mediaService} from '@/services/mediaService';
 import {toast} from '@/stores/useToastStore';
 import type {MySubmissionDetailResponse, QuestionUpdateDto, UpdateSubmissionSessionRequest,} from '@/features/session';
 import { QuestionDifficultySelect } from './QuestionDifficultySelect';
+import { QuestionTopicSelect } from './QuestionTopicSelect';
 
 interface EditSubmissionModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ function EditSubmissionForm({
   const [questions, setQuestions] = useState<QuestionUpdateDto[]>(() =>
     (detail.questions || []).map((q) => ({
       questionId: q.questionId,
+      topicId: q.topicId,
       content: q.content,
       mediaUrls: q.imageUrls || [],
       options: (q.options || []).map((opt) => ({
@@ -223,7 +225,7 @@ function EditSubmissionForm({
       await onSave(detail.sessionId, {
         title: title.trim(),
         content: content.trim() || undefined,
-        questions,
+        questions: questions.map((question) => ({ ...question, clearTopic: question.topicId === null })),
       });
       onClose();
     } catch {
@@ -372,6 +374,9 @@ function EditSubmissionForm({
                   </div>
 
                   <div className="max-w-xs">
+                    <QuestionTopicSelect subjectId={detail.subjectId} value={q.topicId}
+                      currentName={detail.questions.find((question) => question.questionId === q.questionId)?.topicName}
+                      disabled={isSaving} onChange={(value) => handleUpdateQuestion(qIdx, 'topicId', value)} />
                     <QuestionDifficultySelect label="Độ khó đề xuất" value={q.difficulty} disabled={isSaving}
                       onChange={(value) => handleUpdateQuestion(qIdx, 'difficulty', value)} />
                   </div>

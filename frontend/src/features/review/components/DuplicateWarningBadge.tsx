@@ -12,18 +12,17 @@ const tierLabels: Record<DuplicateDetectionTier, string> = {
 };
 
 export function DuplicateWarningBadge({ warnings }: { warnings: DuplicateWarning[] }) {
-  const highest = Math.max(...warnings.map((warning) => warning.similarityScore));
   return (
     <Dialog.Root>
       <Dialog.Trigger render={<Button variant="outline" className="min-h-11 border-warning/30 bg-warning-soft text-warning" />}>
-        <AlertTriangle aria-hidden="true" /> {warnings.length} đối sánh · {(highest * 100).toFixed(0)}%
+        <AlertTriangle aria-hidden="true" /> {warnings.length} đối sánh
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
         <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-xl -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <Dialog.Title className="text-lg font-semibold">Câu hỏi tương đồng</Dialog.Title>
+              <Dialog.Title className="text-lg font-semibold">Đối sánh câu hỏi</Dialog.Title>
               <Dialog.Description className="text-sm text-muted-foreground">Đối chiếu các kết quả bên dưới trước khi quyết định duyệt.</Dialog.Description>
             </div>
             <Dialog.Close render={<Button size="icon" variant="ghost" aria-label="Đóng cảnh báo" />}>
@@ -35,10 +34,14 @@ export function DuplicateWarningBadge({ warnings }: { warnings: DuplicateWarning
               <li key={`${warning.similarQuestionId}-${warning.tier}-${index}`} className="space-y-2 rounded-xl border border-border bg-surface-subtle p-3">
                 <div className="flex flex-wrap justify-between gap-2 text-sm font-semibold">
                   <span>{tierLabels[warning.tier] ?? 'Tương đồng'}</span>
-                  <span className="tabular-nums text-warning">{(warning.similarityScore * 100).toFixed(1)}%</span>
+                  <span className="tabular-nums text-warning">{warning.kind === 'EXACT' ? 'Trùng chính xác' : warning.kind === 'ANSWER_CONFLICT' ? 'Mâu thuẫn đáp án'
+                    : warning.hammingDistance != null ? `Cách ${warning.hammingDistance} bit`
+                      : warning.similarityScore != null ? `Điểm ${warning.similarityScore.toFixed(2)}` : null}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">Câu trong ngân hàng #{warning.similarQuestionId}</p>
-                {warning.matchedSnipet && <blockquote className="wrap-break-word border-s-2 border-border ps-3 text-sm">{warning.matchedSnipet}</blockquote>}
+                <p className="text-sm text-muted-foreground">{warning.scope === 'SAME_SESSION' ? 'Câu cùng phiên' : 'Câu trong ngân hàng'} #{warning.similarQuestionId}</p>
+                {(warning.matchedSnippet ?? warning.matchedSnipet) && <blockquote className="wrap-break-word border-s-2 border-border ps-3 text-sm">
+                  {warning.matchedSnippet ?? warning.matchedSnipet}
+                </blockquote>}
                 {warning.mediaUrl && <img src={warning.mediaUrl} alt="Ảnh đối sánh" loading="lazy" className="max-h-32 max-w-full rounded-lg object-contain" />}
               </li>
             ))}

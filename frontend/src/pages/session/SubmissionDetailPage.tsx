@@ -318,7 +318,7 @@ export function SubmissionDetailPage() {
                     </span>
                   )}
                   <span className="text-xs text-muted-foreground">
-                    Độ khó · {questionDifficultyLabels[q.difficulty ?? 'UNCLASSIFIED']}
+                    {q.topicName && <>{q.topicName} · </>}Độ khó · {questionDifficultyLabels[q.difficulty ?? 'UNCLASSIFIED']}
                   </span>
                 </div>
               </div>

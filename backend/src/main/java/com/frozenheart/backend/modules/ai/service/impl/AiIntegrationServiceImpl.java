@@ -23,6 +23,7 @@ import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
 import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLog;
 import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLogStatus;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning;
+import com.frozenheart.backend.modules.session.service.DuplicateCheckRequested;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.user.User;
@@ -227,7 +228,9 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
                 question.getSession().setReviewer(userRepository.getReferenceById(reviewer.getUserId()));
                 question.getSession().setReviewedAt(now);
             }
+            question.queueDuplicateCheck(true);
             Question saved = questionRepository.save(question);
+            eventPublisher.publishEvent(new DuplicateCheckRequested(saved.getSession().getId()));
             eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.QUESTION, saved.getId()));
         } else {
             editLog.setStatus(QuestionEditLogStatus.DISCARDED);
@@ -287,8 +290,8 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
                 duplicateInfo.append(
                         String.format("- Câu bị trùng %d: \"%s\" (Độ tương đồng: %.1f%%)\n",
                                 idx++,
-                                dw.matchedSnipet() != null ? dw.matchedSnipet() : "N/A",
-                                dw.similarityScore() * 100));
+                                dw.matchedSnippet() != null ? dw.matchedSnippet() : "N/A",
+                                dw.similarityScore() != null ? dw.similarityScore() * 100 : 0));
             }
             duplicateInfo.append(
                     "LƯU Ý QUAN TRỌNG: Hãy đổi góc độ tiếp cận, dùng tình huống/ngữ cảnh thực tế để câu mới ĐẢM BẢO KHÔNG TRÙNG với các câu bị trùng ở trên!\n");

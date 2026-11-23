@@ -38,6 +38,9 @@ public record UpdateSubmissionSessionRequest(
             @Schema(description = "ID câu hỏi (để null nếu là câu hỏi mới thêm vào phiên)", example = "105")
             Long questionId,
 
+            Long topicId,
+            Boolean clearTopic,
+
             @Schema(description = "Nội dung câu hỏi (hỗ trợ LaTeX/Markdown)", example = "Thuật toán định thời nào sau đây có thể dẫn đến hiện tượng đói CPU (starvation)?")
             String content,
 

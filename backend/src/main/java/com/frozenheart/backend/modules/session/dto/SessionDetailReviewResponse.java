@@ -15,6 +15,8 @@ import lombok.Builder;
 @Schema(description = "Thông tin chi tiết phiên đề xuất dành cho giảng viên duyệt")
 @Builder
 public record SessionDetailReviewResponse(
+        Long subjectId,
+        String qualityWarning,
         @Schema(description = "Trạng thái phiên. RESOLVED là phiên đã chốt và chỉ đọc", example = "REVIEWING")
         SessionStatus sessionStatus,
         @Schema(description = "Danh sách câu hỏi cần duyệt trong phiên")
@@ -27,6 +29,12 @@ public record SessionDetailReviewResponse(
         public record SessionQuestionReviewDto(
                 @Schema(description = "ID câu hỏi", example = "105")
                 Long questionId,
+
+                Long topicId,
+                String topicName,
+                String duplicateCheckStatus,
+                boolean canRetryDuplicateCheck,
+                String qualityWarning,
                 @Schema(description = "Nội dung câu hỏi (hỗ trợ LaTeX/Markdown)", example = "Thuật toán định thời nào sau đây có thể dẫn đến hiện tượng đói CPU (starvation)?")
                 String content,
                 @Schema(description = "Danh sách URL ảnh minh họa nội dung câu hỏi", example = "[\"https://sqb.s3.ap-southeast-1.amazonaws.com/questions/q1_chart.png\"]")

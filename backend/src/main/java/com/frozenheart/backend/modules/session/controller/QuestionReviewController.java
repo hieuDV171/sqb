@@ -38,6 +38,12 @@ public class QuestionReviewController {
 
     private final QuestionReviewService questionReviewService;
 
+    @PostMapping("/questions/{questionId}/retry-duplicate-check")
+    public ResponseEntity<GlobalResponse<Void>> retryDuplicateCheck(@PathVariable Long questionId) {
+        questionReviewService.retryDuplicateCheck(questionId);
+        return ResponseEntity.ok(GlobalResponse.success(null));
+    }
+
     @Operation(summary = "Lấy danh sách phiên có thể kiểm duyệt", description = "Lấy các phiên PENDING/REVIEWING thuộc đúng lớp học phần được phân công cho giảng viên hiện tại; Admin có thể xem toàn bộ. Hỗ trợ phân trang con trỏ và lọc theo lớp học phần.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách phiên có thể kiểm duyệt thành công")

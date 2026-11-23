@@ -1,16 +1,17 @@
-import os
+import hashlib
 import json
 import math
+import os
+import threading
 import time
 import uuid
-import hashlib
-import threading
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any, List
 
-from .config import Config, VERSION, PROMPT_VERSION
-from .schemas import OPENAI_SCHEMAS
+from .config import Config, VERSION
 from .prompts import build_system_base, build_tasks
+from .schemas import OPENAI_SCHEMAS
+
 
 class EvaluationError(Exception):
     pass
@@ -57,11 +58,6 @@ def confidence_from_payload(payload: dict) -> float:
         if token in masses and isinstance(lp, (int, float)) and math.isfinite(lp) and -999 < lp <= 0:
             masses[token].append(lp)
     if not all(masses.values()):
-        # Fallback an toàn nếu một nhánh logprob quá nhỏ
-        if masses["true"] and not masses["false"]:
-            return 0.999
-        if masses["false"] and not masses["true"]:
-            return 0.001
         raise EvaluationError("Không có đủ logprobs True và False")
     lt, lf = logsumexp(masses["true"]), logsumexp(masses["false"])
     return math.exp(lt - logsumexp([lt, lf]))
@@ -112,7 +108,7 @@ class OpenAIBackend:
             try:
                 with cache_path.open("r", encoding="utf-8") as f:
                     return json.load(f)
-            except Exception:
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
                 pass
 
         for attempt in range(self.cfg.max_attempts):

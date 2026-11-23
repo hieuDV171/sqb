@@ -121,7 +121,7 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
         @Query("SELECT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer LEFT JOIN FETCH s.reviewer WHERE s.id = :sessionId")
         Optional<Session> findByIdFetchCourseClassProposerAndReviewer(@Param("sessionId") Long sessionId);
 
-        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias WHERE s.id = :sessionId")
+        @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias LEFT JOIN FETCH q.topic WHERE s.id = :sessionId")
         Optional<Session> findByIdFetchCourseClassAndQuestions(@Param("sessionId") Long sessionId);
 
         @Query("SELECT DISTINCT s FROM Session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH s.proposer p WHERE s.status = com.frozenheart.backend.core.entity.session.SessionStatus.RESOLVED")
@@ -200,12 +200,23 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         @Param("cutoff") Instant cutoff,
                         Pageable pageable);
 
+        @Query("""
+                SELECT s.id FROM Session s
+                WHERE s.status = 'PENDING' AND s.createdAt < :cutoff
+                  AND (EXISTS (SELECT 1 FROM Question q WHERE q.session = s AND q.status = 'PENDING'
+                                  AND q.duplicateCheckStatus = 'COMPLETE')
+                     OR (EXISTS (SELECT 1 FROM Question q WHERE q.session = s)
+                         AND NOT EXISTS (SELECT 1 FROM Question q WHERE q.session = s AND q.status = 'PENDING')))
+                ORDER BY s.id
+                """)
+        List<Long> findReadyForAutoReview(@Param("cutoff") Instant cutoff, Pageable pageable);
+
         @Query("SELECT DISTINCT s FROM Session s " +
                         "LEFT JOIN FETCH s.proposer " +
                         "JOIN FETCH s.courseClass cc " +
                         "JOIN FETCH cc.subject " +
                         "JOIN FETCH cc.semester " +
-                        "LEFT JOIN FETCH s.questions " +
+                        "LEFT JOIN FETCH s.questions q LEFT JOIN FETCH q.ownedMedias LEFT JOIN FETCH q.topic " +
                         "WHERE s.id IN :ids")
         List<Session> findByIdInFetchAutomatedReviewDetails(@Param("ids") Collection<Long> ids);
 

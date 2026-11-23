@@ -1,3 +1,4 @@
+import { TopicCatalogDialog } from '@/features/session/components/TopicCatalogDialog';
 import { useState, type SubmitEvent } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
@@ -273,6 +274,7 @@ function SemesterSettings() {
 }
 
 function SubjectSettings() {
+  const [topicSubjectId, setTopicSubjectId] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -302,6 +304,7 @@ function SubjectSettings() {
 
   return (
     <section aria-labelledby="admin-subjects" className="space-y-4">
+      {topicSubjectId != null && <TopicCatalogDialog subjectId={topicSubjectId} onClose={() => setTopicSubjectId(null)} />}
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <h2 id="admin-subjects" className="text-lg font-bold">Quản lý môn học</h2>
         <p className="mt-1 text-sm text-muted-foreground">Thêm môn vào danh mục dùng chung của trường.</p>
@@ -351,7 +354,14 @@ function SubjectSettings() {
                       <th scope="row" className="px-4 py-3 align-top font-medium">
                         <span className="inline-block max-w-full wrap-anywhere rounded-md bg-academic-soft px-2 py-0.5 font-mono text-academic">{subject.code}</span>
                       </th>
-                      <td className="px-4 py-3 align-top font-medium wrap-anywhere">{subject.name}</td>
+                      <td className="px-4 py-3 align-top font-medium wrap-anywhere">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span>{subject.name}</span>
+                          <Button type="button" variant="outline" className="min-h-11"
+                            aria-label={`Quản lý chủ đề môn ${subject.name}`}
+                            onClick={() => setTopicSubjectId(subject.subjectId)}>Chủ đề</Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

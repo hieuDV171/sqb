@@ -49,6 +49,15 @@ export function useReviewMutations(sessionId: number) {
     onError: (error) => handleDecisionError(error, 'Không thể lưu câu hỏi. Hãy thử lại.'),
   });
 
+  const retryDuplicateCheck = useMutation({
+    mutationFn: reviewService.retryDuplicateCheck,
+    onSuccess: async () => {
+      await refreshReview();
+      toast.success('Đã yêu cầu dò trùng lại.');
+    },
+    onError: (error) => handleDecisionError(error, 'Không thể yêu cầu dò trùng lại.'),
+  });
+
   const complete = useMutation({
     mutationFn: () => reviewService.completeSessionReview(sessionId),
     onSuccess: async () => {
@@ -61,5 +70,5 @@ export function useReviewMutations(sessionId: number) {
     onError: () => toast.error('Không thể hoàn tất duyệt phiên. Hãy thử lại.'),
   });
 
-  return { approve, reject, edit, complete };
+  return { approve, reject, edit, complete, retryDuplicateCheck };
 }

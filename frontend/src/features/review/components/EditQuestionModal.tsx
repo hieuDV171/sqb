@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QuestionDifficultySelect } from '@/features/session/components/QuestionDifficultySelect';
+import { QuestionTopicSelect } from '@/features/session/components/QuestionTopicSelect';
 import type { QuestionOption } from '@/features/session/types/session.types';
 import type { EditQuestionRequest, SessionQuestionReviewDto } from '../types/review.types';
 
 interface EditQuestionModalProps {
   question: SessionQuestionReviewDto;
   questionNumber: number;
+  subjectId?: number;
   isSaving: boolean;
   onClose: () => void;
   onSave: (data: EditQuestionRequest) => Promise<void>;
@@ -19,9 +21,10 @@ interface EditQuestionModalProps {
 const letters = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 const textareaClass = 'w-full rounded-xl border border-input bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring';
 
-export function EditQuestionModal({ question, questionNumber, isSaving, onClose, onSave }: EditQuestionModalProps) {
+export function EditQuestionModal({ question, questionNumber, subjectId, isSaving, onClose, onSave }: EditQuestionModalProps) {
   const id = useId();
   const [content, setContent] = useState(question.content ?? '');
+  const [topicId, setTopicId] = useState(question.topicId);
   const [explanation, setExplanation] = useState(question.explanation ?? '');
   const [difficulty, setDifficulty] = useState(question.difficulty ?? 'UNCLASSIFIED');
   const [options, setOptions] = useState<QuestionOption[]>(() => question.options?.length
@@ -45,7 +48,7 @@ export function EditQuestionModal({ question, questionNumber, isSaving, onClose,
     }
     setError('');
     try {
-      await onSave({ content: content.trim(), explanation: explanation.trim(), options, difficulty, autoApprove });
+      await onSave({ content: content.trim(), explanation: explanation.trim(), options, difficulty, autoApprove, topicId, clearTopic: topicId === null });
     } catch {
       setError('Không thể lưu thay đổi. Bạn có thể thử lại.');
     }
@@ -73,6 +76,8 @@ export function EditQuestionModal({ question, questionNumber, isSaving, onClose,
                   onChange={(event) => setContent(event.target.value)} />
               </div>
               <div className="max-w-xs">
+                <QuestionTopicSelect subjectId={subjectId} value={topicId}
+                  currentName={question.topicName} disabled={isSaving} onChange={setTopicId} />
                 <QuestionDifficultySelect label="Độ khó" value={difficulty} disabled={isSaving} onChange={setDifficulty} />
               </div>
               <fieldset className="min-w-0 space-y-2">

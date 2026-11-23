@@ -1,6 +1,14 @@
 package com.frozenheart.backend.modules.ai.service.impl;
 
 import com.frozenheart.backend.core.config.AiSidecarConfig;
+import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
+import com.frozenheart.backend.modules.ai.dto.BtpropSidecarResponse;
+import com.frozenheart.backend.modules.ai.service.AiSidecarClientService;
+import com.frozenheart.backend.modules.ai.service.BtpropHallucinationCheckerService;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.ai.dto.BtpropSidecarRequest;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -36,12 +44,32 @@ class AiSidecarClientServiceImplTest {
                 .run(context -> verifyBtpropAudit(context.getBean(RestClient.class)));
     }
 
+    @Test
+    void incompleteAuditPreservesEvidenceAndRequiresManualReview() {
+        var sidecar = mock(AiSidecarClientService.class);
+        var warning = new BtpropSidecarResponse.ViolationDto(
+                "AMBIGUITY", "Điều kiện", "Thiếu điều kiện làm đổi đáp án", "MEDIUM");
+        when(sidecar.auditQuestion(any()))
+                .thenReturn(BtpropSidecarResponse.builder()
+                        .status("incomplete").beliefTreeDepth(1).issues(List.of("Kiểm tra chưa hoàn tất"))
+                        .violations(List.of(warning)).build());
+        var checker = new BtpropHallucinationCheckerService(sidecar);
+        var suggestion = AiRefineResponse.SuggestedQuestionDto.builder()
+                .content("Câu hỏi kiểm thử").build();
+
+        var audit = checker.audit(null, suggestion);
+
+        assertEquals(1, audit.beliefTreeDepth());
+        assertEquals(List.of("UNVERIFIED", "AMBIGUITY"), audit.violations().stream()
+                .map(AiRefineResponse.ViolationDto::type).toList());
+    }
+
     private void verifyBtpropAudit(RestClient restClient) {
         var builder = restClient.mutate();
         var server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://sidecar.test/api/v1/ai/btprop/audit"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(jsonPath("$.fast_mode").value(true))
+                .andExpect(jsonPath("$.fast_mode").doesNotExist())
                 .andExpect(jsonPath("$.options[0].is_correct").value(true))
                 .andExpect(jsonPath("$.options[1].is_correct").value(false))
                 .andExpect(jsonPath("$.options[0].media_id").value(19))
@@ -69,7 +97,6 @@ class AiSidecarClientServiceImplTest {
         var client = new AiSidecarClientServiceImpl(builder.build(), new MetricService(new SimpleMeterRegistry()));
         var request = BtpropSidecarRequest.builder()
                 .content("Câu hỏi kiểm thử")
-                .fastMode(true)
                 .options(List.of(
                         BtpropSidecarRequest.OptionDto.builder().key("A").text("Đúng").isCorrect(true).mediaId(19L).build(),
                         BtpropSidecarRequest.OptionDto.builder().key("B").text("Sai").isCorrect(false).build()))

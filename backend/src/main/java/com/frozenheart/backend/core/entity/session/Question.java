@@ -80,6 +80,21 @@ public class Question {
     @Column(columnDefinition = "JSONB")
     private List<DuplicateWarning> duplicateWarnings;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private DuplicateCheckStatus duplicateCheckStatus;
+
+    private Integer duplicateCheckAttempts;
+    private Instant duplicateCheckNextAttemptAt;
+
+    public void queueDuplicateCheck(boolean contentChanged) {
+        duplicateWarnings = null;
+        duplicateCheckStatus = DuplicateCheckStatus.PENDING;
+        duplicateCheckAttempts = null;
+        duplicateCheckNextAttemptAt = null;
+        if (contentChanged) textEmbedding = null;
+    }
+
     @Column(updatable = false)
     private Instant createdAt;
 

@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReviewDetail } from '@/features/review/hooks/useReviewDetail';
 import { useReviewMutations } from '@/features/review/hooks/useReviewMutations';
+import { TopicCatalogDialog } from '@/features/session/components/TopicCatalogDialog';
 import { ReviewQuestionCard } from '@/features/review/components/ReviewQuestionCard';
 import { EditQuestionModal } from '@/features/review/components/EditQuestionModal';
 import { AiRefinementDialog } from '@/features/review/components/AiRefinementDialog';
@@ -38,18 +39,21 @@ export function ReviewWorkspacePage() {
 function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pathname: string; search: string } }) {
   const navigate = useNavigate();
   const review = useReviewDetail(sessionId);
-  const { approve, reject, edit, complete } = useReviewMutations(sessionId);
+  const { approve, reject, edit, complete, retryDuplicateCheck } = useReviewMutations(sessionId);
   const [editing, setEditing] = useState<SessionQuestionReviewDto | null>(null);
   const [refining, setRefining] = useState<SessionQuestionReviewDto | null>(null);
   const [confirmation, setConfirmation] = useState<'approve' | 'complete' | null>(null);
 
+  const [managingTopics, setManagingTopics] = useState(false);
   const questions = review.data?.items ?? [];
   const warnings = review.data?.duplicateWarnings ?? [];
-  const warningsByIndex = new Map<number, DuplicateWarning[]>();
+  const warningsByQuestion = new Map<number, DuplicateWarning[]>();
   for (const warning of warnings) {
-    const group = warningsByIndex.get(warning.questionIndex);
+    const id = warning.questionId ?? (warning.questionIndex == null ? undefined : questions[warning.questionIndex]?.questionId);
+    if (id == null) continue;
+    const group = warningsByQuestion.get(id);
     if (group) group.push(warning);
-    else warningsByIndex.set(warning.questionIndex, [warning]);
+    else warningsByQuestion.set(id, [warning]);
   }
 
   const total = questions.length;
@@ -163,6 +167,12 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 </nav>
               </aside>
               <section aria-label="Câu hỏi đề xuất" className="min-w-0 space-y-4">
+                {review.data.subjectId && <Button type="button" variant="outline" onClick={() => setManagingTopics(true)}>
+                  Quản lý chủ đề
+                </Button>}
+                {review.data.qualityWarning && <p className="rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm">
+                  {review.data.qualityWarning}
+                </p>}
                 {warnings.length > 0 && (
                   <div className="flex gap-2 rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm">
                     <AlertTriangle aria-hidden="true" className="size-5 shrink-0 text-warning" />
@@ -171,7 +181,8 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 )}
                 {questions.map((question, index) => (
                   <ReviewQuestionCard key={question.questionId} question={question} questionNumber={index + 1}
-                    duplicateWarnings={warningsByIndex.get(index) ?? []}
+                    duplicateWarnings={warningsByQuestion.get(question.questionId) ?? []}
+                    onRetryDuplicates={() => retryDuplicateCheck.mutate(question.questionId)}
                     onApprove={(id) => approve.mutate({ questionIds: [id] })}
                     onReject={async (id, rejectionCode, reason) => {
                       await reject.mutateAsync({ questionIds: [id], rejectionCode, reason });
@@ -179,7 +190,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                     onEdit={setEditing}
                     onRefine={setRefining}
                     readOnly={!canReview}
-                    disabled={actionsDisabled}
+                    disabled={actionsDisabled || retryDuplicateCheck.isPending}
                   />
                 ))}
               </section>
@@ -187,7 +198,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
           )}
 
           {canReview && editing && (
-            <EditQuestionModal key={editing.questionId} question={editing}
+            <EditQuestionModal key={editing.questionId} question={editing} subjectId={review.data.subjectId}
               questionNumber={questions.findIndex((question) => question.questionId === editing.questionId) + 1}
               isSaving={edit.isPending} onClose={() => setEditing(null)}
               onSave={async (data) => {
@@ -195,6 +206,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 setEditing(null);
               }} />
           )}
+          {managingTopics && review.data.subjectId && <TopicCatalogDialog subjectId={review.data.subjectId} onClose={() => setManagingTopics(false)} />}
           {refining && <AiRefinementDialog question={refining} sessionId={sessionId} onClose={() => setRefining(null)} />}
           {canReview && confirmation && (
             <CompleteReviewDialog mode={confirmation} pendingCount={pendingIds.length}

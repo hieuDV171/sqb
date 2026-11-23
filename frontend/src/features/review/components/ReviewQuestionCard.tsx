@@ -14,6 +14,7 @@ interface ReviewQuestionCardProps {
   question: SessionQuestionReviewDto;
   questionNumber: number;
   duplicateWarnings: DuplicateWarning[];
+  onRetryDuplicates: () => void;
   onApprove: (questionId: number) => void;
   onReject: (questionId: number, code: RejectionReasonCode, reason?: string) => Promise<void>;
   onEdit: (question: SessionQuestionReviewDto) => void;
@@ -23,7 +24,7 @@ interface ReviewQuestionCardProps {
 }
 
 export function ReviewQuestionCard({
-  question, questionNumber, duplicateWarnings, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
+  question, questionNumber, duplicateWarnings, onRetryDuplicates, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
 }: ReviewQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const approved = question.status === 'APPROVED';
@@ -53,11 +54,25 @@ export function ReviewQuestionCard({
           </Badge>
         </div>
         {duplicateWarnings.length > 0 && <DuplicateWarningBadge warnings={duplicateWarnings} />}
+        {question.topicName && <span className="text-sm text-muted-foreground">{question.topicName}</span>}
       </header>
       <p className="text-sm text-muted-foreground">
         {question.status === 'PENDING' ? 'Độ khó đề xuất' : 'Độ khó'} ·{' '}
         <span className="font-semibold text-foreground">{questionDifficultyLabels[question.difficulty ?? 'UNCLASSIFIED']}</span>
       </p>
+      {question.qualityWarning && <p className="text-sm text-muted-foreground">{question.qualityWarning}</p>}
+      {question.status === 'PENDING' && question.duplicateCheckStatus !== 'COMPLETE' && (
+        <p className="text-sm text-muted-foreground">
+          {question.duplicateCheckStatus === 'RETRY' ? 'Dò trùng sẽ tự thử lại.'
+            : question.duplicateCheckStatus === 'NEEDS_REVIEW' ? 'Cần giảng viên xem lại kết quả dò trùng.'
+              : 'Đang chờ dò trùng.'}
+        </p>
+      )}
+      {!readOnly && question.canRetryDuplicateCheck && (
+        <Button type="button" variant="outline" className="min-h-11" disabled={disabled} onClick={onRetryDuplicates}>
+          Dò trùng lại
+        </Button>
+      )}
       <p className="wrap-break-word whitespace-pre-wrap leading-relaxed">{question.content}</p>
       {!!question.imageUrls?.length && (
         <div className="flex flex-wrap gap-2">

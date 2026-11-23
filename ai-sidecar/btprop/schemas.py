@@ -1,5 +1,7 @@
-from typing import List, Optional, Any
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
+
 
 # ===== REQUEST DTO =====
 class OptionDto(BaseModel):
@@ -15,7 +17,6 @@ class QuestionAuditRequest(BaseModel):
     content: str = Field(description="Nội dung câu hỏi")
     options: List[OptionDto] = Field(description="Danh sách các phương án trả lời")
     explanation: Optional[str] = Field(default="", description="Lời giải thích của câu hỏi")
-    fast_mode: Optional[bool] = Field(default=False, description="Chế độ nhanh depth=1 cho phản hồi tức thì")
 
 # ===== RESPONSE DTO =====
 class ViolationDto(BaseModel):
@@ -26,8 +27,8 @@ class ViolationDto(BaseModel):
 
 class BtpropAuditResponse(BaseModel):
     is_hallucinated: bool = Field(description="True nếu phát hiện rủi ro cao >= 70")
-    confidence_score: float = Field(description="Độ tin cậy tổng thể (0.0 - 1.0)")
-    risk_score: float = Field(description="Điểm rủi ro (0 - 100)")
+    confidence_score: Optional[float] = Field(description="Độ tin cậy tổng thể nếu kiểm chứng hoàn tất")
+    risk_score: Optional[float] = Field(description="Điểm rủi ro nếu kiểm chứng hoàn tất")
     risk_label: str = Field(description="'thấp', 'trung bình', 'cao', 'lỗi'")
     belief_tree_depth: int = Field(description="Độ sâu cây niềm tin đã duyệt")
     violations: List[ViolationDto] = Field(default_factory=list, description="Danh sách các vi phạm/nghi vấn")

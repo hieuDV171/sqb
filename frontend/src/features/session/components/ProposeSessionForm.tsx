@@ -24,6 +24,7 @@ import {toast} from '@/stores/useToastStore';
 import type {ProposeSessionRequest, ProposeSessionResponse, QuestionProposeDto,} from '@/features/session';
 import {useEnrolledCourseClasses, useSessionMutations} from '@/features/session';
 import { QuestionDifficultySelect } from './QuestionDifficultySelect';
+import { QuestionTopicSelect } from './QuestionTopicSelect';
 import { createDraftAutosave } from '../lib/draftAutosave';
 
 interface ProposeSessionFormProps {
@@ -372,6 +373,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
           mediaUrl: opt.mediaUrl?.trim() || undefined,
         })),
         explanation: q.explanation?.trim() || undefined,
+        topicId: q.topicId,
         difficulty: q.difficulty,
         llmGenerated: q.llmGenerated,
         confidence: q.confidence,
@@ -503,7 +505,14 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             <CustomSelect
               id="proposal-course-class"
               value={selectedCourseClassId?.toString() ?? ''}
-              onChange={(value) => setRequestedCourseClassId(value ? Number(value) : null)}
+              onChange={(value) => {
+                const nextId = value ? Number(value) : null;
+                const nextSubject = courseClasses.find((item) => item.courseClassId === nextId)?.subjectId;
+                if (nextSubject !== selectedCourseClass?.subjectId) {
+                  setQuestions((items) => items.map((item) => ({ ...item, topicId: null })));
+                }
+                setRequestedCourseClassId(nextId);
+              }}
               disabled={isLoadingCourseClasses || courseClassQuery.isError || !courseClasses.length}
               searchable={courseClasses.length > 5}
               placeholder={isLoadingCourseClasses
@@ -671,6 +680,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
               </div>
 
               <div className="max-w-xs">
+                <QuestionTopicSelect subjectId={selectedCourseClass?.subjectId} value={q.topicId}
+                  disabled={proposeMutation.isPending} onChange={(value) => handleUpdateQuestion(qIndex, 'topicId', value)} />
                 <QuestionDifficultySelect label="Độ khó đề xuất" value={q.difficulty} disabled={proposeMutation.isPending}
                   onChange={(value) => handleUpdateQuestion(qIndex, 'difficulty', value)} />
               </div>
