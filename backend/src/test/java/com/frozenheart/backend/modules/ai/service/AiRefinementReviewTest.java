@@ -12,6 +12,7 @@ import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.ai.client.LocalAiClient;
+import com.frozenheart.backend.modules.ai.controller.AiIntegrationController;
 import com.frozenheart.backend.modules.ai.dto.AiApplyRequest;
 import com.frozenheart.backend.modules.ai.dto.AiRefineRequest;
 import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
@@ -23,10 +24,12 @@ import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -71,10 +75,13 @@ class AiRefinementReviewTest {
         when(questions.findByIdFetchSessionAndCourseClass(7L)).thenReturn(Optional.of(question()));
         when(ai.generateRequiredCompletion(anyString(), anyString()))
                 .thenThrow(new AppException(ResponseCode.AI_SERVICE_UNAVAILABLE));
+        var controller = new AiIntegrationController(service, JsonMapper.builder().build());
+        var response = new MockHttpServletResponse();
 
         assertThatExceptionOfType(AppException.class)
-                .isThrownBy(() -> service.refineQuestion(7L, new AiRefineRequest("Làm rõ câu hỏi", null, null), EditActorType.LECTURER))
+                .isThrownBy(() -> controller.streamRefinement(7L, new AiRefineRequest("Làm rõ câu hỏi", null, null), response))
                 .satisfies(error -> assertThat(error.getResponseCode()).isEqualTo(ResponseCode.AI_SERVICE_UNAVAILABLE));
+        assertThat(response.isCommitted()).isFalse();
         verifyNoInteractions(checker, logs);
     }
 
@@ -92,7 +99,7 @@ class AiRefinementReviewTest {
     }
 
     @Test
-    void followUpIncludesPreviousDraftAndStillAuditsTheNewProposal() {
+    void followUpStreamsProposalBeforeAuditingAndSaving() {
         authenticate(1L);
         var question = question();
         when(questions.findByIdFetchSessionAndCourseClass(7L)).thenReturn(Optional.of(question));
@@ -108,14 +115,23 @@ class AiRefinementReviewTest {
                                 {"content":"Bản mới","options":[{"key":"A","text":"Đúng","is_correct":true},
                                 {"key":"B","text":"Sai","is_correct":false}]}
                                 """).build());
-        when(checker.audit(any(), any())).thenReturn(AiRefineResponse.BtpropAuditDto.builder().build());
+        var response = new MockHttpServletResponse();
+        when(checker.audit(any(), any())).thenAnswer(invocation -> {
+            assertThat(response.isCommitted()).isTrue();
+            assertThat(new String(response.getContentAsByteArray(), StandardCharsets.UTF_8))
+                    .contains("\"type\":\"proposal\"", "Bản mới", "\"model\":\"test\"")
+                    .doesNotContain("\"type\":\"complete\"", "\"editLogId\"");
+            return AiRefineResponse.BtpropAuditDto.builder().confidenceScore(0.9).build();
+        });
         when(logs.save(any())).thenReturn(QuestionEditLog.builder().id(6L).build());
 
-        var response = service.refineQuestion(7L, new AiRefineRequest("Rút ngắn lời giải", null, 5L), EditActorType.LECTURER);
+        var controller = new AiIntegrationController(service, JsonMapper.builder().build());
+        controller.streamRefinement(7L, new AiRefineRequest("Rút ngắn lời giải", null, 5L), response);
 
-        assertThat(response.editLogId()).isEqualTo(6L);
-        assertThat(response.suggestedQuestion().content()).isEqualTo("Bản mới");
-        verify(checker).audit(question, response.suggestedQuestion());
+        assertThat(response.getContentType()).startsWith("text/event-stream");
+        assertThat(new String(response.getContentAsByteArray(), StandardCharsets.UTF_8))
+                .contains("\"type\":\"complete\"", "\"editLogId\":6", "\"confidenceScore\":0.9");
+        verify(checker).audit(eq(question), argThat(suggestion -> "Bản mới".equals(suggestion.content())));
     }
 
     @Test

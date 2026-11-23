@@ -6,13 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/stores/useToastStore';
 import { reviewService } from '../services/reviewService';
-import type { AiRefinement, SessionQuestionReviewDto } from '../types/review.types';
+import type { AiRefinement, AiRefinementPreview, SessionQuestionReviewDto } from '../types/review.types';
 
 const starterPrompts = ['Viết lại câu hỏi cho rõ hơn', 'Cải thiện phương án nhiễu', 'Giải thích đáp án đúng'];
 
 type Draft = AiRefinement['suggestedQuestion'];
 type RefineRequest = { prompt: string; previousEditLogId?: number };
-type Turn = RefineRequest & { id: number; result?: AiRefinement; error?: string; discarded?: boolean };
+type Turn = RefineRequest & {
+  id: number;
+  preview?: AiRefinementPreview;
+  result?: AiRefinement;
+  error?: string;
+  discarded?: boolean;
+};
 type Decision = { editLogId: number; approve: boolean; acknowledged: boolean };
 
 function isValidDraft(draft: Draft) {
@@ -65,6 +71,18 @@ function QuestionPreview({ content, options, explanation, imageUrls }: Draft & {
   );
 }
 
+function ProposalCard({ suggestion, model }: { suggestion: Draft; model?: string }) {
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-card p-3 sm:p-4">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 className="text-sm font-semibold">Bản đề xuất</h3>
+        {model && <span className="min-w-0 wrap-break-word text-xs text-muted-foreground">Mô hình · {model}</span>}
+      </div>
+      <QuestionPreview {...suggestion} />
+    </div>
+  );
+}
+
 function Proposal({ result, discarded, busy, saving, onDecision }: {
   result: AiRefinement;
   discarded?: boolean;
@@ -84,10 +102,7 @@ function Proposal({ result, discarded, busy, saving, onDecision }: {
     <div className="space-y-3">
       {valid ? (
         <>
-          <div className="space-y-2 rounded-xl border border-border bg-card p-3 sm:p-4">
-            <h3 className="text-sm font-semibold">Bản đề xuất</h3>
-            <QuestionPreview {...suggestion} />
-          </div>
+          <ProposalCard suggestion={suggestion} model={result.aiMetadata?.model} />
           {!discarded && (
             <div className="space-y-2 text-sm">
               <p className={needsAcknowledgement ? 'font-medium text-warning' : 'text-muted-foreground'}>
@@ -135,8 +150,8 @@ function Proposal({ result, discarded, busy, saving, onDecision }: {
   );
 }
 
-export function AiRefinementDialog({ question, sessionId, onClose }: {
-  question: SessionQuestionReviewDto; sessionId: number; onClose: () => void;
+export function AiRefinementDialog({ question, sessionId, open, onClose }: {
+  question: SessionQuestionReviewDto; sessionId: number; open: boolean; onClose: () => void;
 }) {
   const client = useQueryClient();
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -151,13 +166,12 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
   const lastTurn = turns.at(-1);
 
   const refine = useMutation({
-    mutationFn: async ({ prompt, previousEditLogId }: Turn) => {
-      const response = await reviewService.refineQuestion(question.questionId, prompt, previousEditLogId);
-      if (!response.data) throw new Error('Không nhận được bản đề xuất. Hãy thử lại.');
-      return response.data;
-    },
+    mutationFn: ({ id, prompt, previousEditLogId }: Turn) =>
+      reviewService.refineQuestion(question.questionId, prompt, previousEditLogId, (preview) => {
+        setTurns((items) => items.map((turn) => turn.id === id ? { ...turn, preview } : turn));
+      }),
     onSuccess: (result, { id }) => {
-      setTurns((items) => items.map((turn) => turn.id === id ? { ...turn, result } : turn));
+      setTurns((items) => items.map((turn) => turn.id === id ? { ...turn, result, preview: undefined } : turn));
       if (isValidDraft(result.suggestedQuestion)) setUseOriginal(false);
     },
     onError: (error, { id }) => {
@@ -171,6 +185,9 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
     onSuccess: async (_, { approve, editLogId }) => {
       await client.invalidateQueries({ queryKey: ['reviewSessionDetail', sessionId] });
       if (approve) {
+        setTurns([]);
+        setPrompt('');
+        setUseOriginal(false);
         toast.success('Đã áp dụng bản AI.');
         onClose();
         return;
@@ -180,12 +197,13 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
   });
 
   const busy = refine.isPending || apply.isPending;
+  const auditing = refine.isPending && Boolean(lastTurn?.preview);
 
   useEffect(() => {
-    if (!lastTurn || !history.current || !latestReply.current) return;
+    if (!open || !lastTurn || !history.current || !latestReply.current) return;
     const viewport = history.current;
     viewport.scrollTop += latestReply.current.getBoundingClientRect().top - viewport.getBoundingClientRect().top - 16;
-  }, [lastTurn]);
+  }, [open, lastTurn]);
 
   function send(request: RefineRequest) {
     if (!request.prompt || busy) return;
@@ -202,10 +220,10 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
   }
 
   return (
-    <Dialog.Root open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
+    <Dialog.Root open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !apply.isPending) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
-        <Dialog.Popup initialFocus={composer}
+        <Dialog.Popup initialFocus={busy ? undefined : composer}
           className="fixed inset-x-2 top-1/2 z-50 mx-auto flex h-[min(42rem,calc(100dvh-1rem))] max-w-2xl -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card sm:inset-x-4 sm:h-[min(42rem,calc(100dvh-2rem))]">
           <header className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-academic-soft text-academic">
@@ -215,7 +233,7 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
               <Dialog.Title className="font-bold leading-tight">AI tinh chỉnh câu hỏi</Dialog.Title>
               <Dialog.Description className="mt-0.5 text-xs text-muted-foreground">Câu hỏi #{question.questionId}</Dialog.Description>
             </div>
-            <Dialog.Close render={<Button size="icon" variant="ghost" aria-label="Đóng cuộc hội thoại" disabled={busy} />}>
+            <Dialog.Close render={<Button size="icon" variant="ghost" aria-label="Đóng cuộc hội thoại" disabled={apply.isPending} />}>
               <X aria-hidden="true" />
             </Dialog.Close>
           </header>
@@ -258,6 +276,7 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
                   </div>
                   <div ref={turn === lastTurn ? latestReply : undefined} className="space-y-2">
                     <p className="text-xs font-semibold text-academic">Trợ lý SQB</p>
+                    {turn.preview && <ProposalCard suggestion={turn.preview.suggestedQuestion} model={turn.preview.model} />}
                     {turn.result ? (
                       <Proposal result={turn.result} discarded={turn.discarded} busy={busy}
                         saving={apply.isPending && apply.variables?.editLogId === turn.result.editLogId && apply.variables.approve}
@@ -278,7 +297,7 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
                     ) : (
                       <p className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span aria-hidden="true" className="size-2 rounded-full bg-primary motion-safe:animate-pulse" />
-                        Đang tạo đề xuất và kiểm chứng…
+                        {turn.preview ? 'Đang kiểm chứng bằng BTProp…' : 'Đang tạo đề xuất…'}
                       </p>
                     )}
                     {apply.error && apply.variables?.editLogId === turn.result?.editLogId && (
@@ -291,8 +310,9 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
           </div>
 
           <div role="status" className="sr-only">
-            {refine.isPending ? 'Đang tạo đề xuất và kiểm chứng…'
-              : lastTurn?.result && isValidDraft(lastTurn.result.suggestedQuestion) ? 'Đã có bản đề xuất mới.' : ''}
+            {auditing ? 'Đã có bản đề xuất. Đang kiểm chứng bằng BTProp.'
+              : refine.isPending ? 'Đang tạo đề xuất.'
+              : lastTurn?.result && isValidDraft(lastTurn.result.suggestedQuestion) ? 'Đã nhận được kết quả kiểm chứng.' : ''}
           </div>
           <form onSubmit={submit} className="shrink-0 space-y-2 border-t border-border px-4 py-3 sm:px-5">
             {previousDraft && (
@@ -307,7 +327,8 @@ export function AiRefinementDialog({ question, sessionId, onClose }: {
             )}
             <div className="flex items-end gap-2 rounded-xl border border-input bg-background p-1.5 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
               <Textarea ref={composer} aria-label="Yêu cầu tinh chỉnh" rows={2} value={prompt} maxLength={1000} enterKeyHint="send"
-                readOnly={busy} placeholder={previousEditLogId ? 'Bạn muốn chỉnh thêm gì?' : 'Nhập yêu cầu tinh chỉnh…'}
+                disabled={busy}
+                placeholder={auditing ? 'Chờ BTProp kiểm chứng…' : previousEditLogId ? 'Bạn muốn chỉnh thêm gì?' : 'Nhập yêu cầu tinh chỉnh…'}
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {

@@ -81,12 +81,23 @@ export interface QuestionEditLogDto {
 export interface AiRefinement {
   editLogId: number;
   suggestedQuestion: { content?: string; options?: QuestionOption[]; explanation?: string; refusalReason?: string };
+  aiMetadata?: { model?: string };
   hallucinationAudit?: {
     isHallucinated: boolean;
     confidenceScore: number;
     violations: { type: string; nodeStatement: string; detail: string; severity: string }[];
   };
 }
+
+export interface AiRefinementPreview {
+  suggestedQuestion: AiRefinement['suggestedQuestion'];
+  model?: string;
+}
+
+export type AiRefinementEvent =
+  | { type: 'proposal'; data: AiRefinementPreview }
+  | { type: 'complete'; data: AiRefinement }
+  | { type: 'error'; data: { message: string } };
 
 export interface SessionQuestionReviewDto {
   topicId?: number | null;

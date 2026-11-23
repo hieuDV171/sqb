@@ -20,6 +20,8 @@ public record AiRefineResponse(
         @Schema(description = "Thông số xử lý của mô hình AI")
         AiMetadataDto aiMetadata
 ) {
+    public record Preview(SuggestedQuestionDto suggestedQuestion, String model) {}
+
     @Schema(description = "Chi tiết câu hỏi do AI đề xuất")
     @Builder
     public record SuggestedQuestionDto(

@@ -1,5 +1,12 @@
 package com.frozenheart.backend.modules.ai.controller;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -8,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.core.entity.questioneditlog.EditActorType;
+import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.ai.dto.AiApplyRequest;
 import com.frozenheart.backend.modules.ai.dto.AiApplyResponse;
 import com.frozenheart.backend.modules.ai.dto.AiRefineRequest;
@@ -20,14 +28,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.json.JsonMapper;
 
+@Slf4j
 @Tag(name = "24. Tích hợp Trí tuệ Nhân tạo (AI Integration)", description = "API tinh chỉnh câu hỏi thi và phát hiện ảo giác (Btprop)")
 @RestController
 @RequiredArgsConstructor
 public class AiIntegrationController {
 
     private final AiIntegrationService aiIntegrationService;
+    private final JsonMapper jsonMapper;
 
     @Operation(summary = "AI tinh chỉnh câu hỏi trắc nghiệm", description = "Sử dụng LLM để hoàn thiện nội dung câu hỏi, điều chỉnh phương án nhiễu, viết giải thích chi tiết và tự động chạy quy trình kiểm định ảo giác Btprop.")
     @ApiResponses(value = {
@@ -43,6 +56,44 @@ public class AiIntegrationController {
             @Valid @RequestBody AiRefineRequest request) {
         AiRefineResponse response = aiIntegrationService.refineQuestion(questionId, request, EditActorType.LECTURER);
         return ResponseEntity.ok(GlobalResponse.success("AI tinh chỉnh câu hỏi thành công", response));
+    }
+
+    @Operation(summary = "Nhận bản AI trước khi BTProp kiểm chứng xong")
+    @PostMapping("/questions/{questionId}/ai-refine/stream")
+    public void streamRefinement(@PathVariable Long questionId, @Valid @RequestBody AiRefineRequest request,
+            HttpServletResponse response) {
+        try {
+            var result = aiIntegrationService.refineQuestion(questionId, request, EditActorType.LECTURER,
+                    preview -> sendRefinementEvent(response, "proposal", preview));
+            sendRefinementEvent(response, "complete", result);
+        } catch (UncheckedIOException e) {
+            log.debug("AI refinement stream closed for question {}", questionId, e);
+        } catch (RuntimeException e) {
+            if (!response.isCommitted()) throw e;
+            String message = e instanceof AppException appException ? appException.getMessage()
+                    : "Không hoàn tất được lượt tinh chỉnh. Hãy gửi lại yêu cầu.";
+            log.warn("AI refinement did not complete for question {}", questionId, e);
+            try {
+                sendRefinementEvent(response, "error", Map.of("message", message));
+            } catch (UncheckedIOException disconnected) {
+                log.debug("AI refinement stream closed for question {}", questionId, disconnected);
+            }
+        }
+    }
+
+    private void sendRefinementEvent(HttpServletResponse response, String type, Object data) {
+        String event = "data: " + jsonMapper.writeValueAsString(Map.of("type", type, "data", data)) + "\n\n";
+        if (!response.isCommitted()) {
+            response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store, no-transform");
+        }
+        try {
+            response.getOutputStream().write(event.getBytes(StandardCharsets.UTF_8));
+            response.flushBuffer();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Operation(summary = "Phê duyệt hoặc loại bỏ kết quả chỉnh sửa của AI", description = "Giảng viên/Người kiểm duyệt chấp thuận để ghi đè nội dung do AI đề xuất vào câu hỏi gốc hoặc từ chối.")

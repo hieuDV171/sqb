@@ -41,7 +41,8 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
   const review = useReviewDetail(sessionId);
   const { approve, reject, edit, complete, retryDuplicateCheck } = useReviewMutations(sessionId);
   const [editing, setEditing] = useState<SessionQuestionReviewDto | null>(null);
-  const [refining, setRefining] = useState<SessionQuestionReviewDto | null>(null);
+  const [refiningId, setRefiningId] = useState<number | null>(null);
+  const [openedRefinements, setOpenedRefinements] = useState<Set<number>>(() => new Set());
   const [confirmation, setConfirmation] = useState<'approve' | 'complete' | null>(null);
 
   const [managingTopics, setManagingTopics] = useState(false);
@@ -188,7 +189,10 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                       await reject.mutateAsync({ questionIds: [id], rejectionCode, reason });
                     }}
                     onEdit={setEditing}
-                    onRefine={setRefining}
+                    onRefine={({ questionId }) => {
+                      setOpenedRefinements((ids) => ids.has(questionId) ? ids : new Set(ids).add(questionId));
+                      setRefiningId(questionId);
+                    }}
                     readOnly={!canReview}
                     disabled={actionsDisabled || retryDuplicateCheck.isPending}
                   />
@@ -207,7 +211,11 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
               }} />
           )}
           {managingTopics && review.data.subjectId && <TopicCatalogDialog subjectId={review.data.subjectId} onClose={() => setManagingTopics(false)} />}
-          {refining && <AiRefinementDialog question={refining} sessionId={sessionId} onClose={() => setRefining(null)} />}
+          {questions.filter(({ questionId }) => openedRefinements.has(questionId)).map((question) => (
+            <AiRefinementDialog key={question.questionId} question={question} sessionId={sessionId}
+              open={canReview && refiningId === question.questionId}
+              onClose={() => setRefiningId((current) => current === question.questionId ? null : current)} />
+          ))}
           {canReview && confirmation && (
             <CompleteReviewDialog mode={confirmation} pendingCount={pendingIds.length}
               isRefreshing={review.isFetching || review.isRefetchError}

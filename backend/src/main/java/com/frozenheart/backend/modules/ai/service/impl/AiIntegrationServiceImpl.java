@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -92,6 +93,13 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
     @Override
     @Transactional
     public AiRefineResponse refineQuestion(Long questionId, AiRefineRequest request, EditActorType actorType) {
+        return refineQuestion(questionId, request, actorType, preview -> {});
+    }
+
+    @Override
+    @Transactional
+    public AiRefineResponse refineQuestion(Long questionId, AiRefineRequest request, EditActorType actorType,
+            Consumer<AiRefineResponse.Preview> onGenerated) {
         PromptSanitizerUtil.validatePrompt(request.prompt());
 
         JwtPayload reviewer = EditActorType.SYSTEM.equals(actorType) ? null : JwtPayload.getCurrentUserPayload();
@@ -113,6 +121,12 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
 
         AiRefineResponse.SuggestedQuestionDto suggested = parseJsonTag(rawAiResponse);
         if (suggested.options() != null) preserveOptionMedia(question, suggested.options());
+        if (suggested.content() != null && !suggested.content().isBlank()
+                && (suggested.refusalReason() == null || suggested.refusalReason().isBlank())
+                && suggested.options() != null && suggested.options().size() >= 2
+                && suggested.options().stream().anyMatch(option -> Boolean.TRUE.equals(option.getIsCorrect()))) {
+            onGenerated.accept(new AiRefineResponse.Preview(suggested, aiResponse.model()));
+        }
 
         AiRefineResponse.BtpropAuditDto hallucinationAudit = btpropHallucinationCheckerService.audit(question,
                 suggested);
