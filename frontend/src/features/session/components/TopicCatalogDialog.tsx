@@ -7,7 +7,13 @@ import { Label } from '@/components/ui/label';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { saveTopic, topicCatalog, type Topic } from '../services/topicService';
 
-export function TopicCatalogDialog({ subjectId, onClose }: { subjectId: number; onClose: () => void }) {
+interface TopicCatalogDialogProps {
+  subjectId: number;
+  subjectName?: string;
+  onClose: () => void;
+}
+
+export function TopicCatalogDialog({ subjectId, subjectName, onClose }: TopicCatalogDialogProps) {
   const id = useId();
   const client = useQueryClient();
   const catalog = useQuery(topicCatalog(subjectId, true));
@@ -33,7 +39,10 @@ export function TopicCatalogDialog({ subjectId, onClose }: { subjectId: number; 
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
         <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-lg -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-xl">
-          <Dialog.Title className="text-lg font-semibold">Chủ đề môn học</Dialog.Title>
+          <div className="space-y-1">
+            <Dialog.Title className="text-lg font-semibold">Chủ đề môn học</Dialog.Title>
+            {subjectName && <p className="wrap-anywhere text-sm font-medium">{subjectName}</p>}
+          </div>
           <Dialog.Description className="text-sm text-muted-foreground">
             Chủ đề ngừng sử dụng vẫn hiển thị trên các câu hỏi đã gắn.
           </Dialog.Description>

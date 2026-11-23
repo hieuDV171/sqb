@@ -1,6 +1,5 @@
-import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Label } from '@/components/ui/label';
+import { FilterSelect } from '@/components/ui/filter-select';
 import { topicCatalog } from '../services/topicService';
 
 interface QuestionTopicSelectProps {
@@ -12,21 +11,22 @@ interface QuestionTopicSelectProps {
 }
 
 export function QuestionTopicSelect({ subjectId, value, currentName, disabled, onChange }: QuestionTopicSelectProps) {
-  const id = useId();
   const catalog = useQuery(topicCatalog(subjectId ?? 0));
-  const options = catalog.data ?? [];
+  const topics = catalog.data ?? [];
+  const options = [{
+    value: '',
+    label: subjectId && catalog.isLoading ? 'Đang tải chủ đề…' : 'Chưa có chủ đề phù hợp',
+  }];
+  if (value != null && !topics.some((topic) => topic.id === value)) {
+    options.push({ value: String(value), label: currentName ?? 'Chủ đề đã chọn' });
+  }
+  options.push(...topics.map((topic) => ({ value: String(topic.id), label: topic.name })));
+
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>Chủ đề</Label>
-      <select id={id} value={value ?? ''} disabled={disabled || !subjectId || catalog.isPending || catalog.isError}
-        onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
-        className="min-h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60">
-        <option value="">{subjectId && catalog.isLoading ? 'Đang tải chủ đề…' : 'Chưa có chủ đề phù hợp'}</option>
-        {value != null && !options.some((topic) => topic.id === value) && (
-          <option value={value}>{currentName ?? 'Chủ đề đã chọn'}</option>
-        )}
-        {options.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
-      </select>
+      <FilterSelect label="Chủ đề" value={value == null ? '' : String(value)} options={options}
+        disabled={disabled || !subjectId || catalog.isPending || catalog.isError}
+        onChange={(next) => onChange(next === '' ? null : Number(next))} />
       {catalog.isError && <p role="status" className="text-sm text-muted-foreground">
         Không tải được chủ đề.{' '}
         <button type="button" className="font-medium underline" onClick={() => void catalog.refetch()}>Thử lại</button>

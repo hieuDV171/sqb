@@ -679,7 +679,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                 />
               </div>
 
-              <div className="max-w-xs">
+              <div className="max-w-xs space-y-3">
                 <QuestionTopicSelect subjectId={selectedCourseClass?.subjectId} value={q.topicId}
                   disabled={proposeMutation.isPending} onChange={(value) => handleUpdateQuestion(qIndex, 'topicId', value)} />
                 <QuestionDifficultySelect label="Độ khó đề xuất" value={q.difficulty} disabled={proposeMutation.isPending}

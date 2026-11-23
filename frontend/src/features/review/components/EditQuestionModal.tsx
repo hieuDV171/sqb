@@ -75,7 +75,7 @@ export function EditQuestionModal({ question, questionNumber, subjectId, isSavin
                 <textarea id={`${id}-content`} rows={3} required value={content} className={textareaClass}
                   onChange={(event) => setContent(event.target.value)} />
               </div>
-              <div className="max-w-xs">
+              <div className="max-w-xs space-y-3">
                 <QuestionTopicSelect subjectId={subjectId} value={topicId}
                   currentName={question.topicName} disabled={isSaving} onChange={setTopicId} />
                 <QuestionDifficultySelect label="Độ khó" value={difficulty} disabled={isSaving} onChange={setDifficulty} />

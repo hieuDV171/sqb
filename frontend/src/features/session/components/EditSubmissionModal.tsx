@@ -373,7 +373,7 @@ function EditSubmissionForm({
                     />
                   </div>
 
-                  <div className="max-w-xs">
+                  <div className="max-w-xs space-y-3">
                     <QuestionTopicSelect subjectId={detail.subjectId} value={q.topicId}
                       currentName={detail.questions.find((question) => question.questionId === q.questionId)?.topicName}
                       disabled={isSaving} onChange={(value) => handleUpdateQuestion(qIdx, 'topicId', value)} />

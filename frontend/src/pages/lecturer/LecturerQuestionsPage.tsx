@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ArrowRight, ClipboardCheck, FileText, Layers, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -6,9 +7,22 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LecturerQuestionsExportCard, useLecturerClasses } from '@/features/exam';
+import { TopicCatalogDialog } from '@/features/session/components/TopicCatalogDialog';
+
+interface AssignedSubject {
+  id: number;
+  code: string;
+  name: string;
+}
 
 export function LecturerQuestionsPage() {
   const classes = useLecturerClasses({ includeHistory: true });
+  const [managingSubjectId, setManagingSubjectId] = useState<number>();
+  const subjects = new Map<number, AssignedSubject>();
+  for (const { subjectId, subjectCode, subjectName } of classes.data ?? []) {
+    subjects.set(subjectId, { id: subjectId, code: subjectCode, name: subjectName });
+  }
+  const managingSubject = managingSubjectId === undefined ? undefined : subjects.get(managingSubjectId);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-8">
@@ -18,7 +32,7 @@ export function LecturerQuestionsPage() {
             <Layers aria-hidden="true" className="size-4" /> Không gian giảng viên
           </p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ngân hàng câu hỏi môn học</h1>
-          <p className="text-sm text-muted-foreground">Xuất tài liệu ôn tập theo môn và xem các lớp học phần phụ trách.</p>
+          <p className="text-sm text-muted-foreground">Quản lý chủ đề, xuất tài liệu ôn tập và xem các lớp học phần phụ trách.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button nativeButton={false} variant="outline" render={<Link to="/lecturer/pending-reviews" />}>
@@ -29,6 +43,46 @@ export function LecturerQuestionsPage() {
           </Button>
         </div>
       </header>
+
+      <section aria-labelledby="lecturer-topics-title" className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[var(--card-shadow)]">
+        <h2 id="lecturer-topics-title" className="border-b border-border px-4 py-3 text-lg font-semibold sm:px-6 sm:text-xl">
+          Chủ đề môn học
+        </h2>
+        {classes.isPending ? (
+          <div role="status" aria-label="Đang tải môn học phụ trách" className="space-y-2 px-4 py-3 sm:px-6">
+            <Skeleton className="h-11 w-full rounded-xl" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+          </div>
+        ) : !classes.data ? (
+          <div role="status" className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-6">
+            <p className="text-destructive">Không thể tải môn học phụ trách.</p>
+            <Button type="button" variant="outline" onClick={() => void classes.refetch()}>Thử lại</Button>
+          </div>
+        ) : subjects.size === 0 ? (
+          <p className="px-4 py-4 text-sm text-muted-foreground sm:px-6">Bạn chưa được phân công môn học.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {[...subjects.values()].map((subject) => (
+              <li key={subject.id} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-6">
+                <div className="flex min-w-0 items-start gap-3">
+                  <Badge variant="outline" className="shrink-0 border-academic/25 bg-academic-soft text-academic">{subject.code}</Badge>
+                  <span className="min-w-0 wrap-anywhere text-sm font-medium">{subject.name}</span>
+                </div>
+                <Button type="button" variant="outline" className="min-h-11 justify-self-start"
+                  aria-label={`Quản lý chủ đề môn ${subject.name} (${subject.code})`}
+                  onClick={() => setManagingSubjectId(subject.id)}>
+                  Quản lý chủ đề
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {managingSubject && (
+        <TopicCatalogDialog key={managingSubject.id} subjectId={managingSubject.id}
+          subjectName={managingSubject.name} onClose={() => setManagingSubjectId(undefined)} />
+      )}
 
       <LecturerQuestionsExportCard />
 
