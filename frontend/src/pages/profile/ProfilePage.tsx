@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -48,15 +49,15 @@ export function ProfilePage() {
       ) : profile.isError ? (
         <ErrorState title="Không thể tải hồ sơ" message="Hãy kiểm tra kết nối và quyền truy cập hồ sơ." onRetry={() => void profile.refetch()} />
       ) : profile.data ? (
-        <>
-          <ProfileHeader key={profile.data.userId} profile={profile.data} isOwnProfile={isOwnProfile} />
+        <Fragment key={profile.data.userId}>
+          <ProfileHeader profile={profile.data} isOwnProfile={isOwnProfile} />
           <div className="grid items-start gap-5 lg:grid-cols-2">
             <ProfileAcademicInfo profile={profile.data} />
             <ProfileGamificationStats profile={profile.data} isOwnProfile={isOwnProfile} />
           </div>
-          <ProfileBadges key={profile.data.userId} userId={profile.data.userId} />
-          <ProfilePosts key={profile.data.userId} userId={profile.data.userId} isOwnProfile={isOwnProfile} />
-        </>
+          <ProfileBadges userId={profile.data.userId} />
+          <ProfilePosts userId={profile.data.userId} isOwnProfile={isOwnProfile} />
+        </Fragment>
       ) : (
         <EmptyState icon={UserRound} title="Không tìm thấy hồ sơ" description="Hồ sơ này hiện không có dữ liệu để hiển thị." />
       )}
