@@ -102,7 +102,7 @@ app:
 
   ai-server:
     url: ${AI_SERVER_URL:}
-    model: ${AI_MODEL:}
+    model: ${AI_MODEL:gpt-6-luna}
     api-key: ${AI_SERVER_API_KEY:}
   salt: ${SECRET_SALT}
   cookie:

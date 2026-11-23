@@ -8,7 +8,7 @@ CORROBORATION_RISK = 50.0
 
 @dataclass(frozen=True)
 class Config:
-    model: str = "gpt-4.1-2025-04-14"
+    model: str = "gpt-6-luna"
     depth: int = 2          # Số cạnh tối đa từ gốc tới lá
     branches: int = 3       # Số nhánh mở rộng tối đa
     max_decomposition: int = 16  # Vượt giới hạn => fallback, không cắt mệnh đề

@@ -88,7 +88,7 @@ class OpenAIBackend:
         self.cfg = cfg or Config()
         self.subject = subject
         self.topic = topic
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+        self.api_key = (api_key or os.getenv("AI_SERVER_API_KEY", "")).strip()
         self.system_base = build_system_base(self.subject, self.topic)
         self.tasks = build_tasks(self.subject)
         
@@ -101,6 +101,8 @@ class OpenAIBackend:
 
     def _request(self, task: str, messages: list, extra: dict) -> dict:
         params = {"model": self.cfg.model, "messages": messages, "temperature": 0, **extra}
+        if self.cfg.model == "gpt-6-luna":
+            params["reasoning_effort"] = "none"
         key = digest({"task": task, "params": params, "version": VERSION})
         cache_path = self.cache_dir / (key + ".json")
         

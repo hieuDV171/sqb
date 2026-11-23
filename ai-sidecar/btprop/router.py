@@ -19,9 +19,9 @@ def audit_question(req: QuestionAuditRequest):
     - Chạy thuật toán cây niềm tin Belief Tree Propagation (BTProp)
     """
     try:
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        api_key = os.getenv("AI_SERVER_API_KEY", "").strip()
         if not api_key:
-            logger.warning("[BTProp] Chưa cấu hình OPENAI_API_KEY. Trả về fallback unverified.")
+            logger.warning("[BTProp] Chưa cấu hình AI_SERVER_API_KEY. Trả về fallback unverified.")
             return BtpropAuditResponse(
                 is_hallucinated=False,
                 confidence_score=None,
@@ -29,13 +29,13 @@ def audit_question(req: QuestionAuditRequest):
                 risk_label="chưa cấu hình API Key",
                 belief_tree_depth=0,
                 violations=[],
-                issues=["Chưa cấu hình OPENAI_API_KEY trên AI Sidecar"],
+                issues=["Chưa cấu hình AI_SERVER_API_KEY trên AI Sidecar"],
                 likely_suitable_options=[],
                 status="unverified",
                 mode="no_api_key"
             )
 
-        model = os.getenv("BTPROP_MODEL", "gpt-4.1-2025-04-14")
+        model = os.getenv("AI_MODEL", "").strip() or Config.model
         depth = int(os.getenv("BTPROP_DEPTH", "2"))
         cfg = Config(model=model, depth=depth)
         

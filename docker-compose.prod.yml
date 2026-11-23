@@ -66,8 +66,8 @@ services:
       - HF_TOKEN=${HF_TOKEN}
       - TEXT_MODEL=${TEXT_MODEL:-intfloat/multilingual-e5-small}
       - IMAGE_MODEL=${IMAGE_MODEL:-facebook/dinov2-small}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - BTPROP_MODEL=${BTPROP_MODEL:-gpt-4.1-2025-04-14}
+      - AI_SERVER_API_KEY=${AI_SERVER_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-gpt-6-luna}
     networks:
       - sqb-network
 
@@ -113,7 +113,7 @@ services:
       # AI Services
       - AI_SIDECAR_URL=http://ai-sidecar:8000
       - AI_SERVER_URL=${AI_SERVER_URL:-}
-      - AI_MODEL=${AI_MODEL:-}
+      - AI_MODEL=${AI_MODEL:-gpt-6-luna}
       - AI_SERVER_API_KEY=${AI_SERVER_API_KEY:-}
 
       # Cloudflare R2 Storage (Zero Object Tagging)

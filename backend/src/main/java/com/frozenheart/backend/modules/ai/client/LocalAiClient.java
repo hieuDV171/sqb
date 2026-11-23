@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.ai.client;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -92,11 +93,14 @@ public class LocalAiClient {
                 messages.add(Map.of("role", "user", "content", userPrompt));
             }
 
-            Map<String, Object> requestBody = Map.of(
+            Map<String, Object> requestBody = new HashMap<>(Map.of(
                     "model", modelName,
                     "messages", messages,
                     "temperature", 0.3 // Mức độ sáng tạo <= 0.3: khoa học, >= 0.8: viết văn
-            );
+            ));
+            if ("gpt-6-luna".equals(modelName)) {
+                requestBody.put("reasoning_effort", "none");
+            }
 
             Map<?, ?> response = restClient.post()
                     .uri("/v1/chat/completions") // Chuẩn giao tiếp Quốc tế (OpenAI-compatible Specification)

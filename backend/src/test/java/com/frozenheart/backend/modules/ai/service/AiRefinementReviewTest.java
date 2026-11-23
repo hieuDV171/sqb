@@ -21,6 +21,7 @@ import com.frozenheart.backend.modules.session.repository.QuestionEditLogReposit
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,10 +30,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -96,6 +100,42 @@ class AiRefinementReviewTest {
                     assertThat(error.getResponseCode()).isEqualTo(ResponseCode.AI_SERVICE_UNAVAILABLE);
                     assertThat(error.getMessage()).contains("chưa được cấu hình");
                 });
+    }
+
+    @Test
+    void generatorSendsTheSharedBearerKeyAndLunaCompatibilitySetting() throws IOException {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        var authorization = new AtomicReference<String>();
+        var payload = new AtomicReference<String>();
+        server.createContext("/v1/chat/completions", exchange -> {
+            try {
+                authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+                payload.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                byte[] response = """
+                        {"model":"gpt-6-luna","choices":[{"message":{"content":"Bản đề xuất"}}]}
+                        """.getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, response.length);
+                exchange.getResponseBody().write(response);
+            } finally {
+                exchange.close();
+            }
+        });
+        server.start();
+        try {
+            var client = new LocalAiClient("http://127.0.0.1:" + server.getAddress().getPort(),
+                    "gpt-6-luna", "shared-fixture-key", "http://ai-sidecar:8000");
+
+            var response = client.generateRequiredCompletion("system", "prompt");
+
+            var request = JsonMapper.builder().build().readTree(payload.get());
+            assertThat(authorization.get()).isEqualTo("Bearer shared-fixture-key");
+            assertThat(request.path("model").asString()).isEqualTo("gpt-6-luna");
+            assertThat(request.path("reasoning_effort").asString()).isEqualTo("none");
+            assertThat(response.model()).isEqualTo("gpt-6-luna");
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
