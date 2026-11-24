@@ -59,7 +59,9 @@ public record MySubmissionDetailResponse(
             @Schema(description = "ID câu hỏi", example = "1001")
             Long questionId,
 
+            @Schema(description = "ID chủ đề đã gắn với câu hỏi, nếu có", example = "37")
             Long topicId,
+            @Schema(description = "Tên chủ đề đã gắn với câu hỏi, nếu có", example = "Định thời CPU")
             String topicName,
             @Schema(description = "Nội dung câu hỏi", example = "Pattern nào sau đây giải quyết bài toán phân tán giao dịch?")
             String content,

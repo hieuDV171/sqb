@@ -699,3 +699,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - **Ngày 24/11/2026.** Đặt bạn bè, theo dõi và chặn dưới `modules.socialgraph`, mỗi tính năng có package con riêng. Các repository quan hệ nằm cạnh controller và service của tính năng phụ trách.
 - `modules.socialinteraction` phụ trách bình luận và cảm xúc trên nội dung. Các package entity, route HTTP, ánh xạ JPA và schema giữ nguyên.
+
+### [ADR-085] Kiểm tra phiên bản khi cập nhật chủ đề
+
+- **Ngày 24/11/2026.** API tra cứu chủ đề đang dùng giữ tại `/subjects/{subjectId}/topics`. API quản lý dưới `/lecturer/subjects/{subjectId}/topics` liệt kê cả chủ đề ngừng sử dụng và tiếp tục kiểm quyền giảng viên theo môn. ADMIN được phép quản lý mọi môn.
+- Khóa ghi hàng môn học vẫn tuần tự hóa tạo, sửa và kiểm tra trùng tên. `Topic.version` dùng `@Version`. Sau khi lấy khóa, backend so sánh phiên bản gửi trong PUT với bản vừa đọc và trả HTTP 412 nếu đã thay đổi. Giao diện tải lại, giữ nội dung đang nhập và yêu cầu giảng viên xem phiên bản mới trước khi lưu tiếp.
+- Cần áp dụng changeset bổ sung `topics.version` và khởi tạo bản ghi cũ về `0` trước khi chạy backend mới.

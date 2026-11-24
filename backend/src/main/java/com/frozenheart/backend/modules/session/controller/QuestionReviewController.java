@@ -38,8 +38,11 @@ public class QuestionReviewController {
 
     private final QuestionReviewService questionReviewService;
 
+    @Operation(summary = "Yêu cầu dò trùng câu hỏi lại",
+            description = "Đưa câu hỏi đang chờ duyệt và đã có lượt dò lỗi trở lại hàng chờ xử lý. Dành cho quản trị viên hoặc giảng viên có quyền duyệt câu hỏi.")
     @PostMapping("/questions/{questionId}/retry-duplicate-check")
-    public ResponseEntity<GlobalResponse<Void>> retryDuplicateCheck(@PathVariable Long questionId) {
+    public ResponseEntity<GlobalResponse<Void>> retryDuplicateCheck(
+            @Parameter(description = "ID câu hỏi cần dò trùng lại", example = "105") @PathVariable Long questionId) {
         questionReviewService.retryDuplicateCheck(questionId);
         return ResponseEntity.ok(GlobalResponse.success(null));
     }

@@ -17,6 +17,6 @@ public record AiRefineRequest(
         @Schema(description = "ID phiên chat AI liên quan (nếu có)", example = "session_xyz123")
         String chatSessionId,
 
-        @Schema(description = "ID bản đề xuất trước đó của cùng người duyệt nếu đang tinh chỉnh tiếp")
+        @Schema(description = "ID bản đề xuất trước đó của cùng người duyệt nếu đang tinh chỉnh tiếp", example = "310")
         @Positive Long previousEditLogId
 ) {}

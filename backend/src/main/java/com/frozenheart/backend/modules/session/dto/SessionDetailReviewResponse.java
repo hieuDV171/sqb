@@ -15,7 +15,9 @@ import lombok.Builder;
 @Schema(description = "Thông tin chi tiết phiên đề xuất dành cho giảng viên duyệt")
 @Builder
 public record SessionDetailReviewResponse(
+        @Schema(description = "ID môn học của lớp gắn với phiên đề xuất", example = "12")
         Long subjectId,
+        @Schema(description = "Cảnh báo cấp phiên khi đáp án đúng tập trung vào một vị trí trong các câu có bốn lựa chọn", example = "Vị trí B là đáp án đúng ở 7/10 câu có bốn lựa chọn.")
         String qualityWarning,
         @Schema(description = "Trạng thái phiên. RESOLVED là phiên đã chốt và chỉ đọc", example = "REVIEWING")
         SessionStatus sessionStatus,
@@ -30,10 +32,16 @@ public record SessionDetailReviewResponse(
                 @Schema(description = "ID câu hỏi", example = "105")
                 Long questionId,
 
+                @Schema(description = "ID chủ đề đã gắn với câu hỏi, nếu có", example = "37")
                 Long topicId,
+                @Schema(description = "Tên chủ đề đã gắn với câu hỏi, nếu có", example = "Định thời CPU")
                 String topicName,
+                @Schema(description = "Trạng thái xử lý dò trùng. PENDING đang chờ, RETRY đã lên lịch thử lại, COMPLETE hoàn tất, NEEDS_REVIEW cần người duyệt xem xét.", example = "RETRY",
+                        allowableValues = {"PENDING", "RETRY", "COMPLETE", "NEEDS_REVIEW"})
                 String duplicateCheckStatus,
+                @Schema(description = "Có thể yêu cầu dò trùng lại vì câu hỏi đang chờ duyệt và đã có lượt dò lỗi", example = "true")
                 boolean canRetryDuplicateCheck,
+                @Schema(description = "Cảnh báo cấp câu hỏi khi đáp án đúng dài nổi bật so với các lựa chọn còn lại", example = "Đáp án đúng dài nổi bật so với các lựa chọn còn lại.")
                 String qualityWarning,
                 @Schema(description = "Nội dung câu hỏi (hỗ trợ LaTeX/Markdown)", example = "Thuật toán định thời nào sau đây có thể dẫn đến hiện tượng đói CPU (starvation)?")
                 String content,

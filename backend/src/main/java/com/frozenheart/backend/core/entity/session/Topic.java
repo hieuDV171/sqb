@@ -18,6 +18,10 @@ public class Topic {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(length = 100, nullable = false)
     private String name;
 

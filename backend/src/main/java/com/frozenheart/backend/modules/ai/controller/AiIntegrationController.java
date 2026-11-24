@@ -24,6 +24,8 @@ import com.frozenheart.backend.modules.ai.service.AiIntegrationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,9 +60,22 @@ public class AiIntegrationController {
         return ResponseEntity.ok(GlobalResponse.success("AI tinh chỉnh câu hỏi thành công", response));
     }
 
-    @Operation(summary = "Nhận bản AI trước khi BTProp kiểm chứng xong")
+    @Operation(summary = "Nhận bản tinh chỉnh AI qua SSE",
+            description = """
+                    Mỗi sự kiện có một dòng `data:` chứa JSON với hai trường `type` và `data`.
+
+                    - `proposal` gửi bản xem trước khi BTProp hoàn tất kiểm chứng.
+                    - `complete` gửi kết quả kiểm chứng và bản đề xuất đã lưu.
+                    - `error` gửi thông báo trong `data.message` nếu lỗi xảy ra sau khi luồng bắt đầu.
+
+                    Lỗi trước khi bắt đầu luồng trả về phản hồi HTTP thông thường.
+                    """)
+    @ApiResponse(responseCode = "200", description = "Luồng sự kiện của lượt tinh chỉnh",
+            content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE, schema = @Schema(type = "string")))
     @PostMapping("/questions/{questionId}/ai-refine/stream")
-    public void streamRefinement(@PathVariable Long questionId, @Valid @RequestBody AiRefineRequest request,
+    public void streamRefinement(
+            @Parameter(description = "ID của câu hỏi cần tinh chỉnh", example = "42") @PathVariable Long questionId,
+            @Valid @RequestBody AiRefineRequest request,
             HttpServletResponse response) {
         try {
             var result = aiIntegrationService.refineQuestion(questionId, request, EditActorType.LECTURER,

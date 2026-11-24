@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1795498591461-1
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+                  defaultValueNumeric: "0"
+            tableName: topics
+  - changeSet:
+      id: 1795498591461-2
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - addNotNullConstraint:
+            columnName: version
+            tableName: topics
+

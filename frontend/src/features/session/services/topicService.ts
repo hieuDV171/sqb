@@ -8,20 +8,40 @@ export interface Topic {
   active: boolean;
 }
 
-export function topicCatalog(subjectId: number, includeInactive = false) {
+export interface ManagedTopic extends Topic {
+  version: number;
+}
+
+export const subjectTopicsKey = (subjectId: number) => ['subject-topics', subjectId] as const;
+
+export function topicCatalog(subjectId: number) {
   return queryOptions({
-    queryKey: ['subject-topics', subjectId, includeInactive] as const,
+    queryKey: [...subjectTopicsKey(subjectId), 'active'] as const,
     enabled: subjectId > 0,
     queryFn: async ({ signal }) => (await axiosClient.get<GlobalResponse<Topic[]>, GlobalResponse<Topic[]>>(
-      `/subjects/${subjectId}/topics`, { params: { includeInactive }, signal },
+      `/subjects/${subjectId}/topics`, { signal },
     )).data ?? [],
     staleTime: 60_000,
   });
 }
 
-export async function saveTopic(subjectId: number, id: number | undefined, data: { name: string; active?: boolean }) {
-  const url = `/subjects/${subjectId}/topics`;
+export function managedTopicCatalog(subjectId: number) {
+  return queryOptions({
+    queryKey: [...subjectTopicsKey(subjectId), 'managed'] as const,
+    enabled: subjectId > 0,
+    queryFn: async ({ signal }) => (await axiosClient.get<GlobalResponse<ManagedTopic[]>, GlobalResponse<ManagedTopic[]>>(
+      `/lecturer/subjects/${subjectId}/topics`, { signal },
+    )).data ?? [],
+  });
+}
+
+type TopicChange =
+  | { id?: never; name: string }
+  | { id: number; name: string; active?: boolean; version: number };
+
+export async function saveTopic(subjectId: number, { id, ...data }: TopicChange) {
+  const url = `/lecturer/subjects/${subjectId}/topics`;
   return id === undefined
-    ? axiosClient.post<GlobalResponse<Topic>, GlobalResponse<Topic>>(url, data)
-    : axiosClient.put<GlobalResponse<Topic>, GlobalResponse<Topic>>(`${url}/${id}`, data);
+    ? axiosClient.post<GlobalResponse<ManagedTopic>, GlobalResponse<ManagedTopic>>(url, data, { skipToast: true })
+    : axiosClient.put<GlobalResponse<ManagedTopic>, GlobalResponse<ManagedTopic>>(`${url}/${id}`, data, { skipToast: true });
 }

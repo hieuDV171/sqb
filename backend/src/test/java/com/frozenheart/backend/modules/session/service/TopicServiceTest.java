@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.session.service;
 
+import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.session.Topic;
@@ -28,7 +29,7 @@ class TopicServiceTest {
     @Test
     void renameAndArchiveKeepsIdAndFiltersStudentDropdown() {
         var subject = Subject.builder().id(7L).build();
-        var existing = Topic.builder().id(11L).subject(subject).code("TC01").name("Chương 1").build();
+        var existing = Topic.builder().id(11L).version(0L).subject(subject).code("TC01").name("Chương 1").build();
         var lecturer = JwtPayload.builder().role("LECTURER").userId(9L).build();
         try (var jwt = mockStatic(JwtPayload.class)) {
             jwt.when(JwtPayload::getCurrentUserPayload).thenReturn(lecturer);
@@ -36,15 +37,41 @@ class TopicServiceTest {
             when(subjects.lockTopicCatalog(7L)).thenReturn(Optional.of(subject));
             when(topics.findByIdAndSubjectId(11L, 7L)).thenReturn(Optional.of(existing));
             when(topics.findBySubjectIdOrderByNameAsc(7L)).thenReturn(List.of(existing));
-            when(topics.save(existing)).thenReturn(existing);
+            when(topics.saveAndFlush(existing)).thenAnswer(_ -> {
+                existing.setVersion(1L);
+                return existing;
+            });
 
-            var saved = service.save(7L, 11L, "  Lập lịch CPU  ", false);
+            var saved = service.save(7L, 11L, "  Lập lịch CPU  ", false, 0L);
             assertEquals(11L, saved.id());
             assertEquals("Lập lịch CPU", saved.name());
             assertFalse(saved.active());
-            assertTrue(service.list(7L, false).isEmpty());
+            assertEquals(1L, saved.version());
+            assertTrue(service.listActive(7L).isEmpty());
+            assertEquals(List.of(saved), service.listManaged(7L));
             assertSame(existing, service.select(7L, 11L, existing));
             assertThrows(AppException.class, () -> service.select(7L, 11L, null));
+        }
+    }
+
+    @Test
+    void rejectsStaleVersionBeforeReapplyingAnOldName() {
+        var subject = Subject.builder().id(7L).build();
+        var current = Topic.builder().id(11L).version(2L).subject(subject).name("Lập lịch CPU").build();
+        var lecturer = JwtPayload.builder().role("LECTURER").userId(10L).build();
+        try (var jwt = mockStatic(JwtPayload.class)) {
+            jwt.when(JwtPayload::getCurrentUserPayload).thenReturn(lecturer);
+            when(topics.countTeachingAssignments(7L, 10L)).thenReturn(1L);
+            when(subjects.lockTopicCatalog(7L)).thenReturn(Optional.of(subject));
+            when(topics.findByIdAndSubjectId(11L, 7L)).thenReturn(Optional.of(current));
+
+            var failure = assertThrows(AppException.class,
+                    () -> service.save(7L, 11L, "Chương 1", false, 1L));
+
+            assertEquals(ResponseCode.STALE_DATA_DETECTED, failure.getResponseCode());
+            assertEquals("Lập lịch CPU", current.getName());
+            assertTrue(current.isActive());
+            verify(topics, never()).saveAndFlush(any());
         }
     }
 
@@ -53,7 +80,7 @@ class TopicServiceTest {
         var lecturer = JwtPayload.builder().role("LECTURER").userId(9L).build();
         try (var jwt = mockStatic(JwtPayload.class)) {
             jwt.when(JwtPayload::getCurrentUserPayload).thenReturn(lecturer);
-            assertThrows(AppException.class, () -> service.list(7L, true));
+            assertThrows(AppException.class, () -> service.listManaged(7L));
             verify(topics, never()).findBySubjectIdOrderByNameAsc(7L);
         }
     }

@@ -11,7 +11,9 @@ import lombok.Builder;
 @Schema(description = "Yêu cầu giảng viên chỉnh sửa nội dung câu hỏi")
 @Builder
 public record EditQuestionRequest(
+        @Schema(description = "ID chủ đề cần gán. Chủ đề phải thuộc môn học của câu hỏi.", example = "37")
         Long topicId,
+        @Schema(description = "Đặt true để gỡ chủ đề khi bỏ trống topic_id. Bỏ qua cả hai trường để giữ chủ đề hiện tại.", example = "true")
         Boolean clearTopic,
         @Schema(description = "Nội dung câu hỏi được biên tập lại", example = "Thuật toán định thời CPU nào sau đây có thể gây hiện tượng đói tiến trình?")
         String content,

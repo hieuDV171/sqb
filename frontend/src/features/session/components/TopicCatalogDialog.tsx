@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getErrorMessage } from '@/lib/errorMessage';
-import { saveTopic, topicCatalog, type Topic } from '../services/topicService';
+import { managedTopicCatalog, saveTopic, subjectTopicsKey, type ManagedTopic } from '../services/topicService';
 
 interface TopicCatalogDialogProps {
   subjectId: number;
@@ -13,25 +13,42 @@ interface TopicCatalogDialogProps {
   onClose: () => void;
 }
 
+function isStaleTopicError(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '2010';
+}
+
 export function TopicCatalogDialog({ subjectId, subjectName, onClose }: TopicCatalogDialogProps) {
   const id = useId();
   const client = useQueryClient();
-  const catalog = useQuery(topicCatalog(subjectId, true));
+  const catalog = useQuery(managedTopicCatalog(subjectId));
   const [name, setName] = useState('');
-  const [editing, setEditing] = useState<Topic | null>(null);
+  const [editing, setEditing] = useState<ManagedTopic | null>(null);
   const save = useMutation({
-    mutationFn: ({ topic, name, active }: { topic?: Topic; name: string; active?: boolean }) =>
-      saveTopic(subjectId, topic?.id, { name, active }),
+    mutationFn: ({ topic, name, active }: { topic?: ManagedTopic; name: string; active?: boolean }) =>
+      saveTopic(subjectId, topic ? { id: topic.id, version: topic.version, name, active } : { name }),
     onSuccess: async () => {
       setName('');
       setEditing(null);
-      await client.invalidateQueries({ queryKey: ['subject-topics', subjectId] });
+      await client.invalidateQueries({ queryKey: subjectTopicsKey(subjectId) });
+    },
+    onError: async (error) => {
+      if (isStaleTopicError(error)) {
+        await client.invalidateQueries({ queryKey: subjectTopicsKey(subjectId) });
+      }
     },
   });
+  const latestTopic = catalog.data?.find((topic) => topic.id === editing?.id);
+  const hasNewerVersion = editing != null && latestTopic != null && latestTopic.version !== editing.version;
+  const staleSave = save.isError && isStaleTopicError(save.error);
+  const staleEdit = staleSave && editing != null && save.variables?.topic?.id === editing.id
+    && save.variables.active === undefined;
+  const needsLatestVersion = hasNewerVersion || staleEdit;
 
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (name.trim() && !save.isPending) save.mutate({ topic: editing ?? undefined, name: name.trim() });
+    if (name.trim() && !save.isPending && !needsLatestVersion) {
+      save.mutate({ topic: editing ?? undefined, name: name.trim() });
+    }
   }
 
   return (
@@ -46,7 +63,7 @@ export function TopicCatalogDialog({ subjectId, subjectName, onClose }: TopicCat
           <Dialog.Description className="text-sm text-muted-foreground">
             Chủ đề ngừng sử dụng vẫn hiển thị trên các câu hỏi đã gắn.
           </Dialog.Description>
-          {catalog.isPending ? <p role="status">Đang tải chủ đề…</p> : catalog.isError ? (
+          {catalog.isPending ? <p role="status">Đang tải chủ đề…</p> : catalog.isError && !catalog.data ? (
             <div role="alert" className="flex items-center gap-2 text-sm">
               Không tải được danh mục.
               <Button type="button" variant="outline" onClick={() => void catalog.refetch()}>Thử lại</Button>
@@ -59,12 +76,47 @@ export function TopicCatalogDialog({ subjectId, subjectName, onClose }: TopicCat
                   <Input id={id} value={name} onChange={(event) => setName(event.target.value)}
                     required maxLength={100} disabled={save.isPending} className="min-h-11" />
                 </div>
-                <Button type="submit" className="min-h-11" disabled={save.isPending || !name.trim()}>
+                <Button type="submit" className="min-h-11" disabled={save.isPending || !name.trim() || needsLatestVersion}>
                   {save.isPending ? 'Đang lưu…' : editing ? 'Lưu tên' : 'Thêm chủ đề'}
                 </Button>
-                {editing && <Button type="button" variant="ghost" onClick={() => { setEditing(null); setName(''); }}>Hủy sửa</Button>}
+                {editing && <Button type="button" variant="ghost" disabled={save.isPending}
+                  onClick={() => { setEditing(null); setName(''); save.reset(); }}>Hủy sửa</Button>}
               </form>
-              {save.isError && <p role="alert" className="text-sm text-destructive">{getErrorMessage(save.error) ?? 'Không lưu được chủ đề.'}</p>}
+              {needsLatestVersion && (
+                <div className="space-y-2">
+                  <p role="alert" className="wrap-anywhere text-sm">
+                    Chủ đề đã thay đổi trong lúc bạn sửa. Tên bạn nhập vẫn được giữ.
+                    {hasNewerVersion && latestTopic && (
+                      <> Tên hiện tại là <strong>{latestTopic.name}</strong> ({latestTopic.active ? 'đang dùng' : 'đã ngừng dùng'}).</>
+                    )}
+                  </p>
+                  {hasNewerVersion && latestTopic && !catalog.isError ? (
+                    <Button type="button" variant="outline" className="min-h-11" disabled={save.isPending || catalog.isFetching}
+                      onClick={() => { setEditing(latestTopic); save.reset(); }}>
+                      Tiếp tục với phiên bản mới
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="outline" className="min-h-11" disabled={save.isPending || catalog.isFetching}
+                      onClick={() => void catalog.refetch()}>
+                      Tải lại danh mục
+                    </Button>
+                  )}
+                </div>
+              )}
+              {staleSave && !needsLatestVersion && (
+                <div className="space-y-2">
+                  <p role="alert" className="text-sm">
+                    {catalog.isError
+                      ? 'Chủ đề đã thay đổi. Tải lại danh mục để thử lại.'
+                      : 'Chủ đề đã thay đổi. Xem lại trạng thái trong danh sách rồi chọn thao tác.'}
+                  </p>
+                  {catalog.isError && (
+                    <Button type="button" variant="outline" className="min-h-11" disabled={catalog.isFetching}
+                      onClick={() => void catalog.refetch()}>Tải lại danh mục</Button>
+                  )}
+                </div>
+              )}
+              {save.isError && !staleSave && <p role="alert" className="text-sm text-destructive">{getErrorMessage(save.error) ?? 'Không lưu được chủ đề.'}</p>}
               {!catalog.data?.length ? <p className="text-sm text-muted-foreground">Môn học chưa có chủ đề.</p> : (
                 <ul className="divide-y divide-border">
                   {catalog.data.map((topic) => (
@@ -74,8 +126,8 @@ export function TopicCatalogDialog({ subjectId, subjectName, onClose }: TopicCat
                       </span>
                       <Button type="button" variant="ghost" className="min-h-11" disabled={save.isPending}
                         aria-label={`Đổi tên ${topic.name}`}
-                        onClick={() => { setEditing(topic); setName(topic.name); }}>Đổi tên</Button>
-                      <Button type="button" variant="outline" className="min-h-11" disabled={save.isPending}
+                        onClick={() => { setEditing(topic); setName(topic.name); save.reset(); }}>Đổi tên</Button>
+                      <Button type="button" variant="outline" className="min-h-11" disabled={save.isPending || (staleSave && catalog.isError)}
                         aria-label={`${topic.active ? 'Ngừng sử dụng' : 'Mở lại'} ${topic.name}`}
                         onClick={() => save.mutate({ topic, name: topic.name, active: !topic.active })}>
                         {topic.active ? 'Ngừng dùng' : 'Mở lại'}

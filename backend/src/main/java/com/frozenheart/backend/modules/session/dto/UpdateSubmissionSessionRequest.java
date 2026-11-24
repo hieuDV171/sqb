@@ -38,7 +38,9 @@ public record UpdateSubmissionSessionRequest(
             @Schema(description = "ID câu hỏi (để null nếu là câu hỏi mới thêm vào phiên)", example = "105")
             Long questionId,
 
+            @Schema(description = "ID chủ đề cần gán, thuộc môn học của lớp sau khi cập nhật phiên", example = "37")
             Long topicId,
+            @Schema(description = "Đặt true để gỡ chủ đề khi bỏ trống topic_id. Nếu bỏ qua cả hai trường khi đổi môn học, chủ đề cũ sẽ được gỡ.", example = "true")
             Boolean clearTopic,
 
             @Schema(description = "Nội dung câu hỏi (hỗ trợ LaTeX/Markdown)", example = "Thuật toán định thời nào sau đây có thể dẫn đến hiện tượng đói CPU (starvation)?")

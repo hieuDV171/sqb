@@ -3,36 +3,31 @@ package com.frozenheart.backend.modules.session.controller;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.modules.session.service.TopicService;
 import com.frozenheart.backend.modules.session.service.TopicService.TopicResponse;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "15b. Danh mục Môn học (Subjects Catalog)")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/subjects/{subjectId}/topics")
 @RequiredArgsConstructor
 public class SubjectTopicController {
     private final TopicService topics;
 
-    public record TopicRequest(@NotBlank @Size(max = 100) String name, Boolean active) {}
-
+    @Operation(summary = "Liệt kê chủ đề của môn học",
+            description = "Trả về chủ đề đang dùng theo tên để người dùng đã đăng nhập chọn khi gán chủ đề cho câu hỏi.")
     @GetMapping
-    public GlobalResponse<List<TopicResponse>> list(@PathVariable Long subjectId,
-            @RequestParam(name = "include_inactive", defaultValue = "false") boolean includeInactive) {
-        return GlobalResponse.success(topics.list(subjectId, includeInactive));
-    }
-
-    @PostMapping
-    public GlobalResponse<TopicResponse> create(@PathVariable Long subjectId, @Valid @RequestBody TopicRequest request) {
-        return GlobalResponse.success(topics.save(subjectId, null, request.name(), request.active()));
-    }
-
-    @PutMapping("/{topicId}")
-    public GlobalResponse<TopicResponse> update(@PathVariable Long subjectId, @PathVariable Long topicId,
-            @Valid @RequestBody TopicRequest request) {
-        return GlobalResponse.success(topics.save(subjectId, topicId, request.name(), request.active()));
+    public GlobalResponse<List<TopicResponse>> list(
+            @Parameter(description = "ID môn học cần tra cứu chủ đề", example = "12") @PathVariable Long subjectId) {
+        return GlobalResponse.success(topics.listActive(subjectId));
     }
 }

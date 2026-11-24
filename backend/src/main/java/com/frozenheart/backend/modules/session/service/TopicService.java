@@ -7,6 +7,7 @@ import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.session.repository.TopicRepository;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,25 +30,47 @@ public class TopicService {
     private final TopicRepository topics;
     private final SubjectRepository subjects;
 
-    public record TopicResponse(Long id, String name, boolean active) {}
+    @Schema(description = "Chủ đề trong danh mục của một môn học")
+    public record TopicResponse(
+            @Schema(description = "ID của chủ đề", example = "37") Long id,
+            @Schema(description = "Tên hiển thị của chủ đề", example = "Định thời CPU") String name,
+            @Schema(description = "Chủ đề đang được sử dụng và có thể gán cho câu hỏi", example = "true") boolean active) {}
+
+    @Schema(description = "Chủ đề kèm phiên bản để quản trị viên và giảng viên quản lý")
+    public record ManagedTopicResponse(
+            @Schema(description = "ID của chủ đề", example = "37") Long id,
+            @Schema(description = "Tên hiển thị của chủ đề", example = "Định thời CPU") String name,
+            @Schema(description = "Chủ đề đang được sử dụng", example = "true") boolean active,
+            @Schema(description = "Phiên bản hiện tại, cần gửi lại khi cập nhật chủ đề", example = "2") Long version) {}
 
     @Transactional(readOnly = true)
-    public List<TopicResponse> list(Long subjectId, boolean includeInactive) {
-        if (includeInactive) assertCanManage(subjectId);
+    public List<TopicResponse> listActive(Long subjectId) {
         return topics.findBySubjectIdOrderByNameAsc(subjectId).stream()
-                .filter(topic -> includeInactive || topic.isActive())
-                .map(TopicService::response)
+                .filter(Topic::isActive)
+                .map(topic -> new TopicResponse(topic.getId(), topic.getName(), topic.isActive()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ManagedTopicResponse> listManaged(Long subjectId) {
+        assertCanManage(subjectId);
+        return topics.findBySubjectIdOrderByNameAsc(subjectId).stream()
+                .map(TopicService::managedResponse)
                 .toList();
     }
 
     @Transactional
-    public TopicResponse save(Long subjectId, Long topicId, String name, Boolean active) {
+    public ManagedTopicResponse save(Long subjectId, Long topicId, String name, Boolean active, Long expectedVersion) {
         assertCanManage(subjectId);
         var subject = subjects.lockTopicCatalog(subjectId)
                 .orElseThrow(() -> new AppException(ResponseCode.SUBJECT_NOT_FOUND));
         Topic topic = topicId == null ? Topic.builder().subject(subject)
                 .code(Long.toString(ThreadLocalRandom.current().nextLong(CODE_SPACE), 36)).build()
                 : selected(subjectId, topicId);
+
+        if (topicId != null && (expectedVersion == null || !expectedVersion.equals(topic.getVersion()))) {
+            throw new AppException(ResponseCode.STALE_DATA_DETECTED, "Chủ đề đã thay đổi. Hãy tải lại danh mục trước khi lưu.");
+        }
 
         String cleanName = Normalizer.normalize(name.strip(), Normalizer.Form.NFC).replaceAll("\\s+", " ");
         if (cleanName.isBlank()) throw invalid("Tên chủ đề không được để trống");
@@ -59,7 +82,7 @@ public class TopicService {
         if (duplicate) throw invalid("Tên chủ đề đã tồn tại trong môn học");
         topic.setName(cleanName);
         if (active != null) topic.setArchived(!active);
-        return response(topics.save(topic));
+        return managedResponse(topics.saveAndFlush(topic));
     }
 
     public Map<Long, Topic> lookup(Long subjectId, Collection<Long> ids) {
@@ -95,8 +118,8 @@ public class TopicService {
         }
     }
 
-    private static TopicResponse response(Topic topic) {
-        return new TopicResponse(topic.getId(), topic.getName(), topic.isActive());
+    private static ManagedTopicResponse managedResponse(Topic topic) {
+        return new ManagedTopicResponse(topic.getId(), topic.getName(), topic.isActive(), topic.getVersion());
     }
 
     private static AppException invalid(String message) {
