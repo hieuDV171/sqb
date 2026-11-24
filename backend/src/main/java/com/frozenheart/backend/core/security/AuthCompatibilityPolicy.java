@@ -1,10 +1,12 @@
 package com.frozenheart.backend.core.security;
 
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+@Getter
 @Slf4j
 @Component
 public class AuthCompatibilityPolicy {
@@ -14,10 +16,6 @@ public class AuthCompatibilityPolicy {
 
     public AuthCompatibilityPolicy(@Value("${app.auth.legacy-json-enabled:false}") boolean legacyJsonEnabled) {
         this.legacyJsonEnabled = legacyJsonEnabled;
-    }
-
-    public boolean isLegacyJsonEnabled() {
-        return legacyJsonEnabled;
     }
 
     public String swaggerNotice() {

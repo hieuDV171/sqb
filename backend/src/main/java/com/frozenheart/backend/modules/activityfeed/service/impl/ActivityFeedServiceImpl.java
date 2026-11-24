@@ -20,16 +20,15 @@ import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.modules.activityfeed.dto.*;
 import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.dto.AuthorDto;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
-import com.frozenheart.backend.modules.user.repository.FollowRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.follow.repository.FollowRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -55,7 +54,6 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
     private final SessionRepository sessionRepository;
     private final QuestionRepository questionRepository;
     private final ReactRepository reactRepository;
-    private final ApprovalPostAuthor approvalPostAuthor;
 
     @Override
     @Transactional(readOnly = true)
@@ -69,26 +67,10 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
 
         List<ActivityFeed> feeds;
         if (currentUserId != null) {
-            Set<Long> blockedIds = blockRepository.findAllBlockedUserIds(currentUserId);
-            Set<Long> friendIds = friendshipRepository.findAllAcceptedFriendUserIds(currentUserId);
-            Set<Long> followingIds = followRepository.findAllFollowedUserIds(currentUserId);
-
-            Set<Long> networkIds = new HashSet<>();
-            networkIds.add(currentUserId);
-            if (friendIds != null)
-                networkIds.addAll(friendIds);
-            if (followingIds != null)
-                networkIds.addAll(followingIds);
-            if (blockedIds != null && !blockedIds.isEmpty()) {
-                networkIds.removeAll(blockedIds);
-            }
-
-            boolean hasBlocked = (blockedIds != null && !blockedIds.isEmpty());
-            Collection<Long> safeBlockedIds = hasBlocked ? blockedIds : Collections.singleton(0L);
-
+            FeedAudience audience = loadFeedAudience(currentUserId);
             boolean admin = UserRole.ADMIN.name().equalsIgnoreCase(payloadOpt.orElseThrow().getRole());
-            feeds = activityFeedRepository.findPersonalizedFeeds(cursor, networkIds, safeBlockedIds, hasBlocked,
-                    currentUserId, admin, pageable);
+            feeds = activityFeedRepository.findPersonalizedFeeds(cursor, audience.networkIds(), audience.blockedIds(),
+                    audience.hasBlocked(), currentUserId, admin, pageable);
         } else {
             feeds = activityFeedRepository.findAnonymousFeeds(cursor, pageable);
         }
@@ -197,26 +179,10 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             Long currentUserId = payloadOpt.map(JwtPayload::getUserId).orElse(null);
 
             if (currentUserId != null) {
-                Set<Long> blockedIds = blockRepository.findAllBlockedUserIds(currentUserId);
-                Set<Long> friendIds = friendshipRepository.findAllAcceptedFriendUserIds(currentUserId);
-                Set<Long> followingIds = followRepository.findAllFollowedUserIds(currentUserId);
-
-                Set<Long> networkIds = new HashSet<>();
-                networkIds.add(currentUserId);
-                if (friendIds != null)
-                    networkIds.addAll(friendIds);
-                if (followingIds != null)
-                    networkIds.addAll(followingIds);
-                if (blockedIds != null && !blockedIds.isEmpty()) {
-                    networkIds.removeAll(blockedIds);
-                }
-
-                boolean hasBlocked = (blockedIds != null && !blockedIds.isEmpty());
-                Collection<Long> safeBlockedIds = hasBlocked ? blockedIds : Collections.singleton(0L);
-
+                FeedAudience audience = loadFeedAudience(currentUserId);
                 boolean admin = UserRole.ADMIN.name().equalsIgnoreCase(payloadOpt.orElseThrow().getRole());
-                count = activityFeedRepository.countPersonalizedNewFeeds(sinceTime, networkIds, safeBlockedIds,
-                        hasBlocked, currentUserId, admin);
+                count = activityFeedRepository.countPersonalizedNewFeeds(sinceTime, audience.networkIds(),
+                        audience.blockedIds(), audience.hasBlocked(), currentUserId, admin);
             } else {
                 count = activityFeedRepository.countAnonymousNewFeeds(sinceTime);
             }
@@ -225,6 +191,28 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 .newCount(count)
                 .build();
     }
+
+    private FeedAudience loadFeedAudience(Long userId) {
+        Set<Long> blockedIds = blockRepository.findAllBlockedUserIds(userId);
+        Set<Long> friendIds = friendshipRepository.findAllAcceptedFriendUserIds(userId);
+        Set<Long> followingIds = followRepository.findAllFollowedUserIds(userId);
+
+        Set<Long> networkIds = new HashSet<>();
+        networkIds.add(userId);
+        if (friendIds != null) {
+            networkIds.addAll(friendIds);
+        }
+        if (followingIds != null) {
+            networkIds.addAll(followingIds);
+        }
+        boolean hasBlocked = blockedIds != null && !blockedIds.isEmpty();
+        if (hasBlocked) {
+            networkIds.removeAll(blockedIds);
+        }
+        return new FeedAudience(networkIds, hasBlocked ? blockedIds : Set.of(0L), hasBlocked);
+    }
+
+    private record FeedAudience(Set<Long> networkIds, Set<Long> blockedIds, boolean hasBlocked) {}
 
     private Optional<JwtPayload> getOptionalJwtPayload() {
         try {
@@ -256,6 +244,11 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
         activityFeedRepository.saveAll(activities);
     }
 
+    private static void putViewerReaction(Map<String, Object> content, ReactionType reaction) {
+        content.put("my_reaction", reaction != null ? reaction.name() : null);
+        content.put("reacted_by_me", reaction != null);
+    }
+
     private boolean isApprovalActivity(ActivityFeed feed, Map<Long, Post> postMap) {
         if (feed.getActionType() == ActionType.SESSION_RESOLVED_APPROVED) return true;
         Post post = feed.getTargetType() == ActivityFeedTargetType.POST ? postMap.get(feed.getTargetId()) : null;
@@ -276,28 +269,11 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             Set<Long> editableNotePostIds) {
 
         AuthorDto actorDto;
-        if (isApprovalActivity(feed, postMap)) {
-            Long targetId = feed.getTargetId();
-            Post post = targetId == null ? null : switch (feed.getTargetType()) {
-                case POST -> postMap.get(targetId);
-                case SESSION -> approvalPosts.get(targetId);
-                case null, default -> null;
-            };
-            User student = post != null && post.getSession() != null ? post.getSession().getProposer() : null;
-            if (student == null && feed.getActionType() == ActionType.SESSION_RESOLVED_APPROVED) {
-                student = feed.getUser();
-            }
-            actorDto = approvalPostAuthor.fromStudent(student);
-        } else if (feed.getUser() != null) {
-            UserProfile profile = profileMap.get(feed.getUser().getId());
-            actorDto = AuthorDto.builder()
-                    .userId(feed.getUser().getId())
-                    .fullName(profile != null ? profile.getFullName() : feed.getUser().getEmail())
-                    .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
-                    .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
-                    .build();
-        } else {
+        if (isApprovalActivity(feed, postMap) || feed.getUser() == null) {
             actorDto = AuthorDto.getSystemAuthor();
+        } else {
+            User actor = feed.getUser();
+            actorDto = AuthorDto.fromUser(actor, profileMap.get(actor.getId()));
         }
 
         Map<String, Object> contentMap = new LinkedHashMap<>();
@@ -356,36 +332,25 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
                 if (post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION && post.getLecturerNote() != null) {
                     contentMap.put("lecturer_note", post.getLecturerNote());
                     if (post.getNotedLecturer() != null) {
-                        UserProfile lProfile = profileMap.get(post.getNotedLecturer().getId());
-                        contentMap.put("noted_lecturer", AuthorDto.builder()
-                                .userId(post.getNotedLecturer().getId())
-                                .fullName(lProfile != null ? lProfile.getFullName() : post.getNotedLecturer().getEmail())
-                                .avatarUrl(lProfile != null ? lProfile.getAvatarUrl() : null)
-                                .frameUrl(lProfile != null ? lProfile.getAvatarFrameUrl() : null)
-                                .build());
+                        var lecturer = post.getNotedLecturer();
+                        contentMap.put("noted_lecturer", AuthorDto.fromUser(lecturer, profileMap.get(lecturer.getId())));
                     }
                 }
             } else {
                 contentMap.put("comment_count", 0);
                 contentMap.put("react_count", 0);
             }
-            ReactionType userReact = userPostReactMap.get(targetId);
-            contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
-            contentMap.put("reacted_by_me", userReact != null);
+            putViewerReaction(contentMap, userPostReactMap.get(targetId));
         } else if (targetType == ActivityFeedTargetType.SESSION && targetId != null) {
             Session session = sessionMap.get(targetId);
             contentMap.put("comment_count", session != null ? session.getCommentCount() : 0);
             contentMap.put("react_count", session != null ? session.getReactCount() : 0);
-            ReactionType userReact = userSessionReactMap.get(targetId);
-            contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
-            contentMap.put("reacted_by_me", userReact != null);
+            putViewerReaction(contentMap, userSessionReactMap.get(targetId));
         } else if (targetType == ActivityFeedTargetType.QUESTION && targetId != null) {
             Question question = questionMap.get(targetId);
             contentMap.put("comment_count", question != null ? question.getCommentCount() : 0);
             contentMap.put("react_count", question != null ? question.getReactCount() : 0);
-            ReactionType userReact = userQuestionReactMap.get(targetId);
-            contentMap.put("my_reaction", userReact != null ? userReact.name() : null);
-            contentMap.put("reacted_by_me", userReact != null);
+            putViewerReaction(contentMap, userQuestionReactMap.get(targetId));
         }
 
         if (feed.getActionType() == ActionType.EARNED_BADGE) {

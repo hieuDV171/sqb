@@ -9,7 +9,7 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.socialinteraction.dto.ReactRequest;
 import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.socialinteraction.dto.ReactResponseDto;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
 import com.frozenheart.backend.modules.socialinteraction.service.ReactService;

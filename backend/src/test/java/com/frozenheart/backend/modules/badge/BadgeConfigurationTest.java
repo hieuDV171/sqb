@@ -19,7 +19,7 @@ import com.frozenheart.backend.modules.badge.repository.BadgeRepository;
 import com.frozenheart.backend.modules.badge.repository.UserBadgeRepository;
 import com.frozenheart.backend.modules.badge.service.BadgeEvaluationService;
 import com.frozenheart.backend.modules.badge.service.impl.BadgeServiceImpl;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.gamification.dto.LeaderboardPeriod;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;

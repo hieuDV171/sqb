@@ -17,7 +17,7 @@ import com.frozenheart.backend.modules.conversation.repository.UserParticipantRe
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.conversation.service.ChatRealtimePublisher;
 import com.frozenheart.backend.modules.media.service.MediaService;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;

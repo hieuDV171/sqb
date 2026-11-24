@@ -17,7 +17,7 @@ import com.frozenheart.backend.modules.conversation.service.ChatWebSocketService
 import com.frozenheart.backend.modules.conversation.service.ChatRealtimePublisher;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.media.service.MediaService;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +64,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
         UserParticipant senderParticipant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, conversation.getId()).orElse(null);
-        if (!canAccess(senderParticipant, session)) {
+        if (isAccessDenied(senderParticipant, session)) {
             log.warn("[ChatWebSocketServiceImpl] User {} không còn hoạt động trong cuộc hội thoại {}", currentUserId,
                     conversation.getId());
             return;
@@ -200,7 +200,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
 
         UserParticipant participant = userParticipantRepository
                 .findByUserIdAndConversationId(currentUserId, request.getConversationId()).orElse(null);
-        if (!canAccess(participant, session)) {
+        if (isAccessDenied(participant, session)) {
             return;
         }
 
@@ -252,7 +252,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         UserParticipant sender = participants.stream()
                 .filter(participant -> Objects.equals(participant.getUser().getId(), currentUserId))
                 .findFirst().orElse(null);
-        if (!canAccess(sender, session)) {
+        if (isAccessDenied(sender, session)) {
             return;
         }
 
@@ -274,9 +274,9 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
                 .forEach(participant -> realtimePublisher.deliver(participant, broadcastDto));
     }
 
-    private boolean canAccess(UserParticipant participant, JwtPayload session) {
-        return participant != null && participant.getLeftAt() == null
-                && (participant.getHiddenAt() == null || hiddenChatAccess.isUnlocked(session));
+    private boolean isAccessDenied(UserParticipant participant, JwtPayload session) {
+        return participant == null || participant.getLeftAt() != null
+                || (participant.getHiddenAt() != null && !hiddenChatAccess.isUnlocked(session));
     }
 
 }

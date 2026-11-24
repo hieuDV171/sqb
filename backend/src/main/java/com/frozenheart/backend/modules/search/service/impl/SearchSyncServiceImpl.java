@@ -26,7 +26,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -64,17 +66,8 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         if (profiles.isEmpty()) return;
 
         try {
-            BulkRequest.Builder br = new BulkRequest.Builder();
-            for (UserProfile up : profiles) {
-                UserSearchDoc doc = mapToUserDoc(up);
-                br.operations(op -> op.index(idx -> idx
-                        .index(UserSearchDoc.INDEX_NAME)
-                        .id(doc.getId().toString())
-                        .document(doc)
-                ));
-            }
-
-            BulkResponse response = client.bulk(br.build());
+            BulkResponse response = bulkIndex(profiles, UserSearchDoc.INDEX_NAME,
+                    this::mapToUserDoc, UserSearchDoc::getId);
             if (response.errors()) {
                 log.error("[SearchSyncService] Có lỗi khi bulk index UserSearchDoc: {}", response);
             } else {
@@ -92,17 +85,8 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         if (subjects.isEmpty()) return;
 
         try {
-            BulkRequest.Builder br = new BulkRequest.Builder();
-            for (Subject s : subjects) {
-                SubjectSearchDoc doc = mapToSubjectDoc(s);
-                br.operations(op -> op.index(idx -> idx
-                        .index(SubjectSearchDoc.INDEX_NAME)
-                        .id(doc.getId().toString())
-                        .document(doc)
-                ));
-            }
-
-            BulkResponse response = client.bulk(br.build());
+            BulkResponse response = bulkIndex(subjects, SubjectSearchDoc.INDEX_NAME,
+                    this::mapToSubjectDoc, SubjectSearchDoc::getId);
             if (response.errors()) {
                 log.error("[SearchSyncService] Có lỗi khi bulk index SubjectSearchDoc: {}", response);
             } else {
@@ -119,25 +103,12 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         List<Post> posts = postRepository.findAllPublicPostsForSearch();
         if (posts.isEmpty()) return;
 
-        // Tránh N+1: Lấy trước toàn bộ UserProfile của tác giả
-        Set<Long> posterIds = posts.stream()
-                .map(p -> p.getPoster() != null ? p.getPoster().getId() : null)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(posterIds).stream()
-                .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
+        Map<Long, UserProfile> profileMap = loadPostAuthorProfiles(posts);
 
         try {
             BulkRequest.Builder br = new BulkRequest.Builder();
             for (Post p : posts) {
-                UserProfile authorProfile = p.getPoster() != null ? profileMap.get(p.getPoster().getId()) : null;
-                PostSearchDoc doc = mapToPostDoc(p, authorProfile);
-                br.operations(op -> op.index(idx -> idx
-                        .index(PostSearchDoc.INDEX_NAME)
-                        .id(doc.getId().toString())
-                        .document(doc)
-                ));
+                addPostIndexOperation(br, p, profileMap);
             }
 
             BulkResponse response = client.bulk(br.build());
@@ -302,26 +273,14 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         List<Post> posts = postRepository.findAllById(postIds);
         if (posts.isEmpty()) return;
 
-        Set<Long> posterIds = posts.stream()
-                .map(p -> p.getPoster() != null ? p.getPoster().getId() : null)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(posterIds).stream()
-                .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
+        Map<Long, UserProfile> profileMap = loadPostAuthorProfiles(posts);
 
         try {
             BulkRequest.Builder br = new BulkRequest.Builder();
             for (Post p : posts) {
                 if (p.getDeletedAt() == null && p.getActiveModerationAction() == null
                         && p.getVisibility() != PostVisibility.ONLY_ME) {
-                    UserProfile authorProfile = p.getPoster() != null ? profileMap.get(p.getPoster().getId()) : null;
-                    PostSearchDoc doc = mapToPostDoc(p, authorProfile);
-                    br.operations(op -> op.index(idx -> idx
-                            .index(PostSearchDoc.INDEX_NAME)
-                            .id(doc.getId().toString())
-                            .document(doc)
-                    ));
+                    addPostIndexOperation(br, p, profileMap);
                 } else {
                     br.operations(op -> op.delete(del -> del
                             .index(PostSearchDoc.INDEX_NAME)
@@ -412,16 +371,8 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         if (profiles.isEmpty()) return;
 
         try {
-            BulkRequest.Builder br = new BulkRequest.Builder();
-            for (UserProfile up : profiles) {
-                UserSearchDoc doc = mapToUserDoc(up);
-                br.operations(op -> op.index(idx -> idx
-                        .index(UserSearchDoc.INDEX_NAME)
-                        .id(doc.getId().toString())
-                        .document(doc)
-                ));
-            }
-            BulkResponse response = client.bulk(br.build());
+            BulkResponse response = bulkIndex(profiles, UserSearchDoc.INDEX_NAME,
+                    this::mapToUserDoc, UserSearchDoc::getId);
             if (!response.errors()) {
                 log.info("[SearchSyncService] ✅ Đã bulk sync {} users.", profiles.size());
             }
@@ -438,22 +389,45 @@ public class SearchSyncServiceImpl implements SearchSyncService {
         if (subjects.isEmpty()) return;
 
         try {
-            BulkRequest.Builder br = new BulkRequest.Builder();
-            for (Subject s : subjects) {
-                SubjectSearchDoc doc = mapToSubjectDoc(s);
-                br.operations(op -> op.index(idx -> idx
-                        .index(SubjectSearchDoc.INDEX_NAME)
-                        .id(doc.getId().toString())
-                        .document(doc)
-                ));
-            }
-            BulkResponse response = client.bulk(br.build());
+            BulkResponse response = bulkIndex(subjects, SubjectSearchDoc.INDEX_NAME,
+                    this::mapToSubjectDoc, SubjectSearchDoc::getId);
             if (!response.errors()) {
                 log.info("[SearchSyncService] ✅ Đã bulk sync {} subjects.", subjects.size());
             }
         } catch (Exception e) {
             log.error("[SearchSyncService] Lỗi khi syncSubjectsBatch: {}", e.getMessage());
         }
+    }
+
+    private Map<Long, UserProfile> loadPostAuthorProfiles(List<Post> posts) {
+        Set<Long> posterIds = posts.stream()
+                .map(post -> post.getPoster() != null ? post.getPoster().getId() : null)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        return userProfileRepository.findAllById(posterIds).stream()
+                .collect(Collectors.toMap(UserProfile::getUserId, profile -> profile));
+    }
+
+    private void addPostIndexOperation(BulkRequest.Builder request, Post post, Map<Long, UserProfile> profiles) {
+        var author = post.getPoster();
+        PostSearchDoc document = mapToPostDoc(post, author != null ? profiles.get(author.getId()) : null);
+        request.operations(op -> op.index(index -> index
+                .index(PostSearchDoc.INDEX_NAME)
+                .id(document.getId().toString())
+                .document(document)));
+    }
+
+    private <T, D> BulkResponse bulkIndex(List<T> rows, String indexName, Function<T, D> toDocument,
+                                         Function<D, Long> documentId) throws IOException {
+        BulkRequest.Builder request = new BulkRequest.Builder();
+        for (T row : rows) {
+            D document = toDocument.apply(row);
+            request.operations(op -> op.index(index -> index
+                    .index(indexName)
+                    .id(documentId.apply(document).toString())
+                    .document(document)));
+        }
+        return client.bulk(request.build());
     }
 
     @Override

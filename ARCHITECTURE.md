@@ -684,3 +684,18 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Cảnh báo đối sánh dùng ID ổn định của câu và ghi rõ phạm vi trong phiên hoặc ngân hàng. Cảnh báo chất lượng về vị trí đáp án và độ dài đáp án có phạm vi riêng và chỉ hỗ trợ người duyệt. Hai tiêu chí độ khó theo mục tiêu và độ bám bài giảng nằm ngoài phạm vi thay đổi này.
 - BTProp dùng một chế độ. Sidecar giới hạn độ sâu tối đa bằng `BTPROP_DEPTH` (mặc định 2) và trả độ sâu đã duyệt. Bản chấm dở có điểm rủi ro và độ tin cậy rỗng ở API sidecar. Java hiển thị cảnh báo cần tự rà soát khi áp dụng bản AI.
 - Schema bổ sung `topics.archived` và `questions.duplicate_check_status`, `duplicate_check_attempts`, `duplicate_check_next_attempt_at`. `archived = NULL` có nghĩa đang dùng. Câu cũ đang chờ với trạng thái kiểm tra rỗng được poller đưa vào hàng chờ. Các cột ảnh và embedding hiện có được tái sử dụng. Changeset do người dùng tạo trước khi chạy backend trên database đã có dữ liệu.
+
+### [ADR-082] Ánh xạ một chiều từ bài viết tới phiên
+
+- **Ngày 24/11/2026.** `Post.session` sở hữu quan hệ 1–1 qua `posts.session_id` và khai báo `FetchType.LAZY`. Bỏ thuộc tính ngược `Session.post` vì mã nguồn truy cập bài viết theo ID phiên thông qua repository. Hibernate có thể truy vấn thêm để xác định sự tồn tại của chiều ngược tùy chọn khi tải danh sách phiên.
+- Khi cần bài công khai của các phiên đã duyệt, bảng tin tiếp tục lấy theo lô bằng `PostRepository.findPublicApprovalPostsBySessionIds`. Khóa ngoại và ràng buộc duy nhất trên `posts.session_id` đã có trong schema.
+
+### [ADR-083] Hiển thị Hệ thống là tác giả bài vinh danh đóng góp
+
+- **Ngày 24/11/2026.** Thay quy tắc tên tác giả của ADR-030. API Bảng tin và bài viết trả tác giả `Hệ thống` cho `SESSION_RESOLVED_APPROVED` và `QUESTION_APPROVED_NOTIFICATION`, kể cả bài đã tạo trước đó.
+- Tên tác giả được chọn khi tạo DTO. Bài tự động vẫn gắn với phiên, nội dung vinh danh vẫn dùng mã người đề xuất và ghi chú vẫn hiển thị người ghi chú theo ADR-029.
+
+### [ADR-084] Gom các tính năng quan hệ xã hội
+
+- **Ngày 24/11/2026.** Đặt bạn bè, theo dõi và chặn dưới `modules.socialgraph`, mỗi tính năng có package con riêng. Các repository quan hệ nằm cạnh controller và service của tính năng phụ trách.
+- `modules.socialinteraction` phụ trách bình luận và cảm xúc trên nội dung. Các package entity, route HTTP, ánh xạ JPA và schema giữ nguyên.

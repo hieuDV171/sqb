@@ -4,6 +4,7 @@ import com.frozenheart.backend.core.dto.event.AccountDeletedEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -42,15 +43,16 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
     public WebSocketHandler decorate(WebSocketHandler delegate) {
         return new WebSocketHandlerDecorator(delegate) {
             @Override
-            public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+            public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
                 sockets.put(session.getId(), session);
                 super.afterConnectionEstablished(session);
             }
 
             @Override
-            public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-                sockets.remove(session.getId());
-                accounts.remove(session.getId());
+            public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) throws Exception {
+                String sessionId = session.getId();
+                sockets.remove(sessionId);
+                accounts.remove(sessionId);
                 super.afterConnectionClosed(session, status);
             }
         };
@@ -62,7 +64,7 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
         JwtPayload payload = JwtPayload.fromPrincipal(event.getUser());
         if (socketId != null && payload != null && payload.getUserId() != null && sockets.containsKey(socketId)) {
             accounts.put(socketId, payload);
-            if (!isCurrent(payload)) close(sockets.get(socketId));
+            if (isAccountSessionInvalid(payload)) close(sockets.get(socketId));
         }
     }
 
@@ -72,22 +74,22 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
     }
 
     @Override
-    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+    public Message<?> preSend(Message<?> message, @NonNull MessageChannel channel) {
         if (SimpMessageHeaderAccessor.getMessageType(message.getHeaders()) != SimpMessageType.MESSAGE) return message;
         String socketId = SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
         JwtPayload payload = socketId == null ? null : accounts.get(socketId);
-        if (payload != null && !isCurrent(payload)) {
+        if (payload != null && isAccountSessionInvalid(payload)) {
             close(sockets.get(socketId));
             return null;
         }
         return message;
     }
 
-    private boolean isCurrent(JwtPayload payload) {
+    private boolean isAccountSessionInvalid(JwtPayload payload) {
         try {
-            return jwt.isTokenValid(payload, users.loadUserByUsername(payload.getUsername()));
+            return !jwt.isTokenValid(payload, users.loadUserByUsername(payload.getUsername()));
         } catch (RuntimeException failure) {
-            return false;
+            return true;
         }
     }
 

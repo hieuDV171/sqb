@@ -110,7 +110,7 @@ class OpenApiDocumentationTest {
         var runtimeMapper = tools.jackson.databind.json.JsonMapper.builder()
                 .propertyNamingStrategy(tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE).build();
         for (Object sample : List.of(
-                com.frozenheart.backend.modules.block.dto.BlockResponseDto.builder().blockedUserId(7L).isBlocked(true).build(),
+                com.frozenheart.backend.modules.socialgraph.block.dto.BlockResponseDto.builder().blockedUserId(7L).isBlocked(true).build(),
                 com.frozenheart.backend.modules.conversation.dto.MessageDto.builder().messageId(42L).isEdited(false).build())) {
             var payload = new ObjectMapper().readTree(runtimeMapper.writeValueAsString(sample));
             Set<String> wireNames = new HashSet<>();

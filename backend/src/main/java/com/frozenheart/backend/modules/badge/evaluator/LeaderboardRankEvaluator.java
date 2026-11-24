@@ -16,6 +16,11 @@ public class LeaderboardRankEvaluator implements BadgeEvaluator<LeaderboardRankC
     }
 
     @Override
+    public Class<LeaderboardRankCriteria> getCriteriaClass() {
+        return LeaderboardRankCriteria.class;
+    }
+
+    @Override
     public boolean evaluate(User user, Badge badge, LeaderboardRankCriteria criteria, Object context) {
         if (user == null || criteria == null || criteria.getPeriod() == LeaderboardPeriod.SUBJECT) {
             return false;

@@ -416,42 +416,40 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             parameters.put("INCLUDE_ANSWER", includeAnswer);
 
             List<QuestionReportDto> reportDtos = new ArrayList<>();
-            if (questions != null) {
-                int count = 1;
-                for (Question q : questions) {
-                    List<String> questionImageUrls = q.getOwnedMedias() != null
-                            ? q.getOwnedMedias().stream()
-                                    .filter(m -> m
-                                            .getMediaTarget() == MediaTarget.CONTENT)
-                                    .map(QuestionMedia::getUrl)
-                                    .collect(Collectors.toList())
-                            : Collections.emptyList();
+            int count = 1;
+            for (Question q : questions) {
+                List<String> questionImageUrls = q.getOwnedMedias() != null
+                        ? q.getOwnedMedias().stream()
+                                .filter(m -> m
+                                        .getMediaTarget() == MediaTarget.CONTENT)
+                                .map(QuestionMedia::getUrl)
+                                .collect(Collectors.toList())
+                        : Collections.emptyList();
 
-                    List<QuestionReportDto.OptionReportDto> optionDtos = new ArrayList<>();
-                    List<QuestionOption> options = q.getOptions();
-                    if (options != null) {
-                        for (QuestionOption opt : options) {
-                            optionDtos.add(
-                                     QuestionReportDto.OptionReportDto.builder()
-                                             .key(opt.getKey())
-                                             .text(opt.getText())
-                                             .mediaUrl(opt.getMediaUrl())
-                                             .isCorrect(opt.getIsCorrect())
-                                             .build());
-                        }
+                List<QuestionReportDto.OptionReportDto> optionDtos = new ArrayList<>();
+                List<QuestionOption> options = q.getOptions();
+                if (options != null) {
+                    for (QuestionOption opt : options) {
+                        optionDtos.add(
+                                 QuestionReportDto.OptionReportDto.builder()
+                                         .key(opt.getKey())
+                                         .text(opt.getText())
+                                         .mediaUrl(opt.getMediaUrl())
+                                         .isCorrect(opt.getIsCorrect())
+                                         .build());
                     }
-
-                    String content = q.getContent() != null ? q.getContent() : "";
-                    String explanation = q.getExplanation() != null ? q.getExplanation() : "";
-
-                    reportDtos.add(QuestionReportDto.builder()
-                            .order(count++)
-                            .questionContent(content)
-                            .questionImageUrls(questionImageUrls)
-                            .options(optionDtos)
-                            .explanation(explanation)
-                            .build());
                 }
+
+                String content = q.getContent() != null ? q.getContent() : "";
+                String explanation = q.getExplanation() != null ? q.getExplanation() : "";
+
+                reportDtos.add(QuestionReportDto.builder()
+                        .order(count++)
+                        .questionContent(content)
+                        .questionImageUrls(questionImageUrls)
+                        .options(optionDtos)
+                        .explanation(explanation)
+                        .build());
             }
 
             JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(

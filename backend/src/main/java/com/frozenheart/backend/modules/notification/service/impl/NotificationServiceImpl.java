@@ -40,10 +40,11 @@ public class NotificationServiceImpl implements NotificationService {
         @Transactional(readOnly = true)
         public NotificationListResponseDto getMyNotifications(Long after, Integer limit) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+
                 int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
                 Pageable pageable = PageRequest.of(0, pageSize + 1);
-
                 Long cursor = (after != null && after > 0) ? after : null;
+
                 List<Notification> notifications = notificationRepository.findNotificationsCursor(currentUserId, cursor,
                                 pageable);
 

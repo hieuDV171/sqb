@@ -50,10 +50,11 @@ public class CosmeticServiceImpl implements CosmeticService {
     public MyInventoryResponseDto getMyInventory(CosmeticType type, CosmeticRarity rarity, boolean onlyUnlocked,
             Long after, Integer limit) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
+
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
         Pageable pageable = PageRequest.of(0, pageSize + 1);
-
         Long cursor = (after != null && after > 0) ? after : null;
+
         List<UserCosmetic> userCosmetics = userCosmeticRepository.findInventoryCursor(currentUserId, type, rarity,
                 cursor, pageable);
 

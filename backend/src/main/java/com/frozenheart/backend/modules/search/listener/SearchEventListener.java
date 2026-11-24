@@ -37,7 +37,7 @@ public class SearchEventListener {
             String indexName = resolveIndexName(event.entityType());
             if (indexName != null) {
                 if (event.entityIds().size() == 1) {
-                    syncService.deleteDocument(indexName, event.entityIds().get(0));
+                    syncService.deleteDocument(indexName, event.entityIds().getFirst());
                 } else {
                     syncService.deleteDocumentsBatch(indexName, event.entityIds());
                 }
@@ -47,7 +47,7 @@ public class SearchEventListener {
 
         // Xử lý UPSERT: Đơn lẻ vs Hàng loạt
         if (event.entityIds().size() == 1) {
-            Long singleId = event.entityIds().get(0);
+            Long singleId = event.entityIds().getFirst();
             switch (event.entityType()) {
                 case USER -> syncService.syncUser(singleId);
                 case SUBJECT -> syncService.syncSubject(singleId);

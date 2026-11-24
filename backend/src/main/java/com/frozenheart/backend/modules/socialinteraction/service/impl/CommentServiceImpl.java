@@ -54,10 +54,7 @@ public class CommentServiceImpl implements CommentService {
         boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
         boolean hasMedia = request.getMediaUrl() != null && !request.getMediaUrl().isBlank();
 
-        if (!hasContent && !hasMedia) {
-            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
-                    "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
-        }
+        requireContentOrMedia(hasContent, hasMedia);
 
         targetValidator.validateTargetExists(request.getTargetType(), request.getTargetId());
 
@@ -201,10 +198,7 @@ public class CommentServiceImpl implements CommentService {
         boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
         boolean hasMedia = request.getMediaUrl() != null && !request.getMediaUrl().isBlank();
 
-        if (!hasContent && !hasMedia) {
-            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
-                    "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
-        }
+        requireContentOrMedia(hasContent, hasMedia);
 
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
@@ -312,6 +306,13 @@ public class CommentServiceImpl implements CommentService {
                 .collect(Collectors.toMap(UserProfile::getUserId, profile -> profile));
     }
 
+    private static void requireContentOrMedia(boolean hasContent, boolean hasMedia) {
+        if (!hasContent && !hasMedia) {
+            throw new AppException(ResponseCode.MISSING_REQUIRED_PARAMETER,
+                    "Bình luận phải có nội dung chữ hoặc hình ảnh đính kèm");
+        }
+    }
+
     private void incrementTargetCommentCounter(InteractionTargetType targetType, Long targetId, int delta) {
         if (targetType == null || targetId == null)
             return;
@@ -329,13 +330,8 @@ public class CommentServiceImpl implements CommentService {
 
         AuthorDto authorDto = null;
         if (!isDeleted && comment.getUser() != null) {
-            UserProfile profile = profileMap.get(comment.getUser().getId());
-            authorDto = AuthorDto.builder()
-                    .userId(comment.getUser().getId())
-                    .fullName(profile != null ? profile.getFullName() : comment.getUser().getEmail())
-                    .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
-                    .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
-                    .build();
+            User author = comment.getUser();
+            authorDto = AuthorDto.fromUser(author, profileMap.get(author.getId()));
         }
 
         String mediaUrl = null;

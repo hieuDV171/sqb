@@ -109,6 +109,9 @@ class ChatTypingStompTest {
             }
 
             sessions.onAccountsDeleted(new AccountDeletedEvent(List.of(1L)));
+            when(sender.isOpen()).thenReturn(false);
+            handler.afterConnectionClosed(sender, CloseStatus.POLICY_VIOLATION);
+            sessions.onAccountsDeleted(new AccountDeletedEvent(List.of(1L)));
             verify(sender).close(CloseStatus.POLICY_VIOLATION);
             verify(receiver, never()).close(any());
         }

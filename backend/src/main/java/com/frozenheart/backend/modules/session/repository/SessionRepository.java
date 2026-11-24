@@ -200,12 +200,13 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
                         @Param("cutoff") Instant cutoff,
                         Pageable pageable);
 
+        // The leading TRUE predicates work around IntelliJ's SpringDataQL parser for grouped EXISTS.
         @Query("""
                 SELECT s.id FROM Session s
                 WHERE s.status = 'PENDING' AND s.createdAt < :cutoff
-                  AND (EXISTS (SELECT 1 FROM Question q WHERE q.session = s AND q.status = 'PENDING'
+                  AND (TRUE AND EXISTS (SELECT 1 FROM Question q WHERE q.session = s AND q.status = 'PENDING'
                                   AND q.duplicateCheckStatus = 'COMPLETE')
-                     OR (EXISTS (SELECT 1 FROM Question q WHERE q.session = s)
+                     OR (TRUE AND EXISTS (SELECT 1 FROM Question q WHERE q.session = s)
                          AND NOT EXISTS (SELECT 1 FROM Question q WHERE q.session = s AND q.status = 'PENDING')))
                 ORDER BY s.id
                 """)

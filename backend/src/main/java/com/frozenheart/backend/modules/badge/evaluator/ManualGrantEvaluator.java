@@ -15,6 +15,11 @@ public class ManualGrantEvaluator implements BadgeEvaluator<ManualGrantCriteria>
     }
 
     @Override
+    public Class<ManualGrantCriteria> getCriteriaClass() {
+        return ManualGrantCriteria.class;
+    }
+
+    @Override
     public boolean evaluate(User user, Badge badge, ManualGrantCriteria criteria, Object context) {
         return Boolean.TRUE.equals(context);
     }

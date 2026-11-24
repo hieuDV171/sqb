@@ -29,6 +29,7 @@ import com.frozenheart.backend.core.entity.media.MediaPurpose;
 import com.frozenheart.backend.core.entity.media.MediaType;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.util.ImageSignature;
 import com.frozenheart.backend.modules.media.dto.MediaUploadResponse;
 import com.frozenheart.backend.modules.media.dto.PresignMediaRequest;
 import com.frozenheart.backend.modules.media.dto.PresignMediaResponse;
@@ -208,25 +209,18 @@ public class MediaServiceImpl implements MediaService {
         }
 
         // Xóa dấu slash ở đầu nếu còn sót
-        while (clean != null && clean.startsWith("/")) {
+        while (clean.startsWith("/")) {
             clean = clean.substring(1);
         }
 
-        return (clean != null && !clean.isBlank()) ? clean : null;
+        return clean.isBlank() ? null : clean;
     }
 
     private void validateBadgeImage(MultipartFile file) {
         try (InputStream stream = file.getInputStream()) {
-            byte[] header = stream.readNBytes(12);
-            boolean valid = header.length == 12 && switch (Objects.toString(file.getContentType(), "")) {
-                case "image/png" -> Arrays.equals(Arrays.copyOf(header, 8), new byte[] {(byte) 137, 80, 78, 71, 13, 10, 26, 10});
-                case "image/jpeg" -> header[0] == (byte) 255 && header[1] == (byte) 216 && header[2] == (byte) 255;
-                case "image/gif" -> header[0] == 'G' && header[1] == 'I' && header[2] == 'F';
-                case "image/webp" -> header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
-                        && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P';
-                default -> false;
-            };
-            if (valid) return;
+            if (ImageSignature.matches(stream.readNBytes(ImageSignature.HEADER_LENGTH), file.getContentType())) {
+                return;
+            }
         } catch (java.io.IOException e) {
             throw new AppException(ResponseCode.FILE_UPLOAD_FAILED, "Không đọc được ảnh biểu tượng.");
         }

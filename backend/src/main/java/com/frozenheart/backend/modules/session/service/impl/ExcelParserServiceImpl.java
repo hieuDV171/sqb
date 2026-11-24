@@ -76,7 +76,7 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                 String fullName = getCellValue(row, colMap.get("fullname"), formatter);
 
                 // Dòng không có cả MSSV lẫn email thì coi như dòng phụ/trống
-                if ((mssv == null || mssv.isBlank()) && (email == null || email.isBlank())) {
+                if (mssv.isBlank() && email.isBlank()) {
                     continue;
                 }
 
@@ -117,7 +117,7 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                 String major = extractMajorFromClassName(rawClassName);
 
                 // Chuẩn hóa email nếu trống mà có MSSV (theo format HUST)
-                if ((email == null || email.isBlank()) && mssv != null && !mssv.isBlank()) {
+                if (email.isBlank()) {
                     email = generateHustEmail(fullName, mssv);
                 }
 
@@ -127,7 +127,7 @@ public class ExcelParserServiceImpl implements ExcelParserService {
                         .fullName(cleanString(fullName))
                         .gender(gender)
                         .dateOfBirth(dateOfBirth)
-                        .email(email != null ? email.trim() : "")
+                        .email(email.trim())
                         .className(cleanString(rawClassName))
                         .major(cleanString(major))
                         .build());

@@ -20,6 +20,11 @@ public class SubjectMasteryEvaluator implements BadgeEvaluator<SubjectMasteryCri
     }
 
     @Override
+    public Class<SubjectMasteryCriteria> getCriteriaClass() {
+        return SubjectMasteryCriteria.class;
+    }
+
+    @Override
     public boolean evaluate(User user, Badge badge, SubjectMasteryCriteria criteria, Object context) {
         if (user == null || criteria == null || criteria.getSubjectId() == null) {
             return false;

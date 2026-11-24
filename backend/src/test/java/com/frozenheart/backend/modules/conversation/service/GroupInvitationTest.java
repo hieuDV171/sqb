@@ -15,7 +15,7 @@ import com.frozenheart.backend.modules.conversation.repository.ConversationRepos
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.impl.ConversationServiceImpl;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;

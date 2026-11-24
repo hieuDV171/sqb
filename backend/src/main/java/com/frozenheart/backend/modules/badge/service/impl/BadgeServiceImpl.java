@@ -261,14 +261,14 @@ public class BadgeServiceImpl implements BadgeService {
             throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Hãy chọn sự kiện và nhập tiêu chí xét thưởng.");
         }
         boolean matchesTrigger = switch (criteria) {
-            case CounterThresholdCriteria counter -> switch (trigger) {
+            case CounterThresholdCriteria _ -> switch (trigger) {
                 case APPROVED_QUESTIONS, PROPOSED_QUESTIONS, REVIEWED_SESSIONS, ACCEPTED_FRIENDS, PUBLIC_POINTS -> true;
                 default -> false;
             };
-            case SubjectMasteryCriteria subject -> trigger == BadgeTriggerEvent.APPROVED_QUESTIONS;
-            case StreakCriteria streak -> trigger == BadgeTriggerEvent.STUDY_STREAK;
-            case LeaderboardRankCriteria rank -> trigger == BadgeTriggerEvent.LEADERBOARD_RANK;
-            case ManualGrantCriteria manual -> trigger == BadgeTriggerEvent.MANUAL_GRANT;
+            case SubjectMasteryCriteria _ -> trigger == BadgeTriggerEvent.APPROVED_QUESTIONS;
+            case StreakCriteria _ -> trigger == BadgeTriggerEvent.STUDY_STREAK;
+            case LeaderboardRankCriteria _ -> trigger == BadgeTriggerEvent.LEADERBOARD_RANK;
+            case ManualGrantCriteria _ -> trigger == BadgeTriggerEvent.MANUAL_GRANT;
             default -> false;
         };
         if (!matchesTrigger) {
@@ -309,7 +309,7 @@ public class BadgeServiceImpl implements BadgeService {
                 badgeTriggerEvent);
         for (Badge badge : targetBadges) {
             if (badgeEvaluationService.isEligible(user, badge, context)) {
-                grantBadgeToUser(user, badge, null);
+                grantBadgeToUser(user, badge);
             }
         }
     }
@@ -346,7 +346,7 @@ public class BadgeServiceImpl implements BadgeService {
                 String key = user.getId() + "_" + badge.getId();
                 if (!ownedKeys.contains(key)) {
                     if (badgeEvaluationService.isEligible(user, badge, userContext)) {
-                        grantBadgeToUser(user, badge, null);
+                        grantBadgeToUser(user, badge);
                         ownedKeys.add(key);
                     }
                 }
@@ -367,7 +367,7 @@ public class BadgeServiceImpl implements BadgeService {
 
         Badge badge = badgeRepository.findById(badgeId).orElse(null);
         if (badge != null && badge.isActive() && badgeEvaluationService.isEligible(user, badge, context)) {
-            grantBadgeToUser(user, badge, null);
+            grantBadgeToUser(user, badge);
         }
     }
 
@@ -393,13 +393,13 @@ public class BadgeServiceImpl implements BadgeService {
         log.info("[BadgeService] Ghi nhận cột mốc cho user {}: {}", user.getId(), milestoneTitle);
     }
 
-    private void grantBadgeToUser(User user, Badge badge, String customReason) {
+    private void grantBadgeToUser(User user, Badge badge) {
         Instant now = Instant.now();
         if (userBadgeRepository.insertAutomaticAward(user.getId(), badge.getId(), now) == 0) {
             return;
         }
         userProfileRepository.incrementBadgesCount(user.getId(), 1);
-        String reason = customReason != null ? customReason : badge.getDescription();
+        String reason = badge.getDescription();
         activityFeedService.logActivity(user, ActionType.EARNED_BADGE, ActivityFeedTargetType.BADGE, badge.getId(),
                 badgeFeedMetadata(badge, reason));
         notificationWriter.create(badgeNotification(user, badge, reason, now));

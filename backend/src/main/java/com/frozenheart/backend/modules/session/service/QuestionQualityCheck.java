@@ -6,13 +6,14 @@ import com.frozenheart.backend.core.entity.session.QuestionOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public final class QuestionQualityCheck {
     private QuestionQualityCheck() {}
 
     public static String warning(Question question) {
         List<QuestionOption> options = question.getOptions();
-        if (!singleAnswer(options) || options.stream().anyMatch(option -> option.getMediaUrl() != null
+        if (hasInvalidSingleAnswerOptions(options) || options.stream().anyMatch(option -> option.getMediaUrl() != null
                 || option.getMediaId() != null || option.getText() == null || option.getText().isBlank())) return null;
         int correct = options.stream().filter(option -> Boolean.TRUE.equals(option.getIsCorrect()))
                 .mapToInt(QuestionQualityCheck::wordCount).findFirst().orElseThrow();
@@ -27,7 +28,7 @@ public final class QuestionQualityCheck {
         int total = 0;
         for (Question question : questions) {
             List<QuestionOption> options = question.getOptions();
-            if (options == null || options.size() != 4 || !singleAnswer(options)) continue;
+            if (options == null || options.size() != 4 || hasInvalidSingleAnswerOptions(options)) continue;
             for (int position = 0; position < options.size(); position++) {
                 if (Boolean.TRUE.equals(options.get(position).getIsCorrect())) {
                     byPosition.merge(position, 1, Integer::sum);
@@ -45,9 +46,9 @@ public final class QuestionQualityCheck {
         return null;
     }
 
-    private static boolean singleAnswer(List<QuestionOption> options) {
-        return options != null && options.size() >= 2 && options.stream().noneMatch(java.util.Objects::isNull)
-                && options.stream().filter(option -> Boolean.TRUE.equals(option.getIsCorrect())).count() == 1;
+    private static boolean hasInvalidSingleAnswerOptions(List<QuestionOption> options) {
+        return options == null || options.size() < 2 || options.stream().anyMatch(Objects::isNull)
+                || options.stream().filter(option -> Boolean.TRUE.equals(option.getIsCorrect())).count() != 1;
     }
 
     private static int wordCount(QuestionOption option) {

@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.frozenheart.backend.core.constant.Time;
-import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 
 import java.time.LocalTime;
@@ -51,16 +50,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         }
 
         List<UserDevice> activeDevices = userDeviceRepository.findByUserIdAndIsActiveTrue(userId);
-        if (activeDevices.isEmpty()) {
-            return;
-        }
-
-        List<String> fids = activeDevices.stream()
-                .map(UserDevice::getFid)
-                .filter(t -> t != null && !t.isBlank())
-                .distinct()
-                .toList();
-
+        List<String> fids = distinctFids(activeDevices);
         if (fids.isEmpty()) {
             return;
         }
@@ -101,16 +91,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
         // 2. Lấy thiết bị active theo lô (0 N+1)
         List<UserDevice> activeDevices = userDeviceRepository.findActiveDevicesByUserIds(allowedUserIds);
-        if (activeDevices.isEmpty()) {
-            return;
-        }
-
-        List<String> fids = activeDevices.stream()
-                .map(UserDevice::getFid)
-                .filter(t -> t != null && !t.isBlank())
-                .distinct()
-                .toList();
-
+        List<String> fids = distinctFids(activeDevices);
         if (fids.isEmpty()) {
             return;
         }
@@ -121,6 +102,14 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             List<String> subFids = fids.subList(i, Math.min(i + batchSize, fids.size()));
             sendMulticastToDevices(subFids, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
         }
+    }
+
+    private static List<String> distinctFids(List<UserDevice> devices) {
+        return devices.stream()
+                .map(UserDevice::getFid)
+                .filter(fid -> fid != null && !fid.isBlank())
+                .distinct()
+                .toList();
     }
 
     private void sendMulticastToDevices(List<String> fids, List<UserDevice> devices,

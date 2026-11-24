@@ -3,8 +3,8 @@ package com.frozenheart.backend.modules.user.service.impl;
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
 import com.frozenheart.backend.modules.user.dto.Relationship;
-import com.frozenheart.backend.modules.user.repository.FollowRepository;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.follow.repository.FollowRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;

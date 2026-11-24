@@ -56,16 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtService.isTokenValid(jwtPayload, userDetails)
                         && (jwtPayload.getTokenType() == TokenType.ACCESS
                         || jwtPayload.getTokenType() == TokenType.ONBOARDING)) {
-                    var authorities = jwtPayload.getTokenType() == TokenType.ONBOARDING
-                            ? List.of(new SimpleGrantedAuthority("ROLE_ONBOARDING"))
-                            : userDetails.getAuthorities();
-                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null, // không đặt MK vào đây
-                            authorities
-                    );
-
-                    authenticationToken.setDetails(jwtPayload);
+                    UsernamePasswordAuthenticationToken authenticationToken = getAuthenticationToken(jwtPayload, userDetails);
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
                     // Bổ sung danh tính user vào MDC để tương quan log
@@ -81,5 +72,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
 
+    }
+
+    private @NonNull UsernamePasswordAuthenticationToken getAuthenticationToken(JwtPayload jwtPayload, UserDetails userDetails) {
+        var authorities = jwtPayload.getTokenType() == TokenType.ONBOARDING
+                ? List.of(new SimpleGrantedAuthority("ROLE_ONBOARDING"))
+                : userDetails.getAuthorities();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null, // không đặt MK vào đây
+                authorities
+        );
+
+        authenticationToken.setDetails(jwtPayload);
+        return authenticationToken;
     }
 }

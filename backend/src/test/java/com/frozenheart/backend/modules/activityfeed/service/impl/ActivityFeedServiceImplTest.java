@@ -13,17 +13,15 @@ import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetTy
 import com.frozenheart.backend.core.entity.socialinteraction.React;
 import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.user.User;
-import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
-import com.frozenheart.backend.modules.user.repository.FollowRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.follow.repository.FollowRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,10 +63,9 @@ class ActivityFeedServiceImplTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void approvalEventUsesPostInteractionsAndSessionClassForNote(boolean teachesSessionClass) {
-        var anonymizer = new AnonymizerUtil("unit-test");
         var service = new ActivityFeedServiceImpl(feedRepository, profileRepository, friendshipRepository,
                 followRepository, blockRepository, postRepository, new LecturerNoteAccess(postRepository),
-                sessionRepository, questionRepository, reactRepository, new ApprovalPostAuthor(anonymizer));
+                sessionRepository, questionRepository, reactRepository);
         var authentication = new UsernamePasswordAuthenticationToken("lecturer", null, List.of());
         authentication.setDetails(JwtPayload.builder().userId(7L).role("LECTURER").build());
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -99,9 +96,9 @@ class ActivityFeedServiceImplTest {
         assertEquals(300L, item.getFeedId());
         assertEquals(ActivityFeedTargetType.POST, item.getTargetType());
         assertEquals(200L, item.getTargetId());
-        assertEquals(anonymizer.encodeUserId(5L), item.getActor().getFullName());
+        assertEquals("Hệ thống", item.getActor().getFullName());
         assertNull(item.getActor().getUserId());
-        assertNull(item.getActor().getAvatarUrl());
+        assertEquals("/assets/system-avatar.png", item.getActor().getAvatarUrl());
         assertNull(item.getActor().getFrameUrl());
         assertEquals(100L, content.get("session_id"));
         assertEquals(5, content.get("react_count"));

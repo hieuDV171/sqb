@@ -9,5 +9,7 @@ public interface BadgeEvaluator<T extends BadgeCriteria> {
 
     CriteriaType getSupportedType();
 
+    Class<T> getCriteriaClass();
+
     boolean evaluate(User user, Badge badge, T criteria, Object context);
 }

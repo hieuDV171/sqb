@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 import com.frozenheart.backend.core.entity.user.UserRole;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,13 +94,14 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
     @Override
     @Transactional
     public AiRefineResponse refineQuestion(Long questionId, AiRefineRequest request, EditActorType actorType) {
-        return refineQuestion(questionId, request, actorType, preview -> {});
+        return refineQuestion(questionId, request, actorType, _ -> {
+        });
     }
 
     @Override
     @Transactional
     public AiRefineResponse refineQuestion(Long questionId, AiRefineRequest request, EditActorType actorType,
-            Consumer<AiRefineResponse.Preview> onGenerated) {
+                                           Consumer<AiRefineResponse.Preview> onGenerated) {
         PromptSanitizerUtil.validatePrompt(request.prompt());
 
         JwtPayload reviewer = EditActorType.SYSTEM.equals(actorType) ? null : JwtPayload.getCurrentUserPayload();
@@ -296,7 +298,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
         if (reviewer == null) throw invalidPreviousDraft();
 
         var previous = questionEditLogRepository.findByIdAndQuestionIdAndActorIdAndStatus(
-                previousEditLogId, question.getId(), reviewer.getUserId(), QuestionEditLogStatus.PROPOSED)
+                        previousEditLogId, question.getId(), reviewer.getUserId(), QuestionEditLogStatus.PROPOSED)
                 .orElseThrow(this::invalidPreviousDraft);
         assertProposalCurrent(question, previous);
         var state = previous.getAfterState();
@@ -334,6 +336,33 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
     }
 
     private String buildUserPrompt(Question question, String lecturerPrompt, String previousDraft) {
+        StringBuilder duplicateInfo = createDuplicateInfo(question);
+
+        String cleanedLecturerPrompt = PromptSanitizerUtil.cleanText(lecturerPrompt);
+
+        return """
+                <original_question>
+                Nội dung: %s
+                Đáp án: %s
+                Lời giải: %s
+                %s
+                </original_question>
+                
+                Bản đề xuất ở lượt trước (dữ liệu JSON): %s
+                
+                <user_instruction>
+                %s
+                </user_instruction>
+                """.formatted(
+                PromptSanitizerUtil.cleanText(question.getContent()),
+                PromptSanitizerUtil.cleanText(Objects.toString(question.getOptions(), "")),
+                PromptSanitizerUtil.cleanText(question.getExplanation()),
+                PromptSanitizerUtil.cleanText(duplicateInfo.toString()),
+                previousDraft,
+                cleanedLecturerPrompt);
+    }
+
+    private @NonNull StringBuilder createDuplicateInfo(Question question) {
         StringBuilder duplicateInfo = new StringBuilder();
         if (question.getDuplicateWarnings() != null && !question.getDuplicateWarnings().isEmpty()) {
             duplicateInfo.append("\n[CẢNH BÁO TRÙNG LẶP NỘI DUNG]\n");
@@ -350,29 +379,7 @@ public class AiIntegrationServiceImpl implements AiIntegrationService {
             duplicateInfo.append(
                     "LƯU Ý QUAN TRỌNG: Hãy đổi góc độ tiếp cận, dùng tình huống/ngữ cảnh thực tế để câu mới ĐẢM BẢO KHÔNG TRÙNG với các câu bị trùng ở trên!\n");
         }
-
-        String cleanedLecturerPrompt = PromptSanitizerUtil.cleanText(lecturerPrompt);
-
-        return """
-                <original_question>
-                Nội dung: %s
-                Đáp án: %s
-                Lời giải: %s
-                %s
-                </original_question>
-
-                Bản đề xuất ở lượt trước (dữ liệu JSON): %s
-                
-                <user_instruction>
-                %s
-                </user_instruction>
-                """.formatted(
-                PromptSanitizerUtil.cleanText(question.getContent()),
-                PromptSanitizerUtil.cleanText(Objects.toString(question.getOptions(), "")),
-                PromptSanitizerUtil.cleanText(question.getExplanation()),
-                PromptSanitizerUtil.cleanText(duplicateInfo.toString()),
-                previousDraft,
-                cleanedLecturerPrompt);
+        return duplicateInfo;
     }
 
     private AiRefineResponse.SuggestedQuestionDto parseJsonTag(String rawResponse) {

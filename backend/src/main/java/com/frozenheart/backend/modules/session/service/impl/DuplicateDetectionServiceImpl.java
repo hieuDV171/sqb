@@ -89,7 +89,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
 
     private void process(Long sessionId) {
         Instant now = Instant.now();
-        Snapshot snapshot = transaction.execute(status -> load(sessionId, now));
+        Snapshot snapshot = transaction.execute(_ -> load(sessionId, now));
         if (snapshot == null) return;
 
         List<Candidate> candidates = Stream.concat(snapshot.submitted().stream(), snapshot.bank().stream()).toList();
@@ -128,7 +128,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
 
         boolean textFinished = vectors.size() == missing.size();
         Map<Long, List<DuplicateWarning>> warnings = findMatches(snapshot, vectors, hashes);
-        transaction.executeWithoutResult(status -> storeResults(sessionId, snapshot, warnings, vectors, hashes,
+        transaction.executeWithoutResult(_ -> storeResults(sessionId, snapshot, warnings, vectors, hashes,
                 failedImages, textFinished, Instant.now()));
     }
 
@@ -198,8 +198,8 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
                 !expectedVersions.containsKey(question.getId())
                 || !Objects.equals(expectedVersions.get(question.getId()), question.getVersion()))) return;
 
-        var bankIds = snapshot.bank().stream().filter(candidate -> vectors.containsKey(candidate.id()))
-                .map(Candidate::id).toList();
+        var bankIds = snapshot.bank().stream().map(Candidate::id)
+                .filter(vectors::containsKey).toList();
         if (!bankIds.isEmpty()) {
             Map<Long, Long> bankVersions = new HashMap<>();
             snapshot.bank().forEach(candidate -> bankVersions.put(candidate.id(), candidate.version()));

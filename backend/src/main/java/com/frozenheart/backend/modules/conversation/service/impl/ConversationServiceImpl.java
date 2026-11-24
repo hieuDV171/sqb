@@ -21,7 +21,7 @@ import com.frozenheart.backend.modules.conversation.service.ConversationService;
 import com.frozenheart.backend.modules.conversation.service.GroupInvitationService;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.media.service.MediaService;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -280,7 +280,7 @@ public class ConversationServiceImpl implements ConversationService {
                 }
 
                 var connections = groupInvitationService.connections(currentUserId, memberIds);
-                if (targetMembers.stream().anyMatch(member -> !member.isActive() || !connections.eligible(member.getId()))) {
+                if (targetMembers.stream().anyMatch(member -> !member.isActive() || connections.hasNoConnectionTo(member.getId()))) {
                         throw new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                                         "Chỉ có thể chọn bạn bè, người theo dõi hoặc người bạn đang theo dõi");
                 }
@@ -474,6 +474,10 @@ public class ConversationServiceImpl implements ConversationService {
                                         ? ResponseCode.GROUP_MEMBER_REMOVED : ResponseCode.GROUP_MEMBER_INACTIVE);
                 }
 
+                return loadActiveMembers(conversationId);
+        }
+
+        private List<ConversationMemberDto> loadActiveMembers(Long conversationId) {
                 List<UserParticipant> participants = userParticipantRepository
                                 .findByConversationIdAndLeftAtIsNull(conversationId);
                 Set<Long> userIds = participants.stream().map(p -> p.getUser().getId()).collect(Collectors.toSet());
@@ -579,7 +583,7 @@ public class ConversationServiceImpl implements ConversationService {
                                 continue;
                         }
 
-                        if (!connections.eligible(targetUserId)) {
+                        if (connections.hasNoConnectionTo(targetUserId)) {
                                 failedMembers.add(new FailedMemberDto(targetUserId, fullName, avatarUrl, frameUrl,
                                                 "Chỉ có thể chọn bạn bè, người theo dõi hoặc người bạn đang theo dõi"));
                                 continue;
@@ -836,24 +840,7 @@ public class ConversationServiceImpl implements ConversationService {
         }
 
         private ConversationDetailDto mapToDetailDto(Conversation conversation) {
-                List<UserParticipant> participants = userParticipantRepository
-                                .findByConversationIdAndLeftAtIsNull(conversation.getId());
-                Set<Long> userIds = participants.stream().map(p -> p.getUser().getId()).collect(Collectors.toSet());
-                Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(userIds).stream()
-                                .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
-
-                List<ConversationMemberDto> members = participants.stream().map(p -> {
-                        UserProfile profile = profileMap.get(p.getUser().getId());
-                        return ConversationMemberDto.builder()
-                                        .userId(p.getUser().getId())
-                                        .fullName(profile != null ? profile.getFullName() : p.getUser().getEmail())
-                                        .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
-                                        .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
-                                        .role(p.getRole())
-                                        .createdAt(p.getJoinedAt())
-                                        .build();
-                }).collect(Collectors.toList());
-
+                List<ConversationMemberDto> members = loadActiveMembers(conversation.getId());
                 return ConversationDetailDto.builder()
                                 .conversationId(conversation.getId())
                                 .type(conversation.getType())

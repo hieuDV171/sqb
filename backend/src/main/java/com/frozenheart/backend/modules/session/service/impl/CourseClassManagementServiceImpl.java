@@ -98,23 +98,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
     @Override
     @Transactional
     public CourseClassResponse createCourseClass(CreateCourseClassRequest request) {
-        JwtPayload payload = JwtPayload.getCurrentUserPayload();
-        Long currentUserId = payload.getUserId();
-        boolean isAdmin = UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole());
-
-        if (!isAdmin && request.lecturerId() != null
-                && !Objects.equals(request.lecturerId(), currentUserId)) {
-            throw new AppException(ResponseCode.ACCESS_DENIED,
-                    "Giảng viên không được chỉ định người phụ trách khác; hãy bỏ lecturer_id hoặc dùng ID của chính bạn");
-        }
-        if (!isAdmin && request.semesterId() != null) {
-            throw new AppException(ResponseCode.ACCESS_DENIED,
-                    "Giảng viên chỉ được tạo lớp trong học kỳ đang kích hoạt");
-        }
-
-        Long targetLecturerId = isAdmin && request.lecturerId() != null
-                ? request.lecturerId()
-                : currentUserId;
+        Long targetLecturerId = getTargetLecturerId(request);
         User lecturer = userRepository.findById(targetLecturerId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND, "Không tìm thấy giảng viên"));
         if ((lecturer.getRole() != UserRole.LECTURER && lecturer.getRole() != UserRole.ADMIN)
@@ -170,6 +154,26 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .totalStudents(0)
                 .createdAt(saved.getCreatedAt())
                 .build();
+    }
+
+    private Long getTargetLecturerId(CreateCourseClassRequest request) {
+        JwtPayload payload = JwtPayload.getCurrentUserPayload();
+        Long currentUserId = payload.getUserId();
+        boolean isAdmin = UserRole.ADMIN.name().equalsIgnoreCase(payload.getRole());
+
+        if (!isAdmin && request.lecturerId() != null
+                && !Objects.equals(request.lecturerId(), currentUserId)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Giảng viên không được chỉ định người phụ trách khác; hãy bỏ lecturer_id hoặc dùng ID của chính bạn");
+        }
+        if (!isAdmin && request.semesterId() != null) {
+            throw new AppException(ResponseCode.ACCESS_DENIED,
+                    "Giảng viên chỉ được tạo lớp trong học kỳ đang kích hoạt");
+        }
+
+        return isAdmin && request.lecturerId() != null
+                ? request.lecturerId()
+                : currentUserId;
     }
 
     @Override
@@ -425,7 +429,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
 
         // Chống N+1: Query 1 câu kiểm tra các email đã có trong hệ thống
         Map<String, User> existingUsersByEmail = userRepository.findAllByEmailIn(fileEmails).stream()
-                .collect(Collectors.toMap(u -> u.getEmail().toLowerCase(), u -> u, (a, b) -> a));
+                .collect(Collectors.toMap(u -> u.getEmail().toLowerCase(), u -> u, (a, _) -> a));
         Set<String> existingEmails = existingUsersByEmail.keySet();
 
         Map<String, UserProfile> existingProfilesByMssv = userProfileRepository.findAllByStudentLecturerCodeIn(fileMssvs)
@@ -702,36 +706,27 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                                 row -> (Long) row[0],
                                 row -> ((Number) row[1]).intValue()));
         return classes.stream().map(cc -> {
-            Subject s = cc.getSubject();
-            Semester sem = cc.getSemester();
             User lecturer = cc.getLecturer();
             String lecturerName = (lecturer != null) ? lecturerNameMap.getOrDefault(lecturer.getId(), "") : "";
-
-            return CourseClassResponse.builder()
-                    .courseClassId(cc.getId())
-                    .classCode(cc.getClassCode())
-                    .subjectId(s != null ? s.getId() : null)
-                    .subjectCode(s != null ? s.getCode() : null)
-                    .subjectName(s != null ? s.getName() : null)
-                    .semesterId(sem != null ? sem.getId() : null)
-                    .semesterName(sem != null ? sem.getName() : null)
-                    .activeSemester(sem != null && sem.isActive())
-                    .lecturerId(lecturer != null ? lecturer.getId() : null)
-                    .lecturerName(lecturerName)
-                    .totalStudents(studentCountMap.getOrDefault(cc.getId(), 0))
-                    .createdAt(cc.getCreatedAt())
-                    .build();
+            return mapToCourseClassResponse(cc, lecturerName, studentCountMap.getOrDefault(cc.getId(), 0));
         }).toList();
     }
 
     private CourseClassResponse mapToCourseClassResponse(CourseClass cc) {
-        Subject s = cc.getSubject();
-        Semester sem = cc.getSemester();
         User lecturer = cc.getLecturer();
         String lecturerName = (lecturer != null)
                 ? userProfileRepository.findById(lecturer.getId()).map(UserProfile::getFullName).orElse("")
                 : "";
+        int totalStudents = cc.getId() != null
+                ? Math.toIntExact(userCourseClassRepository.countByIdCourseClassId(cc.getId()))
+                : 0;
+        return mapToCourseClassResponse(cc, lecturerName, totalStudents);
+    }
 
+    private static CourseClassResponse mapToCourseClassResponse(CourseClass cc, String lecturerName, int totalStudents) {
+        Subject s = cc.getSubject();
+        Semester sem = cc.getSemester();
+        User lecturer = cc.getLecturer();
         return CourseClassResponse.builder()
                 .courseClassId(cc.getId())
                 .classCode(cc.getClassCode())
@@ -743,9 +738,7 @@ public class CourseClassManagementServiceImpl implements CourseClassManagementSe
                 .activeSemester(sem != null && sem.isActive())
                 .lecturerId(lecturer != null ? lecturer.getId() : null)
                 .lecturerName(lecturerName)
-                .totalStudents(cc.getId() != null
-                        ? Math.toIntExact(userCourseClassRepository.countByIdCourseClassId(cc.getId()))
-                        : 0)
+                .totalStudents(totalStudents)
                 .createdAt(cc.getCreatedAt())
                 .build();
     }

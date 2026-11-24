@@ -1,5 +1,7 @@
 package com.frozenheart.backend.modules.post.dto;
 
+import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserProfile;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import lombok.AllArgsConstructor;
@@ -23,6 +25,15 @@ public class AuthorDto {
     private String avatarUrl;
     @Schema(description = "URL khung trang trí avatar, null/rỗng khi không có", example = "https://media.example.com/frame.png")
     private String frameUrl;
+
+    public static AuthorDto fromUser(User user, UserProfile profile) {
+        return AuthorDto.builder()
+                .userId(user.getId())
+                .fullName(profile != null ? profile.getFullName() : user.getEmail())
+                .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
+                .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
+                .build();
+    }
 
     public static AuthorDto getSystemAuthor() {
         return AuthorDto.builder()

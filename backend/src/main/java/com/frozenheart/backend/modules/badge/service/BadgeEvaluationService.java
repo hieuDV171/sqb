@@ -52,6 +52,6 @@ public class BadgeEvaluationService {
 
     private <T extends BadgeCriteria> boolean evaluate(
             BadgeEvaluator<T> evaluator, User user, Badge badge, BadgeCriteria criteria, Object context) {
-        return evaluator.evaluate(user, badge, (T) criteria, context);
+        return evaluator.evaluate(user, badge, evaluator.getCriteriaClass().cast(criteria), context);
     }
 }

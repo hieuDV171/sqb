@@ -47,7 +47,7 @@ public class CookieUtils {
     public String getCookieValue(String name) {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
-        if (attributes != null && attributes.getRequest() != null) {
+        if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
             Cookie[] cookies = request.getCookies();
 

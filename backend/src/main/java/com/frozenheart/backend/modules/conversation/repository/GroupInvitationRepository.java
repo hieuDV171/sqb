@@ -14,12 +14,13 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface GroupInvitationRepository extends JpaRepository<GroupInvitation, Long> {
+    // The leading TRUE works around IntelliJ's SpringDataQL parser for grouped EXISTS.
     @Query("""
             SELECT p FROM UserProfile p JOIN FETCH p.user u
             WHERE p.userId > :after AND p.userId <> :actor AND u.active = true
               AND LOCATE(LOWER(:name), LOWER(p.fullName)) > 0
               AND (
-                EXISTS (SELECT 1 FROM Friendship f WHERE f.status = 'ACCEPTED'
+                TRUE AND EXISTS (SELECT 1 FROM Friendship f WHERE f.status = 'ACCEPTED'
                   AND ((f.sender.id = :actor AND f.receiver.id = p.userId)
                     OR (f.receiver.id = :actor AND f.sender.id = p.userId)))
                 OR EXISTS (SELECT 1 FROM UserFollow f

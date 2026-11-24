@@ -16,6 +16,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
@@ -184,13 +185,12 @@ public class R2StorageQuota {
                 lock.unlock();
             }
         } catch (RuntimeException failure) {
-            if (failure instanceof IllegalStateException) {
-                log.warn("R2 quota reconciliation failed: {}", failure.getMessage());
-            } else if (failure instanceof org.springframework.web.client.RestClientResponseException response) {
-                log.warn("R2 quota reconciliation failed: Cloudflare returned HTTP {}", response.getStatusCode().value());
-            } else {
-                log.warn("R2 quota reconciliation failed: {}", failure.getClass().getSimpleName());
-            }
+            String detail = switch (failure) {
+                case IllegalStateException state -> state.getMessage();
+                case RestClientResponseException response -> "Cloudflare returned HTTP " + response.getStatusCode().value();
+                default -> failure.getClass().getSimpleName();
+            };
+            log.warn("R2 quota reconciliation failed: {}", detail);
         }
     }
 

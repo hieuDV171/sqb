@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.report.service;
 import com.frozenheart.backend.core.config.property.R2Properties;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.core.util.ImageSignature;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.media.service.R2StorageQuota;
 import com.frozenheart.backend.modules.report.repository.ReportRepository;
@@ -28,7 +29,6 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -180,7 +180,7 @@ public class ReportEvidenceStorage {
     private String stage(Long ownerId, InputStream input, long size, String contentType) throws Exception {
         if (size <= 0 || size > MAX_SIZE) throw invalidEvidence();
         byte[] bytes = input.readNBytes((int) MAX_SIZE + 1);
-        if (bytes.length != size || !isImage(bytes, contentType)) throw invalidEvidence();
+        if (bytes.length != size || !ImageSignature.matches(bytes, contentType)) throw invalidEvidence();
         String bucket = bucket();
         String key = PREFIX + ownerId + "/" + UUID.randomUUID();
         redisTemplate.opsForZSet().add(STAGED, key, Instant.now().toEpochMilli());
@@ -188,19 +188,6 @@ public class ReportEvidenceStorage {
                 .stream(new ByteArrayInputStream(bytes), (long) bytes.length, -1L).contentType(contentType)
                 .headers(java.util.Map.of("Cache-Control", "private, no-store")).build());
         return key;
-    }
-
-    static boolean isImage(byte[] bytes, String contentType) {
-        return bytes.length >= 12 && switch (Objects.toString(contentType, "")) {
-            case "image/png" -> Arrays.equals(Arrays.copyOf(bytes, 8),
-                    new byte[] {(byte) 137, 80, 78, 71, 13, 10, 26, 10});
-            case "image/jpeg" -> bytes[0] == (byte) 255 && bytes[1] == (byte) 216 && bytes[2] == (byte) 255;
-            case "image/gif" -> bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F'
-                    && bytes[3] == '8' && (bytes[4] == '7' || bytes[4] == '9') && bytes[5] == 'a';
-            case "image/webp" -> bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
-                    && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
-            default -> false;
-        };
     }
 
     private String bucket() {

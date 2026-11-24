@@ -25,17 +25,16 @@ import com.frozenheart.backend.core.entity.socialinteraction.React;
 import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.core.util.MetricService;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.media.service.LectureVideoUploadService;
 import com.frozenheart.backend.modules.post.dto.*;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.post.service.PostService;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -72,7 +71,6 @@ public class PostServiceImpl implements PostService {
     private final ReactRepository reactRepository;
     private final MetricService metricService;
     private final LecturerNoteAccess lecturerNoteAccess;
-    private final ApprovalPostAuthor approvalPostAuthor;
 
     @Override
     @Transactional
@@ -469,7 +467,7 @@ public class PostServiceImpl implements PostService {
             boolean canEditLecturerNote) {
         boolean approvalPost = post.getPostType() == PostType.QUESTION_APPROVED_NOTIFICATION;
         AuthorDto authorDto = approvalPost
-                ? approvalPostAuthor.fromStudent(post.getSession() != null ? post.getSession().getProposer() : null)
+                ? AuthorDto.getSystemAuthor()
                 : mapUserToAuthorDto(post.getPoster(), profileByUserId);
         AuthorDto notedLecturerDto = approvalPost && post.getLecturerNote() != null && post.getNotedLecturer() != null
                 ? mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId) : null;

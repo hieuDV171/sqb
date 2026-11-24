@@ -32,10 +32,10 @@ public final class PasswordPolicy {
             throw invalid("Mật khẩu không được vượt quá 72 byte UTF-8.");
         if (!password.codePoints().allMatch(PasswordPolicy::isAllowed))
             throw invalid("Mật khẩu không được chứa ký tự điều khiển hoặc ký tự ẩn.");
-        if (!password.codePoints().anyMatch(cp -> Character.getType(cp) == Character.UPPERCASE_LETTER)
-                || !password.codePoints().anyMatch(cp -> Character.getType(cp) == Character.LOWERCASE_LETTER)
-                || !password.codePoints().anyMatch(cp -> cp >= '0' && cp <= '9')
-                || !password.codePoints().anyMatch(PasswordPolicy::isSpecial))
+        if (password.codePoints().noneMatch(cp -> Character.getType(cp) == Character.UPPERCASE_LETTER)
+                || password.codePoints().noneMatch(cp -> Character.getType(cp) == Character.LOWERCASE_LETTER)
+                || password.codePoints().noneMatch(cp -> cp >= '0' && cp <= '9')
+                || password.codePoints().noneMatch(PasswordPolicy::isSpecial))
             throw invalid("Mật khẩu phải có chữ hoa, chữ thường, chữ số (0–9) và ký tự đặc biệt.");
         return password;
     }

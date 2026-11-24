@@ -4,7 +4,7 @@ import com.frozenheart.backend.core.entity.badge.*;
 import com.frozenheart.backend.core.entity.badge.criteria.CounterThresholdCriteria;
 import com.frozenheart.backend.core.entity.session.SessionStatus;
 import com.frozenheart.backend.core.entity.user.User;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.modules.session.repository.SessionRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -25,6 +25,11 @@ public class CounterThresholdEvaluator implements BadgeEvaluator<CounterThreshol
     @Override
     public CriteriaType getSupportedType() {
         return CriteriaType.COUNTER_THRESHOLD;
+    }
+
+    @Override
+    public Class<CounterThresholdCriteria> getCriteriaClass() {
+        return CounterThresholdCriteria.class;
     }
 
     @Override

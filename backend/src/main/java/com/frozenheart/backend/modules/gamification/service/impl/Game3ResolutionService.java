@@ -108,9 +108,10 @@ public class Game3ResolutionService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void resolveBeforeSemesterClose(Semester lockedSemester, Instant cutoff) {
-        while (resolveBatch(lockedSemester, cutoff, true) > 0) {
-            // Each pass settles or advances every prediction it reads.
-        }
+        int processed;
+        do {
+            processed = resolveBatch(lockedSemester, cutoff, true);
+        } while (processed > 0);
     }
 
     private int resolveBatch(Semester semester, Instant now, boolean closingSemester) {

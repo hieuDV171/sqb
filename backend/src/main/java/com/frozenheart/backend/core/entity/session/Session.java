@@ -1,6 +1,5 @@
 package com.frozenheart.backend.core.entity.session;
 
-import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.questioneditlog.QuestionEditLog;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.User;
@@ -69,9 +68,6 @@ public class Session {
     @Singular
     @OneToMany(mappedBy = "session")
     private Set<Question> questions;
-
-    @OneToOne(mappedBy = "session")
-    private Post post;
 
     public boolean isPracticeInvisibleTo(Long viewerId) {
         return status != SessionStatus.RESOLVED

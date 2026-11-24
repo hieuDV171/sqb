@@ -15,6 +15,11 @@ public class StreakEvaluator implements BadgeEvaluator<StreakCriteria> {
     }
 
     @Override
+    public Class<StreakCriteria> getCriteriaClass() {
+        return StreakCriteria.class;
+    }
+
+    @Override
     public boolean evaluate(User user, Badge badge, StreakCriteria criteria, Object context) {
         if (user == null || criteria == null) {
             return false;

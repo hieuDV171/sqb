@@ -13,7 +13,6 @@ import com.frozenheart.backend.core.entity.prediction.*;
 import com.frozenheart.backend.core.entity.session.*;
 import com.frozenheart.backend.core.entity.socialinteraction.QuestionErrorReport;
 import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
-import com.frozenheart.backend.modules.session.repository.QuestionErrorReportRepository;
 import com.frozenheart.backend.core.entity.user.*;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
@@ -36,6 +35,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -45,15 +45,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
-import com.frozenheart.backend.core.entity.user.UserProfile;
 
 import com.frozenheart.backend.core.entity.media.MediaTarget;
 import com.frozenheart.backend.modules.session.service.CurrentSemesterService;
 import com.frozenheart.backend.modules.ai.client.LocalAiClient;
 import com.frozenheart.backend.modules.ai.dto.AiRefineResponse;
 
-import com.frozenheart.backend.core.entity.user.UserGamification;
-import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 
 import tools.jackson.core.type.TypeReference;
@@ -68,11 +65,8 @@ import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationMetadata;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
-import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.modules.notification.service.NotificationWriter;
 import org.springframework.context.ApplicationEventPublisher;
-import com.frozenheart.backend.core.entity.user.CourseClass;
-import com.frozenheart.backend.core.entity.user.UserCourseClass;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
 
@@ -83,8 +77,6 @@ import com.frozenheart.backend.core.entity.activityfeed.ActivityFeedTargetType;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.post.PostType;
 import com.frozenheart.backend.core.entity.post.PostVisibility;
-import com.frozenheart.backend.core.entity.user.CoinTransactionTargetType;
-import com.frozenheart.backend.core.entity.user.CoinTransactionType;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.modules.user.service.UserCurrencyService;
@@ -1340,6 +1332,18 @@ public class GamificationServiceImpl implements GamificationService {
                 .build();
     }
 
+    private static ZoneId checkInZone(UserProfile profile) {
+        String timezone = profile.getTimezone();
+        if (timezone == null || timezone.isBlank()) {
+            return ZoneId.of(Time.DEFAULT_TIMEZONE);
+        }
+        try {
+            return ZoneId.of(timezone);
+        } catch (DateTimeException e) {
+            return ZoneId.of(Time.DEFAULT_TIMEZONE);
+        }
+    }
+
     @Override
     @Transactional
     public CheckInResponse checkInDaily() {
@@ -1348,15 +1352,7 @@ public class GamificationServiceImpl implements GamificationService {
         UserProfile profile = userProfileRepository.findByUserIdWithUser(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
-        String tz = (profile.getTimezone() != null && !profile.getTimezone().isBlank())
-                ? profile.getTimezone() : Time.DEFAULT_TIMEZONE;
-        ZoneId userZone;
-        try {
-            userZone = ZoneId.of(tz);
-        } catch (Exception e) {
-            userZone = ZoneId.of(Time.DEFAULT_TIMEZONE);
-        }
-        LocalDate today = LocalDate.now(userZone);
+        LocalDate today = LocalDate.now(checkInZone(profile));
         UserGamification gamification = userGamificationRepository.findById(userId)
                 .orElseGet(() -> UserGamification.builder()
                         .user(profile.getUser())
@@ -1417,15 +1413,7 @@ public class GamificationServiceImpl implements GamificationService {
         UserProfile profile = userProfileRepository.findByUserIdWithUser(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
-        String tz = (profile.getTimezone() != null && !profile.getTimezone().isBlank())
-                ? profile.getTimezone() : Time.DEFAULT_TIMEZONE;
-        ZoneId userZone;
-        try {
-            userZone = ZoneId.of(tz);
-        } catch (Exception e) {
-            userZone = ZoneId.of(Time.DEFAULT_TIMEZONE);
-        }
-        LocalDate today = LocalDate.now(userZone);
+        LocalDate today = LocalDate.now(checkInZone(profile));
 
         UserGamification gamification = userGamificationRepository.findById(userId)
                 .orElse(null);

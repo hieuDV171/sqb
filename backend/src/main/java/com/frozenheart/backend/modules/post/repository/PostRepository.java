@@ -25,13 +25,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             ))
             """;
 
+    // Parenthesize the leading NOT EXISTS for IntelliJ's SpringDataQL parser.
     String POST_VISIBILITY_ACCESS = """
             (:admin = true OR p.poster IS NULL OR p.poster.id = :viewerId OR (
-                NOT EXISTS (
+                (NOT EXISTS (
                     SELECT 1 FROM UserBlock b
                     WHERE (b.blocker.id = :viewerId AND b.blocked.id = p.poster.id)
                        OR (b.blocker.id = p.poster.id AND b.blocked.id = :viewerId)
-                )
+                ))
                 AND (p.visibility IS NULL OR p.visibility = 'PUBLIC' OR (
                     p.visibility = 'FRIENDS' AND EXISTS (
                         SELECT 1 FROM Friendship f
@@ -71,7 +72,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query("""
             SELECT p FROM Post p JOIN FETCH p.session s
-            LEFT JOIN FETCH s.proposer
             LEFT JOIN FETCH p.notedLecturer
             WHERE s.id IN :sessionIds AND p.deletedAt IS NULL AND p.activeModerationAction IS NULL
               AND p.postType = 'QUESTION_APPROVED_NOTIFICATION'

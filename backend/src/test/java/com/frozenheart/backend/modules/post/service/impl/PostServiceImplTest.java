@@ -15,20 +15,18 @@ import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
-import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.core.util.MetricService;
 import com.frozenheart.backend.modules.activityfeed.service.ActivityFeedService;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.media.service.MediaService;
 import com.frozenheart.backend.modules.media.service.LectureVideoUploadService;
 import com.frozenheart.backend.modules.post.dto.PostResponseDto;
 import com.frozenheart.backend.modules.post.dto.UpdateLecturerNoteRequest;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
-import com.frozenheart.backend.modules.post.service.ApprovalPostAuthor;
 import com.frozenheart.backend.modules.post.service.LecturerNoteAccess;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
 import com.frozenheart.backend.modules.socialinteraction.repository.ReactRepository;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -79,14 +77,13 @@ class PostServiceImplTest {
     @Mock ReactRepository reactRepository;
     @Mock MetricService metricService;
 
-    private final AnonymizerUtil anonymizer = new AnonymizerUtil("unit-test");
     private PostServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new PostServiceImpl(postRepository, userRepository, userProfileRepository, subjectRepository,
                 mediaService, lectureVideoUploadService, activityFeedService, eventPublisher, blockRepository, friendshipRepository,
-                reactRepository, metricService, new LecturerNoteAccess(postRepository), new ApprovalPostAuthor(anonymizer));
+                reactRepository, metricService, new LecturerNoteAccess(postRepository));
     }
 
     @AfterEach
@@ -164,9 +161,9 @@ class PostServiceImplTest {
 
         var response = service.getPostById(42L);
         assertTrue(response.isCanEditLecturerNote());
-        assertEquals(anonymizer.encodeUserId(5L), response.getAuthor().getFullName());
+        assertEquals("Hệ thống", response.getAuthor().getFullName());
         assertNull(response.getAuthor().getUserId());
-        assertNull(response.getAuthor().getAvatarUrl());
+        assertEquals("/assets/system-avatar.png", response.getAuthor().getAvatarUrl());
         assertNull(response.getAuthor().getFrameUrl());
         service.updateLecturerNote(42L, UpdateLecturerNoteRequest.builder().content("Ghi chú").build());
 

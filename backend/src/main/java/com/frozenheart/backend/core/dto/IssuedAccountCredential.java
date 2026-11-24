@@ -1,6 +1,7 @@
 package com.frozenheart.backend.core.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.jspecify.annotations.NonNull;
 
 @Schema(description = "Mật khẩu tạm bàn giao một lần cho ADMIN sau khi tạo/reset thành công; không lưu dạng rõ")
 public record IssuedAccountCredential(
@@ -15,7 +16,7 @@ public record IssuedAccountCredential(
         @Schema(description = "Mật khẩu tạm chỉ bàn giao một lần cho ADMIN sau khi cấp thành công", example = "Q7!vR2@kT9#pL4&x")
         String temporaryPassword) {
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "IssuedAccountCredential[userId=" + userId + ", temporaryPassword=[REDACTED]]";
     }
 }

@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.messaging.Message;
@@ -40,7 +41,7 @@ public class HiddenChatOutboundGuard implements ChannelInterceptor {
     }
 
     @Override
-    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+    public Message<?> preSend(Message<?> message, @NonNull MessageChannel channel) {
         if (NativeMessageHeaderAccessor.getFirstNativeHeader(HIDDEN_CHAT_HEADER, message.getHeaders()) == null) {
             return message;
         }

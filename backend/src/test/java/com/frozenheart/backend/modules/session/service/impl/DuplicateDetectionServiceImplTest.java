@@ -73,7 +73,7 @@ class DuplicateDetectionServiceImplTest {
     void retriesFailedEmbeddingAndCompletesOnlyAfterAValidBatch() {
         float[] vector = new float[EmbeddingConstants.TEXT_EMBEDDING_DIMS];
         vector[0] = 1;
-        when(sidecar.getBatchTextEmbeddings(anyList())).thenReturn(List.of(), List.of(vector));
+        when(sidecar.getBatchTextEmbeddings(anyList())).thenReturn(List.of()).thenReturn(List.of(vector));
 
         worker.checkAfterCommit(new DuplicateCheckRequested(10L));
         assertEquals(DuplicateCheckStatus.RETRY, input.getDuplicateCheckStatus());

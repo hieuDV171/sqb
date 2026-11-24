@@ -13,9 +13,9 @@ import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDt
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
-import com.frozenheart.backend.modules.friendship.repository.FriendshipRepository;
-import com.frozenheart.backend.modules.user.repository.BlockRepository;
-import com.frozenheart.backend.modules.user.repository.FollowRepository;
+import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
+import com.frozenheart.backend.modules.socialgraph.block.repository.BlockRepository;
+import com.frozenheart.backend.modules.socialgraph.follow.repository.FollowRepository;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,8 +49,8 @@ public class GroupInvitationService {
     private final ApplicationEventPublisher eventPublisher;
 
     public record Connections(Set<Long> friends, Set<Long> following, Set<Long> followers) {
-        public boolean eligible(Long id) {
-            return friends.contains(id) || following.contains(id) || followers.contains(id);
+        public boolean hasNoConnectionTo(Long id) {
+            return !friends.contains(id) && !following.contains(id) && !followers.contains(id);
         }
     }
 

@@ -52,7 +52,7 @@ class BadgeRevocationNotificationTest {
         var request = List.of(1L, 1L, 2L, 3L);
         var affected = Set.of(1L, 2L);
         when(badges.findByIdForGrant(4L)).thenReturn(Optional.of(badge));
-        when(awards.findCurrentUserIds(4L, request)).thenReturn(affected, Set.of());
+        when(awards.findCurrentUserIds(4L, request)).thenReturn(affected).thenReturn(Set.of());
         when(users.findAllById(affected)).thenReturn(List.of(User.builder().id(1L).active(true).build(),
                 User.builder().id(2L).active(false).build()));
 

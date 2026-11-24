@@ -7,7 +7,6 @@ import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning.Kind;
 import com.frozenheart.backend.core.entity.session.DuplicateWarning.Scope;
 import com.frozenheart.backend.core.entity.session.Question;
-import com.frozenheart.backend.core.entity.session.QuestionOption;
 
 import java.text.Normalizer;
 import java.util.HashSet;
