@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 export function ProfileAcademicInfo({ profile }: { profile: ProfileResponse }) {
   const fields = [
     ['Mã sinh viên / cán bộ', profile.studentLecturerCode],
-    ['Khoa / Viện', profile.schoolFaculty],
+    ['Khoa / Viện / Trường', profile.schoolFaculty],
     ['Chuyên ngành', profile.major],
     ['Lớp / Bộ môn', profile.className],
     ['Email liên hệ', profile.email],

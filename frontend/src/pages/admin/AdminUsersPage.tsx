@@ -2,6 +2,7 @@ import React, { useId, useState, useRef, useEffect } from "react";
 import { Combobox } from "@base-ui/react/combobox";
 import { Select } from "@base-ui/react/select";
 import { useQuery } from "@tanstack/react-query";
+import { ActionError } from "@/components/ui/action-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -60,6 +61,12 @@ type AccountDraft = {
   user: SingleUserImportDto;
   passwordConfirmation: string;
 };
+
+type FieldErrors = Record<string, string>;
+
+function createAccountDraft(id: number): AccountDraft {
+  return { id, passwordConfirmation: "", user: { email: "", fullName: "" } };
+}
 
 type ResetResult = { email: string; error?: string };
 
@@ -150,12 +157,16 @@ const genderOptions: { value: Gender; label: string }[] = [
   { value: "FEMALE", label: "Nữ" },
 ];
 
-function AccountSelect<Value extends string>({ label, value, options, onChange, disabled }: {
+function AccountSelect<Value extends string>({ id, label, placeholder, value, options, onChange, disabled, isRequired, error }: {
+  id: string;
   label: string;
-  value: Value;
+  placeholder: string;
+  value: Value | null;
   options: { value: Value; label: string }[];
   onChange: (value: Value) => void;
   disabled: boolean;
+  isRequired?: boolean;
+  error?: string;
 }) {
   const labelId = useId();
 
@@ -164,9 +175,10 @@ function AccountSelect<Value extends string>({ label, value, options, onChange, 
       <Label id={labelId}>{label}</Label>
       <Select.Root items={options} value={value} disabled={disabled}
         onValueChange={(next) => { if (next !== null) onChange(next); }}>
-        <Select.Trigger aria-labelledby={labelId}
-          className="flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 text-left text-base outline-none transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:h-10 md:text-sm">
-          <Select.Value className="min-w-0 truncate" />
+        <Select.Trigger id={id} aria-labelledby={labelId} aria-required={isRequired}
+          aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined}
+          className="flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 text-left text-base outline-none transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 aria-invalid:border-destructive md:h-10 md:text-sm">
+          <Select.Value placeholder={placeholder} className="min-w-0 truncate data-placeholder:text-muted-foreground" />
           <Select.Icon className="shrink-0 text-muted-foreground"><ChevronDown aria-hidden="true" className="size-4" /></Select.Icon>
         </Select.Trigger>
         <Select.Portal>
@@ -185,20 +197,22 @@ function AccountSelect<Value extends string>({ label, value, options, onChange, 
           </Select.Positioner>
         </Select.Portal>
       </Select.Root>
+      <ActionError id={`${id}-error`} message={error} />
     </div>
   );
 }
 
-function AccountPasswordField({ id, label, value, onChange, required, invalid, describedBy }: {
+function AccountPasswordField({ id, label, value, onChange, isRequired, error, describedBy }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  required?: boolean;
-  invalid?: boolean;
+  isRequired?: boolean;
+  error?: string | null;
   describedBy?: string;
 }) {
   const [visible, setVisible] = useState(false);
+  const description = [describedBy, error ? `${id}-error` : undefined].filter(Boolean).join(" ");
 
   return (
     <div className="space-y-1.5">
@@ -206,7 +220,7 @@ function AccountPasswordField({ id, label, value, onChange, required, invalid, d
       <div className="relative">
         <Input id={id} type={visible ? "text" : "password"} value={value}
           autoComplete="new-password" autoCapitalize="none" spellCheck={false}
-          required={required} aria-invalid={invalid} aria-describedby={describedBy}
+          aria-required={isRequired} aria-invalid={Boolean(error)} aria-describedby={description || undefined}
           className="pr-12 [&::-ms-reveal]:hidden" onChange={(event) => onChange(event.target.value)} />
         <Button type="button" variant="ghost" size="icon" aria-controls={id}
           aria-label={`${visible ? "Ẩn" : "Hiện"} ${label.toLocaleLowerCase("vi-VN")}`}
@@ -215,14 +229,20 @@ function AccountPasswordField({ id, label, value, onChange, required, invalid, d
           {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
         </Button>
       </div>
+      <ActionError id={`${id}-error`} message={error} />
     </div>
   );
 }
 
 function getPasswordConfirmationError(password: string | undefined, confirmation: string) {
-  if (!password) return confirmation ? "Hãy nhập mật khẩu tùy chỉnh trước." : null;
+  if (!password) return null;
   if (!confirmation) return "Hãy nhập lại mật khẩu.";
   return passwordsMatch(password, confirmation) ? null : "Mật khẩu xác nhận không khớp.";
+}
+
+function getCustomPasswordError(password: string | undefined, confirmation: string) {
+  if (!password) return confirmation ? "Hãy nhập mật khẩu tùy chỉnh." : null;
+  return getPasswordError(password);
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -232,9 +252,33 @@ function errorMessage(error: unknown, fallback: string) {
 
 export function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("excel");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [credentials, setCredentials] = useState<IssuedAccountCredential[]>([]);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+
+  function showFieldErrors(errors: FieldErrors) {
+    setFieldErrors(errors);
+    const [firstInvalidField] = Object.keys(errors);
+    if (firstInvalidField) document.getElementById(firstInvalidField)?.focus();
+    return Boolean(firstInvalidField);
+  }
+
+  function clearFieldErrors(...fieldIds: string[]) {
+    setFieldErrors((current) => {
+      if (!fieldIds.some((id) => current[id])) return current;
+      const next = { ...current };
+      for (const id of fieldIds) delete next[id];
+      return next;
+    });
+  }
+
+  function fieldErrorProps(id: string) {
+    return {
+      "aria-invalid": Boolean(fieldErrors[id]),
+      "aria-describedby": fieldErrors[id] ? `${id}-error` : undefined,
+    };
+  }
 
   // =========================================================================
   // TAB 1: EXCEL IMPORT STATE
@@ -285,6 +329,7 @@ export function AdminUsersPage() {
     if (isExcelUploading) return;
     if (!selectedFile) {
       setExcelError("Hãy chọn tệp Excel danh sách lớp.");
+      document.getElementById("choose-excel-file")?.focus();
       return;
     }
 
@@ -314,42 +359,15 @@ export function AdminUsersPage() {
   // =========================================================================
   // TAB 2: BULK USER CREATION (TÙY CHỈNH) STATE
   // =========================================================================
-  const nextAccountId = useRef(2);
-  const [usersToImport, setUsersToImport] = useState<AccountDraft[]>([
-    {
-      id: 1,
-      passwordConfirmation: "",
-      user: {
-        email: "",
-        fullName: "",
-        schoolFaculty: "Trường CNTT&TT",
-        major: "Khoa học máy tính",
-        className: "IT1-01",
-        gender: "MALE",
-        role: "STUDENT",
-      },
-    },
-  ]);
+  const nextAccountId = useRef(1);
+  const [usersToImport, setUsersToImport] = useState<AccountDraft[]>(() => [createAccountDraft(0)]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [bulkResult, setBulkResult] = useState<Omit<BulkImportResult, "credentials"> | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const handleAddUserRow = () => {
-    const id = nextAccountId.current++;
-    setUsersToImport((prev) => [
-      ...prev,
-      {
-        id,
-        passwordConfirmation: "",
-        user: {
-          email: "",
-          fullName: "",
-          schoolFaculty: "Trường CNTT&TT",
-          gender: "MALE",
-          role: "STUDENT",
-        },
-      },
-    ]);
+    const draft = createAccountDraft(nextAccountId.current++);
+    setUsersToImport((prev) => [...prev, draft]);
   };
 
   const handleRemoveUserRow = (id: number) => {
@@ -372,24 +390,31 @@ export function AdminUsersPage() {
     setBulkError(null);
     setBulkResult(null);
 
-    // Validation sơ bộ
-    for (let i = 0; i < usersToImport.length; i++) {
-      const { id, user: u, passwordConfirmation } = usersToImport[i];
-      if (!u.email || !u.fullName) {
-        setBulkError(`Dòng #${i + 1}: Email và Họ tên là bắt buộc!`);
-        return;
+    const errors: FieldErrors = {};
+    for (const { id, user, passwordConfirmation } of usersToImport) {
+      const prefix = `account-${id}`;
+      const emailId = `${prefix}-email`;
+      const emailField = e.currentTarget.elements.namedItem(emailId);
+      if (!user.email.trim()) {
+        errors[emailId] = "Hãy nhập email tài khoản.";
+      } else if (emailField instanceof HTMLInputElement && emailField.validity.typeMismatch) {
+        errors[emailId] = "Hãy nhập email đúng định dạng.";
       }
-      const passwordError = (u.password ? getPasswordError(u.password) : null) ?? getPasswordConfirmationError(u.password, passwordConfirmation);
-      if (passwordError) {
-        setBulkError(`Tài khoản ${i + 1}. ${passwordError}`);
-        document.getElementById(`account-${id}-confirm-password`)?.focus();
-        return;
-      }
+      if (!user.fullName.trim()) errors[`${prefix}-full-name`] = "Hãy nhập họ và tên.";
+      if (!user.role) errors[`${prefix}-role`] = "Hãy chọn vai trò.";
+
+      const passwordError = getCustomPasswordError(user.password, passwordConfirmation);
+      const confirmationError = getPasswordConfirmationError(user.password, passwordConfirmation);
+      if (passwordError) errors[`${prefix}-password`] = passwordError;
+      if (confirmationError) errors[`${prefix}-confirm-password`] = confirmationError;
     }
+    if (showFieldErrors(errors)) return;
 
     // Chuẩn hóa payload: biến chuỗi rỗng thành undefined để backend sinh mật khẩu ngẫu nhiên & xử lý ngày sinh
     const sanitizedUsers = usersToImport.map(({ user: u }) => ({
       ...u,
+      email: u.email.trim(),
+      fullName: u.fullName.trim(),
       password: u.password || undefined,
       dateOfBirth: u.dateOfBirth?.trim() ? u.dateOfBirth.trim() : undefined,
       studentLecturerCode: u.studentLecturerCode?.trim() ? u.studentLecturerCode.trim() : undefined,
@@ -428,15 +453,13 @@ export function AdminUsersPage() {
   const [resetPasswordConfirmation, setResetPasswordConfirmation] = useState("");
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [resetLogs, setResetLogs] = useState<ResetResult[]>([]);
-  const [resetError, setResetError] = useState<string | null>(null);
   const resetConfirmationError = resetPasswordConfirmation
     ? getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation)
-    : null;
+    : fieldErrors["reset-confirm-password"];
 
   const handleAdminResetPassword = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isResetLoading) return;
-    setResetError(null);
 
     // Hỗ trợ nhập 1 email hoặc nhiều email ngăn cách bởi dấu phẩy/xuống dòng
     const rawEmails = resetEmailInput
@@ -444,17 +467,13 @@ export function AdminUsersPage() {
       .map((em) => em.trim())
       .filter((em) => em.length > 0);
 
-    if (rawEmails.length === 0) {
-      setResetError("Hãy nhập ít nhất một email tài khoản cần cấp lại mật khẩu.");
-      return;
-    }
-
-    const passwordError = (customNewPassword ? getPasswordError(customNewPassword) : null) ?? getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation);
-    if (passwordError) {
-      setResetError(passwordError);
-      document.getElementById("reset-confirm-password")?.focus();
-      return;
-    }
+    const errors: FieldErrors = {};
+    const passwordError = getCustomPasswordError(customNewPassword, resetPasswordConfirmation);
+    const confirmationError = getPasswordConfirmationError(customNewPassword, resetPasswordConfirmation);
+    if (rawEmails.length === 0) errors.resetEmails = "Hãy nhập ít nhất một email tài khoản cần cấp lại mật khẩu.";
+    if (passwordError) errors["reset-new-password"] = passwordError;
+    if (confirmationError) errors["reset-confirm-password"] = confirmationError;
+    if (showFieldErrors(errors)) return;
 
     setCredentials([]);
     setIsResetLoading(true);
@@ -495,7 +514,7 @@ export function AdminUsersPage() {
           <Button key={value} id={`admin-account-tab-${value}`} type="button" variant={activeTab === value ? "secondary" : "ghost"}
             aria-pressed={activeTab === value} className="min-h-11"
             disabled={isExcelUploading || isBulkLoading || isResetLoading}
-            onClick={() => { setActiveTab(value); setCredentials([]); setCustomNewPassword(""); setResetPasswordConfirmation(""); setUsersToImport(previous => previous.map(draft => ({ ...draft, passwordConfirmation: "", user: { ...draft.user, password: "" } }))); }}>
+            onClick={() => { setActiveTab(value); setFieldErrors({}); setCredentials([]); setCustomNewPassword(""); setResetPasswordConfirmation(""); setUsersToImport(previous => previous.map(draft => ({ ...draft, passwordConfirmation: "", user: { ...draft.user, password: "" } }))); }}>
             <Icon aria-hidden="true" /> {label}
           </Button>
         ))}
@@ -509,8 +528,7 @@ export function AdminUsersPage() {
             Hệ thống ghi danh sinh viên vào lớp và tạo tài khoản cho những người chưa có.
           </AccountPanelHeading>
           <CardContent className="space-y-6">
-            <AccountFormError message={excelError} />
-            <form onSubmit={handleExcelImport} className="space-y-5">
+            <form noValidate onSubmit={handleExcelImport} className="space-y-5">
               <div className="space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
                 <div className="space-y-1.5" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
                   <Label htmlFor="excel-file">Tệp Excel danh sách lớp *</Label>
@@ -530,6 +548,7 @@ export function AdminUsersPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button type="button" variant="outline" disabled={isExcelUploading}
+                          aria-describedby={excelError ? "excel-file-error" : undefined}
                           onClick={() => fileInputRef.current?.click()}>Đổi tệp</Button>
                         <Button type="button" variant="ghost" size="icon" aria-label="Gỡ tệp Excel" disabled={isExcelUploading}
                           className="text-destructive hover:text-destructive" onClick={() => {
@@ -542,10 +561,13 @@ export function AdminUsersPage() {
                       </div>
                     </div>
                   ) : (
-                    <button type="button" disabled={isExcelUploading} onClick={() => fileInputRef.current?.click()}
+                    <button id="choose-excel-file" type="button" disabled={isExcelUploading}
+                      aria-invalid={Boolean(excelError)} aria-describedby={excelError ? "excel-file-error" : undefined}
+                      onClick={() => fileInputRef.current?.click()}
                       className={cn(
                         "flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-input bg-card px-4 py-6 text-center transition-colors hover:border-academic hover:bg-academic-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50",
                         isDragging && "border-academic bg-academic-soft",
+                        excelError && "border-destructive",
                       )}>
                       <span className="grid size-10 place-items-center rounded-xl bg-academic-soft text-academic">
                         <Upload aria-hidden="true" className="size-5" />
@@ -554,6 +576,7 @@ export function AdminUsersPage() {
                       <span className="text-xs text-muted-foreground">Định dạng .xlsx hoặc .xls</span>
                     </button>
                   )}
+                  <ActionError id="excel-file-error" message={excelError} />
                 </div>
 
                 <div className="space-y-1.5">
@@ -585,7 +608,7 @@ export function AdminUsersPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={isExcelUploading || !selectedFile} className="min-h-11 w-full sm:w-auto">
+                <Button type="submit" disabled={isExcelUploading} className="min-h-11 w-full sm:w-auto">
                   {isExcelUploading ? <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" /> : <Upload aria-hidden="true" />}
                   {isExcelUploading ? "Đang nhập danh sách…" : "Nhập danh sách lớp"}
                 </Button>
@@ -640,13 +663,13 @@ export function AdminUsersPage() {
             <CardContent className="space-y-6">
               <AccountFormError message={bulkError} />
 
-              <form onSubmit={handleBulkSubmit} className="space-y-6">
+              <form noValidate onSubmit={handleBulkSubmit} className="space-y-6">
                 <div className="space-y-4">
                   {usersToImport.map(({ id, user, passwordConfirmation }, index) => {
                     const fieldPrefix = `account-${id}`;
                     const confirmationError = passwordConfirmation
                       ? getPasswordConfirmationError(user.password, passwordConfirmation)
-                      : null;
+                      : fieldErrors[`${fieldPrefix}-confirm-password`];
 
                     return (
                       <fieldset key={id} disabled={isBulkLoading} aria-labelledby={`${fieldPrefix}-heading`}
@@ -665,23 +688,38 @@ export function AdminUsersPage() {
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <Label htmlFor={`${fieldPrefix}-email`}>Email tài khoản *</Label>
-                            <Input id={`${fieldPrefix}-email`} type="email" placeholder="sv.k66@hust.edu.vn"
-                              value={user.email} required onChange={(event) => handleUserFieldChange(id, "email", event.target.value)} />
+                            <Input id={`${fieldPrefix}-email`} type="email" placeholder="sv.k99@hust.edu.vn"
+                              value={user.email} aria-required="true" {...fieldErrorProps(`${fieldPrefix}-email`)}
+                              onChange={(event) => {
+                                clearFieldErrors(`${fieldPrefix}-email`);
+                                handleUserFieldChange(id, "email", event.target.value);
+                              }} />
+                            <ActionError id={`${fieldPrefix}-email-error`} message={fieldErrors[`${fieldPrefix}-email`]} />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor={`${fieldPrefix}-full-name`}>Họ và tên *</Label>
-                            <Input id={`${fieldPrefix}-full-name`} placeholder="Nguyễn Văn An" value={user.fullName}
-                              required onChange={(event) => handleUserFieldChange(id, "fullName", event.target.value)} />
+                            <Input id={`${fieldPrefix}-full-name`} placeholder="Nguyễn Văn A" value={user.fullName}
+                              aria-required="true" {...fieldErrorProps(`${fieldPrefix}-full-name`)}
+                              onChange={(event) => {
+                                clearFieldErrors(`${fieldPrefix}-full-name`);
+                                handleUserFieldChange(id, "fullName", event.target.value);
+                              }} />
+                            <ActionError id={`${fieldPrefix}-full-name-error`} message={fieldErrors[`${fieldPrefix}-full-name`]} />
                           </div>
 
-                          <AccountSelect label="Vai trò" value={user.role ?? "STUDENT"} options={roleOptions}
-                            disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "role", value)} />
-                          <AccountSelect label="Giới tính" value={user.gender ?? "MALE"} options={genderOptions}
+                          <AccountSelect id={`${fieldPrefix}-role`} label="Vai trò *" placeholder="Chọn vai trò"
+                            value={user.role ?? null} options={roleOptions} isRequired error={fieldErrors[`${fieldPrefix}-role`]}
+                            disabled={isBulkLoading} onChange={(value) => {
+                              clearFieldErrors(`${fieldPrefix}-role`);
+                              handleUserFieldChange(id, "role", value);
+                            }} />
+                          <AccountSelect id={`${fieldPrefix}-gender`} label="Giới tính" placeholder="Chọn giới tính"
+                            value={user.gender ?? null} options={genderOptions}
                             disabled={isBulkLoading} onChange={(value) => handleUserFieldChange(id, "gender", value)} />
 
                           <div className="space-y-1.5">
                             <Label htmlFor={`${fieldPrefix}-code`}>MSSV / MSGV</Label>
-                            <Input id={`${fieldPrefix}-code`} placeholder="20211234" value={user.studentLecturerCode ?? ""}
+                            <Input id={`${fieldPrefix}-code`} placeholder="222212345" value={user.studentLecturerCode ?? ""}
                               onChange={(event) => handleUserFieldChange(id, "studentLecturerCode", event.target.value)} />
                           </div>
                           <div className="space-y-1.5">
@@ -690,13 +728,13 @@ export function AdminUsersPage() {
                               allowClear allowYearJump onChange={(value) => handleUserFieldChange(id, "dateOfBirth", value)} />
                           </div>
                           <div className="space-y-1.5">
-                            <Label htmlFor={`${fieldPrefix}-faculty`}>Khoa / Viện</Label>
-                            <Input id={`${fieldPrefix}-faculty`} placeholder="Trường CNTT&TT" value={user.schoolFaculty ?? ""}
+                            <Label htmlFor={`${fieldPrefix}-faculty`}>Khoa / Viện / Trường</Label>
+                            <Input id={`${fieldPrefix}-faculty`} placeholder="Trường Điện - Điện tử" value={user.schoolFaculty ?? ""}
                               onChange={(event) => handleUserFieldChange(id, "schoolFaculty", event.target.value)} />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor={`${fieldPrefix}-class`}>Lớp sinh hoạt</Label>
-                            <Input id={`${fieldPrefix}-class`} placeholder="IT1-02" value={user.className ?? ""}
+                            <Input id={`${fieldPrefix}-class`} placeholder="Tự động hóa 01 - K99" value={user.className ?? ""}
                               onChange={(event) => handleUserFieldChange(id, "className", event.target.value)} />
                           </div>
                         </div>
@@ -704,17 +742,23 @@ export function AdminUsersPage() {
                         <div className="space-y-2 border-t border-border pt-4">
                           <div className="grid gap-4 sm:grid-cols-2">
                             <AccountPasswordField id={`${fieldPrefix}-password`} label="Mật khẩu tùy chỉnh" value={user.password ?? ""}
-                              describedBy={`${fieldPrefix}-password-hint ${fieldPrefix}-requirements`} onChange={(value) => handleUserFieldChange(id, "password", value)} />
+                              isRequired={Boolean(passwordConfirmation)} error={fieldErrors[`${fieldPrefix}-password`]}
+                              describedBy={`${fieldPrefix}-password-hint ${fieldPrefix}-requirements`} onChange={(value) => {
+                                clearFieldErrors(`${fieldPrefix}-password`, `${fieldPrefix}-confirm-password`);
+                                handleUserFieldChange(id, "password", value);
+                              }} />
                             <AccountPasswordField id={`${fieldPrefix}-confirm-password`} label="Xác nhận mật khẩu" value={passwordConfirmation}
-                              required={Boolean(user.password)} invalid={Boolean(confirmationError)}
-                              describedBy={confirmationError ? `${fieldPrefix}-password-error` : `${fieldPrefix}-password-hint`}
-                              onChange={(value) => setUsersToImport((previous) => previous.map((draft) => draft.id === id
-                                ? { ...draft, passwordConfirmation: value }
-                                : draft))} />
+                              isRequired={Boolean(user.password)} error={confirmationError} describedBy={`${fieldPrefix}-password-hint`}
+                              onChange={(value) => {
+                                clearFieldErrors(`${fieldPrefix}-confirm-password`);
+                                if (!user.password && !value) clearFieldErrors(`${fieldPrefix}-password`);
+                                setUsersToImport((previous) => previous.map((draft) => draft.id === id
+                                  ? { ...draft, passwordConfirmation: value }
+                                  : draft));
+                              }} />
                           </div>
                           <PasswordRequirements id={`${fieldPrefix}-requirements`} password={user.password ?? ""} />
                           <PasswordConfirmation password={user.password ?? ""} confirmation={passwordConfirmation} />
-                          {confirmationError && <p id={`${fieldPrefix}-password-error`} className="text-sm text-destructive">{confirmationError}</p>}
                           <p id={`${fieldPrefix}-password-hint`} className="text-sm text-muted-foreground">
                             Để trống để sinh mật khẩu tạm ngẫu nhiên 16 ký tự riêng cho từng tài khoản.
                           </p>
@@ -795,29 +839,39 @@ export function AdminUsersPage() {
             Cấp lại mật khẩu cho một hoặc nhiều tài khoản theo địa chỉ email.
           </AccountPanelHeading>
           <CardContent className="space-y-6">
-            <AccountFormError message={resetError} />
-            <form onSubmit={handleAdminResetPassword} className="space-y-5">
+            <form noValidate onSubmit={handleAdminResetPassword} className="space-y-5">
               <fieldset disabled={isResetLoading} className="min-w-0 space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="resetEmails">Email tài khoản *</Label>
-                  <textarea id="resetEmails" rows={4} value={resetEmailInput} required spellCheck={false}
-                    autoCapitalize="none" aria-describedby="reset-emails-hint" placeholder="sv.k66@hust.edu.vn"
-                    onChange={(event) => setResetEmailInput(event.target.value)}
-                    className="block w-full resize-y rounded-xl border border-input bg-card px-3.5 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm" />
+                  <textarea id="resetEmails" rows={4} value={resetEmailInput} aria-required="true" spellCheck={false}
+                    {...fieldErrorProps("resetEmails")} autoCapitalize="none" placeholder="sv.k99@hust.edu.vn"
+                    aria-describedby={fieldErrors.resetEmails ? "resetEmails-error reset-emails-hint" : "reset-emails-hint"}
+                    onChange={(event) => {
+                      clearFieldErrors("resetEmails");
+                      setResetEmailInput(event.target.value);
+                    }}
+                    className="block w-full resize-y rounded-xl border border-input bg-card px-3.5 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 aria-invalid:border-destructive md:text-sm" />
+                  <ActionError id="resetEmails-error" message={fieldErrors.resetEmails} />
                   <p id="reset-emails-hint" className="text-sm text-muted-foreground">Phân cách các email bằng dấu phẩy hoặc xuống dòng.</p>
                 </div>
                 <div className="space-y-2 border-t border-border pt-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <AccountPasswordField id="reset-new-password" label="Mật khẩu tùy chỉnh" value={customNewPassword}
-                      describedBy="reset-password-hint reset-password-requirements" onChange={setCustomNewPassword} />
+                      isRequired={Boolean(resetPasswordConfirmation)} error={fieldErrors["reset-new-password"]}
+                      describedBy="reset-password-hint reset-password-requirements" onChange={(value) => {
+                        clearFieldErrors("reset-new-password", "reset-confirm-password");
+                        setCustomNewPassword(value);
+                      }} />
                     <AccountPasswordField id="reset-confirm-password" label="Xác nhận mật khẩu" value={resetPasswordConfirmation}
-                      required={Boolean(customNewPassword)} invalid={Boolean(resetConfirmationError)}
-                      describedBy={resetConfirmationError ? "reset-password-error" : "reset-password-hint"}
-                      onChange={setResetPasswordConfirmation} />
+                      isRequired={Boolean(customNewPassword)} error={resetConfirmationError} describedBy="reset-password-hint"
+                      onChange={(value) => {
+                        clearFieldErrors("reset-confirm-password");
+                        if (!customNewPassword && !value) clearFieldErrors("reset-new-password");
+                        setResetPasswordConfirmation(value);
+                      }} />
                   </div>
                   <PasswordRequirements id="reset-password-requirements" password={customNewPassword} />
                   <PasswordConfirmation password={customNewPassword} confirmation={resetPasswordConfirmation} />
-                  {resetConfirmationError && <p id="reset-password-error" className="text-sm text-destructive">{resetConfirmationError}</p>}
                   <p id="reset-password-hint" className="text-sm text-muted-foreground">
                     Để trống cả hai ô để sinh mật khẩu tạm ngẫu nhiên 16 ký tự riêng cho từng tài khoản.
                   </p>
@@ -829,7 +883,7 @@ export function AdminUsersPage() {
               </p>
 
               <div className="flex justify-end">
-                <Button type="submit" variant="destructive" disabled={isResetLoading || !resetEmailInput.trim()} className="min-h-11 w-full sm:w-auto">
+                <Button type="submit" variant="destructive" disabled={isResetLoading} className="min-h-11 w-full sm:w-auto">
                   {isResetLoading ? <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" /> : <KeyRound aria-hidden="true" />}
                   {isResetLoading ? "Đang cấp lại mật khẩu…" : "Cấp lại mật khẩu"}
                 </Button>
