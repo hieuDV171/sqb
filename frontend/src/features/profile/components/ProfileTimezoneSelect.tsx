@@ -3,16 +3,16 @@ import { Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DEFAULT_PROFILE_TIMEZONE, LEGACY_VIETNAM_TIMEZONE } from '../profileTimezones';
 
-export const DEFAULT_PROFILE_TIMEZONE = 'Asia/Ho_Chi_Minh';
 const timezones = [...new Set([
   DEFAULT_PROFILE_TIMEZONE,
   'UTC',
-  ...(Intl.supportedValuesOf?.('timeZone') ?? []).filter((zone) => zone !== 'Asia/Saigon'),
+  ...(Intl.supportedValuesOf?.('timeZone') ?? []).filter((zone) => zone !== LEGACY_VIETNAM_TIMEZONE),
 ])];
 
 function timezoneLabel(zone: string) {
-  return zone === DEFAULT_PROFILE_TIMEZONE || zone === 'Asia/Saigon'
+  return zone === DEFAULT_PROFILE_TIMEZONE
     ? 'Việt Nam (UTC+07:00)'
     : zone.replaceAll('_', ' ');
 }

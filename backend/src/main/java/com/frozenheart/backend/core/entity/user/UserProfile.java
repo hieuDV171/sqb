@@ -1,5 +1,6 @@
 package com.frozenheart.backend.core.entity.user;
 
+import com.frozenheart.backend.core.constant.Time;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -76,7 +77,7 @@ public class UserProfile {
 
     @Column(length = 50)
     @Builder.Default
-    private String timezone = "Asia/Ho_Chi_Minh";
+    private String timezone = Time.DEFAULT_TIMEZONE;
 
     // ---------------
     @MapsId

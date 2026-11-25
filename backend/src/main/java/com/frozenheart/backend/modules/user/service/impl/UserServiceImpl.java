@@ -10,6 +10,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
+import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
@@ -29,7 +30,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -107,7 +107,7 @@ public class UserServiceImpl implements UserService {
                 .className(userProfile.getClassName())
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
-                .timezone(userProfile.getTimezone())
+                .timezone(Time.canonicalTimezoneId(userProfile.getTimezone()))
                 .totalProposedQuestions(userProfile.getTotalProposedQuestion())
                 .gamificationPoints(getPublicPoints(userProfile.getUser().getId()))
                 .badgesCount(userProfile.getBadgesCount())
@@ -180,11 +180,12 @@ public class UserServiceImpl implements UserService {
         }
         if (request.timezone() != null && !request.timezone().isBlank()) {
             try {
-                ZoneId parsed = ZoneId.of(request.timezone().trim());
-                userProfile.setTimezone(parsed.getId());
+                userProfile.setTimezone(Time.parseTimezoneId(request.timezone()));
             } catch (Exception e) {
                 throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Múi giờ không hợp lệ");
             }
+        } else {
+            userProfile.setTimezone(Time.canonicalTimezoneId(userProfile.getTimezone()));
         }
         userProfile.getUser().setUpdatedAt(Instant.now());
 
@@ -214,7 +215,7 @@ public class UserServiceImpl implements UserService {
                 .className(userProfile.getClassName())
                 .studentLecturerCode(userProfile.getStudentLecturerCode())
                 .role(userProfile.getUser().getRole())
-                .timezone(userProfile.getTimezone())
+                .timezone(Time.canonicalTimezoneId(userProfile.getTimezone()))
                 .profileCompleted(profileCompleted)
                 .verified(userProfile.getUser().isVerified())
                 .hiddenChatPinConfigured(userProfile.getHiddenChatPin() != null && !userProfile.getHiddenChatPin().isBlank())

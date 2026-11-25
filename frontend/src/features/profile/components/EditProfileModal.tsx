@@ -12,8 +12,9 @@ import { userService } from '@/services/userService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { toast } from '@/stores/useToastStore';
 import type { Gender, ProfileResponse, UpdateProfileRequest } from '@/types/user.types';
+import { normalizeProfileTimezone } from '../profileTimezones';
 import { AvatarWithFrame } from './AvatarWithFrame';
-import { DEFAULT_PROFILE_TIMEZONE, ProfileTimezoneSelect } from './ProfileTimezoneSelect';
+import { ProfileTimezoneSelect } from './ProfileTimezoneSelect';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
   const [bio, setBio] = useState(profile.bio ?? '');
   const [gender, setGender] = useState<string>(profile.gender ?? '');
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth ?? '');
-  const [timezone, setTimezone] = useState(profile.timezone?.trim() || DEFAULT_PROFILE_TIMEZONE);
+  const [timezone, setTimezone] = useState(normalizeProfileTimezone(profile.timezone));
   const [avatarUrl, setAvatarUrl] = useState<string>();
   const [coverUrl, setCoverUrl] = useState<string>();
   const [uploading, setUploading] = useState<'AVATAR' | 'COVER'>();

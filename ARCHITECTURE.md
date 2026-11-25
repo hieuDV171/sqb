@@ -716,3 +716,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - **Ngày 25/11/2026.** Bổ sung `OTHER` và `PREFER_NOT_TO_SAY` bên cạnh Nam và Nữ. `null` biểu thị hồ sơ chưa có lựa chọn. API hồ sơ của chính mình trả lựa chọn đang lưu, API hồ sơ người khác bỏ trường giới tính khi giá trị là `PREFER_NOT_TO_SAY`.
 - Entity lưu enum dưới dạng chuỗi trong cột `user_profiles.gender` kiểu `VARCHAR(20)`. Changelog hiện có tạo cột này bằng kiểu chuỗi, với dung lượng đủ cho hai giá trị mới. Phát hành backend hỗ trợ enum trước khi giao diện cho phép ghi lựa chọn mới.
+
+### [ADR-088] Mã chuẩn cho múi giờ Việt Nam
+
+- **Ngày 25/11/2026.** Dùng `Asia/Ho_Chi_Minh` để gửi, lưu và trả múi giờ Việt Nam. Yêu cầu sửa hồ sơ với mã cũ nhận lỗi tham số. Khi tạo tài khoản hoặc nhập hàng loạt, mã cũ đi qua nhánh giá trị mặc định như các mã không hợp lệ khác. Hồ sơ đã lưu mã cũ được trả về và lưu lại theo mã chuẩn.
+- Frontend lấy danh sách từ `Intl.supportedValuesOf('timeZone')`. Múi giờ Việt Nam xuất hiện một lần với nhãn “Việt Nam (UTC+07:00)”. Lọc bí danh cũ do trình duyệt có thể trả về.

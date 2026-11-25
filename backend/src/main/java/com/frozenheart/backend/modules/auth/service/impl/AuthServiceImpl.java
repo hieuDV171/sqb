@@ -241,7 +241,7 @@ public class AuthServiceImpl implements AuthService {
         String userTz = Time.DEFAULT_TIMEZONE;
         if (request.timezone() != null && !request.timezone().isBlank()) {
             try {
-                userTz = ZoneId.of(request.timezone().trim()).getId();
+                userTz = Time.parseTimezoneId(request.timezone());
             } catch (Exception e) {
                 log.warn("Invalid timezone '{}' in register request, falling back to {}", request.timezone(), Time.DEFAULT_TIMEZONE);
             }
@@ -564,7 +564,7 @@ public class AuthServiceImpl implements AuthService {
             String userTz = Time.DEFAULT_TIMEZONE;
             if (dto.timezone() != null && !dto.timezone().isBlank()) {
                 try {
-                    userTz = ZoneId.of(dto.timezone().trim()).getId();
+                    userTz = Time.parseTimezoneId(dto.timezone());
                 } catch (Exception e) {
                     log.warn("Invalid timezone '{}' in bulk import dto, falling back to {}", dto.timezone(), Time.DEFAULT_TIMEZONE);
                 }
