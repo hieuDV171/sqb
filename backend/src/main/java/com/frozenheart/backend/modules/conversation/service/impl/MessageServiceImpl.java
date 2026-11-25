@@ -99,6 +99,15 @@ public class MessageServiceImpl implements MessageService {
                         .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
 
         List<MessageDto> messageDtos = messages.stream().map(m -> {
+            if (m.getMessageType() == MessageType.SYSTEM) {
+                return MessageDto.builder()
+                        .messageId(m.getId())
+                        .messageType(MessageType.SYSTEM)
+                        .content(m.getContent())
+                        .createdAt(m.getCreatedAt())
+                        .build();
+            }
+
             User sender = m.getSender();
             UserProfile senderProfile = profileMap.get(sender.getId());
 
@@ -138,10 +147,11 @@ public class MessageServiceImpl implements MessageService {
         }).collect(Collectors.toList());
 
         // Loading older history must not move the read receipt backwards.
-        if (cursor == Long.MAX_VALUE && !messages.isEmpty()) {
-            Message newestMessage = messages.getFirst();
+        if (cursor == Long.MAX_VALUE) {
+            Message newestMessage = messages.stream().filter(message -> message.getMessageType() != MessageType.SYSTEM)
+                    .findFirst().orElse(null);
             Message lastRead = participant.getLastReadMessage();
-            if (lastRead == null || newestMessage.getId() > lastRead.getId()) {
+            if (newestMessage != null && (lastRead == null || newestMessage.getId() > lastRead.getId())) {
                 participant.setLastReadMessage(newestMessage);
                 participant.setLastMessageReadAt(Instant.now());
                 userParticipantRepository.save(participant);
@@ -178,6 +188,9 @@ public class MessageServiceImpl implements MessageService {
                 .orElseThrow(() -> new AppException(ResponseCode.ACTION_NOT_ALLOWED,
                         "Bạn không tham gia cuộc hội thoại chứa tin nhắn này"));
         hiddenChatAccess.requireIfHidden(participant);
+        if (message.getMessageType() == MessageType.SYSTEM) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Dòng hệ thống thuộc lịch sử nhóm");
+        }
 
         if (request.getScope() == MessageDeleteScope.ME) {
             boolean alreadyDeleted = userDeletedMessageOnlyMeRepository.existsByUserIdAndMessageId(currentUserId,

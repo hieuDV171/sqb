@@ -3,6 +3,9 @@ package com.frozenheart.backend.modules.conversation.service;
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
 import com.frozenheart.backend.core.entity.conversation.Conversation;
+import com.frozenheart.backend.core.entity.conversation.ConversationType;
+import com.frozenheart.backend.core.entity.conversation.Message;
+import com.frozenheart.backend.core.entity.conversation.MessageType;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
@@ -12,6 +15,7 @@ import com.frozenheart.backend.modules.conversation.service.impl.ConversationSer
 import com.frozenheart.backend.modules.conversation.service.impl.MessageServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -19,6 +23,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -27,7 +32,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -69,5 +78,42 @@ class GroupMembershipAccessTest {
         assertEquals(expected, assertThrows(AppException.class,
                 () -> conversationService.getGroupMembers(GROUP_ID)).getResponseCode());
         verifyNoInteractions(messages);
+    }
+
+    @Test
+    void returnsSystemRowsFromBeforeJoiningUsingTheMessageCursor() {
+        var joinedAt = Instant.parse("2026-11-25T03:00:00Z");
+        var group = Conversation.builder().id(GROUP_ID).type(ConversationType.GROUP).build();
+        var member = UserParticipant.builder().joinedAt(joinedAt).build();
+        var oldActivity = Message.builder().id(25L).conversation(group).messageType(MessageType.SYSTEM)
+                .content("An đã đổi tên nhóm thành “Ôn tập”").createdAt(joinedAt.minusSeconds(86_400)).build();
+        when(conversations.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(participants.findByUserIdAndConversationId(MEMBER_ID, GROUP_ID)).thenReturn(Optional.of(member));
+        when(messages.findMessagesCursor(GROUP_ID, MEMBER_ID, 30L, PageRequest.of(0, 2)))
+                .thenReturn(List.of(oldActivity, Message.builder().id(24L).build()));
+
+        var page = messageService.getMessages(GROUP_ID, 30L, 1);
+
+        var row = page.getMessages().getFirst();
+        assertEquals(MessageType.SYSTEM, row.getMessageType());
+        assertEquals(oldActivity.getContent(), row.getContent());
+        assertNull(row.getSenderId());
+        assertEquals(25L, page.getPagination().after());
+        assertTrue(page.getPagination().hasNext());
+    }
+
+    @Test
+    void loadingOnlySystemRowsDoesNotMoveTheReadReceipt() {
+        var group = Conversation.builder().id(GROUP_ID).type(ConversationType.GROUP).build();
+        var member = UserParticipant.builder().build();
+        var activity = Message.builder().id(25L).conversation(group).messageType(MessageType.SYSTEM).build();
+        when(conversations.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(participants.findByUserIdAndConversationId(MEMBER_ID, GROUP_ID)).thenReturn(Optional.of(member));
+        when(messages.findMessagesCursor(GROUP_ID, MEMBER_ID, Long.MAX_VALUE, PageRequest.of(0, 2)))
+                .thenReturn(List.of(activity));
+
+        assertEquals(1, messageService.getMessages(GROUP_ID, null, 1).getMessages().size());
+        assertNull(member.getLastReadMessage());
+        verify(participants, never()).save(member);
     }
 }

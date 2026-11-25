@@ -8,33 +8,43 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
+    interface UnreadCount {
+        Long getConversationId();
+        Long getUnreadCount();
+    }
+
     @Query("""
-        SELECT COUNT(m)
+        SELECT m.conversation.id AS conversationId, COUNT(m) AS unreadCount
         FROM Message m
-        WHERE m.conversation.id = :conversationId
+        JOIN UserParticipant p ON p.conversation.id = m.conversation.id AND p.user.id = :userId
+        WHERE m.conversation.id IN :conversationIds
+          AND p.leftAt IS NULL
           AND m.sender.id != :userId
-          AND (:lastReadMessageId IS NULL OR m.id > :lastReadMessageId)
+          AND (m.messageType IS NULL OR m.messageType <> com.frozenheart.backend.core.entity.conversation.MessageType.SYSTEM)
+          AND (p.lastReadMessage IS NULL OR m.id > p.lastReadMessage.id)
+        GROUP BY m.conversation.id
         """)
-    int countUnreadMessages(
-            @Param("conversationId") Long conversationId,
-            @Param("userId") Long userId,
-            @Param("lastReadMessageId") Long lastReadMessageId);
+    List<UnreadCount> countUnreadMessages(
+            @Param("conversationIds") Collection<Long> conversationIds,
+            @Param("userId") Long userId);
 
     @Query("""
         SELECT m
         FROM Message m
-        JOIN FETCH m.sender s
+        LEFT JOIN FETCH m.sender
         LEFT JOIN FETCH m.replyToMessage r
         LEFT JOIN FETCH r.sender rs
         LEFT JOIN FETCH r.conversation
         WHERE m.conversation.id = :conversationId
           AND m.id < :cursor
+          AND (m.sender IS NOT NULL OR m.messageType = com.frozenheart.backend.core.entity.conversation.MessageType.SYSTEM)
           AND NOT EXISTS (
               SELECT 1
               FROM UserDeletedMessageOnlyMe d
@@ -53,6 +63,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
         SELECT m FROM Message m
         JOIN FETCH m.sender
         WHERE m.id = :id AND m.conversation.id = :conversationId
+          AND (m.messageType IS NULL OR m.messageType <> com.frozenheart.backend.core.entity.conversation.MessageType.SYSTEM)
         """)
     Optional<Message> findReplyTarget(@Param("id") Long id, @Param("conversationId") Long conversationId);
 

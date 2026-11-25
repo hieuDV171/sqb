@@ -38,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,6 +56,16 @@ class ChatWebSocketReplyTest {
     @Mock HiddenChatAccess hiddenChatAccess;
 
     @InjectMocks ChatWebSocketServiceImpl service;
+
+    @Test
+    void rejectsSystemMessageFromChatClient() {
+        var request = SendWsMessageRequestDto.builder().conversationId(10L).messageType(MessageType.SYSTEM)
+                .content("Client content").build();
+
+        service.handleSendMessage(JwtPayload.builder().userId(2L).build(), request);
+
+        verifyNoInteractions(conversationRepository, messageRepository, mediaService, realtimePublisher);
+    }
 
     @Test
     void broadcastsQuoteImmediatelyAndOmitsItsContentForTheViewerWhoDeletedIt() {

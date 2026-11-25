@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.conversation.service;
 
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupDetailsChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
@@ -40,6 +41,17 @@ public class ChatRealtimePublisher {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public void publishGroupMembersAdded(WsGroupMembersAddedDto event) {
         deliverToActiveMembers(event.conversationId(), event);
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void publishGroupDetailsChanged(WsGroupDetailsChangedDto event) {
+        deliverToActiveMembers(event.conversationId(), event);
+        if (event.leftUserId() != null) {
+            userParticipantRepository.findByUserIdAndConversationId(event.leftUserId(), event.conversationId())
+                    .filter(member -> member.getLeftAt() != null && !Boolean.TRUE.equals(member.getRemovedFromGroup()))
+                    .ifPresent(member -> deliver(event.leftUserId(), member.getHiddenAt() != null, event));
+        }
     }
 
     @TransactionalEventListener

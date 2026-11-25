@@ -30,7 +30,7 @@ public class MessageListResponseDto {
     @Schema(description = "Thời điểm ẩn hoặc mốc lịch sử bị ẩn theo ngữ cảnh hội thoại; có thể null", example = "2026-11-19T07:00:00Z")
     private Instant hiddenAt;
 
-    @Schema(description = "Các tin nhắn trong trang lịch sử hiện tại")
+    @Schema(description = "Tin nhắn và dòng hệ thống trong trang lịch sử hiện tại, dùng chung con trỏ")
     private List<MessageDto> messages;
 
     @Schema(description = "Mốc và cờ phân trang; không tự suy đoán cursor từ thứ tự hiển thị")

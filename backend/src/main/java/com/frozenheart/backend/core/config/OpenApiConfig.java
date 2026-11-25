@@ -188,7 +188,7 @@ public class OpenApiConfig {
 
                 | STOMP Topic / Queue | Mô tả sự kiện | Payload DTO nhận được (snake_case) |
                 | :--- | :--- | :--- |
-                | `/user/queue/messages` | Nhận tin nhắn, thu hồi, biên nhận đã đọc, trạng thái đang soạn và thay đổi vai trò nhóm. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsMessageRevokedDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` / `WsGroupRolesChangedDto` |
+                | `/user/queue/messages` | Nhận tin nhắn, thu hồi, biên nhận đã đọc, trạng thái đang soạn và cập nhật nhóm. Sự kiện từ hội thoại ẩn chỉ đến các kết nối thuộc phiên đã mở kho. | `WsMessageBroadcastDto` / `WsMessageRevokedDto` / `WsReadReceiptBroadcastDto` / `WsTypingBroadcastDto` / các DTO cập nhật nhóm |
 
                 Với tin nhắn trả lời, `NEW_MESSAGE` chứa `reply_to_message` cùng cấu trúc với lịch sử REST, gồm ID tin gốc, người gửi và `content_preview`. Nếu người nhận đã xóa tin gốc ở phía mình, bản trích dẫn chỉ báo tin gốc không còn hiển thị.
 
@@ -199,6 +199,10 @@ public class OpenApiConfig {
                 `GROUP_MEMBER_REMOVED` gửi `conversation_id` và `removed_user_id` tới thành viên đang tham gia và người bị mời ra sau khi giao dịch hoàn tất.
 
                 `GROUP_MEMBERS_ADDED` gửi `conversation_id` tới thành viên đang tham gia sau khi thêm trực tiếp hoặc sau khi người được mời chấp nhận vào nhóm.
+
+                `GROUP_DETAILS_CHANGED` gửi `conversation_id` sau khi nhóm đổi tên hoặc có người rời nhóm. Khi rời nhóm, sự kiện có thêm `left_user_id` và được gửi cả tới người vừa rời.
+
+                Client tải lại lịch sử qua REST khi nhận cập nhật nhóm. Lịch sử trả các dòng hệ thống với `message_type: SYSTEM` xen giữa các tin nhắn.
                 """;
 
         return new OpenAPI()

@@ -93,12 +93,12 @@ export interface ReplyMessagePreviewDto {
 
 export interface MessageDto {
   messageId: number;
-  senderId: number;
-  senderName: string;
+  senderId?: number | null;
+  senderName?: string | null;
   avatarUrl?: string | null;
   frameUrl?: string | null;
   content: string;
-  messageType: MessageType;
+  messageType: MessageType | 'SYSTEM';
   mediaUrls?: string[];
   replyToMessage?: ReplyMessagePreviewDto | null;
   createdAt: string;
@@ -246,6 +246,12 @@ export interface WsGroupMemberRemovedDto {
 export interface WsGroupMembersAddedDto {
   eventType: 'GROUP_MEMBERS_ADDED';
   conversationId: number;
+}
+
+export interface WsGroupDetailsChangedDto {
+  eventType: 'GROUP_DETAILS_CHANGED';
+  conversationId: number;
+  leftUserId?: number | null;
 }
 
 export interface WsTypingBroadcastDto {

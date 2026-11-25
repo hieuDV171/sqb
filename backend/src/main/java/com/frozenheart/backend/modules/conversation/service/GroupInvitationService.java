@@ -47,6 +47,7 @@ public class GroupInvitationService {
     private final UserProfileRepository profiles;
     private final HiddenChatAccess hiddenChatAccess;
     private final ApplicationEventPublisher eventPublisher;
+    private final GroupActivityWriter groupActivityWriter;
 
     public record Connections(Set<Long> friends, Set<Long> following, Set<Long> followers) {
         public boolean hasNoConnectionTo(Long id) {
@@ -131,6 +132,7 @@ public class GroupInvitationService {
             member.setLeftAt(null);
             member.setRemovedFromGroup(null);
             participants.save(member);
+            groupActivityWriter.memberJoined(group, actor);
             eventPublisher.publishEvent(new WsGroupMembersAddedDto(group.getId()));
         }
         invitations.delete(invitation);

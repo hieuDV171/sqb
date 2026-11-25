@@ -243,15 +243,21 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
       CHAT_QUERY_KEYS.messages(dto.conversationId),
       (oldData) => {
         if (!oldData || !oldData.pages || oldData.pages.length === 0) return oldData;
-        const firstPage = oldData.pages[0];
-        // Tránh trùng tin nhắn
-        const exists = firstPage.messages.some((m: MessageDto) => m.messageId === dto.messageId);
+        const exists = oldData.pages.some((page) => page.messages.some((message) => message.messageId === dto.messageId));
         if (exists) return oldData;
 
+        // Giữ thứ tự theo con trỏ nếu lịch sử đã tải một dòng hệ thống mới hơn.
+        const pageIndex = oldData.pages.findIndex(({ pagination }) =>
+          !pagination.hasNext || pagination.after == null || dto.messageId >= pagination.after);
+        if (pageIndex === -1) return oldData;
+
+        const page = oldData.pages[pageIndex];
+        const insertBefore = page.messages.findIndex((message) => message.messageId < dto.messageId);
+        const index = insertBefore === -1 ? page.messages.length : insertBefore;
         const updatedPages = [...oldData.pages];
-        updatedPages[0] = {
-          ...firstPage,
-          messages: [newMessage, ...firstPage.messages],
+        updatedPages[pageIndex] = {
+          ...page,
+          messages: [...page.messages.slice(0, index), newMessage, ...page.messages.slice(index)],
         };
         return {
           ...oldData,

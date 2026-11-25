@@ -10,6 +10,7 @@ import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.modules.conversation.dto.*;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupDetailsChangedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMemberRemovedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupMembersAddedDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsGroupRolesChangedDto;
@@ -18,6 +19,7 @@ import com.frozenheart.backend.modules.conversation.repository.GroupInvitationRe
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.ConversationService;
+import com.frozenheart.backend.modules.conversation.service.GroupActivityWriter;
 import com.frozenheart.backend.modules.conversation.service.GroupInvitationService;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.media.service.MediaService;
@@ -52,6 +54,7 @@ public class ConversationServiceImpl implements ConversationService {
         private final HiddenChatAccess hiddenChatAccess;
         private final GroupInvitationRepository groupInvitationRepository;
         private final GroupInvitationService groupInvitationService;
+        private final GroupActivityWriter groupActivityWriter;
 
         @Override
         @Transactional(readOnly = true)
@@ -108,6 +111,9 @@ public class ConversationServiceImpl implements ConversationService {
                 Set<Long> userIds = allParticipants.stream().map(p -> p.getUser().getId()).collect(Collectors.toSet());
                 Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(userIds).stream()
                                 .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
+                Map<Long, Integer> unreadByConversation = messageRepository.countUnreadMessages(convIds, currentUserId).stream()
+                                .collect(Collectors.toMap(MessageRepository.UnreadCount::getConversationId,
+                                                row -> row.getUnreadCount().intValue()));
 
                 List<ConversationDto> items = conversations.stream().map(c -> {
                         List<UserParticipant> participants = participantsByConvId.getOrDefault(c.getId(),
@@ -154,12 +160,6 @@ public class ConversationServiceImpl implements ConversationService {
                                                 .build();
                         }
 
-                        Long lastReadMsgId = (myParticipant != null && myParticipant.getLastReadMessage() != null)
-                                        ? myParticipant.getLastReadMessage().getId()
-                                        : null;
-                        int unreadCount = messageRepository.countUnreadMessages(c.getId(), currentUserId,
-                                        lastReadMsgId);
-
                         return ConversationDto.builder()
                                         .conversationId(c.getId())
                                         .type(c.getType())
@@ -167,7 +167,7 @@ public class ConversationServiceImpl implements ConversationService {
                                         .displayAvatarUrl(displayAvatarUrl)
                                         .memberCount(memberCount)
                                         .lastMessage(lastMessageDto)
-                                        .unreadCount(unreadCount)
+                                        .unreadCount(unreadByConversation.getOrDefault(c.getId(), 0))
                                         .hiddenAt(myParticipant != null ? myParticipant.getHiddenAt() : null)
                                         .isMuted(myParticipant != null && myParticipant.isMuted())
                                         .updatedAt(c.getUpdatedAt() != null ? c.getUpdatedAt() : c.getCreadtedAt())
@@ -328,6 +328,11 @@ public class ConversationServiceImpl implements ConversationService {
 
                 userParticipantRepository.saveAll(participants);
                 groupInvitationRepository.saveAll(invitations);
+                if (participants.size() > 1) {
+                        List<Long> addedIds = memberIds.stream().filter(connections.friends()::contains).toList();
+                        groupActivityWriter.membersAdded(savedConv, currentUserId, addedIds);
+                        eventPublisher.publishEvent(new WsGroupMembersAddedDto(savedConv.getId()));
+                }
 
                 ConversationDetailDto result = mapToDetailDto(savedConv);
                 result.setInvitedMemberCount(invitations.size());
@@ -417,7 +422,7 @@ public class ConversationServiceImpl implements ConversationService {
         public ConversationDetailDto updateGroupInfo(Long conversationId, UpdateGroupInfoDto request) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
-                Conversation conversation = conversationRepository.findById(conversationId)
+                Conversation conversation = conversationRepository.findForMembershipUpdate(conversationId)
                                 .orElseThrow(
                                                 () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
                                                                 "Không tìm thấy cuộc hội thoại"));
@@ -440,7 +445,9 @@ public class ConversationServiceImpl implements ConversationService {
                 }
 
                 hiddenChatAccess.requireIfHidden(participant);
-                if (request.getName() != null && !request.getName().isBlank()) {
+                boolean nameChanged = request.getName() != null && !request.getName().isBlank()
+                                && !Objects.equals(conversation.getName(), request.getName());
+                if (nameChanged) {
                         conversation.setName(request.getName());
                 }
 
@@ -455,6 +462,10 @@ public class ConversationServiceImpl implements ConversationService {
 
                 conversation.setUpdatedAt(Instant.now());
                 Conversation saved = conversationRepository.save(conversation);
+                if (nameChanged) {
+                        groupActivityWriter.renamed(saved, currentUserId);
+                        eventPublisher.publishEvent(new WsGroupDetailsChangedDto(conversationId));
+                }
 
                 return mapToDetailDto(saved);
         }
@@ -639,6 +650,8 @@ public class ConversationServiceImpl implements ConversationService {
                 userParticipantRepository.saveAll(membersToSave);
                 groupInvitationRepository.saveAll(invitations);
                 if (!membersToSave.isEmpty()) {
+                        groupActivityWriter.membersAdded(conversation, currentUserId,
+                                        addedMembers.stream().map(ConversationMemberDto::getUserId).toList());
                         eventPublisher.publishEvent(new WsGroupMembersAddedDto(conversationId));
                 }
                 return AddGroupMembersResponseDto.builder()
@@ -658,7 +671,8 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Để rời nhóm vui lòng sử dụng chức năng rời nhóm");
                 }
 
-                conversationRepository.findForMembershipUpdate(conversationId)
+                Conversation conversation = conversationRepository.findForMembershipUpdate(conversationId)
+                                .filter(group -> group.getType() == ConversationType.GROUP)
                                 .orElseThrow(
                                                 () -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND,
                                                                 "Không tìm thấy cuộc hội thoại"));
@@ -701,6 +715,7 @@ public class ConversationServiceImpl implements ConversationService {
                 targetParticipant.setRemovedFromGroup(true);
                 userParticipantRepository.save(targetParticipant);
                 groupInvitationRepository.deleteForInviter(conversationId, targetUserId);
+                groupActivityWriter.memberRemoved(conversation, currentUserId, targetUserId);
                 eventPublisher.publishEvent(new WsGroupMemberRemovedDto(conversationId, targetUserId));
         }
 
@@ -714,8 +729,8 @@ public class ConversationServiceImpl implements ConversationService {
                                         "Không thể tự thay đổi vai trò của chính mình");
                 }
 
-                conversationRepository.findForMembershipUpdate(conversationId)
-                                .filter(conversation -> conversation.getType() == ConversationType.GROUP)
+                Conversation conversation = conversationRepository.findForMembershipUpdate(conversationId)
+                                .filter(group -> group.getType() == ConversationType.GROUP)
                                 .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND));
 
                 UserParticipant callerParticipant = userParticipantRepository
@@ -752,6 +767,7 @@ public class ConversationServiceImpl implements ConversationService {
 
                 targetParticipant.setRole(newRole);
                 userParticipantRepository.save(targetParticipant);
+                groupActivityWriter.roleChanged(conversation, currentUserId, targetUserId, newRole);
                 eventPublisher.publishEvent(new WsGroupRolesChangedDto(conversationId));
         }
 
@@ -759,7 +775,8 @@ public class ConversationServiceImpl implements ConversationService {
         @Transactional
         public LeaveGroupResponseDto leaveGroup(Long conversationId, LeaveGroupRequestDto request) {
                 Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
-                conversationRepository.findForMembershipUpdate(conversationId)
+                Conversation conversation = conversationRepository.findForMembershipUpdate(conversationId)
+                                .filter(group -> group.getType() == ConversationType.GROUP)
                                 .orElseThrow(() -> new AppException(ResponseCode.CONVERSATION_NOT_FOUND));
 
                 UserParticipant callerParticipant = userParticipantRepository
@@ -829,6 +846,9 @@ public class ConversationServiceImpl implements ConversationService {
                 callerParticipant.setRemovedFromGroup(null);
                 userParticipantRepository.save(callerParticipant);
                 groupInvitationRepository.deleteForInviter(conversationId, currentUserId);
+                groupActivityWriter.memberLeft(conversation, currentUserId,
+                                newChiefDto == null ? null : newChiefDto.getUserId());
+                eventPublisher.publishEvent(new WsGroupDetailsChangedDto(conversationId, currentUserId));
                 if (newChiefDto != null) {
                         eventPublisher.publishEvent(new WsGroupRolesChangedDto(conversationId));
                 }

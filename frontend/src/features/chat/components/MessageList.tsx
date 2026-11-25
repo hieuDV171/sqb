@@ -224,24 +224,30 @@ export function MessageList({
                 </div>
               )}
 
-              <div
-                data-message-id={message.messageId}
-                tabIndex={-1}
-                className={`flow-root rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  jump?.messageId === message.messageId ? 'bg-accent ring-2 ring-inset ring-primary/60' : ''
-                }`}
-              >
-                <MessageBubble
-                  message={message}
-                  isMe={isMe}
-                  showAvatar={showAvatar}
-                  showSenderName={showSenderName}
-                  onReply={onReplyMessage}
-                  onJumpToOriginal={jumpToOriginal}
-                  onDelete={onDeleteMessage}
-                  onImageClick={onImageClick}
-                />
-              </div>
+              {message.messageType === 'SYSTEM' ? (
+                <p className="mx-auto max-w-lg wrap-anywhere px-3 py-1 text-center text-xs leading-relaxed text-muted-foreground">
+                  {message.content}
+                </p>
+              ) : (
+                <div
+                  data-message-id={message.messageId}
+                  tabIndex={-1}
+                  className={`flow-root rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    jump?.messageId === message.messageId ? 'bg-accent ring-2 ring-inset ring-primary/60' : ''
+                  }`}
+                >
+                  <MessageBubble
+                    message={message}
+                    isMe={isMe}
+                    showAvatar={showAvatar}
+                    showSenderName={showSenderName}
+                    onReply={onReplyMessage}
+                    onJumpToOriginal={jumpToOriginal}
+                    onDelete={onDeleteMessage}
+                    onImageClick={onImageClick}
+                  />
+                </div>
+              )}
             </React.Fragment>
           );
         })}

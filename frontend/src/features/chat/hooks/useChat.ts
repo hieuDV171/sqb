@@ -21,6 +21,8 @@ import type {
 import { toast } from '@/stores/useToastStore';
 import type { ProfileResponse } from '@/types/user.types';
 
+const messageHistoryKey = 'messages';
+
 function isHiddenChatLocked(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '2411';
 }
@@ -37,7 +39,8 @@ export const CHAT_QUERY_KEYS = {
   groupMembers: (conversationId: number) => ['conversations', conversationId, 'members'] as const,
   groupCandidates: ['group-candidates'] as const,
   groupInvitations: ['group-invitations'] as const,
-  messages: (conversationId: number) => ['messages', conversationId] as const,
+  allMessages: [messageHistoryKey] as const,
+  messages: (conversationId: number) => [messageHistoryKey, conversationId] as const,
 };
 
 export function refreshGroupMembership(queryClient: QueryClient, conversationId: number) {
@@ -49,14 +52,21 @@ export function refreshGroupMembership(queryClient: QueryClient, conversationId:
   ]);
 }
 
+export function refreshGroupHistory(queryClient: QueryClient, conversationId: number) {
+  return queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.messages(conversationId), exact: true });
+}
+
+export function resetGroupHistory(queryClient: QueryClient, conversationId: number) {
+  return queryClient.resetQueries({ queryKey: CHAT_QUERY_KEYS.messages(conversationId), exact: true });
+}
+
 export function refreshJoinedGroup(queryClient: QueryClient, conversationId: number) {
+  const history = queryClient.getQueryState(CHAT_QUERY_KEYS.messages(conversationId));
   return Promise.all([
     refreshGroupMembership(queryClient, conversationId),
-    queryClient.resetQueries({
-      queryKey: CHAT_QUERY_KEYS.messages(conversationId),
-      exact: true,
-      predicate: ({ state }) => state.status === 'error' || state.status === 'pending',
-    }),
+    history?.status === 'error' || history?.status === 'pending'
+      ? resetGroupHistory(queryClient, conversationId)
+      : refreshGroupHistory(queryClient, conversationId),
   ]);
 }
 
@@ -170,7 +180,7 @@ export function useMessages(conversationId: number | null, limit: number = 30) {
   const allowed = useChatStore((state) =>
     conversationId === null || state.isPinUnlocked || !state.hiddenConversationIds.includes(conversationId));
   return useInfiniteQuery({
-    queryKey: conversationId ? CHAT_QUERY_KEYS.messages(conversationId) : ['messages', 'null'],
+    queryKey: conversationId ? CHAT_QUERY_KEYS.messages(conversationId) : [...CHAT_QUERY_KEYS.allMessages, 'null'],
     queryFn: async ({ pageParam }) => {
       if (!conversationId) {
         return { conversationId: 0, conversationType: 'DIRECT' as const, messages: [], pagination: {} };
@@ -301,9 +311,11 @@ export function useUpdateGroupInfo() {
   return useMutation({
     mutationFn: ({ conversationId, data }: { conversationId: number; data: UpdateGroupInfoDto }) =>
       chatService.updateGroupInfo(conversationId, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId) });
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations }),
+        refreshGroupHistory(queryClient, variables.conversationId),
+      ]);
       toast.success('Đã cập nhật thông tin nhóm');
     },
   });
@@ -320,7 +332,7 @@ export function useAddGroupMembers() {
     onSuccess: async (res, { conversationId }) => {
       const added = res.data?.addedMembers?.length || 0;
       if (added > 0) {
-        await refreshGroupMembership(queryClient, conversationId);
+        await Promise.all([refreshGroupMembership(queryClient, conversationId), refreshGroupHistory(queryClient, conversationId)]);
       } else {
         await queryClient.invalidateQueries({ queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId] });
       }
@@ -349,7 +361,7 @@ export function useRemoveGroupMember() {
     mutationFn: ({ conversationId, userId }: { conversationId: number; userId: number }) =>
       chatService.removeGroupMember(conversationId, userId),
     onSuccess: async (_, { conversationId }) => {
-      await refreshGroupMembership(queryClient, conversationId);
+      await Promise.all([refreshGroupMembership(queryClient, conversationId), refreshGroupHistory(queryClient, conversationId)]);
       toast.success('Đã xóa thành viên khỏi nhóm');
     },
   });
@@ -371,7 +383,10 @@ export function useUpdateMemberRole() {
       data: UpdateMemberRoleRequestDto;
     }) => chatService.updateMemberRole(conversationId, userId, data),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId), exact: true });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.groupMembers(variables.conversationId), exact: true }),
+        refreshGroupHistory(queryClient, variables.conversationId),
+      ]);
       toast.success('Cập nhật vai trò thành viên thành công');
     },
   });
@@ -385,8 +400,8 @@ export function useLeaveGroup() {
   return useMutation({
     mutationFn: ({ conversationId, data }: { conversationId: number; data?: LeaveGroupRequestDto }) =>
       chatService.leaveGroup(conversationId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+    onSuccess: async (_, { conversationId }) => {
+      await Promise.all([refreshGroupMembership(queryClient, conversationId), resetGroupHistory(queryClient, conversationId)]);
       toast.success('Đã rời khỏi cuộc trò chuyện nhóm');
     },
   });

@@ -57,6 +57,7 @@ class GroupInvitationTest {
     @Mock private HiddenChatAccess hiddenChatAccess;
     @Mock private ApplicationEventPublisher events;
     @Mock private GroupInvitationService connections;
+    @Mock private GroupActivityWriter activity;
     @Captor private ArgumentCaptor<List<GroupInvitation>> savedInvitations;
     @Captor private ArgumentCaptor<List<UserParticipant>> savedParticipants;
     @Captor private ArgumentCaptor<UserParticipant> acceptedParticipant;
@@ -89,6 +90,7 @@ class GroupInvitationTest {
         verify(invitations).saveAll(savedInvitations.capture());
         assertEquals(List.of(invitee.getId()), savedInvitations.getValue().stream()
                 .map(invitation -> invitation.getInvitee().getId()).toList());
+        verify(activity).membersAdded(group, inviter.getId(), List.of(friend.getId()));
     }
 
     @Test
@@ -112,7 +114,7 @@ class GroupInvitationTest {
         verify(participants).saveAll(List.of());
         verify(invitations).saveAll(savedInvitations.capture());
         assertSame(invitee, savedInvitations.getValue().getFirst().getInvitee());
-        verifyNoInteractions(events);
+        verifyNoInteractions(events, activity);
     }
 
     @Test
@@ -135,8 +137,9 @@ class GroupInvitationTest {
         assertEquals(friend.getId(), result.getAddedMembers().getFirst().getUserId());
         assertNull(formerMember.getLeftAt());
         assertNull(formerMember.getRemovedFromGroup());
-        var order = inOrder(participants, events);
+        var order = inOrder(participants, activity, events);
         order.verify(participants).saveAll(List.of(formerMember));
+        order.verify(activity).membersAdded(group, inviter.getId(), targets);
         order.verify(events).publishEvent(new WsGroupMembersAddedDto(GROUP_ID));
     }
 
@@ -153,6 +156,7 @@ class GroupInvitationTest {
         assertEquals(ConversationRole.VILLAGER, acceptedParticipant.getValue().getRole());
         assertNull(acceptedParticipant.getValue().getLeftAt());
         verify(invitations).delete(invitation);
+        verify(activity).memberJoined(group, invitee.getId());
         verify(events).publishEvent(new WsGroupMembersAddedDto(GROUP_ID));
     }
 

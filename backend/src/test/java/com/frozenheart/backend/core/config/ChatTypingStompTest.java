@@ -2,6 +2,8 @@ package com.frozenheart.backend.core.config;
 
 import com.frozenheart.backend.core.dto.event.AccountDeletedEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.conversation.Conversation;
+import com.frozenheart.backend.core.entity.conversation.ConversationType;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.security.AccountState;
@@ -24,17 +26,20 @@ import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
-import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,34 +52,16 @@ import static org.mockito.Mockito.when;
 
 class ChatTypingStompTest {
 
+    private static final JsonMapper MAPPER = JsonMapper.builder()
+            .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE).build();
+
     @Test
     void typingFramesReachTheOtherUsersPrivateQueue() throws Exception {
-        var mapper = JsonMapper.builder().propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE).build();
-        var jwt = mock(JwtService.class);
-        var userDetails = mock(UserDetailsService.class);
-        var hidden = mock(HiddenChatAccess.class);
         var participants = mock(UserParticipantRepository.class);
         when(participants.findByConversationIdAndLeftAtIsNull(42L)).thenReturn(List.of(
                 UserParticipant.builder().user(User.builder().id(1L).email("sender@sqb.edu.vn").build()).build(),
                 UserParticipant.builder().user(User.builder().id(2L).email("receiver@sqb.edu.vn").build()).build()));
-        allowLogin(jwt, userDetails, "sender", 1L);
-        allowLogin(jwt, userDetails, "receiver", 2L);
-
-        try (var context = new AnnotationConfigWebApplicationContext()) {
-            context.setServletContext(new MockServletContext());
-            context.addBeanFactoryPostProcessor(factory -> {
-                factory.registerSingleton("jsonMapper", mapper);
-                factory.registerSingleton("jwtService", jwt);
-                factory.registerSingleton("userDetailsService", userDetails);
-                factory.registerSingleton("authInterceptor", new WebSocketAuthInterceptor(jwt, userDetails));
-                factory.registerSingleton("hiddenChatAccess", hidden);
-                factory.registerSingleton("participants", participants);
-                factory.registerSingleton("userProfiles", mock(UserProfileRepository.class));
-            });
-            context.register(WebSocketConfig.class, AccountWebSocketSessions.class, SynchronousChannels.class,
-                    HiddenChatOutboundGuard.class, ChatRealtimePublisher.class, TypingServiceConfig.class,
-                    ChatWebSocketController.class);
-            context.refresh();
+        try (var context = startBroker(participants, Map.of("sender", 1L, "receiver", 2L))) {
             var sessions = context.getBean(AccountWebSocketSessions.class);
             var handler = sessions.decorate(context.getBean("subProtocolWebSocketHandler", WebSocketHandler.class));
             var senderFrames = new ArrayList<String>();
@@ -88,18 +75,11 @@ class ChatTypingStompTest {
                     "{\"conversation_id\":42}",
                     "{\"conversation_id\":42,\"typing\":false}",
                     "{\"conversation_id\":42,\"is_typing\":true}")) {
-                handler.handleMessage(sender, frame("""
-                        SEND
-                        destination:/app/chat.typing
-
-                        %s
-                        """.formatted(payload).stripTrailing()));
+                publishTyping(handler, sender, payload);
             }
 
-            assertTrue(senderFrames.stream().noneMatch(frame -> frame.startsWith("MESSAGE")));
-            var events = receiverFrames.stream().filter(frame -> frame.startsWith("MESSAGE"))
-                    .map(frame -> mapper.readTree(frame.substring(frame.indexOf("\n\n") + 2, frame.lastIndexOf('\0'))))
-                    .toList();
+            assertTrue(receivedEvents(senderFrames).isEmpty());
+            var events = receivedEvents(receiverFrames);
             assertEquals(2, events.size(), receiverFrames::toString);
             assertEquals(List.of(true, false), events.stream().map(event -> event.get("typing").asBoolean()).toList());
             for (var event : events) {
@@ -115,6 +95,93 @@ class ChatTypingStompTest {
             verify(sender).close(CloseStatus.POLICY_VIOLATION);
             verify(receiver, never()).close(any());
         }
+    }
+
+    @Test
+    void groupTypingReachesEveryOtherActiveMemberAndKeepsEachTypistSeparate() throws Exception {
+        var group = Conversation.builder().id(84L).type(ConversationType.GROUP).build();
+        var first = groupMember(group, 1L, "first");
+        var second = groupMember(group, 2L, "second");
+        var observer = groupMember(group, 3L, "observer");
+        var former = groupMember(group, 4L, "former");
+        former.setLeftAt(Instant.now());
+        var participants = mock(UserParticipantRepository.class);
+        when(participants.findByConversationIdAndLeftAtIsNull(group.getId()))
+                .thenReturn(List.of(first, second, observer, former).stream()
+                        .filter(member -> member.getLeftAt() == null).toList());
+
+        try (var context = startBroker(participants, Map.of("first", 1L, "second", 2L, "observer", 3L, "former", 4L))) {
+            var sessions = context.getBean(AccountWebSocketSessions.class);
+            var handler = sessions.decorate(context.getBean("subProtocolWebSocketHandler", WebSocketHandler.class));
+            var firstFrames = new ArrayList<String>();
+            var secondFrames = new ArrayList<String>();
+            var observerFrames = new ArrayList<String>();
+            var formerFrames = new ArrayList<String>();
+            var firstSocket = connect(handler, "first", firstFrames);
+            var secondSocket = connect(handler, "second", secondFrames);
+            connect(handler, "observer", observerFrames);
+            var formerSocket = connect(handler, "former", formerFrames);
+
+            publishTyping(handler, firstSocket, "{\"conversation_id\":84,\"typing\":true}");
+            publishTyping(handler, secondSocket, "{\"conversation_id\":84,\"typing\":true}");
+            publishTyping(handler, formerSocket, "{\"conversation_id\":84,\"typing\":true}");
+            publishTyping(handler, firstSocket, "{\"conversation_id\":84,\"typing\":false}");
+            publishTyping(handler, secondSocket, "{\"conversation_id\":84,\"typing\":false}");
+
+            assertEquals(List.of(2L, 2L), typingUserIds(receivedEvents(firstFrames)));
+            assertEquals(List.of(1L, 1L), typingUserIds(receivedEvents(secondFrames)));
+            assertTrue(receivedEvents(formerFrames).isEmpty());
+            var events = receivedEvents(observerFrames);
+            assertEquals(List.of(1L, 2L, 1L, 2L), typingUserIds(events));
+            assertEquals(List.of(true, true, false, false),
+                    events.stream().map(event -> event.get("typing").asBoolean()).toList());
+            for (var event : events) {
+                assertEquals("TYPING_STATUS", event.get("event_type").asString());
+                assertEquals(group.getId().longValue(), event.get("conversation_id").asLong());
+            }
+        }
+    }
+
+    private static AnnotationConfigWebApplicationContext startBroker(
+            UserParticipantRepository participants, Map<String, Long> accounts) {
+        var jwt = mock(JwtService.class);
+        var userDetails = mock(UserDetailsService.class);
+        accounts.forEach((token, userId) -> allowLogin(jwt, userDetails, token, userId));
+        var context = new AnnotationConfigWebApplicationContext();
+        context.setServletContext(new MockServletContext());
+        context.addBeanFactoryPostProcessor(factory -> {
+            factory.registerSingleton("jsonMapper", MAPPER);
+            factory.registerSingleton("jwtService", jwt);
+            factory.registerSingleton("userDetailsService", userDetails);
+            factory.registerSingleton("authInterceptor", new WebSocketAuthInterceptor(jwt, userDetails));
+            factory.registerSingleton("hiddenChatAccess", mock(HiddenChatAccess.class));
+            factory.registerSingleton("participants", participants);
+            factory.registerSingleton("userProfiles", mock(UserProfileRepository.class));
+        });
+        context.register(WebSocketConfig.class, AccountWebSocketSessions.class, SynchronousChannels.class,
+                HiddenChatOutboundGuard.class, ChatRealtimePublisher.class, TypingServiceConfig.class,
+                ChatWebSocketController.class);
+        context.refresh();
+        return context;
+    }
+
+    private static UserParticipant groupMember(Conversation group, long userId, String username) {
+        return UserParticipant.builder().conversation(group)
+                .user(User.builder().id(userId).email(username + "@sqb.edu.vn").build()).build();
+    }
+
+    private static void publishTyping(WebSocketHandler handler, WebSocketSession session, String payload) throws Exception {
+        handler.handleMessage(session, frame("SEND\ndestination:/app/chat.typing\n\n" + payload));
+    }
+
+    private static List<JsonNode> receivedEvents(List<String> frames) {
+        return frames.stream().filter(frame -> frame.startsWith("MESSAGE"))
+                .map(frame -> MAPPER.readTree(frame.substring(frame.indexOf("\n\n") + 2, frame.lastIndexOf('\0'))))
+                .toList();
+    }
+
+    private static List<Long> typingUserIds(List<JsonNode> events) {
+        return events.stream().map(event -> event.get("user").get("user_id").asLong()).toList();
     }
 
     private static void allowLogin(JwtService jwt, UserDetailsService service, String token, long id) {

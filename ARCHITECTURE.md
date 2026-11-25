@@ -705,3 +705,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 24/11/2026.** API tra cứu chủ đề đang dùng giữ tại `/subjects/{subjectId}/topics`. API quản lý dưới `/lecturer/subjects/{subjectId}/topics` liệt kê cả chủ đề ngừng sử dụng và tiếp tục kiểm quyền giảng viên theo môn. ADMIN được phép quản lý mọi môn.
 - Khóa ghi hàng môn học vẫn tuần tự hóa tạo, sửa và kiểm tra trùng tên. `Topic.version` dùng `@Version`. Sau khi lấy khóa, backend so sánh phiên bản gửi trong PUT với bản vừa đọc và trả HTTP 412 nếu đã thay đổi. Giao diện tải lại, giữ nội dung đang nhập và yêu cầu giảng viên xem phiên bản mới trước khi lưu tiếp.
 - Cần áp dụng changeset bổ sung `topics.version` và khởi tạo bản ghi cũ về `0` trước khi chạy backend mới.
+
+### [ADR-086] Dòng hệ thống trong lịch sử nhóm chat
+
+- **Ngày 25/11/2026.** Thành viên đang hoạt động xem toàn bộ các dòng hệ thống đã ghi của nhóm theo quyền lịch sử hiện có, kể cả các dòng từ trước lần tham gia gần nhất. Nhóm ẩn tiếp tục kiểm tra quyền mở kho theo phiên.
+- Lưu dòng `SYSTEM` trong bảng `messages` với nội dung tại thời điểm thao tác và `sender_id` để trống. Dữ liệu dùng cột `VARCHAR(20)` và con trỏ ID hiện có. Cùng giao dịch lưu hoạt động thêm, tham gia qua lời mời, mời ra, rời nhóm, đổi tên hoặc đổi vai trò. Danh sách hội thoại tính số chưa đọc và bản xem trước từ tin nhắn thường.
+- Tái sử dụng sự kiện STOMP thêm, mời ra và đổi vai trò. Thêm `GROUP_DETAILS_CHANGED` cho đổi tên và rời nhóm. Sau commit, hàng đợi riêng báo client làm mới lịch sử. Khi rời nhóm, tài khoản vừa rời cũng nhận tín hiệu để tải lại quyền truy cập.

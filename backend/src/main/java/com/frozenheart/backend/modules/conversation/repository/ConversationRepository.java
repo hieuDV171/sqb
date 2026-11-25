@@ -34,6 +34,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
   @Query("""
       SELECT c
       FROM Conversation c
+      LEFT JOIN FETCH c.lastMessage
       JOIN c.participants p
       WHERE p.user.id = :userId
         AND p.leftAt IS NULL

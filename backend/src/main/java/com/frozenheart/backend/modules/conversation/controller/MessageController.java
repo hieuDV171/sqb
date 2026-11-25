@@ -23,7 +23,7 @@ public class MessageController {
 
     private final MessageService messageService;
 
-    @Operation(summary = "Lấy lịch sử tin nhắn trong cuộc hội thoại", description = "Đọc tin nhắn theo phân trang con trỏ (cursor pagination). Tự động cập nhật biên nhận đã đọc (Read Receipt) cho người xem.")
+    @Operation(summary = "Lấy lịch sử tin nhắn trong cuộc hội thoại", description = "Đọc tin nhắn và dòng hệ thống theo phân trang con trỏ. Thành viên đang hoạt động xem được toàn bộ dòng hệ thống của nhóm. Trang mới nhất cập nhật mốc đã đọc cho người xem.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lấy danh sách tin nhắn thành công"),
             @ApiResponse(responseCode = "401", description = "Chưa xác thực hoặc token hết hạn"),

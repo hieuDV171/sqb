@@ -54,7 +54,7 @@ export function MessageBubble({
           {showAvatar ? (
             <div className="w-8 h-8 rounded-full overflow-hidden bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-semibold shadow-2xs">
               {message.avatarUrl ? (
-                <img src={message.avatarUrl} alt={message.senderName} className="w-full h-full object-cover" />
+                <img src={message.avatarUrl} alt={message.senderName ?? ''} className="w-full h-full object-cover" />
               ) : (
                 getAvatarInitial(message.senderName)
               )}

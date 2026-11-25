@@ -13,16 +13,16 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Tin nhắn hiển thị với thông tin người gửi, nội dung, tệp và bản trích dẫn trả lời")
+@Schema(description = "Tin nhắn hoặc dòng hệ thống trong lịch sử hội thoại")
 public class MessageDto {
 
     @Schema(description = "ID tin nhắn", example = "42")
     private Long messageId;
 
-    @Schema(description = "ID tài khoản gửi tin nhắn", example = "42")
+    @Schema(description = "ID tài khoản gửi tin nhắn, null với dòng hệ thống", example = "42")
     private Long senderId;
 
-    @Schema(description = "Tên hiển thị người gửi tin nhắn", example = "Nguyễn Minh Anh")
+    @Schema(description = "Tên hiển thị người gửi tin nhắn, null với dòng hệ thống", example = "Nguyễn Minh Anh")
     private String senderName;
 
     @Schema(description = "URL ảnh đại diện công khai; có thể null/rỗng khi chưa đặt ảnh", example = "https://media.example.com/avatar.png")
@@ -34,7 +34,7 @@ public class MessageDto {
     @Schema(description = "Nội dung văn bản theo ngữ cảnh của đối tượng", example = "Nội dung trao đổi về bài học")
     private String content;
 
-    @Schema(description = "Loại nội dung tin nhắn: TEXT, IMAGE, VIDEO hoặc GIF")
+    @Schema(description = "Loại nội dung tin nhắn: TEXT, IMAGE, VIDEO, GIF hoặc SYSTEM")
     private MessageType messageType;
 
     @Schema(description = "Các tệp đính kèm; kiểu phần tử theo schema của endpoint", example = "[\"https://media.example.com/image.png\"]")

@@ -52,7 +52,7 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
     @Transactional
     public void handleSendMessage(JwtPayload session, SendWsMessageRequestDto request) {
         Long currentUserId = session.getUserId();
-        if (request == null || request.getConversationId() == null) {
+        if (request == null || request.getConversationId() == null || request.getMessageType() == MessageType.SYSTEM) {
             return;
         }
 
@@ -205,7 +205,8 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         }
 
         Message message = messageRepository.findById(request.getMessageId()).orElse(null);
-        if (message == null || !Objects.equals(message.getConversation().getId(), request.getConversationId())) {
+        if (message == null || message.getMessageType() == MessageType.SYSTEM
+                || !Objects.equals(message.getConversation().getId(), request.getConversationId())) {
             return;
         }
 

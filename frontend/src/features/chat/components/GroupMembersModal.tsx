@@ -2,13 +2,13 @@ import { useRef, useState } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { Menu } from '@base-ui/react/menu';
-import { Check, ChevronDown, Crown, Loader2, Search, Shield, Trash2, User, UserPlus, Users, X } from 'lucide-react';
+import { Check, ChevronDown, Crown, Loader2, Pencil, Search, Shield, Trash2, User, UserPlus, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useAddGroupMembers, useGroupMembers, useRemoveGroupMember, useUpdateMemberRole } from '../hooks/useChat';
+import { useAddGroupMembers, useGroupMembers, useMessages, useRemoveGroupMember, useUpdateGroupInfo, useUpdateMemberRole } from '../hooks/useChat';
 import type { ConversationMemberDto, ConversationRole, GroupCandidateDto } from '../types/chat.types';
 import { GroupCandidatePicker } from './GroupCandidatePicker';
 
@@ -81,20 +81,26 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddMode, setIsAddMode] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState<GroupCandidateDto[]>([]);
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [action, setAction] = useState<MemberAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const actionTrigger = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
   const { data: members = [], isLoading, isError, refetch } = useGroupMembers(conversationId);
+  const { data: history } = useMessages(conversationId);
+  const groupName = history?.pages[0]?.groupName ?? '';
   const addMembers = useAddGroupMembers();
   const removeMember = useRemoveGroupMember();
+  const renameGroup = useUpdateGroupInfo();
   const updateRole = useUpdateMemberRole();
   const isSubmitting = removeMember.isPending || updateRole.isPending;
 
   const myRole = members.find((member) => member.userId === currentUserId)?.role;
   const isChief = myRole === 'CHIEF';
   const canManage = isChief || myRole === 'VILLAGE_ELDER';
+  const updatedName = nameDraft?.trim();
+  const canRename = canManage && Boolean(updatedName) && updatedName !== groupName && !renameGroup.isPending;
   const matchingMembers = members.filter((member) => member.fullName.toLowerCase().includes(searchTerm.trim().toLowerCase()));
 
   function canRemove(member: ConversationMemberDto) {
@@ -147,7 +153,7 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
 
   return (
     <Dialog.Root open onOpenChange={(open) => {
-      if (!open && !action && !addMembers.isPending) onClose();
+      if (!open && !action && !addMembers.isPending && !renameGroup.isPending) onClose();
     }}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/55" />
@@ -161,12 +167,34 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
               <Dialog.Description className="text-base text-muted-foreground">Tù trưởng, Già làng và Dân làng</Dialog.Description>
             </div>
             <Dialog.Close render={<Button ref={closeButton} type="button" variant="ghost" size="icon" className="size-11" />}
-              aria-label="Đóng danh sách thành viên" disabled={addMembers.isPending}>
+              aria-label="Đóng danh sách thành viên" disabled={addMembers.isPending || renameGroup.isPending}>
               <X aria-hidden="true" />
             </Dialog.Close>
           </div>
 
-          {isAddMode && canManage ? (
+          {nameDraft !== null && canManage ? (
+            <form className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5" onSubmit={(event) => {
+              event.preventDefault();
+              if (!canRename || !updatedName) return;
+              renameGroup.mutate({ conversationId, data: { name: updatedName } }, {
+                onSuccess: () => setNameDraft(null),
+              });
+            }}>
+              <label className="block space-y-2">
+                <span className="block text-base font-semibold">Tên nhóm mới</span>
+                <Input autoFocus required maxLength={100} value={nameDraft} onChange={(event) => setNameDraft(event.target.value)}
+                  disabled={renameGroup.isPending} className="min-h-11 md:text-base" />
+              </label>
+              {renameGroup.isError && <p role="alert" className="text-sm text-destructive">Không thể đổi tên nhóm. Hãy thử lại.</p>}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => setNameDraft(null)}
+                  disabled={renameGroup.isPending}>Hủy</Button>
+                <Button type="submit" className="min-h-11" disabled={!canRename}>
+                  {renameGroup.isPending ? 'Đang lưu…' : 'Lưu tên nhóm'}
+                </Button>
+              </div>
+            </form>
+          ) : isAddMode && canManage ? (
             <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="text-base font-semibold">Thêm hoặc mời vào nhóm</h4>
@@ -197,6 +225,15 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
                   </Button>
                 )}
               </div>
+
+              {canManage && (
+                <Button type="button" variant="ghost" className="min-h-11 self-start text-base" onClick={() => {
+                  renameGroup.reset();
+                  setNameDraft(groupName);
+                }}>
+                  <Pencil aria-hidden="true" /> Đổi tên nhóm
+                </Button>
+              )}
 
               <div className="min-h-0 overflow-y-auto" aria-busy={isLoading}>
                 {isLoading ? (
