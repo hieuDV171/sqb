@@ -2,21 +2,24 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Copy, MessageSquare, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/stores/useToastStore';
+import { ActionError } from '@/components/ui/action-error';
 import type { PracticeSetDto } from '../types/practice.types';
 import { SessionReactionButton } from './SessionReactionButton';
 
 export function PracticeSetCard({ session, catalogSearch }: { session: PracticeSetDto; catalogSearch: string }) {
   const practicePath = `/sessions/${session.sessionId}/practice`;
   const linkState = { practiceCatalogSearch: catalogSearch };
+  const [copyError, setCopyError] = useState<string>();
   const [copied, setCopied] = useState(false);
 
   async function copyCode(code: string) {
+    setCopyError(undefined);
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
     } catch {
-      toast.error('Không thể sao chép mã phiên.');
+      setCopied(false);
+      setCopyError('Không thể sao chép mã phiên. Bạn có thể chọn và sao chép mã trực tiếp.');
     }
   }
   return (
@@ -32,6 +35,7 @@ export function PracticeSetCard({ session, catalogSearch }: { session: PracticeS
             {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           </Button>
         )}
+        <ActionError className="basis-full" message={copyError} />
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <h2 className="break-words text-lg font-semibold">{session.title}</h2>

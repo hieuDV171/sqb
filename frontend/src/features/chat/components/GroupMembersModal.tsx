@@ -4,6 +4,8 @@ import { Dialog } from '@base-ui/react/dialog';
 import { Menu } from '@base-ui/react/menu';
 import { Check, ChevronDown, Crown, Loader2, Pencil, Search, Shield, Trash2, User, UserPlus, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -140,7 +142,13 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
   function addSelectedPeople() {
     if (!canManage || selectedPeople.length === 0) return;
     addMembers.mutate({ conversationId, data: { userIds: selectedPeople.map((person) => person.userId) } }, {
-      onSuccess: () => {
+      onSuccess: ({ data }) => {
+        const failed = data?.failedMembers ?? [];
+        if (failed.length > 0) {
+          const failedIds = new Set(failed.map(({ userId }) => userId));
+          setSelectedPeople((people) => people.filter(({ userId }) => failedIds.has(userId)));
+          return;
+        }
         setIsAddMode(false);
         setSelectedPeople([]);
       },
@@ -199,10 +207,23 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="text-base font-semibold">Thêm hoặc mời vào nhóm</h4>
                 <Button type="button" variant="ghost" className="min-h-11 text-base" disabled={addMembers.isPending}
-                  onClick={() => setIsAddMode(false)}>Quay lại danh sách</Button>
+                  onClick={() => { addMembers.reset(); setIsAddMode(false); }}>Quay lại danh sách</Button>
               </div>
               <GroupCandidatePicker conversationId={conversationId} selected={selectedPeople}
                 onSelectionChange={setSelectedPeople} disabled={addMembers.isPending} />
+              {addMembers.isError && (
+                <ActionError message={getActionErrorMessage(addMembers.error, 'Không thể thêm hoặc mời thành viên. Hãy thử lại.')} />
+              )}
+              {(addMembers.data?.data?.failedMembers?.length ?? 0) > 0 && (
+                <div role="alert" className="space-y-1 text-sm text-destructive">
+                  <p>Không thể thêm hoặc mời một số người.</p>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {addMembers.data?.data.failedMembers.map((person) => (
+                      <li key={person.userId}>{person.fullName || `Thành viên #${person.userId}`} · {person.reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <Button type="button" className="min-h-11 w-full text-base" onClick={addSelectedPeople}
                 disabled={selectedPeople.length === 0 || addMembers.isPending}>
                 {addMembers.isPending && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}

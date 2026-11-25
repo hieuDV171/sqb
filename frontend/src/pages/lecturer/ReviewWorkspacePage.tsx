@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, CheckCheck, ClipboardCheck } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReviewDetail } from '@/features/review/hooks/useReviewDetail';
@@ -43,6 +44,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
   const [editing, setEditing] = useState<SessionQuestionReviewDto | null>(null);
   const [refiningId, setRefiningId] = useState<number | null>(null);
   const [openedRefinements, setOpenedRefinements] = useState<Set<number>>(() => new Set());
+  const [confirmationError, setConfirmationError] = useState<string>();
   const [confirmation, setConfirmation] = useState<'approve' | 'complete' | null>(null);
 
   const [managingTopics, setManagingTopics] = useState(false);
@@ -69,6 +71,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
 
   async function confirm() {
     if (actionsDisabled) return;
+    setConfirmationError(undefined);
     try {
       if (confirmation === 'approve' && pendingIds.length > 0) {
         await approve.mutateAsync({ questionIds: pendingIds });
@@ -77,8 +80,10 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
         await complete.mutateAsync();
         navigate(queue, { replace: true });
       }
-    } catch {
-      // The mutation reports the error. Keep the confirmation open for retry.
+    } catch (error) {
+      setConfirmationError(getActionErrorMessage(error, confirmation === 'approve'
+        ? 'Không thể duyệt các câu còn chờ. Hãy thử lại.'
+        : 'Không thể chốt phiên. Hãy thử lại.'));
     }
   }
 
@@ -115,11 +120,11 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
             {canReview && total > 0 && (
               <div className="flex flex-wrap gap-2">
                 {pendingIds.length > 1 && (
-                  <Button variant="outline" className="min-h-11" disabled={actionsDisabled} onClick={() => setConfirmation('approve')}>
+                  <Button variant="outline" className="min-h-11" disabled={actionsDisabled} onClick={() => { setConfirmationError(undefined); setConfirmation('approve'); }}>
                     <CheckCheck aria-hidden="true" /> Duyệt các câu còn chờ
                   </Button>
                 )}
-                <Button className="min-h-11" disabled={actionsDisabled} onClick={() => setConfirmation('complete')}>Chốt phiên</Button>
+                <Button className="min-h-11" disabled={actionsDisabled} onClick={() => { setConfirmationError(undefined); setConfirmation('complete'); }}>Chốt phiên</Button>
               </div>
             )}
           </header>
@@ -183,6 +188,11 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 {questions.map((question, index) => (
                   <ReviewQuestionCard key={question.questionId} sessionId={sessionId} question={question} questionNumber={index + 1}
                     duplicateWarnings={warningsByQuestion.get(question.questionId) ?? []}
+                    retryError={retryDuplicateCheck.isError && retryDuplicateCheck.variables === question.questionId
+                      ? getActionErrorMessage(retryDuplicateCheck.error, 'Không thể yêu cầu dò trùng lại.') : undefined}
+                    approveError={approve.isError && approve.variables?.questionIds.length === 1
+                      && approve.variables.questionIds[0] === question.questionId
+                      ? getActionErrorMessage(approve.error, 'Không thể duyệt câu hỏi. Hãy thử lại.') : undefined}
                     onRetryDuplicates={() => retryDuplicateCheck.mutate(question.questionId)}
                     onApprove={(id) => approve.mutate({ questionIds: [id] })}
                     onReject={async (id, rejectionCode, reason) => {
@@ -217,7 +227,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
               onClose={() => setRefiningId((current) => current === question.questionId ? null : current)} />
           ))}
           {canReview && confirmation && (
-            <CompleteReviewDialog mode={confirmation} pendingCount={pendingIds.length}
+            <CompleteReviewDialog mode={confirmation} pendingCount={pendingIds.length} error={confirmationError}
               isRefreshing={review.isFetching || review.isRefetchError}
               isSubmitting={approve.isPending || complete.isPending} onClose={() => setConfirmation(null)}
               onConfirm={() => void confirm()} />

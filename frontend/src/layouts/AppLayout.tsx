@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { stompClient } from '@/lib/stompClient';
+import { ACCESS_REAUTH_MESSAGE } from '@/lib/adminAccess';
 import { toast } from '@/stores/useToastStore';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
@@ -26,7 +27,8 @@ function readPushMessage(payload: unknown): PushMessageShape {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const adminAccessDenied = useAuthStore((state) => state.adminAccessDenied);
   const queryClient = useQueryClient();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
@@ -100,6 +102,15 @@ export function AppLayout({ children }: AppLayoutProps) {
         isMobileMenuOpen={isMobileMenuOpen}
         onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
       />
+
+      {adminAccessDenied && (
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          <p role="alert">{ACCESS_REAUTH_MESSAGE}</p>
+          <button type="button" className="min-h-11 font-semibold underline" onClick={() => window.location.reload()}>
+            Tải lại trang
+          </button>
+        </div>
+      )}
 
       <div className="relative flex w-full flex-1">
         <Sidebar

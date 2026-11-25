@@ -25,7 +25,7 @@ export async function uploadLectureVideo(
   onFinalizing: () => void,
 ): Promise<MediaItem> {
   const path = `${LECTURE_UPLOAD_PATH}/${id}`;
-  const config = { signal, skipToast: true };
+  const config = { signal };
   const contentType = /\.mp4$/i.test(file.name) ? 'video/mp4' : /\.webm$/i.test(file.name) ? 'video/webm' : file.type;
   const { data: status } = await axiosClient.put<unknown, GlobalResponse<UploadStatus>>(
     path, { fileName: file.name, fileSize: file.size, contentType }, config,
@@ -62,5 +62,5 @@ export async function uploadLectureVideo(
 }
 
 export async function cancelLectureVideoUpload(id: string): Promise<void> {
-  await axiosClient.delete(`${LECTURE_UPLOAD_PATH}/${id}`, { skipToast: true });
+  await axiosClient.delete(`${LECTURE_UPLOAD_PATH}/${id}`);
 }

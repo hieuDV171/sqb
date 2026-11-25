@@ -3,7 +3,6 @@ import { reactService, type ReactRequest } from '../services/reactService';
 import type { CursorResponse } from '@/types/user.types';
 import type { ActivityFeedItemDto } from '../types/feed.types';
 import type { PostResponseDto } from '@/types/post.types';
-import { toast } from '@/stores/useToastStore';
 
 type SupportedReaction = 'LIKE' | 'LOVE' | 'WOW';
 
@@ -110,7 +109,6 @@ export function usePostReact() {
           context.previousPostDetail
         );
       }
-      toast.error('Không thể cập nhật cảm xúc. Vui lòng kiểm tra kết nối mạng!');
     },
     onSuccess: async (res, data) => {
       if (data.targetType === 'POST') {
@@ -166,5 +164,7 @@ export function usePostReact() {
   return {
     toggleReact: toggleReactMutation.mutate,
     isReacting: toggleReactMutation.isPending,
+    reactionError: toggleReactMutation.error,
+    resetReaction: toggleReactMutation.reset,
   };
 }

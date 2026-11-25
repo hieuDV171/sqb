@@ -1,6 +1,8 @@
 import React from 'react';
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import type { CursorResponse } from '@/types/user.types';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -124,6 +126,7 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
           <span>{hasCheered ? 'Đã chúc mừng' : 'Chúc mừng'}</span>
         </button>}
       </div>
+      {cheer.isError && <ActionError className="mt-2" message={getActionErrorMessage(cheer.error, 'Không thể cập nhật lượt chúc mừng.')} />}
     </div>
   );
 };

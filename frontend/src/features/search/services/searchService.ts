@@ -53,8 +53,7 @@ export const searchService = {
   ): Promise<GlobalResponse<null>> => {
     return (await axiosClient.post<GlobalResponse<null>>(
       '/search/saved',
-      request,
-      { skipToast: true }
+      request
     )) as unknown as GlobalResponse<null>;
   },
 

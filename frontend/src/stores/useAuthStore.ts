@@ -31,6 +31,8 @@ interface AuthState {
   tokenType: AuthTokenType | null;
   accountState: AccountState | null;
   isAuthenticated: boolean;
+  adminAccessDenied: boolean;
+  setAdminAccessDenied: () => void;
   user: UserInfo | null;
   setAuth: (accessToken: string, user: UserInfo, tokenType: AuthTokenType, accountState: AccountState, notify?: boolean) => void;
   setTokens: (accessToken: string) => void;
@@ -46,7 +48,9 @@ export const useAuthStore = create<AuthState>()(
       tokenType: null,
       accountState: null,
       isAuthenticated: false,
+      adminAccessDenied: false,
       user: null,
+      setAdminAccessDenied: () => set({ adminAccessDenied: true }),
 
       setAuth: (accessToken, user, tokenType, accountState, notify = true) => {
         set({
@@ -54,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
           tokenType,
           accountState,
           isAuthenticated: true,
+          adminAccessDenied: false,
           user: { ...user, role: user.role || 'STUDENT' },
         });
         if (notify) publishAuthEvent('login');
@@ -84,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
           tokenType: null,
           accountState: null,
           isAuthenticated: false,
+          adminAccessDenied: false,
           user: null,
         });
         if (notify) publishAuthEvent('logout');

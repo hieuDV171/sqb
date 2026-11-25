@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Check, CircleCheck, Clock3, Pencil, X, XCircle, ZoomIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getRejectionReasonLabel } from '@/lib/rejectionReasons';
@@ -15,6 +16,8 @@ interface ReviewQuestionCardProps {
   question: SessionQuestionReviewDto;
   questionNumber: number;
   duplicateWarnings: DuplicateWarning[];
+  retryError?: string;
+  approveError?: string;
   onRetryDuplicates: () => void;
   onApprove: (questionId: number) => void;
   onReject: (questionId: number, code: RejectionReasonCode, reason?: string) => Promise<void>;
@@ -25,7 +28,7 @@ interface ReviewQuestionCardProps {
 }
 
 export function ReviewQuestionCard({
-  sessionId, question, questionNumber, duplicateWarnings, onRetryDuplicates, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
+  sessionId, question, questionNumber, duplicateWarnings, retryError, approveError, onRetryDuplicates, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
 }: ReviewQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const approved = question.status === 'APPROVED';
@@ -109,6 +112,7 @@ export function ReviewQuestionCard({
         </div>
       )}
       {question.editLog && <p className="text-sm text-muted-foreground">Biên tập gần nhất · {question.editLog.actorName}</p>}
+      <ActionError message={retryError} />
       {!readOnly && <footer className="space-y-2 border-t border-border pt-3">
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" className="min-h-11" disabled={disabled}
@@ -126,6 +130,7 @@ export function ReviewQuestionCard({
             </Button>
           )}
         </div>
+        <ActionError message={approveError} />
       </footer>}
       <Dialog.Root open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <Dialog.Portal>

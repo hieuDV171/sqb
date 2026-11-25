@@ -10,7 +10,8 @@ import {
   Camera,
   Loader2,
 } from 'lucide-react';
-import { toast } from '@/stores/useToastStore';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export function CreateGroupModal({ isOpen, ...props }: CreateGroupModalProps) {
 }
 
 function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'isOpen'>) {
+  const [error, setError] = useState<{ area: 'name' | 'members' | 'avatar'; message: string }>();
   const [name, setName] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
@@ -40,8 +42,10 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
+    setError(undefined);
     if (!file.type.startsWith('image/')) {
-      toast.warning('Chỉ hỗ trợ tệp hình ảnh');
+      setError({ area: 'avatar', message: 'Chỉ hỗ trợ tệp hình ảnh.' });
       return;
     }
     setAvatarFile(file);
@@ -50,14 +54,16 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(undefined);
+    createGroupMutation.reset();
     const trimmedName = name.trim();
     if (!trimmedName) {
-      toast.warning('Vui lòng nhập tên nhóm');
+      setError({ area: 'name', message: 'Vui lòng nhập tên nhóm.' });
       return;
     }
 
     if (selectedPeople.length < 2) {
-      toast.warning('Vui lòng chọn ít nhất 2 người để tạo nhóm');
+      setError({ area: 'members', message: 'Vui lòng chọn ít nhất 2 người để tạo nhóm.' });
       return;
     }
 
@@ -82,8 +88,8 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
           },
         }
       );
-    } catch {
-      toast.error('Có lỗi xảy ra khi tải ảnh đại diện nhóm');
+    } catch (failure) {
+      setError({ area: 'avatar', message: getActionErrorMessage(failure, 'Không thể tải ảnh đại diện nhóm lên.') });
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -124,7 +130,7 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
           </div>
 
           {/* Form Body */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4">
+          <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4">
             {/* Avatar & Group Name */}
             <div className="flex items-center gap-3">
               <label className="relative w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 flex flex-col items-center justify-center cursor-pointer overflow-hidden shrink-0 group transition-colors">
@@ -151,14 +157,28 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
                   required
                   maxLength={100}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  aria-invalid={error?.area === 'name' || undefined}
+                  aria-describedby={error?.area === 'name' ? 'group-name-error' : undefined}
+                  onChange={(e) => {
+                    if (error?.area === 'name') setError(undefined);
+                    setName(e.target.value);
+                  }}
                   placeholder="Ví dụ: Hội ôn thi Giải tích 1"
                   className="w-full px-3.5 py-2.5 text-sm bg-slate-100 dark:bg-slate-800/80 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
                 />
               </div>
             </div>
 
-            <GroupCandidatePicker selected={selectedPeople} onSelectionChange={setSelectedPeople} disabled={isSubmitting} />
+            <ActionError id="group-name-error" message={error?.area === 'name' ? error.message : undefined} />
+            <ActionError message={error?.area === 'avatar' ? error.message : undefined} />
+            <GroupCandidatePicker selected={selectedPeople} onSelectionChange={(people) => {
+              if (error?.area === 'members') setError(undefined);
+              setSelectedPeople(people);
+            }} disabled={isSubmitting} />
+            <ActionError message={error?.area === 'members' ? error.message : undefined} />
+            {createGroupMutation.isError && (
+              <ActionError message={getActionErrorMessage(createGroupMutation.error, 'Không thể tạo nhóm. Hãy thử lại.')} />
+            )}
 
             {/* Submit Button */}
             <div className="space-y-2 pt-2">
@@ -167,7 +187,7 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
               </p>
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim() || selectedPeople.length < 2}
+                disabled={isSubmitting}
                 className="w-full py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold text-sm shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

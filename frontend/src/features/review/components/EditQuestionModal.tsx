@@ -1,6 +1,7 @@
 import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,8 +50,8 @@ export function EditQuestionModal({ question, questionNumber, subjectId, isSavin
     setError('');
     try {
       await onSave({ content: content.trim(), explanation: explanation.trim(), options, difficulty, autoApprove, topicId, clearTopic: topicId === null });
-    } catch {
-      setError('Không thể lưu thay đổi. Bạn có thể thử lại.');
+    } catch (failure) {
+      setError(getActionErrorMessage(failure, 'Không thể lưu thay đổi. Bạn có thể thử lại.'));
     }
   }
 

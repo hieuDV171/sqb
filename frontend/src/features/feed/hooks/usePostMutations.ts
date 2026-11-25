@@ -19,13 +19,6 @@ export function usePostMutations() {
         message: 'Đã xuất bản bài viết lên bảng tin!',
       });
     },
-    onError: (err) => {
-      addToast({
-        type: 'error',
-        title: 'Đăng bài thất bại',
-        message: err.message || 'Không thể tạo bài viết. Vui lòng thử lại!',
-      });
-    },
   });
 
   const updatePostMutation = useMutation({
@@ -42,13 +35,6 @@ export function usePostMutations() {
         message: 'Bài viết đã được chỉnh sửa!',
       });
     },
-    onError: (err) => {
-      addToast({
-        type: 'error',
-        title: 'Chỉnh sửa thất bại',
-        message: err.message || 'Không thể cập nhật bài viết.',
-      });
-    },
   });
 
   const deletePostMutation = useMutation({
@@ -61,13 +47,6 @@ export function usePostMutations() {
         type: 'success',
         title: 'Đã xóa',
         message: 'Bài viết đã được gỡ bỏ.',
-      });
-    },
-    onError: (err) => {
-      addToast({
-        type: 'error',
-        title: 'Lỗi',
-        message: err.message || 'Không thể xóa bài viết này.',
       });
     },
   });
@@ -83,13 +62,6 @@ export function usePostMutations() {
         type: 'success',
         title: 'Thành công',
         message: 'Đã lưu nhận xét chuyên môn của Giảng viên!',
-      });
-    },
-    onError: (err) => {
-      addToast({
-        type: 'error',
-        title: 'Lỗi',
-        message: err.message || 'Không thể lưu nhận xét.',
       });
     },
   });

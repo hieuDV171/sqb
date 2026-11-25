@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { CheckCheck, Settings, RefreshCw, Bell } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -62,6 +64,7 @@ export function NotificationsPage() {
           </Button>
         </div>
       </header>
+      {markAll.isError && <ActionError message={getActionErrorMessage(markAll.error, 'Không thể đánh dấu tất cả là đã đọc. Hãy thử lại.')} />}
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-2.5">
         <div role="group" aria-label="Lọc thông báo" className="flex flex-wrap gap-1">

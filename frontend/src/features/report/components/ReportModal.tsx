@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { X, ShieldAlert, AlertTriangle, Loader2, Send, ImagePlus } from 'lucide-react';
 import { Dialog } from '@base-ui/react/dialog';
+import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { reportErrorMessage, reportService } from '../services/reportService';
 import { useCreateReport } from '../hooks/useReport';
@@ -36,6 +37,7 @@ export function ReportModal({
   const [violationType, setViolationType] = useState<ViolationType>('SPAM');
   const [description, setDescription] = useState('');
   const [evidence, setEvidence] = useState<EvidenceImage | null>(null);
+  const [reportError, setReportError] = useState<string>();
   const [evidenceError, setEvidenceError] = useState('');
   const [submitPhase, setSubmitPhase] = useState<'idle' | 'uploading' | 'sending'>('idle');
   const evidenceInput = useRef<HTMLInputElement>(null);
@@ -90,6 +92,7 @@ export function ReportModal({
 
   const handleClose = () => {
     if (isSubmitting) return;
+    setReportError(undefined);
     clearEvidence();
     setDescription('');
     setViolationType('SPAM');
@@ -114,6 +117,7 @@ export function ReportModal({
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
+    setReportError(undefined);
 
     const uploaded = evidence?.upload;
     let evidenceKey = uploaded && Date.now() - uploaded.uploadedAt < pendingMediaLifetimeMs ? uploaded.key : undefined;
@@ -144,8 +148,8 @@ export function ReportModal({
       setDescription('');
       setViolationType('SPAM');
       clearEvidence();
-    } catch {
-      // Handled by mutation onError toast
+    } catch (failure) {
+      setReportError(reportErrorMessage(failure, 'Không thể gửi báo cáo vi phạm. Hãy thử lại.'));
     } finally {
       setSubmitPhase('idle');
     }
@@ -292,6 +296,7 @@ export function ReportModal({
             </p>
           </div>
 
+          <ActionError message={reportError} />
           {/* Footer Buttons */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button

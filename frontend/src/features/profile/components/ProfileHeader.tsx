@@ -5,6 +5,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
 import { chatService } from '@/features/chat';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { toast } from '@/stores/useToastStore';
 import type { ProfileResponse } from '@/types/user.types';
 import { AvatarWithFrame } from './AvatarWithFrame';
@@ -57,6 +59,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
   const navigate = useNavigate();
   const currentRole = useAuthStore((state) => state.user?.role);
 
+  const [actionError, setActionError] = useState<string>();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
   const [followModalTab, setFollowModalTab] = useState<'following' | 'followers'>('following');
@@ -87,6 +90,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       return wasFollowing ? userService.unfollowUser(profile.userId) : userService.followUser(profile.userId);
     },
     onMutate: async (wasFollowing) => {
+      setActionError(undefined);
       await queryClient.cancelQueries({ queryKey: profileKey, exact: true });
       const previous = queryClient.getQueryData<ProfileResponse>(profileKey);
       if (previous) {
@@ -94,11 +98,11 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       }
       return previous;
     },
-    onError: (_error, _vars, previous) => {
+    onError: (error, _vars, previous) => {
       if (previous) {
         setFollowState(previous.relationships?.isFollowed ?? false, previous.followersCount);
       }
-      toast.error('Không thể cập nhật theo dõi. Hãy thử lại.');
+      setActionError(getActionErrorMessage(error, 'Không thể cập nhật theo dõi. Hãy thử lại.'));
     },
     onSuccess: ({ data }, wasFollowing) => {
       if (data) setFollowState(!wasFollowing, data.newFollowersCount);
@@ -120,6 +124,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       await userService.unfriend(profile.userId);
       return 'NONE' as const;
     },
+    onMutate: () => { setActionError(undefined); },
     onSuccess: async (status, action) => {
       if (action === 'unfriend') toast.info('Đã hủy kết bạn');
       else toast.success(status === 'ACCEPTED' ? 'Hai bạn đã là bạn bè' : 'Đã gửi lời mời kết bạn');
@@ -132,8 +137,8 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
       }
       await Promise.all(refresh);
     },
-    onError: () => {
-      toast.error('Thao tác kết bạn không thành công');
+    onError: (error) => {
+      setActionError(getActionErrorMessage(error, 'Không thể cập nhật kết bạn. Hãy thử lại.'));
     },
   });
 
@@ -144,7 +149,8 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
         navigate(`/messages/${res.data.conversationId}`);
       }
     },
-    onError: () => toast.error('Không thể mở cuộc trò chuyện với người dùng này'),
+    onMutate: () => { setActionError(undefined); },
+    onError: (error) => setActionError(getActionErrorMessage(error, 'Không thể mở cuộc trò chuyện với người dùng này.')),
   });
   const relationshipBusy = followMutation.isPending || friendMutation.isPending;
 
@@ -259,6 +265,7 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
             </div>
           </div>
 
+          <ActionError className="mt-3" message={actionError} />
           <div aria-label="Thống kê kết nối" className="mt-5 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-2 text-sm">
             {isOwnProfile ? (
               <Button nativeButton={false} variant="ghost" render={<Link to="/friends" />}>

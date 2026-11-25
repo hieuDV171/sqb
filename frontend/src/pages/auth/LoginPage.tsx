@@ -95,7 +95,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(() => {
+    const reason = new URLSearchParams(window.location.search).get('reason');
+    if (reason === 'setup-expired') return 'Phiên thiết lập đã hết hạn. Vui lòng đăng nhập lại.';
+    if (reason === 'session-expired') return 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.';
+    return null;
+  });
   const { login, isLoading, error } = useAuth();
   const { theme, toggleTheme } = useThemeStore();
   const emailRef = useRef<HTMLInputElement>(null);

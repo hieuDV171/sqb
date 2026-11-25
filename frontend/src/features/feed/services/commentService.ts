@@ -59,8 +59,7 @@ export const commentService = {
   ): Promise<GlobalResponse<CommentResponseDto>> => {
     return axiosClient.put<unknown, GlobalResponse<CommentResponseDto>>(
       `/comments/${commentId}`,
-      data,
-      { skipToast: true }
+      data
     );
   },
 

@@ -10,7 +10,8 @@ import {
   Loader2,
   CornerDownRight,
 } from 'lucide-react';
-import { toast } from '@/stores/useToastStore';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 
 const TYPING_IDLE_MS = 5000;
 
@@ -30,6 +31,7 @@ export function ChatInput({
   onCancelReply,
 }: ChatInputProps) {
   const { sendMessage, sendTyping } = useChatStore();
+  const [error, setError] = useState<{ conversationId: number; message: string }>();
   const [content, setContent] = useState('');
   const [selectedImages, setSelectedImages] = useState<{ file: File; previewUrl: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -90,11 +92,12 @@ export function ChatInput({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    setError(undefined);
     const newItems: { file: File; previewUrl: string }[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith('image/')) {
-        toast.warning('Chỉ hỗ trợ đính kèm tệp hình ảnh');
+        setError({ conversationId, message: 'Chỉ hỗ trợ đính kèm tệp hình ảnh.' });
         continue;
       }
       newItems.push({
@@ -121,6 +124,7 @@ export function ChatInput({
     const trimmed = content.trim();
     if (!canSend || isUploading || (!trimmed && selectedImages.length === 0)) return;
 
+    setError(undefined);
     try {
       const uploadedUrls: string[] = [];
 
@@ -159,11 +163,10 @@ export function ChatInput({
           textareaRef.current.style.height = 'auto';
         }
       } else {
-        toast.error('Không thể gửi tin nhắn. Kết nối WebSocket bị gián đoạn.');
+        setError({ conversationId, message: 'Kết nối trò chuyện bị gián đoạn. Hãy thử gửi lại.' });
       }
     } catch (err) {
-      console.error('[ChatInput] Lỗi khi gửi tin nhắn:', err);
-      toast.error('Có lỗi xảy ra khi tải ảnh hoặc gửi tin nhắn');
+      setError({ conversationId, message: getActionErrorMessage(err, 'Không thể tải ảnh hoặc gửi tin nhắn. Hãy thử lại.') });
     } finally {
       setIsUploading(false);
     }
@@ -229,6 +232,7 @@ export function ChatInput({
         )}
       </div>
 
+      <ActionError message={error?.conversationId === conversationId ? error.message : undefined} />
       {/* Input Action Row */}
       <div className="flex items-end gap-2">
         {/* Hidden File Input */}

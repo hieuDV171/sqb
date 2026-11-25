@@ -42,6 +42,6 @@ type TopicChange =
 export async function saveTopic(subjectId: number, { id, ...data }: TopicChange) {
   const url = `/lecturer/subjects/${subjectId}/topics`;
   return id === undefined
-    ? axiosClient.post<GlobalResponse<ManagedTopic>, GlobalResponse<ManagedTopic>>(url, data, { skipToast: true })
-    : axiosClient.put<GlobalResponse<ManagedTopic>, GlobalResponse<ManagedTopic>>(`${url}/${id}`, data, { skipToast: true });
+    ? axiosClient.post<GlobalResponse<ManagedTopic>, GlobalResponse<ManagedTopic>>(url, data)
+    : axiosClient.put<GlobalResponse<ManagedTopic>, GlobalResponse<ManagedTopic>>(`${url}/${id}`, data);
 }

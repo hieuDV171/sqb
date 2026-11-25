@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, ChevronRight, Copy, Edit3, Heart, MessageSquare, PlayCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { toast } from '@/stores/useToastStore';
+import { ActionError } from '@/components/ui/action-error';
 import type { SubmissionSessionSummaryDto, SessionStatus } from '../types/session.types';
 
 interface SubmissionCardProps {
@@ -20,17 +20,20 @@ const statuses: Record<SessionStatus, { label: string; className: string }> = {
 };
 
 export function SubmissionCard({ submission, onViewDetail, onEdit, onDelete }: SubmissionCardProps) {
+  const [copyError, setCopyError] = useState<string>();
   const [copied, setCopied] = useState(false);
   const { sessionId, sessionCode, title, status, subjectName, subjectCode, content, createdAt } = submission;
   const badge = statuses[status];
   const editable = status === 'PENDING';
 
   async function copyCode() {
+    setCopyError(undefined);
     try {
       await navigator.clipboard.writeText(sessionCode);
       setCopied(true);
     } catch {
-      toast.error('Không thể sao chép mã phiên.');
+      setCopied(false);
+      setCopyError('Không thể sao chép mã phiên. Bạn có thể chọn và sao chép mã trực tiếp.');
     }
   }
 
@@ -46,6 +49,7 @@ export function SubmissionCard({ submission, onViewDetail, onEdit, onDelete }: S
             {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           </Button>
         )}
+        <ActionError className="basis-full" message={copyError} />
       </header>
       <div className="flex-1 space-y-2">
         <h2 className="break-words text-lg font-semibold leading-snug">{title || 'Phiên đề xuất câu hỏi'}</h2>

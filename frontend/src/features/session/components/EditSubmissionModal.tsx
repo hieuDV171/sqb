@@ -1,7 +1,9 @@
 import React, {useState} from 'react';
 import {Bot, Check, HelpCircle, ImageIcon, Loader2, Plus, Save, Trash2, User, X,} from 'lucide-react';
 import {cn} from '@/lib/utils';
-import {getErrorMessage} from '@/lib/errorMessage';
+import { getActionErrorMessage } from '@/lib/errorMessage';
+import { ActionError } from '@/components/ui/action-error';
+import { useSessionFormError } from '../hooks/useSessionFormError';
 import {mediaService} from '@/services/mediaService';
 import {toast} from '@/stores/useToastStore';
 import type {MySubmissionDetailResponse, QuestionUpdateDto, UpdateSubmissionSessionRequest,} from '@/features/session';
@@ -32,6 +34,8 @@ function EditSubmissionForm({
   onSave,
   isSaving,
 }: EditSubmissionFormProps) {
+  const formError = useSessionFormError();
+  const [submitError, setSubmitError] = useState<string>();
   const [title, setTitle] = useState(detail.title || '');
   const [content, setContent] = useState(detail.content || '');
   const [questions, setQuestions] = useState<QuestionUpdateDto[]>(() =>
@@ -58,6 +62,7 @@ function EditSubmissionForm({
   const getOptionKey = (idx: number) => String.fromCharCode(65 + idx);
 
   const handleAddQuestion = () => {
+    formError.clear('edit-questions');
     const newQ: QuestionUpdateDto = {
       content: '',
       mediaUrls: [],
@@ -75,8 +80,9 @@ function EditSubmissionForm({
   };
 
   const handleRemoveQuestion = (idx: number) => {
+    formError.clear();
     if (questions.length <= 1) {
-      toast.warning('Phiên đề xuất phải chứa ít nhất 1 câu hỏi');
+      formError.show('edit-questions', 'Phiên đề xuất phải chứa ít nhất 1 câu hỏi.');
       return;
     }
     setQuestions(questions.filter((_, i) => i !== idx));
@@ -87,12 +93,15 @@ function EditSubmissionForm({
     field: Field,
     value: QuestionUpdateDto[Field],
   ) => {
+    if (field === 'content') formError.clear(`edit-question-${idx}`);
+    if (field === 'confidence') formError.clear(`edit-confidence-${idx}`);
     const updated = [...questions];
     updated[idx] = { ...updated[idx], [field]: value };
     setQuestions(updated);
   };
 
   const handleAddOption = (qIdx: number) => {
+    formError.clear(`edit-options-${qIdx}`);
     const updated = [...questions];
     const currentOpts = updated[qIdx].options;
     const nextKey = getOptionKey(currentOpts.length);
@@ -108,9 +117,10 @@ function EditSubmissionForm({
     const updated = [...questions];
     const currentOpts = updated[qIdx].options;
     if (currentOpts.length <= 2) {
-      toast.warning('Mỗi câu hỏi phải có ít nhất 2 đáp án lựa chọn');
+      formError.show(`edit-options-${qIdx}`, 'Phải giữ ít nhất 2 đáp án lựa chọn.');
       return;
     }
+    formError.clear();
     const removedKey = currentOpts[optIdx].key;
     const filtered = currentOpts.filter((_, i) => i !== optIdx);
     updated[qIdx].options = filtered.map((opt, i) => ({
@@ -122,11 +132,12 @@ function EditSubmissionForm({
   };
 
   const handleUploadOptionImage = async (qIdx: number, optKey: string, file: File) => {
+    const targetKey = `opt-${qIdx}-${optKey}`;
+    formError.clear(targetKey);
     if (!file.type.startsWith('image/')) {
-      toast.error('Chỉ hỗ trợ tải lên hình ảnh');
+      formError.show(targetKey, 'Chỉ hỗ trợ tệp hình ảnh.');
       return;
     }
-    const targetKey = `opt-${qIdx}-${optKey}`;
     setUploadingTarget(targetKey);
     try {
       const res = await mediaService.uploadViaPresign(file, 'QUESTION');
@@ -142,7 +153,7 @@ function EditSubmissionForm({
         }
       }
     } catch (err) {
-      toast.error(getErrorMessage(err) ?? 'Lỗi khi tải ảnh đáp án');
+      formError.show(targetKey, getActionErrorMessage(err, 'Không thể tải ảnh đáp án lên.'));
     } finally {
       setUploadingTarget(null);
     }
@@ -158,6 +169,7 @@ function EditSubmissionForm({
   };
 
   const handleToggleCorrectOption = (qIdx: number, optKey: string) => {
+    formError.clear(`edit-options-${qIdx}`);
     const updated = [...questions];
     const q = { ...updated[qIdx] };
     q.options = q.options.map((opt) =>
@@ -172,6 +184,7 @@ function EditSubmissionForm({
     optKey: string,
     text: string
   ) => {
+    formError.clear(`edit-option-${qIdx}-${optKey}`);
     const updated = [...questions];
     const q = { ...updated[qIdx] };
     q.options = q.options.map((opt) =>
@@ -183,40 +196,42 @@ function EditSubmissionForm({
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    formError.clear();
+    setSubmitError(undefined);
 
     if (!title.trim()) {
-      toast.error('Tiêu đề phiên không được để trống');
+      formError.show('edit-title', 'Vui lòng nhập tiêu đề phiên đề xuất.', true);
       return;
     }
 
     if (questions.length < 3) {
-      toast.error('Mỗi phiên đề xuất cần ít nhất 3 câu hỏi');
+      formError.show('edit-questions', 'Mỗi phiên đề xuất cần ít nhất 3 câu hỏi.', true);
       return;
     }
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.content.trim()) {
-        toast.error(`Nội dung câu hỏi số #${i + 1} không được để trống`);
+        formError.show(`edit-question-${i}`, 'Nhập nội dung đề bài.', true);
         return;
       }
       if (q.options.length < 2) {
-        toast.error(`Câu hỏi #${i + 1} phải có ít nhất 2 đáp án lựa chọn`);
+        formError.show(`edit-options-${i}`, 'Câu hỏi phải có ít nhất 2 đáp án lựa chọn.', true);
         return;
       }
-      const hasEmptyOpt = q.options.some((o) => !o.text.trim());
-      if (hasEmptyOpt) {
-        toast.error(`Vui lòng nhập đầy đủ nội dung các đáp án cho câu hỏi #${i + 1}`);
+      const emptyOption = q.options.find((o) => !o.text.trim());
+      if (emptyOption) {
+        formError.show(`edit-option-${i}-${emptyOption.key}`, `Nhập nội dung đáp án ${emptyOption.key}.`, true);
         return;
       }
       const hasCorrect = q.options.some((o) => o.isCorrect);
       if (!hasCorrect) {
-        toast.error(`Vui lòng chọn ít nhất 1 đáp án đúng cho câu hỏi #${i + 1}`);
+        formError.show(`edit-options-${i}`, 'Chọn ít nhất 1 đáp án đúng.', true);
         return;
       }
       if (q.confidence == null || !Number.isFinite(q.confidence)
         || q.confidence < 0 || q.confidence > 4) {
-        toast.error(`Độ tự tin của câu hỏi #${i + 1} phải nằm trong khoảng 0.00 đến 4.00`);
+        formError.show(`edit-confidence-${i}`, 'Độ tự tin phải nằm trong khoảng 0.00 đến 4.00.', true);
         return;
       }
     }
@@ -228,8 +243,8 @@ function EditSubmissionForm({
         questions: questions.map((question) => ({ ...question, clearTopic: question.topicId === null })),
       });
       onClose();
-    } catch {
-      // Toast handled by mutation hook
+    } catch (error) {
+      setSubmitError(getActionErrorMessage(error, 'Không thể lưu thay đổi. Hãy thử lại.'));
     }
   };
 
@@ -260,16 +275,22 @@ function EditSubmissionForm({
           {/* Title & Description */}
           <div className="space-y-4 bg-slate-50/70 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              <label htmlFor="edit-title" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Tiêu đề phiên đề xuất *
               </label>
               <input
                 type="text"
+                id="edit-title"
+                {...formError.inputProps('edit-title')}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  formError.clear('edit-title');
+                  setTitle(e.target.value);
+                }}
                 placeholder="Nhập tiêu đề phiên..."
                 className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
+              <ActionError id="edit-title-error" message={formError.messageAt('edit-title')} />
             </div>
 
             <div>
@@ -303,7 +324,8 @@ function EditSubmissionForm({
               </button>
             </div>
 
-            <div className="space-y-5">
+            <div id="edit-questions" tabIndex={-1} className="space-y-5">
+              <ActionError message={formError.messageAt('edit-questions')} />
               {questions.map((q, qIdx) => (
                 <div
                   key={qIdx}
@@ -363,6 +385,8 @@ function EditSubmissionForm({
                       Nội dung câu hỏi *
                     </label>
                     <textarea
+                      id={`edit-question-${qIdx}`}
+                      {...formError.inputProps(`edit-question-${qIdx}`)}
                       value={q.content}
                       onChange={(e) =>
                         handleUpdateQuestion(qIdx, 'content', e.target.value)
@@ -371,6 +395,7 @@ function EditSubmissionForm({
                       placeholder="Nhập nội dung đề bài..."
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                     />
+                    <ActionError id={`edit-question-${qIdx}-error`} message={formError.messageAt(`edit-question-${qIdx}`)} />
                   </div>
 
                   <div className="max-w-xs space-y-3">
@@ -382,7 +407,7 @@ function EditSubmissionForm({
                   </div>
 
                   {/* Options */}
-                  <div className="space-y-2.5">
+                  <div id={`edit-options-${qIdx}`} tabIndex={-1} className="space-y-2.5">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                         Các đáp án lựa chọn (Click nút chữ cái để bật/tắt đáp án ĐÚNG - hỗ trợ nhiều đáp án đúng):
@@ -397,6 +422,7 @@ function EditSubmissionForm({
                       </button>
                     </div>
 
+                    <ActionError message={formError.messageAt(`edit-options-${qIdx}`)} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {q.options.map((opt, optIdx) => (
                         <div
@@ -431,6 +457,8 @@ function EditSubmissionForm({
                             {/* Option text */}
                             <input
                               type="text"
+                              id={`edit-option-${qIdx}-${opt.key}`}
+                              {...formError.inputProps(`edit-option-${qIdx}-${opt.key}`)}
                               value={opt.text}
                               onChange={(e) =>
                                 handleUpdateOptionText(
@@ -479,6 +507,8 @@ function EditSubmissionForm({
                           </div>
 
                           {/* Option Image Preview thumbnail if present */}
+                          <ActionError id={`edit-option-${qIdx}-${opt.key}-error`} message={formError.messageAt(`edit-option-${qIdx}-${opt.key}`)} />
+                          <ActionError message={formError.messageAt(`opt-${qIdx}-${opt.key}`)} />
                           {opt.mediaUrl && (
                             <div className="flex items-center gap-2 pl-8 pt-0.5">
                               <div className="relative group/optimg">
@@ -528,6 +558,7 @@ function EditSubmissionForm({
                       </div>
                       <input
                         id={`edit-confidence-${qIdx}`}
+                        {...formError.inputProps(`edit-confidence-${qIdx}`)}
                         type="number"
                         min="0"
                         max="4"
@@ -542,6 +573,7 @@ function EditSubmissionForm({
                         }}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
                       />
+                      <ActionError id={`edit-confidence-${qIdx}-error`} message={formError.messageAt(`edit-confidence-${qIdx}`)} />
                     </div>
 
                     {/* Explanation */}
@@ -566,6 +598,7 @@ function EditSubmissionForm({
             </div>
           </div>
 
+          <ActionError message={submitError} />
           {/* Action buttons */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <button

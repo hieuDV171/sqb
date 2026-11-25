@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { reportErrorMessage, reportService } from '../services/reportService';
+import { reportService } from '../services/reportService';
 import type { CreateReportRequestDto, ReportFilters, ResolveReportRequest } from '../types/report.types';
 import { toast } from '@/stores/useToastStore';
 
@@ -9,9 +9,6 @@ export function useCreateReport() {
       reportService.createReport(data),
     onSuccess: () => {
       toast.success('Đã tiếp nhận báo cáo.');
-    },
-    onError: (error: unknown) => {
-      toast.error(reportErrorMessage(error, 'Không thể gửi báo cáo vi phạm. Vui lòng thử lại sau.'));
     },
   });
 }

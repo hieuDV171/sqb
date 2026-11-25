@@ -5,40 +5,38 @@ import type {
   ReportResponseDto, ResolveReportRequest,
 } from '../types/report.types';
 
-const quiet = { skipToast: true };
-
 export const reportService = {
   createReport(data: CreateReportRequestDto) {
-    return axiosClient.post<unknown, GlobalResponse<ReportResponseDto>>('/report', data, quiet);
+    return axiosClient.post<unknown, GlobalResponse<ReportResponseDto>>('/report', data);
   },
   uploadEvidence(file: File) {
     const data = new FormData();
     data.append('file', file);
     return axiosClient.post<unknown, GlobalResponse<{ key: string }>>('/report/evidence', data, {
-      ...quiet, headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
   queue(filters: ReportFilters, after?: number, signal?: AbortSignal) {
     return axiosClient.get<unknown, GlobalResponse<CursorResponse<AdminReportSummary>>>('/admin/reports', {
-      ...quiet, params: { ...filters, after }, signal,
+      params: { ...filters, after }, signal,
     });
   },
   detail(id: number, signal?: AbortSignal) {
-    return axiosClient.get<unknown, GlobalResponse<AdminReportDetail>>(`/admin/reports/${id}`, { ...quiet, signal });
+    return axiosClient.get<unknown, GlobalResponse<AdminReportDetail>>(`/admin/reports/${id}`, { signal });
   },
   related(id: number, after?: number, signal?: AbortSignal) {
     return axiosClient.get<unknown, GlobalResponse<CursorResponse<AdminReportSummary>>>(`/admin/reports/${id}/related`, {
-      ...quiet, params: { after }, signal,
+      params: { after }, signal,
     });
   },
   evidence(id: number) {
-    return axiosClient.get<unknown, GlobalResponse<{ url: string }>>(`/admin/reports/${id}/evidence`, quiet);
+    return axiosClient.get<unknown, GlobalResponse<{ url: string }>>(`/admin/reports/${id}/evidence`);
   },
   resolve(id: number, request: ResolveReportRequest) {
-    return axiosClient.post<unknown, GlobalResponse<AdminReportDetail>>(`/admin/reports/${id}/resolve`, request, quiet);
+    return axiosClient.post<unknown, GlobalResponse<AdminReportDetail>>(`/admin/reports/${id}/resolve`, request);
   },
   reverse(id: number, reason: string) {
-    return axiosClient.post<unknown, GlobalResponse<AdminReportDetail>>(`/admin/moderation-actions/${id}/reverse`, { reason }, quiet);
+    return axiosClient.post<unknown, GlobalResponse<AdminReportDetail>>(`/admin/moderation-actions/${id}/reverse`, { reason });
   },
 };
 

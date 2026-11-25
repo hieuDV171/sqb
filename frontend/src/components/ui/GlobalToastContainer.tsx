@@ -1,8 +1,6 @@
 import { useToastStore, type ToastItem } from '@/stores/useToastStore';
 import {
   CheckCircle2,
-  AlertCircle,
-  AlertTriangle,
   Info,
   X,
 } from 'lucide-react';
@@ -75,20 +73,6 @@ function getToastConfig(type: ToastItem['type']) {
         containerClass:
           'bg-emerald-50/95 dark:bg-slate-900/95 border-emerald-300/80 dark:border-emerald-800/60 shadow-emerald-500/10',
         iconWrapperClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400',
-      };
-    case 'error':
-      return {
-        icon: AlertCircle,
-        containerClass:
-          'bg-red-50/95 dark:bg-slate-900/95 border-red-300/80 dark:border-red-800/60 shadow-red-500/10',
-        iconWrapperClass: 'bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400',
-      };
-    case 'warning':
-      return {
-        icon: AlertTriangle,
-        containerClass:
-          'bg-amber-50/95 dark:bg-slate-900/95 border-amber-300/80 dark:border-amber-800/60 shadow-amber-500/10',
-        iconWrapperClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400',
       };
     case 'info':
     default:

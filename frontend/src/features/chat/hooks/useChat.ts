@@ -337,15 +337,11 @@ export function useAddGroupMembers() {
         await queryClient.invalidateQueries({ queryKey: [...CHAT_QUERY_KEYS.groupCandidates, conversationId] });
       }
       const invited = res.data?.invitedMemberCount || 0;
-      const failed = res.data?.failedMembers?.length || 0;
       const summary = [
         added > 0 ? `Đã thêm ${added} thành viên` : null,
         invited > 0 ? `Đã gửi ${invited} lời mời` : null,
       ].filter(Boolean).join('. ');
-      if (failed > 0) {
-        const reason = failed === 1 ? res.data.failedMembers[0].reason : `Có ${failed} người không thể thêm hoặc mời`;
-        toast.warning([summary, reason].filter(Boolean).join('. '));
-      } else if (summary) {
+      if (summary && !res.data?.failedMembers?.length) {
         toast.success(summary);
       }
     },

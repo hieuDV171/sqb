@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, X } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +34,6 @@ export function FollowListModal({ isOpen, onClose, initialTab = 'following' }: {
         (key) => queryClient.invalidateQueries({ queryKey: [key] }),
       ));
     },
-    onError: () => toast.error('Không thể cập nhật theo dõi. Hãy thử lại.'),
   });
 
   const rows = tab === 'following'
@@ -44,7 +45,7 @@ export function FollowListModal({ isOpen, onClose, initialTab = 'following' }: {
   );
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) { mutation.reset(); onClose(); } }}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/45 dark:bg-black/65" />
         <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-xl">
@@ -54,7 +55,7 @@ export function FollowListModal({ isOpen, onClose, initialTab = 'following' }: {
                 <Dialog.Title className="text-xl font-semibold">Mạng lưới theo dõi</Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-muted-foreground">Quản lý các kết nối theo dõi của bạn.</Dialog.Description>
               </div>
-              <Button variant="ghost" size="icon" aria-label="Đóng danh sách theo dõi" onClick={onClose}><X aria-hidden="true" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Đóng danh sách theo dõi" onClick={() => { mutation.reset(); onClose(); }}><X aria-hidden="true" /></Button>
             </div>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Danh sách theo dõi">
               <Button aria-pressed={tab === 'following'} variant={tab === 'following' ? 'default' : 'outline'}
@@ -66,6 +67,7 @@ export function FollowListModal({ isOpen, onClose, initialTab = 'following' }: {
               <Label htmlFor="follow-search">Tìm tên, mã số hoặc khoa trong các mục đã tải</Label>
               <Input id="follow-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
             </div>
+            {mutation.isError && <ActionError message={getActionErrorMessage(mutation.error, 'Không thể cập nhật theo dõi. Hãy thử lại.')} />}
           </header>
           <div className="p-4">
             <ConnectionList query={lists[tab]} count={visible.length} searching={Boolean(term)}

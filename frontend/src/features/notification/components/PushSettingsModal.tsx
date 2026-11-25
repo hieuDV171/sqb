@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Bell, BookOpen, Loader2, Moon, Shield, Trophy, Users, X } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { usePushSettings, useUpdatePushSettings } from '../hooks/useNotification';
@@ -62,6 +64,7 @@ function PushSettingsForm({ settings, onClose }: { settings: PushSettingsRespons
           )}
         </fieldset>
       </div>
+      {update.isError && <ActionError className="px-4 pb-2" message={getActionErrorMessage(update.error, 'Không thể lưu cài đặt thông báo. Hãy thử lại.')} />}
       <footer className="flex shrink-0 justify-end gap-2 border-t border-border p-4">
         <Dialog.Close render={<Button variant="ghost" className="min-h-11" />}>Hủy</Dialog.Close>
         <Button type="submit" className="min-h-11" disabled={update.isPending}>

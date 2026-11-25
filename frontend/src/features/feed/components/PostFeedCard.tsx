@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { CommentSection } from './CommentSection';
@@ -81,7 +83,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   isDetail = false,
 }) => {
   const { user } = useAuthStore();
-  const { toggleReact, isReacting } = usePostReact();
+  const { toggleReact, isReacting, reactionError, resetReaction } = usePostReact();
   const { deletePost } = usePostMutations();
   const { addToast } = useToastStore();
 
@@ -92,6 +94,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const likeCount = content.reactCount || 0;
   const currentReactionConfig = REACTIONS.find((r) => r.type === myReaction);
 
+  const [deleteError, setDeleteError] = useState<string>();
   const [showComments, setShowComments] = useState<boolean>(initiallyShowComments);
   const [showReactionPicker, setShowReactionPicker] = useState<boolean>(false);
   const pickerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,6 +125,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
   const handleSelectReaction = (type: ReactionType) => {
     setShowReactionPicker(false);
+    setDeleteError(undefined);
     toggleReact({
       targetType: 'POST',
       targetId,
@@ -132,6 +136,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const handleMainButtonClick = () => {
     // Nếu đang có reaction thì bấm vào để hủy, nếu chưa có thì mặc định thả LIKE
     const typeToToggle: ReactionType = myReaction || 'LIKE';
+    setDeleteError(undefined);
     toggleReact({
       targetType: 'POST',
       targetId,
@@ -150,11 +155,13 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
   const handleDelete = async () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
+      setDeleteError(undefined);
+      resetReaction();
       try {
         await deletePost(targetId);
         onDeleted?.();
-      } catch {
-        // Mutation đã hiển thị thông báo lỗi; giữ nguyên trang để người dùng có thể thử lại.
+      } catch (failure) {
+        setDeleteError(getActionErrorMessage(failure, 'Không thể xóa bài viết. Hãy thử lại.'));
       }
     }
   };
@@ -514,6 +521,7 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
         )}
       </div>
 
+      <ActionError message={deleteError ?? (reactionError ? getActionErrorMessage(reactionError, 'Không thể cập nhật cảm xúc. Hãy thử lại.') : undefined)} />
       {/* 6. Comment Drawer */}
       {showComments && <CommentSection targetType="POST" targetId={targetId} />}
 

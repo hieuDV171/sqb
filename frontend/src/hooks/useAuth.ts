@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQueryClient } from '@tanstack/react-query';
 import type { LoginRequest } from '@/types/auth.types';
 import { authService } from '@/services/authService';
-import { toast } from '@/stores/useToastStore';
 
 import { stompClient } from '@/lib/stompClient';
 
@@ -75,7 +74,7 @@ export function useAuth() {
 
     const logout = () => {
         void authService.logout().catch(() => {
-            toast.warning('Đã thoát trên trình duyệt. Máy chủ chưa xác nhận thu hồi phiên.');
+            console.warn('[Auth] Đã thoát trên trình duyệt, máy chủ chưa xác nhận thu hồi phiên.');
         });
         stompClient.disconnect();
         logoutStore();

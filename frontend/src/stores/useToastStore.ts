@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+const TOASTS_ENABLED = false;
+
+export type ToastType = 'success' | 'info';
 
 export interface ToastItem {
   id: string;
@@ -12,7 +14,7 @@ export interface ToastItem {
 
 interface ToastStore {
   toasts: ToastItem[];
-  addToast: (item: Omit<ToastItem, 'id'>) => string;
+  addToast: (item: Omit<ToastItem, 'id'>) => string | undefined;
   removeToast: (id: string) => void;
   clearToasts: () => void;
 }
@@ -20,6 +22,8 @@ interface ToastStore {
 export const useToastStore = create<ToastStore>((set) => ({
   toasts: [],
   addToast: (item) => {
+    if (!TOASTS_ENABLED) return;
+
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const duration = item.duration ?? 4000;
 
@@ -50,22 +54,6 @@ export const toast = {
   success: (message: string, title?: string, duration?: number) => {
     return useToastStore.getState().addToast({
       type: 'success',
-      title,
-      message,
-      duration,
-    });
-  },
-  error: (message: string, title?: string, duration?: number) => {
-    return useToastStore.getState().addToast({
-      type: 'error',
-      title,
-      message,
-      duration: duration ?? 5000,
-    });
-  },
-  warning: (message: string, title?: string, duration?: number) => {
-    return useToastStore.getState().addToast({
-      type: 'warning',
       title,
       message,
       duration,

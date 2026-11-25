@@ -1,5 +1,6 @@
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Loader2 } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 
 interface CompleteReviewDialogProps {
@@ -7,11 +8,12 @@ interface CompleteReviewDialogProps {
   pendingCount: number;
   isRefreshing: boolean;
   isSubmitting: boolean;
+  error?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function CompleteReviewDialog({ mode, pendingCount, isRefreshing, isSubmitting, onClose, onConfirm }: CompleteReviewDialogProps) {
+export function CompleteReviewDialog({ mode, pendingCount, isRefreshing, isSubmitting, error, onClose, onConfirm }: CompleteReviewDialogProps) {
   const approve = mode === 'approve';
   return (
     <AlertDialog.Root open onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
@@ -28,6 +30,7 @@ export function CompleteReviewDialog({ mode, pendingCount, isRefreshing, isSubmi
                 ? `${pendingCount} câu còn chờ sẽ tự động bị từ chối. Sau khi chốt, kết quả được khóa và điểm thưởng được tính theo số câu đã duyệt.`
                 : 'Sau khi chốt, kết quả được khóa và điểm thưởng được tính theo số câu đã duyệt.'}
           </AlertDialog.Description>
+          <ActionError message={error} />
           <div className="flex flex-wrap justify-end gap-2">
             <AlertDialog.Close render={<Button variant="outline" className="min-h-11" disabled={isSubmitting} />}>Xem lại</AlertDialog.Close>
             <Button variant={approve ? 'default' : 'destructive'} className="min-h-11"

@@ -3,6 +3,8 @@ import { useRef, useState } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Check, Eye, Loader2, Package, ShoppingBag } from 'lucide-react';
 import { SqbCoin } from '@/components/common/SqbCoin';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -78,6 +80,8 @@ export function ShopInventoryTab() {
       || (unequip.isPending && unequip.variables?.cosmeticId === item.cosmeticId);
     return <Button type="button" variant={isEquipped ? 'outline' : 'default'} className="min-h-11" disabled={busy}
       onClick={() => {
+        equip.reset();
+        unequip.reset();
         if (isEquipped) unequip.mutate({ cosmeticId: item.cosmeticId });
         else equip.mutate({ cosmeticId: item.cosmeticId });
       }}>
@@ -162,6 +166,12 @@ export function ShopInventoryTab() {
                       </Button>
                       {itemAction(item)}
                     </div>
+                    {equip.isError && equip.variables?.cosmeticId === item.cosmeticId && (
+                      <ActionError message={getActionErrorMessage(equip.error, 'Không thể trang bị vật phẩm này.')} />
+                    )}
+                    {unequip.isError && unequip.variables?.cosmeticId === item.cosmeticId && (
+                      <ActionError message={getActionErrorMessage(unequip.error, 'Không thể gỡ trang bị này.')} />
+                    )}
                   </li>
                 );
               })}
@@ -181,7 +191,7 @@ export function ShopInventoryTab() {
                 Bạn sẽ dùng {purchase.price.toLocaleString('vi-VN')} xu SQB để mua <strong className="text-foreground">{purchase.name}</strong>.
                 {canConfirm && coins !== undefined && ` Số dư sau khi mua là ${(coins - purchase.price).toLocaleString('vi-VN')} xu.`}
               </AlertDialog.Description>
-              {buy.isError && <p role="alert" className="text-sm text-destructive">Không thể mua vật phẩm. Vui lòng thử lại.</p>}
+              {buy.isError && <ActionError message={getActionErrorMessage(buy.error, 'Không thể mua vật phẩm. Hãy kiểm tra số dư xu và thử lại.')} />}
               <div className="flex flex-wrap justify-end gap-2">
                 <AlertDialog.Close render={<Button type="button" variant="outline" className="min-h-11" disabled={buy.isPending} />}>Hủy</AlertDialog.Close>
                 <Button type="button" className="min-h-11" disabled={buy.isPending || !canConfirm}

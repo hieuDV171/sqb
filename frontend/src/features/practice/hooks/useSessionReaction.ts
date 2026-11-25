@@ -1,6 +1,5 @@
 import { useIsMutating, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { reactService, type ReactionType } from '@/features/feed/services/reactService';
-import { toast } from '@/stores/useToastStore';
 import type { PracticeCatalogResponse, SessionQuestionsResponse } from '../types/practice.types';
 import { practiceCatalogQueryKey } from './usePracticeCatalog';
 
@@ -37,7 +36,6 @@ export function useSessionReaction(sessionId: number) {
     mutationFn: async ({ myReaction }: SessionReactionState) => {
       const { data } = await reactService.toggleReact(
         { targetType: 'SESSION', targetId: sessionId, reactionType: myReaction ?? 'LIKE' },
-        { skipToast: true },
       );
       if (!data) throw new Error('Không thể cập nhật cảm xúc.');
       return data;
@@ -55,7 +53,6 @@ export function useSessionReaction(sessionId: number) {
     onSuccess: ({ totalCount, myReaction }) => updateReaction({ reactCount: totalCount, myReaction }),
     onError: (_error, previous) => {
       updateReaction(previous);
-      toast.error('Không thể cập nhật cảm xúc của bộ câu hỏi.');
     },
     onSettled: () => {
       void queryClient.invalidateQueries(practiceQuery);
@@ -67,5 +64,5 @@ export function useSessionReaction(sessionId: number) {
     if (!queryClient.isMutating({ mutationKey, exact: true })) mutation.mutate(current);
   };
 
-  return { isUpdating, toggleReaction };
+  return { isUpdating, toggleReaction, error: mutation.error };
 }

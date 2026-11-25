@@ -85,13 +85,6 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
         );
       }
     },
-    onError: (err) => {
-      addToast({
-        type: 'error',
-        title: 'Bình luận thất bại',
-        message: err.message || 'Không thể đăng bình luận.',
-      });
-    },
   });
 
   const deleteCommentMutation = useMutation({
@@ -161,11 +154,6 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
       if (context?.previousPostDetail) {
         queryClient.setQueryData(['post-detail', targetId], context.previousPostDetail);
       }
-      addToast({
-        type: 'error',
-        title: 'Lỗi',
-        message: 'Không thể xóa bình luận này. Vui lòng thử lại!',
-      });
     },
     onSuccess: () => {
       if (targetType === 'SESSION') {
@@ -199,6 +187,8 @@ export function useComments(targetType: 'POST' | 'COMMENT' | 'SESSION', targetId
     createComment: createCommentMutation.mutateAsync,
     isCreating: createCommentMutation.isPending,
     deleteComment: deleteCommentMutation.mutate,
+    deleteError: deleteCommentMutation.error,
+    failedDeleteId: deleteCommentMutation.isError ? deleteCommentMutation.variables : undefined,
     isDeleting: deleteCommentMutation.isPending,
     refetch: commentsQuery.refetch,
   };

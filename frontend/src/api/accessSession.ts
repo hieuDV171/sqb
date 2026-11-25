@@ -2,7 +2,6 @@ import axios from 'axios';
 import humps from 'humps';
 import type { GlobalResponse } from '../types/response.types';
 import { useAuthStore } from '../stores/useAuthStore';
-import { toast } from '../stores/useToastStore';
 import { ACCESS_REAUTH_MESSAGE, AccessGatewayError, isAccessGatewayResponse, isAdminHostname, resolveApiBaseUrl } from '../lib/adminAccess';
 
 export const API_BASE_URL = resolveApiBaseUrl(window.location, import.meta.env.VITE_API_BASE_URL);
@@ -14,6 +13,7 @@ export function getAccessGatewayError(error: unknown): Error | undefined {
     if (error instanceof AccessGatewayError) return error;
     if (isAdminHostname(window.location.hostname) && axios.isAxiosError(error)
         && isAccessGatewayResponse(error.response?.status, error.response?.data)) {
+        useAuthStore.getState().setAdminAccessDenied();
         return new AccessGatewayError(ACCESS_REAUTH_MESSAGE, { cause: error });
     }
 }
@@ -78,9 +78,8 @@ function expireSession(token: string): void {
     if (session.accessToken !== token) return;
 
     session.logout();
-    toast.warning('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', 'Hết phiên đăng nhập');
     if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+        window.location.href = '/login?reason=session-expired';
     }
 }
 
@@ -116,7 +115,6 @@ async function applyRefresh(token: string, request: Promise<string | null>): Pro
         }
         const gatewayError = getAccessGatewayError(error);
         if (gatewayError) {
-            toast.warning(gatewayError.message, 'Xác thực truy cập quản trị', 0);
             throw gatewayError;
         }
         if (axios.isAxiosError<GlobalResponse<null>>(error)) {

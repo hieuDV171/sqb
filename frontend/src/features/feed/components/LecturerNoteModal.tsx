@@ -1,6 +1,8 @@
 import { useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2 } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { usePostMutations } from '../hooks/usePostMutations';
 
@@ -12,6 +14,7 @@ interface LecturerNoteModalProps {
 
 export function LecturerNoteModal({ postId, initialNote = '', onClose }: LecturerNoteModalProps) {
   const [note, setNote] = useState(initialNote);
+  const [error, setError] = useState<string>();
   const { updateLecturerNote, isUpdatingNote } = usePostMutations();
 
   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -20,10 +23,11 @@ export function LecturerNoteModal({ postId, initialNote = '', onClose }: Lecture
     if (!content || isUpdatingNote) return;
 
     try {
+      setError(undefined);
       await updateLecturerNote({ id: postId, data: { content } });
       onClose();
-    } catch {
-      // The mutation displays the error. Keep the draft open so the lecturer can retry.
+    } catch (failure) {
+      setError(getActionErrorMessage(failure, 'Không thể lưu ghi chú. Hãy thử lại.'));
     }
   };
 
@@ -57,6 +61,7 @@ export function LecturerNoteModal({ postId, initialNote = '', onClose }: Lecture
                 {isUpdatingNote ? 'Đang lưu...' : 'Lưu ghi chú'}
               </Button>
             </div>
+            <ActionError message={error} />
           </form>
         </Dialog.Popup>
       </Dialog.Portal>

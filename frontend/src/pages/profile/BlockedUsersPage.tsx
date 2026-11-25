@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Shield } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { ConnectionList, ConnectionRow } from '@/features/profile/components/ConnectionList';
 import { connectionDate, useBlockedList } from '@/features/profile/hooks/useConnections';
@@ -21,7 +23,6 @@ export function BlockedUsersPage() {
         queryClient.invalidateQueries({ queryKey: ['activity-feeds'] }),
       ]);
     },
-    onError: () => toast.error('Không thể bỏ chặn. Hãy thử lại.'),
   });
 
   const people = query.data?.pages.flatMap((page) => page.items) ?? [];
@@ -39,10 +40,13 @@ export function BlockedUsersPage() {
           const pending = unblock.isPending && unblock.variables === person.userId;
           return <ConnectionRow key={person.userId} person={person} link={false} description={date && `Đã chặn ngày ${date}`}
             actions={
+              <div className="flex flex-wrap items-center gap-2">
+                {unblock.isError && unblock.variables === person.userId && <ActionError message={getActionErrorMessage(unblock.error, 'Không thể bỏ chặn. Hãy thử lại.')} />}
               <Button variant="outline" disabled={unblock.isPending} onClick={() => unblock.mutate(person.userId)}>
                 {pending && <Loader2 className="motion-safe:animate-spin" aria-hidden="true" />}
                 {pending ? 'Đang bỏ chặn…' : 'Bỏ chặn'}
               </Button>
+              </div>
             } />;
         })}
       </ConnectionList>

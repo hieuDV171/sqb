@@ -38,13 +38,13 @@ export const userService = {
   },
 
   getAccountDeletion: (signal?: AbortSignal) =>
-    axiosClient.get<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me/deletion', { signal, skipToast: true }),
+    axiosClient.get<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me/deletion', { signal }),
 
   requestAccountDeletion: () =>
-    axiosClient.delete<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me', { skipToast: true }),
+    axiosClient.delete<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me'),
 
   cancelAccountDeletion: () =>
-    axiosClient.delete<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me/deletion', { skipToast: true }),
+    axiosClient.delete<unknown, GlobalResponse<AccountDeletionResponse>>('/users/me/deletion'),
 
   // ==================== FRIENDSHIPS ====================
   getMyFriends: async (
@@ -124,9 +124,7 @@ export const userService = {
   },
 
   cancelSentFriendRequest: (receiverId: number): Promise<GlobalResponse<void>> =>
-    axiosClient.delete<GlobalResponse<void>, GlobalResponse<void>>(`/friendships/requests/sent/${receiverId}`, {
-      skipToast: true,
-    }),
+    axiosClient.delete<GlobalResponse<void>, GlobalResponse<void>>(`/friendships/requests/sent/${receiverId}`),
 
   // ==================== FOLLOWS ====================
   getFollowing: async (
@@ -165,13 +163,13 @@ export const userService = {
 
   followUser: async (targetUserId: number): Promise<GlobalResponse<FollowResponseDto>> => {
     return axiosClient.post<GlobalResponse<FollowResponseDto>, GlobalResponse<FollowResponseDto>>(
-      `/follows/${targetUserId}`, undefined, { skipToast: true },
+      `/follows/${targetUserId}`, undefined,
     );
   },
 
   unfollowUser: async (targetUserId: number): Promise<GlobalResponse<UnfollowResponseDto>> => {
     return axiosClient.delete<GlobalResponse<UnfollowResponseDto>, GlobalResponse<UnfollowResponseDto>>(
-      `/follows/${targetUserId}`, { skipToast: true },
+      `/follows/${targetUserId}`,
     );
   },
 

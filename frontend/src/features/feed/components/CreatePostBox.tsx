@@ -6,7 +6,8 @@ import { usePostMutations } from '../hooks/usePostMutations';
 import { useLectureVideoUpload } from '../hooks/useLectureVideoUpload';
 import { useSubjectOptions } from '@/features/session/hooks/useSubjectOptions';
 import { mediaService } from '@/services/mediaService';
-import { toast } from '@/stores/useToastStore';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import type { PostVisibility, PostType, MediaItem } from '@/types/post.types';
 import {
   Image as ImageIcon,
@@ -29,6 +30,7 @@ export const CreatePostBox: React.FC = () => {
 
   const isLecturerOrAdmin = user?.role === 'LECTURER' || user?.role === 'ADMIN';
 
+  const [error, setError] = useState<{ area: 'content' | 'subject' | 'media' | 'submit'; message: string }>();
   const [content, setContent] = useState('');
   const [visibility, setVisibility] = useState<PostVisibility>('PUBLIC');
   const [draftPostType, setPostType] = useState<PostType>('SOCIAL_POST');
@@ -52,6 +54,7 @@ export const CreatePostBox: React.FC = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    setError(undefined);
     setIsUploadingMedia(true);
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
@@ -70,7 +73,7 @@ export const CreatePostBox: React.FC = () => {
       const uploaded = await Promise.all(uploadPromises);
       setMediaList((prev) => [...prev, ...uploaded]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Lỗi khi tải tệp lên');
+      setError({ area: 'media', message: getActionErrorMessage(error, 'Không thể tải tệp lên. Hãy thử lại.') });
     } finally {
       setIsUploadingMedia(false);
       if (e.target) {
@@ -85,29 +88,30 @@ export const CreatePostBox: React.FC = () => {
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(undefined);
 
     // 1. Kiểm tra validation cho LEARNING_VIDEO
     if (postType === 'LEARNING_VIDEO') {
       if (!isLecturerOrAdmin) {
-        toast.error('Chỉ Giảng viên hoặc Quản trị viên mới được đăng video bài giảng');
+        setError({ area: 'submit', message: 'Chỉ Giảng viên hoặc Quản trị viên mới được đăng video bài giảng.' });
         return;
       }
       if (!selectedSubjectId) {
-        toast.error('Video bài giảng bắt buộc phải gắn với 1 môn học');
+        setError({ area: 'subject', message: 'Video bài giảng bắt buộc phải gắn với 1 môn học.' });
         return;
       }
       if (!lectureReady) {
-        toast.error('Vui lòng tải lên tệp video bài giảng');
+        setError({ area: 'media', message: 'Vui lòng tải lên tệp video bài giảng.' });
         return;
       }
       if (!content.trim()) {
-        toast.error('Vui lòng nhập tiêu đề hoặc tóm tắt nội dung bài giảng');
+        setError({ area: 'content', message: 'Vui lòng nhập tiêu đề hoặc tóm tắt nội dung bài giảng.' });
         return;
       }
     } else {
       // 2. SOCIAL_POST
       if (!content.trim() && mediaList.length === 0) {
-        toast.error('Vui lòng nhập nội dung bài viết hoặc đính kèm ảnh/video');
+        setError({ area: 'content', message: 'Vui lòng nhập nội dung bài viết hoặc đính kèm ảnh/video.' });
         return;
       }
     }
@@ -128,8 +132,8 @@ export const CreatePostBox: React.FC = () => {
         lectureVideo.published();
         setPostType('SOCIAL_POST');
       }
-    } catch {
-      // Toast handled by mutation hook
+    } catch (failure) {
+      setError({ area: 'submit', message: getActionErrorMessage(failure, 'Không thể đăng bài. Hãy thử lại.') });
     }
   };
 
@@ -232,7 +236,12 @@ export const CreatePostBox: React.FC = () => {
               id="post-content"
               aria-label="Nội dung bài viết"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              aria-invalid={error?.area === 'content' || undefined}
+              aria-describedby={error?.area === 'content' ? 'post-content-error' : undefined}
+              onChange={(e) => {
+                if (error?.area === 'content') setError(undefined);
+                setContent(e.target.value);
+              }}
               placeholder={
                 postType === 'LEARNING_VIDEO'
                   ? 'Nhập tiêu đề hoặc tóm tắt nội dung video bài giảng hôm nay... *'
@@ -241,6 +250,8 @@ export const CreatePostBox: React.FC = () => {
               rows={3}
               className="w-full resize-none rounded-2xl border border-border bg-surface-subtle p-3 text-sm text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/30 md:text-base"
             />
+
+            <ActionError id="post-content-error" className="mt-1" message={error?.area === 'content' ? error.message : undefined} />
 
             {/* Media Upload Previews */}
             {postType === 'SOCIAL_POST' && mediaList.length > 0 && (
@@ -335,7 +346,10 @@ export const CreatePostBox: React.FC = () => {
                 <SubjectSelectDropdown
                   subjects={subjects}
                   value={selectedSubjectId}
-                  onChange={setSelectedSubjectId}
+                  onChange={(id) => {
+                    if (error?.area === 'subject') setError(undefined);
+                    setSelectedSubjectId(id);
+                  }}
                   disabled={isCreating || subjectQuery.isPending}
                   placeholder={subjectQuery.isPending ? 'Đang tải môn học…' : undefined}
                 />
@@ -350,6 +364,7 @@ export const CreatePostBox: React.FC = () => {
           </div>
         </div>
 
+        <ActionError className="mt-2" message={error && error.area !== 'content' ? error.message : undefined} />
         {/* Footer Actions */}
         <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
@@ -368,7 +383,10 @@ export const CreatePostBox: React.FC = () => {
               ref={videoInputRef}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) lectureVideo.choose(file);
+                if (file) {
+                  if (error?.area === 'media') setError(undefined);
+                  lectureVideo.choose(file);
+                }
                 e.target.value = '';
               }}
               accept="video/mp4,video/webm,.mp4,.webm"

@@ -14,8 +14,7 @@ export function useReviewMutations(sessionId: number) {
     queryClient.invalidateQueries({ queryKey: queueKey }),
     queryClient.invalidateQueries({ queryKey: detailKey, exact: true }),
   ]);
-  const handleDecisionError = (error: Error, fallback: string) => {
-    toast.error(error.message || fallback);
+  const handleDecisionError = (error: Error) => {
     if ('code' in error && error.code === '2017') {
       return refreshReview();
     }
@@ -27,7 +26,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success(`Đã phê duyệt ${questionIds.length} câu hỏi.`);
     },
-    onError: (error) => handleDecisionError(error, 'Không thể phê duyệt câu hỏi. Hãy thử lại.'),
+    onError: handleDecisionError,
   });
 
   const reject = useMutation({
@@ -36,7 +35,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success('Đã lưu quyết định từ chối.');
     },
-    onError: (error) => handleDecisionError(error, 'Không thể từ chối câu hỏi. Hãy thử lại.'),
+    onError: handleDecisionError,
   });
 
   const edit = useMutation({
@@ -46,7 +45,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success(data?.status === 'APPROVED' ? 'Đã lưu và phê duyệt câu hỏi.' : 'Đã lưu câu hỏi.');
     },
-    onError: (error) => handleDecisionError(error, 'Không thể lưu câu hỏi. Hãy thử lại.'),
+    onError: handleDecisionError,
   });
 
   const retryDuplicateCheck = useMutation({
@@ -55,7 +54,7 @@ export function useReviewMutations(sessionId: number) {
       await refreshReview();
       toast.success('Đã yêu cầu dò trùng lại.');
     },
-    onError: (error) => handleDecisionError(error, 'Không thể yêu cầu dò trùng lại.'),
+    onError: handleDecisionError,
   });
 
   const complete = useMutation({
@@ -67,7 +66,6 @@ export function useReviewMutations(sessionId: number) {
       ]);
       toast.success('Đã hoàn tất duyệt phiên.');
     },
-    onError: () => toast.error('Không thể hoàn tất duyệt phiên. Hãy thử lại.'),
   });
 
   return { approve, reject, edit, complete, retryDuplicateCheck };

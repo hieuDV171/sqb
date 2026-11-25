@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Flame, Check, Gift, Sparkles } from 'lucide-react';
 import { useGamificationStore } from '../stores/useGamificationStore';
 import { useDailyCheckIn } from '../hooks/useGamification';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { SqbCoin } from '@/components/common/SqbCoin';
 
 interface DailyCheckInModalProps {
@@ -16,6 +18,11 @@ export function DailyCheckInModal({
 }: DailyCheckInModalProps) {
   const { isCheckInModalOpen, setCheckInModalOpen } = useGamificationStore();
   const checkInMutation = useDailyCheckIn();
+  const resetCheckIn = checkInMutation.reset;
+  const close = useCallback(() => {
+    resetCheckIn();
+    setCheckInModalOpen(false);
+  }, [resetCheckIn, setCheckInModalOpen]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Particle Confetti Launcher
@@ -95,19 +102,19 @@ export function DailyCheckInModal({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isCheckInModalOpen) {
-        setCheckInModalOpen(false);
+        close();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCheckInModalOpen, setCheckInModalOpen]);
+  }, [isCheckInModalOpen, close]);
 
   if (!isCheckInModalOpen) return null;
 
   const modalContent = (
     <div
       className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={() => setCheckInModalOpen(false)}
+      onClick={close}
     >
       <canvas
         ref={canvasRef}
@@ -121,7 +128,7 @@ export function DailyCheckInModal({
         {/* Close Button */}
         <button
           type="button"
-          onClick={() => setCheckInModalOpen(false)}
+          onClick={close}
           className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
@@ -255,6 +262,9 @@ export function DailyCheckInModal({
                 )}
               </span>
             </button>
+          )}
+          {!hasCheckedInToday && checkInMutation.isError && (
+            <ActionError className="mt-2" message={getActionErrorMessage(checkInMutation.error, 'Không thể điểm danh. Hãy thử lại.')} />
           )}
         </div>
       </div>

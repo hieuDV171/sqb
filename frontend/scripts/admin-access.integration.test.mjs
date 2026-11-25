@@ -29,7 +29,6 @@ test('Access edge denials do not refresh or clear SQB sessions; Spring 401 still
     });
     const { axiosClient } = await server.ssrLoadModule('/src/api/axiosClient.ts');
     const { useAuthStore } = await server.ssrLoadModule('/src/stores/useAuthStore.ts');
-    const { useToastStore } = await server.ssrLoadModule('/src/stores/useToastStore.ts');
     const jwt = (expiry) => `header.${Buffer.from(JSON.stringify({ userId: 1, deviceId: 'test-device', sessionId: 'test-session', exp: expiry })).toString('base64url')}.signature`;
     const token = jwt(Math.floor(Date.now() / 1000) + 600);
     const setSession = (value) => useAuthStore.getState().setAuth(value, { id: 1, username: 'test', role: 'ADMIN' }, 'ACCESS', 'ACTIVE');
@@ -62,7 +61,7 @@ test('Access edge denials do not refresh or clear SQB sessions; Spring 401 still
     };
     await assert.rejects(axiosClient.get('/admin/semesters'), { name: 'AccessGatewayError' });
     assert.equal(useAuthStore.getState().accessToken, expiredToken);
-    assert.equal(useToastStore.getState().toasts.at(-1)?.title, 'Xác thực truy cập quản trị');
+    assert.equal(useAuthStore.getState().adminAccessDenied, true);
 
     // A genuine backend expiry must still use SQB refresh, retry once, and keep the header.
     setSession(token);

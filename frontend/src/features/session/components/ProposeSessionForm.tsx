@@ -16,7 +16,9 @@ import {
   X,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
-import {getErrorMessage} from '@/lib/errorMessage';
+import { getActionErrorMessage } from '@/lib/errorMessage';
+import { ActionError } from '@/components/ui/action-error';
+import { useSessionFormError } from '../hooks/useSessionFormError';
 import {CustomSelect} from '@/components/ui/custom-select';
 import {Button} from '@/components/ui/button';
 import {mediaService} from '@/services/mediaService';
@@ -57,6 +59,9 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   const selectedCourseClassId = courseClasses.length === 0
     ? requestedCourseClassId
     : selectedCourseClass?.courseClassId ?? null;
+  const formError = useSessionFormError();
+  const [submitError, setSubmitError] = useState<string>();
+  const [draftError, setDraftError] = useState<string>();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -81,6 +86,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   const [successResponse, setSuccessResponse] = useState<{
     session: ProposeSessionResponse;
     game2Predicted?: boolean;
+    game2Error?: string;
     predLlm?: number | null;
     predHuman?: number | null;
   } | null>(null);
@@ -144,6 +150,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   }, [selectedCourseClassId, title, content, sourceUrl, questions, successResponse, draftAutosave]);
 
   const handleRestoreDraft = () => {
+    setDraftError(undefined);
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
@@ -158,12 +165,13 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       setDraftInfo(null);
       toast.success('Đã khôi phục dữ liệu bản nháp phiên thành công!');
     } catch {
-      toast.error('Không thể khôi phục bản nháp');
+      setDraftError('Không thể khôi phục bản nháp. Hãy thử lại hoặc bỏ qua bản nháp này.');
     }
   };
 
   const handleDiscardDraft = () => {
     draftAutosave.clear();
+    setDraftError(undefined);
     setDraftInfo(null);
     toast.info('Đã hủy bỏ bản nháp cũ');
   };
@@ -172,6 +180,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   const humanQuestionsCount = questions.length - llmQuestionsCount;
 
   const handleAddQuestion = () => {
+    formError.clear('proposal-questions');
     setQuestions([...questions, createEmptyQuestion()]);
     toast.info(`Đã thêm câu hỏi #${questions.length + 1}`);
   };
@@ -179,10 +188,11 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   const handleConfirmDelete = () => {
     if (deleteIndex === null) return;
     if (questions.length <= 1) {
-      toast.warning('Phiên đề xuất phải chứa ít nhất 1 câu hỏi!');
+      formError.show('proposal-questions', 'Phiên đề xuất phải chứa ít nhất 1 câu hỏi.');
       setDeleteIndex(null);
       return;
     }
+    formError.clear();
     const updated = questions.filter((_, idx) => idx !== deleteIndex);
     setQuestions(updated);
     toast.success(`Đã xóa câu hỏi #${deleteIndex + 1}`);
@@ -195,21 +205,24 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     value: QuestionProposeDto[Field],
   ) => {
     const updated = [...questions];
+    if (field === 'content') formError.clear(`proposal-question-${index}`);
+    if (field === 'confidence') formError.clear(`confidence-${index}`);
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
   };
 
   const handleUploadQuestionImage = async (qIndex: number, file: File) => {
+    const targetKey = `q-${qIndex}`;
+    formError.clear(targetKey);
     if (!file.type.startsWith('image/')) {
-      toast.error('Chỉ hỗ trợ tệp định dạng hình ảnh (PNG, JPG, WEBP)');
+      formError.show(targetKey, 'Chỉ hỗ trợ tệp hình ảnh (PNG, JPG, WebP).');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('Dung lượng tệp tối đa là 10MB');
+      formError.show(targetKey, 'Dung lượng tệp tối đa là 10 MB.');
       return;
     }
 
-    const targetKey = `q-${qIndex}`;
     setUploadingTarget(targetKey);
     try {
       const res = await mediaService.uploadViaPresign(file, 'QUESTION');
@@ -221,18 +234,19 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
         toast.success(`Đã tải ảnh lên thành công!`);
       }
     } catch (err) {
-      toast.error(getErrorMessage(err) ?? 'Lỗi khi tải ảnh câu hỏi lên');
+      formError.show(targetKey, getActionErrorMessage(err, 'Không thể tải ảnh câu hỏi lên.'));
     } finally {
       setUploadingTarget(null);
     }
   };
 
   const handleUploadOptionImage = async (qIndex: number, optKey: string, file: File) => {
+    const targetKey = `opt-${qIndex}-${optKey}`;
+    formError.clear(targetKey);
     if (!file.type.startsWith('image/')) {
-      toast.error('Chỉ hỗ trợ tải lên hình ảnh');
+      formError.show(targetKey, 'Chỉ hỗ trợ tệp hình ảnh.');
       return;
     }
-    const targetKey = `opt-${qIndex}-${optKey}`;
     setUploadingTarget(targetKey);
     try {
       const res = await mediaService.uploadViaPresign(file, 'QUESTION');
@@ -248,13 +262,14 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
         }
       }
     } catch (err) {
-      toast.error(getErrorMessage(err) ?? 'Lỗi khi tải ảnh đáp án');
+      formError.show(targetKey, getActionErrorMessage(err, 'Không thể tải ảnh đáp án lên.'));
     } finally {
       setUploadingTarget(null);
     }
   };
 
   const handleAddOption = (qIndex: number) => {
+    formError.clear(`proposal-options-${qIndex}`);
     const updated = [...questions];
     const currentOpts = updated[qIndex].options;
     const nextKey = getOptionKey(currentOpts.length);
@@ -270,9 +285,10 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
     const updated = [...questions];
     const currentOpts = updated[qIndex].options;
     if (currentOpts.length <= 2) {
-      toast.warning('Mỗi câu hỏi trắc nghiệm phải có ít nhất 2 đáp án lựa chọn');
+      formError.show(`proposal-options-${qIndex}`, 'Phải giữ ít nhất 2 đáp án lựa chọn.');
       return;
     }
+    formError.clear();
     const removedKey = currentOpts[optIndex].key;
     const filtered = currentOpts.filter((_, i) => i !== optIndex);
     updated[qIndex].options = filtered.map((opt, i) => ({
@@ -293,6 +309,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   };
 
   const handleToggleCorrectOption = (qIndex: number, optKey: string) => {
+    formError.clear(`proposal-options-${qIndex}`);
     const updated = [...questions];
     updated[qIndex].options = updated[qIndex].options.map((opt) =>
         opt.key === optKey ? {...opt, isCorrect: !opt.isCorrect} : opt
@@ -301,6 +318,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   };
 
   const handleUpdateOptionText = (qIndex: number, optKey: string, text: string) => {
+    formError.clear(`proposal-option-${qIndex}-${optKey}`);
     const updated = [...questions];
     updated[qIndex].options = updated[qIndex].options.map((opt) =>
         opt.key === optKey ? {...opt, text} : opt
@@ -309,46 +327,45 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
   };
 
   const validateForm = (): boolean => {
+    formError.clear();
+    setSubmitError(undefined);
     if (!courseClasses.some((courseClass) => courseClass.courseClassId === selectedCourseClassId && courseClass.canPropose)) {
-      toast.error('Vui lòng chọn lớp học phần thuộc học kỳ hiện tại');
-      document.getElementById('proposal-course-class')?.focus();
+      formError.show('proposal-course-class', 'Vui lòng chọn lớp học phần thuộc học kỳ hiện tại.', true);
       return false;
     }
     if (!title.trim()) {
-      toast.error('Vui lòng nhập tiêu đề cho phiên đề xuất');
-      document.getElementById('proposal-title')?.focus();
+      formError.show('proposal-title', 'Vui lòng nhập tiêu đề phiên đề xuất.', true);
       return false;
     }
     if (questions.length < 3) {
-      toast.error('Mỗi phiên đề xuất cần ít nhất 3 câu hỏi');
+      formError.show('proposal-questions', 'Mỗi phiên đề xuất cần ít nhất 3 câu hỏi.', true);
       return false;
     }
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.content.trim()) {
-        toast.error(`Câu hỏi số #${i + 1} chưa có nội dung đề bài`);
-        document.getElementById(`proposal-question-${i}`)?.focus();
+        formError.show(`proposal-question-${i}`, 'Nhập nội dung đề bài.', true);
         return false;
       }
       if (q.options.length < 2) {
-        toast.error(`Câu hỏi số #${i + 1} phải có ít nhất 2 đáp án lựa chọn`);
+        formError.show(`proposal-options-${i}`, 'Câu hỏi phải có ít nhất 2 đáp án lựa chọn.', true);
         return false;
       }
       for (const opt of q.options) {
         if (!opt.text.trim()) {
-          toast.error(`Đáp án ${opt.key} của câu hỏi #${i + 1} chưa được nhập nội dung`);
+          formError.show(`proposal-option-${i}-${opt.key}`, `Nhập nội dung đáp án ${opt.key}.`, true);
           return false;
         }
       }
       const hasCorrect = q.options.some((o) => o.isCorrect);
       if (!hasCorrect) {
-        toast.error(`Vui lòng chọn ít nhất 1 đáp án đúng cho câu hỏi #${i + 1}`);
+        formError.show(`proposal-options-${i}`, 'Chọn ít nhất 1 đáp án đúng.', true);
         return false;
       }
       if (q.confidence == null || !Number.isFinite(q.confidence)
         || q.confidence < 0 || q.confidence > 4) {
-        toast.error(`Độ tự tin của câu hỏi #${i + 1} phải nằm trong khoảng 0.00 đến 4.00`);
+        formError.show(`confidence-${i}`, 'Độ tự tin phải nằm trong khoảng 0.00 đến 4.00.', true);
         return false;
       }
     }
@@ -396,7 +413,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             const affected = payload.questions.flatMap((question, index) =>
               question.mediaUrls?.some((url) => missing.includes(url))
               || question.options.some((option) => option.mediaUrl && missing.includes(option.mediaUrl)) ? [index + 1] : []);
-            toast.error(`Vui lòng tải lại ảnh đã hết hạn hoặc bị thiếu ở câu ${affected.join(', ')}.`);
+            setSubmitError(`Vui lòng tải lại ảnh đã hết hạn hoặc bị thiếu ở câu ${affected.join(', ')}.`);
             return;
           }
         } finally {
@@ -406,6 +423,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       const sessionRes = await proposeMutation.mutateAsync(payload);
 
       let game2Result = false;
+      let game2Error: string | undefined;
       if (withGame2 && sessionRes.sessionId) {
         try {
           await predictGame2Mutation.mutateAsync({
@@ -414,8 +432,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             predictedHumanCount,
           });
           game2Result = true;
-        } catch (e) {
-          console.warn('Lỗi đặt cược game 2', e);
+        } catch (error) {
+          game2Error = getActionErrorMessage(error, 'Không thể gửi dự đoán Game 2.');
         }
       }
 
@@ -424,13 +442,14 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       setSuccessResponse({
         session: sessionRes,
         game2Predicted: game2Result,
+        game2Error,
         predLlm: withGame2 ? predictedLlmCount : null,
         predHuman: withGame2 ? predictedHumanCount : null,
       });
 
       setIsGame2ModalOpen(false);
-    } catch {
-      // Request errors are shown by the HTTP client or the mutation.
+    } catch (error) {
+      setSubmitError(getActionErrorMessage(error, 'Không thể nộp phiên đề xuất. Hãy thử lại.'));
     } finally {
       submitInFlight.current = false;
     }
@@ -451,6 +470,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
               <span className="text-amber-700 dark:text-amber-400">
                 Lưu lúc: {draftInfo.updatedAt}
               </span>
+              <ActionError message={draftError} />
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -504,6 +524,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             </label>
             <CustomSelect
               id="proposal-course-class"
+              {...formError.inputProps('proposal-course-class')}
               value={selectedCourseClassId?.toString() ?? ''}
               onChange={(value) => {
                 const nextId = value ? Number(value) : null;
@@ -511,6 +532,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                 if (nextSubject !== selectedCourseClass?.subjectId) {
                   setQuestions((items) => items.map((item) => ({ ...item, topicId: null })));
                 }
+                formError.clear('proposal-course-class');
                 setRequestedCourseClassId(nextId);
               }}
               disabled={isLoadingCourseClasses || courseClassQuery.isError || !courseClasses.length}
@@ -533,6 +555,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   : undefined,
               }))}
             />
+            <ActionError id="proposal-course-class-error" message={formError.messageAt('proposal-course-class')} />
             {courseClassQuery.isError && (
               <Button variant="outline" className="min-h-11" onClick={() => void courseClassQuery.refetch()}>Tải lại lớp học phần</Button>
             )}
@@ -548,12 +571,17 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
             </label>
             <input
               id="proposal-title"
+              {...formError.inputProps('proposal-title')}
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                formError.clear('proposal-title');
+                setTitle(e.target.value);
+              }}
               placeholder="VD: Trắc nghiệm Chương 3: Định tuyến mạng IP và BGP..."
               className="w-full px-3.5 py-2.5 border border-input bg-background rounded-2xl text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             />
+            <ActionError id="proposal-title-error" message={formError.messageAt('proposal-title')} />
           </div>
 
           {/* Session Content / Note */}
@@ -589,7 +617,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
       </div>
 
       {/* Questions Section */}
-      <div className="space-y-4">
+      <div id="proposal-questions" tabIndex={-1} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <HelpCircle aria-hidden="true" className="size-5 text-academic" />
@@ -606,6 +634,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
           </Button>
         </div>
 
+        <ActionError message={formError.messageAt('proposal-questions')} />
         {/* Questions List */}
         <div className="space-y-5">
           {questions.map((q, qIndex) => (
@@ -671,12 +700,14 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                 </label>
                 <textarea
                   id={`proposal-question-${qIndex}`}
+                  {...formError.inputProps(`proposal-question-${qIndex}`)}
                   value={q.content}
                   onChange={(e) => handleUpdateQuestion(qIndex, 'content', e.target.value)}
                   rows={3}
                   placeholder="Nhập nội dung câu hỏi trắc nghiệm..."
                   className="w-full px-3.5 py-2.5 border border-input bg-background rounded-2xl text-xs sm:text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 />
+                <ActionError id={`proposal-question-${qIndex}-error`} message={formError.messageAt(`proposal-question-${qIndex}`)} />
               </div>
 
               <div className="max-w-xs space-y-3">
@@ -709,6 +740,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   </label>
                 </div>
 
+                <ActionError message={formError.messageAt(`q-${qIndex}`)} />
                 {uploadingTarget === `q-${qIndex}` && (
                   <div className="flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-xs text-indigo-600">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -745,7 +777,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
               </div>
 
               {/* Options */}
-              <div className="space-y-2.5 pt-2">
+              <div id={`proposal-options-${qIndex}`} tabIndex={-1} className="space-y-2.5 pt-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <label className="block text-xs font-bold text-foreground">
                     Các đáp án lựa chọn (Click nút chữ cái để bật/tắt đáp án ĐÚNG - hỗ trợ nhiều đáp án đúng):
@@ -760,6 +792,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   </button>
                 </div>
 
+                <ActionError message={formError.messageAt(`proposal-options-${qIndex}`)} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {q.options.map((opt, optIdx) => (
                     <div
@@ -790,6 +823,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                         {/* Option text */}
                         <input
                           type="text"
+                          id={`proposal-option-${qIndex}-${opt.key}`}
+                          {...formError.inputProps(`proposal-option-${qIndex}-${opt.key}`)}
                           value={opt.text}
                           onChange={(e) =>
                             handleUpdateOptionText(qIndex, opt.key, e.target.value)
@@ -834,6 +869,8 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                       </div>
 
                       {/* Option Image Preview thumbnail if present */}
+                      <ActionError id={`proposal-option-${qIndex}-${opt.key}-error`} message={formError.messageAt(`proposal-option-${qIndex}-${opt.key}`)} />
+                      <ActionError message={formError.messageAt(`opt-${qIndex}-${opt.key}`)} />
                       {opt.mediaUrl && (
                         <div className="flex items-center gap-2 pl-9 pt-0.5">
                           <div className="relative group/optimg">
@@ -896,6 +933,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   <div className="relative">
                     <input
                       id={`confidence-${qIndex}`}
+                      {...formError.inputProps(`confidence-${qIndex}`)}
                       type="number"
                       inputMode="decimal"
                       min="0"
@@ -923,6 +961,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   <p className="text-[11px] text-muted-foreground">
                     Nhập số thập phân trong khoảng 0.00–4.00.
                   </p>
+                  <ActionError id={`confidence-${qIndex}-error`} message={formError.messageAt(`confidence-${qIndex}`)} />
                 </div>
 
                 {/* Explanation */}
@@ -955,6 +994,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">3. Gửi xét duyệt</h2>
           <p className="text-sm text-muted-foreground">{questions.length} câu hỏi trong phiên · Tối thiểu 3 câu</p>
+          {!isGame2ModalOpen && <ActionError message={submitError} />}
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
@@ -1046,6 +1086,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
               </button>
             </div>
 
+            <ActionError message={submitError} />
             <div className="space-y-4 bg-surface-subtle p-4 rounded-2xl border border-border text-xs">
               <div>
                 <label className="block font-semibold text-foreground mb-1">
@@ -1137,6 +1178,7 @@ export const ProposeSessionForm: React.FC<ProposeSessionFormProps> = ({
                   {successResponse.session.status} (Chờ duyệt)
                 </span>
               </div>
+              <ActionError message={successResponse.game2Error} />
               {successResponse.game2Predicted && (
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between text-academic font-semibold">
                   <span>Dự đoán Game 2:</span>

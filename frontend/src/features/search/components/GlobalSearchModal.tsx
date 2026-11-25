@@ -5,6 +5,8 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { useNavigate } from 'react-router-dom';
 import { acquireBodyScrollLock, registerOverlayLayer, trapOverlayTab } from '@/lib/overlayLifecycle';
 import {
@@ -516,6 +518,7 @@ function OpenGlobalSearchModal({
                     <History aria-hidden="true" className="h-3.5 w-3.5" />
                     Tìm kiếm gần đây
                   </h2>
+                  {deleteSavedMutation.isError && <ActionError message={getActionErrorMessage(deleteSavedMutation.error, 'Không thể xóa từ khóa khỏi lịch sử. Hãy thử lại.')} />}
                   <div className="flex flex-wrap gap-2">
                     {savedSearches.map((saved) => (
                       <div

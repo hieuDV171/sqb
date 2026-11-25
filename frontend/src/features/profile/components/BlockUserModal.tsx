@@ -2,6 +2,8 @@ import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, ShieldAlert } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { userService } from '@/services/userService';
 import { toast } from '@/stores/useToastStore';
@@ -30,11 +32,10 @@ export function BlockUserModal({ isOpen, onClose, targetUserId, targetUserName }
       onClose();
       navigate('/feed');
     },
-    onError: () => toast.error('Không thể chặn người dùng này. Hãy thử lại.'),
   });
 
   return (
-    <AlertDialog.Root open={isOpen} onOpenChange={(open) => { if (!open && !mutation.isPending) onClose(); }}>
+    <AlertDialog.Root open={isOpen} onOpenChange={(open) => { if (!open && !mutation.isPending) { mutation.reset(); onClose(); } }}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-foreground/45 dark:bg-black/65" />
         <AlertDialog.Popup className="fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xl">
@@ -45,8 +46,9 @@ export function BlockUserModal({ isOpen, onClose, targetUserId, targetUserName }
           <AlertDialog.Description className="text-sm leading-relaxed text-muted-foreground">
             Hai bên sẽ không xem được bài viết của nhau. Các kết nối bạn bè và theo dõi sẽ bị gỡ. Bạn có thể bỏ chặn trong danh sách chặn.
           </AlertDialog.Description>
+          {mutation.isError && <ActionError message={getActionErrorMessage(mutation.error, 'Không thể chặn người dùng này. Hãy thử lại.')} />}
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>Quay lại</Button>
+            <Button variant="outline" disabled={mutation.isPending} onClick={() => { mutation.reset(); onClose(); }}>Quay lại</Button>
             <Button variant="destructive" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
               {mutation.isPending && <Loader2 className="motion-safe:animate-spin" aria-hidden="true" />}
               {mutation.isPending ? 'Đang chặn…' : 'Chặn người dùng'}

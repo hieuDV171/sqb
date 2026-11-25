@@ -16,7 +16,7 @@ const examApiPath = '/lecturer/exams';
 export const examService = {
   getBankSummary: (subjectId: number, signal: AbortSignal) =>
     axiosClient.get<unknown, GlobalResponse<ExamBankSummary>>(
-      `${examApiPath}/question-bank/${subjectId}/summary`, { signal, skipToast: true },
+      `${examApiPath}/question-bank/${subjectId}/summary`, { signal },
     ),
 
   /**
@@ -29,7 +29,6 @@ export const examService = {
     return axiosClient.post<unknown, GlobalResponse<ExamDetailResponse>>(
       `${examApiPath}/generate`,
       data,
-      { skipToast: true },
     );
   },
 
@@ -77,7 +76,6 @@ export const examService = {
     return axiosClient.get<unknown, GlobalResponse<ExportResponse>>(
       `${examApiPath}/${examId}/export`,
       {
-        skipToast: true,
         params: {
           format: params?.format ?? 'pdf',
           include_answer_key: params?.includeAnswerKey ?? false,
@@ -96,7 +94,6 @@ export const examService = {
     return axiosClient.get<unknown, GlobalResponse<ExportResponse>>(
       '/lecturer/questions/export',
       {
-        skipToast: true,
         params: {
           subject_id: params.subjectId,
           format: params.format ?? 'pdf',

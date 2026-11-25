@@ -19,7 +19,7 @@ import type {
 export const reviewService = {
   getDuplicateMatches: (sessionId: number, questionId: number, signal: AbortSignal) =>
     axiosClient.get<unknown, GlobalResponse<DuplicateMatch[]>>(
-      `/lecturer/sessions/${sessionId}/questions/${questionId}/duplicate-matches`, { signal, skipToast: true },
+      `/lecturer/sessions/${sessionId}/questions/${questionId}/duplicate-matches`, { signal },
     ),
 
   refineQuestion: async (questionId: number, prompt: string, previousEditLogId: number | undefined,
@@ -55,7 +55,6 @@ export const reviewService = {
       { prompt, previousEditLogId }, {
         adapter: 'xhr',
         headers: { Accept: 'text/event-stream, application/json' },
-        skipToast: true,
         timeout: 85_000,
         onDownloadProgress: ({ event }) => {
           const request: unknown = event?.target;
@@ -70,7 +69,7 @@ export const reviewService = {
 
   applyRefinement: (questionId: number, editLogId: number, approve: boolean, auditAcknowledged: boolean) =>
     axiosClient.post<unknown, GlobalResponse<unknown>>(`/questions/${questionId}/ai-apply`,
-      { editLogId, approve, auditAcknowledged }, { skipToast: true }),
+      { editLogId, approve, auditAcknowledged }),
   /**
    * 16.1 Lấy danh sách phiên PENDING/REVIEWING có thể kiểm duyệt
    * GET /api/v1/lecturer/sessions/reviewable
@@ -114,7 +113,6 @@ export const reviewService = {
     return (await axiosClient.post<GlobalResponse<ApproveQuestionsResponse>>(
       '/lecturer/sessions/approve',
       data,
-      { skipToast: true },
     )) as unknown as GlobalResponse<ApproveQuestionsResponse>;
   },
 
@@ -128,7 +126,6 @@ export const reviewService = {
     return (await axiosClient.post<GlobalResponse<void>>(
       '/lecturer/sessions/reject',
       data,
-      { skipToast: true },
     )) as unknown as GlobalResponse<void>;
   },
 
@@ -146,7 +143,6 @@ export const reviewService = {
     return (await axiosClient.put<GlobalResponse<EditQuestionResponse>>(
       `/lecturer/questions/${questionId}`,
       data,
-      { skipToast: true },
     )) as unknown as GlobalResponse<EditQuestionResponse>;
   },
 
@@ -160,7 +156,6 @@ export const reviewService = {
     return (await axiosClient.post<GlobalResponse<void>>(
       `/lecturer/sessions/${sessionId}/complete-review`,
       undefined,
-      { skipToast: true },
     )) as unknown as GlobalResponse<void>;
   },
 };

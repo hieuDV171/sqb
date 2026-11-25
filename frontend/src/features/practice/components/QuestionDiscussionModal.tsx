@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
+import { Button } from '@/components/ui/button';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { commentService } from '@/features/feed/services/commentService';
 import { EditComment } from '@/features/feed/components/EditComment';
@@ -29,6 +32,8 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
   const {
     data: commentsData,
     isLoading,
+    isError: cannotLoadComments,
+    refetch: refetchComments,
   } = useQuery({
     queryKey: ['questionComments', questionId],
     queryFn: async () => {
@@ -43,7 +48,7 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
     enabled: !!questionId && isOpen,
   });
 
-  const { mutateAsync: sendComment, isPending: isSending } = useMutation({
+  const sendComment = useMutation({
     mutationFn: async ({ text, targetId }: { text: string; targetId: number }) => {
       const response = await commentService.createComment({
         targetType: 'QUESTION',
@@ -75,14 +80,12 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
 
   if (!isOpen || !questionId) return null;
 
+  const isSending = sendComment.isPending;
+
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!commentText.trim() || isSending) return;
-    try {
-      await sendComment({ text: commentText.trim(), targetId: questionId });
-    } catch {
-      // Keep the text available for retry.
-    }
+    sendComment.mutate({ text: commentText.trim(), targetId: questionId });
   };
 
   const comments = commentsData || [];
@@ -121,6 +124,11 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
             <div className="py-12 flex flex-col items-center justify-center space-y-2">
               <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
               <p className="text-xs text-slate-400">Đang tải các bình luận...</p>
+            </div>
+          ) : cannotLoadComments && comments.length === 0 ? (
+            <div className="space-y-2">
+              <ActionError message="Không thể tải thảo luận của câu hỏi." />
+              <Button type="button" variant="outline" onClick={() => void refetchComments()}>Tải lại</Button>
             </div>
           ) : comments.length === 0 ? (
             <div className="py-12 text-center space-y-2">
@@ -193,6 +201,9 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
             )}
           </button>
         </form>
+        {sendComment.isError && sendComment.variables?.targetId === questionId && (
+          <ActionError className="px-5 pb-3" message={getActionErrorMessage(sendComment.error, 'Không thể gửi bình luận. Hãy thử lại.')} />
+        )}
       </div>
     </div>
   );

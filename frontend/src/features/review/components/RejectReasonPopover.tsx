@@ -2,6 +2,8 @@ import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, X, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Label } from '@/components/ui/label';
 import { getRejectionReasonLabel } from '@/lib/rejectionReasons';
 import type { RejectionReasonCode } from '../types/review.types';
@@ -23,18 +25,20 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState<RejectionReasonCode | null>(null);
   const [reason, setReason] = useState('');
+  const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
   const formId = useId();
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!code || saving || (code === 'OTHER' && !reason.trim())) return;
+    setError(undefined);
     setSaving(true);
     try {
       await onConfirm(code, reason.trim() || undefined);
       setOpen(false);
-    } catch {
-      // Keep the selected reason and note available for retry.
+    } catch (failure) {
+      setError(getActionErrorMessage(failure, 'Không thể lưu lý do từ chối. Hãy thử lại.'));
     } finally {
       setSaving(false);
     }
@@ -44,6 +48,7 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
     <Dialog.Root open={open} onOpenChange={(next) => {
       if (saving) return;
       if (next) {
+        setError(undefined);
         setCode(rejectionCode && reasons.includes(rejectionCode) ? rejectionCode : null);
         setReason(rejectionReason ?? '');
       }
@@ -81,6 +86,7 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
                 required={code === 'OTHER'} onChange={(event) => setReason(event.target.value)}
                 className="w-full rounded-xl border border-input bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
             </div>
+            <ActionError message={error} />
             <div className="flex flex-wrap justify-end gap-2">
               <Dialog.Close render={<Button variant="outline" className="min-h-11" disabled={saving} />}>Quay lại</Dialog.Close>
               <Button type="submit" variant="destructive" className="min-h-11"

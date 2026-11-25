@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Copy, Download, Eye, EyeOff, KeyRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
 import { toast } from '@/stores/useToastStore';
 import type { IssuedAccountCredential } from '@/types/auth.types';
 
 function CredentialPassword({ value }: { value: string }) {
   const [visible, setVisible] = useState(false);
-  return <div className="flex items-center gap-1">
+  const [copyError, setCopyError] = useState<string>();
+  return <div className="flex flex-wrap items-center gap-1">
     <code className="min-w-40 whitespace-pre">{visible ? value : '••••••••••••••••'}</code>
     <Button type="button" variant="ghost" size="icon" aria-label={visible ? 'Ẩn mật khẩu tạm' : 'Hiện mật khẩu tạm'}
       aria-pressed={visible} onClick={() => setVisible(!visible)}>{visible ? <EyeOff /> : <Eye />}</Button>
     <Button type="button" variant="ghost" size="icon" aria-label="Sao chép mật khẩu tạm" onClick={async () => {
+      setCopyError(undefined);
       try { await navigator.clipboard.writeText(value); toast.success('Đã sao chép mật khẩu tạm.'); }
-      catch { toast.error('Không thể sao chép. Hãy tải Excel hoặc hiện mật khẩu để sao chép.'); }
+      catch { setCopyError('Không thể sao chép. Hãy tải Excel hoặc hiện mật khẩu để sao chép.'); }
     }}><Copy /></Button>
+    <ActionError className="basis-full" message={copyError} />
   </div>;
 }
 
@@ -21,6 +25,7 @@ export function CredentialHandoff({ credentials, onClose }: {
   credentials: readonly IssuedAccountCredential[]; onClose: () => void;
 }) {
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string>();
   return <section aria-labelledby="credential-handoff-title" className="space-y-4 rounded-2xl border border-success/30 bg-card p-4 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -44,11 +49,13 @@ export function CredentialHandoff({ credentials, onClose }: {
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">Người dùng phải đổi mật khẩu tạm khi đăng nhập.</p>
       <Button type="button" disabled={downloading} onClick={async () => {
+        setDownloadError(undefined);
         setDownloading(true);
         try { const { downloadCredentialWorkbook } = await import('../services/credentialWorkbook'); downloadCredentialWorkbook(credentials); }
-        catch { toast.error('Không thể tạo Excel. Danh sách vẫn còn ở đây, hãy thử lại.'); }
+        catch { setDownloadError('Không thể tạo Excel. Hãy thử lại.'); }
         finally { setDownloading(false); }
       }}><Download aria-hidden="true" />{downloading ? 'Đang tạo Excel…' : 'Tải Excel tài khoản và mật khẩu tạm'}</Button>
     </div>
+    <ActionError message={downloadError} />
   </section>;
 }

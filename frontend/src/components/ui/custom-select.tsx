@@ -13,6 +13,8 @@ export interface CustomSelectOption {
 
 interface CustomSelectProps {
   id?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   value: string;
   onChange: (value: string) => void;
   options: CustomSelectOption[];
@@ -25,6 +27,8 @@ interface CustomSelectProps {
 
 export function CustomSelect({
   id,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
   value,
   onChange,
   options,
@@ -100,6 +104,8 @@ export function CustomSelect({
       <button
         type="button"
         id={id}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={`w-full min-h-[42px] px-3.5 py-2 flex items-center justify-between gap-2 text-xs rounded-xl border transition-all text-left cursor-pointer ${

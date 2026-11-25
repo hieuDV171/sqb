@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Loader2, MessageSquare, Shield, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,8 +54,7 @@ export function FriendsPage() {
         (key) => queryClient.invalidateQueries({ queryKey: [key] }),
       ));
     },
-    onError: (error, { action }) => {
-      toast.error(error.message || 'Không thể hoàn tất thao tác. Hãy thử lại.');
+    onError: (_error, { action }) => {
       if (action === 'accept' || action === 'decline' || action === 'cancel') {
         for (const key of ['myFriends', 'receivedRequests', 'sentRequests', 'userProfile']) {
           void queryClient.invalidateQueries({ queryKey: [key] });
@@ -124,6 +125,7 @@ export function FriendsPage() {
           <p className="text-sm text-muted-foreground">Xem bạn bè và quản lý lời mời kết bạn.</p>
         </div>
         <Button nativeButton={false} variant="outline" render={<Link to="/blocked-users" />}><Shield aria-hidden="true" /> Danh sách chặn</Button>
+        {mutation.isError && mutation.variables?.action !== 'unfriend' && <ActionError message={getActionErrorMessage(mutation.error, 'Không thể hoàn tất thao tác. Hãy thử lại.')} />}
       </header>
       <nav aria-label="Danh sách kết nối" className="flex flex-wrap gap-2">
         {tabs.map((tab) => (
@@ -145,14 +147,15 @@ export function FriendsPage() {
         })}
       </ConnectionList>
 
-      <AlertDialog.Root open={Boolean(confirm)} onOpenChange={(open) => { if (!open && !mutation.isPending) setConfirm(undefined); }}>
+      <AlertDialog.Root open={Boolean(confirm)} onOpenChange={(open) => { if (!open && !mutation.isPending) { mutation.reset(); setConfirm(undefined); } }}>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-foreground/45 dark:bg-black/65" />
           <AlertDialog.Popup className="fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xl">
             <AlertDialog.Title className="wrap-break-word text-lg font-semibold">Hủy kết bạn với {confirm?.name}?</AlertDialog.Title>
             <AlertDialog.Description className="text-sm text-muted-foreground">Bạn có thể gửi lời mời kết bạn lại sau.</AlertDialog.Description>
+            {mutation.isError && mutation.variables?.action === 'unfriend' && mutation.variables.id === confirm?.id && <ActionError message={getActionErrorMessage(mutation.error, 'Không thể hủy kết bạn. Hãy thử lại.')} />}
             <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" disabled={mutation.isPending} onClick={() => setConfirm(undefined)}>Quay lại</Button>
+              <Button variant="outline" disabled={mutation.isPending} onClick={() => { mutation.reset(); setConfirm(undefined); }}>Quay lại</Button>
               <Button variant="destructive" disabled={!confirm || mutation.isPending}
                 onClick={() => { if (confirm) mutation.mutate({ action: 'unfriend', id: confirm.id }); }}>
                 {mutation.isPending ? 'Đang hủy…' : 'Hủy kết bạn'}

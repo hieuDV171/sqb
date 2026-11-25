@@ -413,12 +413,6 @@ export function AdminUsersPage() {
           "Tạo tài khoản thành công"
         );
       }
-      if (res.data.totalFailed > 0) {
-        toast.warning(
-          `Có ${res.data.totalFailed} tài khoản bị lỗi. Vui lòng xem danh sách chi tiết.`,
-          "Một số dòng bị lỗi"
-        );
-      }
     } catch (err) {
       setBulkError(errorMessage(err, "Tạo tài khoản thất bại."));
     } finally {

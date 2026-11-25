@@ -4,7 +4,6 @@ import type {
   SavedAndTrendingSearchesResponseDto,
   SearchType,
 } from '../types/search.types';
-import { toast } from '@/stores/useToastStore';
 
 export const SEARCH_KEYS = {
   all: ['search'] as const,
@@ -100,7 +99,6 @@ export function useDeleteSavedSearch() {
       if (context?.previousData) {
         queryClient.setQueryData(SEARCH_KEYS.savedAndTrending(), context.previousData);
       }
-      toast.error('Không thể xóa từ khóa tìm kiếm. Vui lòng kiểm tra kết nối mạng!');
     },
     onSettled: () => {
       // 5. Luôn làm mới lại dữ liệu từ server sau khi hoàn tất

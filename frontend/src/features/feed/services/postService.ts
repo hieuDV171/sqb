@@ -51,7 +51,6 @@ export const postService = {
     const response = await axiosClient.get<unknown, GlobalResponse<CursorResponse<ApiPost<PostResponseDto>>>>('/posts/me', {
       params: { after, limit },
       signal,
-      skipToast: true,
     });
     return { ...response, data: { ...response.data, items: response.data.items.map(normalizeMedia) } };
   },
@@ -71,7 +70,6 @@ export const postService = {
       {
         params: { after, limit },
         signal,
-        skipToast: true,
       }
     );
     return { ...response, data: { ...response.data, items: response.data.items.map(normalizeMedia) } };
@@ -83,7 +81,6 @@ export const postService = {
    */
   getPostById: async (id: number): Promise<GlobalResponse<PostResponseDto>> => {
     const response = await axiosClient.get<unknown, GlobalResponse<ApiPost<PostResponseDto>>>(`/posts/${id}`, {
-      skipToast: true,
     });
     return { ...response, data: normalizeMedia(response.data) };
   },
@@ -113,7 +110,6 @@ export const postService = {
     return (await axiosClient.put<GlobalResponse<void>>(
       `/posts/${id}/lecturer-notes`,
       data,
-      { skipToast: true },
     )) as unknown as GlobalResponse<void>;
   },
 

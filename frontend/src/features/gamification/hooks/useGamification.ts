@@ -1,4 +1,3 @@
-import { getResponseErrorMessage } from '@/lib/errorMessage';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gamificationService } from '@/features/gamification';
 import type {
@@ -105,10 +104,6 @@ export function useDailyCheckIn() {
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.myBadges() });
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.shop() });
     },
-    onError: (err: unknown) => {
-      const msg = getResponseErrorMessage(err) ?? 'Điểm danh thất bại. Vui lòng thử lại!';
-      toast.error(msg);
-    },
   });
 }
 
@@ -214,9 +209,6 @@ export function useBuyCosmetic() {
         queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.inventory() }),
       ]);
     },
-    onError: (err: unknown) => {
-      toast.error(getResponseErrorMessage(err) ?? 'Không thể mua vật phẩm. Vui lòng kiểm tra số dư xu!');
-    },
   });
 }
 
@@ -269,14 +261,13 @@ export function useEquipCosmetic() {
 
       return { previousQueries };
     },
-    onError: (err: unknown, _vars, context) => {
+    onError: (_error, _vars, context) => {
       // Rollback về snapshot ban đầu
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, oldData]) => {
           queryClient.setQueryData(queryKey, oldData);
         });
       }
-      toast.error(getResponseErrorMessage(err) ?? 'Không thể trang bị vật phẩm này.');
     },
     onSuccess: (res) => {
       toast.success(res.message || 'Trang bị thành công!');
@@ -325,14 +316,13 @@ export function useUnequipCosmetic() {
 
       return { previousQueries };
     },
-    onError: (err: unknown, _vars, context) => {
+    onError: (_error, _vars, context) => {
       // Rollback về snapshot ban đầu
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, oldData]) => {
           queryClient.setQueryData(queryKey, oldData);
         });
       }
-      toast.error(getResponseErrorMessage(err) ?? 'Không thể gỡ trang bị này.');
     },
     onSuccess: (res) => {
       toast.success(res.message || 'Đã tháo trang bị!');
@@ -371,9 +361,6 @@ export function usePredictGame1() {
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.game1Classes() });
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.myPredictions() });
     },
-    onError: (err: unknown) => {
-      toast.error(getResponseErrorMessage(err) ?? 'Không thể đặt dự đoán cho lớp này.');
-    },
   });
 }
 
@@ -385,9 +372,6 @@ export function usePredictGame2() {
     onSuccess: () => {
       toast.success('Đặt dự đoán Game 2 thành công!');
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.myPredictions() });
-    },
-    onError: (err: unknown) => {
-      toast.error(getResponseErrorMessage(err) ?? 'Không thể đặt dự đoán Game 2.');
     },
   });
 }
@@ -425,9 +409,6 @@ export function useSubmitGame6() {
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.activeGame6() });
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.myPredictions() });
     },
-    onError: (err: unknown) => {
-      toast.error(getResponseErrorMessage(err) ?? 'Không thể nộp dự đoán Game 6.');
-    },
   });
 }
 
@@ -458,9 +439,6 @@ export function useReviewErrorHunter() {
     onSuccess: () => {
       toast.success('Đã thẩm định báo lỗi thành công!');
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_KEYS.leaderboard() });
-    },
-    onError: (err: unknown) => {
-      toast.error(getResponseErrorMessage(err) ?? 'Lỗi khi thẩm định báo lỗi.');
     },
   });
 }

@@ -1,6 +1,8 @@
 import { useState, type SubmitEvent } from 'react';
 import { BookOpen, Flag, Send, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,6 +97,7 @@ export function ErrorHunterTab() {
             <Button type="submit" disabled={reviewError.isPending}>
               <Send aria-hidden="true" /> {reviewError.isPending ? 'Đang gửi…' : 'Gửi kết quả thẩm định'}
             </Button>
+            {reviewError.isError && <ActionError message={getActionErrorMessage(reviewError.error, 'Không thể thẩm định báo lỗi. Hãy thử lại.')} />}
           </form>
         </section>
       )}

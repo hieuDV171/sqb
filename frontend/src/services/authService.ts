@@ -10,7 +10,6 @@ export const authService = {
   login: async (data: LoginRequest): Promise<GlobalResponse<AuthResponse>> => {
     await pendingLogout?.catch(() => undefined);
     return await withAuthSessionLock(() => axiosClient.post<GlobalResponse<AuthResponse>>('/auth/login', data, {
-      skipToast: true,
       skipAuthRefresh: true,
     })) as unknown as GlobalResponse<AuthResponse>;
   },

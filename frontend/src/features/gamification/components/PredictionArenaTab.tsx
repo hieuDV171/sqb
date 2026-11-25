@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StudySubjectSelect } from '@/features/session/components/StudySubjectSelect';
 import { cn } from '@/lib/utils';
-import { toast } from '@/stores/useToastStore';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import {
   useActiveGame6Session,
   useGame1Classes,
@@ -215,7 +216,6 @@ export function PredictionArenaTab() {
           setShowGame4Duplicate(true);
           return;
         }
-        toast.error('Không thể đặt dự đoán Game 4.');
       },
     });
   }
@@ -266,6 +266,9 @@ export function PredictionArenaTab() {
             <form onSubmit={submitGame1} className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,20rem)_auto] sm:items-end sm:justify-start">
               <NumberField id="game1-count" label="Số sinh viên dự đoán" min={1} max={100} value={game1Count} onChange={setGame1Count} />
               <Button type="submit" disabled={predictGame1.isPending}><Send aria-hidden="true" />{predictGame1.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
+              {predictGame1.isError && predictGame1.variables?.courseClassId === selectedClass.courseClassId && (
+                <ActionError className="sm:col-span-2" message={getActionErrorMessage(predictGame1.error, 'Không thể đặt dự đoán cho lớp này.')} />
+              )}
             </form>
           )}
         </GamePanel>
@@ -311,6 +314,11 @@ export function PredictionArenaTab() {
                 <Button ref={game4SubmitButton} type="submit" disabled={!game4Subject || predictGame4.isPending}>
                   <Send aria-hidden="true" />{predictGame4.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}
                 </Button>
+                {predictGame4.isError && predictGame4.variables?.subjectId === game4Subject?.subjectId
+                  && !(typeof predictGame4.error === 'object' && predictGame4.error !== null
+                    && 'code' in predictGame4.error && predictGame4.error.code === '2201') && (
+                  <ActionError message={getActionErrorMessage(predictGame4.error, 'Không thể đặt dự đoán cho môn này.')} />
+                )}
               </form>
             )}
           <AlertDialog.Root open={showGame4Duplicate} onOpenChange={setShowGame4Duplicate}>
@@ -365,6 +373,9 @@ export function PredictionArenaTab() {
                     );
                   })}
                 </div>
+                {submitGame6.isError && submitGame6.variables?.minigameSessionId === game6.sessionId && (
+                  <ActionError message={getActionErrorMessage(submitGame6.error, 'Không thể gửi dự đoán. Hãy thử lại.')} />
+                )}
                 <Button type="button" disabled={submitGame6.isPending || selectedLlmQuestionIds.length === 0}
                   onClick={() => submitGame6.mutate({ minigameSessionId: game6.sessionId, selectedLlmQuestionIds })}>
                   <Send aria-hidden="true" />{submitGame6.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}

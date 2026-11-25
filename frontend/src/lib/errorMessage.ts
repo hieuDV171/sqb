@@ -16,6 +16,15 @@ export function getResponseErrorMessage(error: unknown): string | undefined {
   return response && 'data' in response ? getErrorMessage(response.data) : undefined;
 }
 
+export function getActionErrorMessage(error: unknown, fallback: string): string {
+  const responseMessage = getResponseErrorMessage(error);
+  if (responseMessage) return responseMessage;
+  if (typeof error === 'object' && error !== null && 'isAxiosError' in error && error.isAxiosError) {
+    return fallback;
+  }
+  return getErrorMessage(error) ?? fallback;
+}
+
 export function getHttpStatus(error: unknown): number | undefined {
   const response = getErrorResponse(error);
   if (response && 'status' in response && typeof response.status === 'number' && response.status !== 0) {

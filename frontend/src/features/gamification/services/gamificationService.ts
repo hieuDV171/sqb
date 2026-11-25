@@ -170,10 +170,10 @@ export const gamificationService = {
 
   searchBadgeAccounts: (badgeId: number, holders: boolean, query: string, after?: number, signal?: AbortSignal) =>
     axiosClient.get<unknown, GlobalResponse<CursorResponse<BadgeAccount>>>(`/admin/badges/${badgeId}/accounts`,
-      { params: { holders, query, after }, signal, skipToast: true }),
+      { params: { holders, query, after }, signal }),
 
   revokeBadge: (badgeId: number, userIds: number[]) =>
-    axiosClient.post<unknown, GlobalResponse<void>>(`/admin/badges/${badgeId}/revoke`, { userIds }, { skipToast: true }),
+    axiosClient.post<unknown, GlobalResponse<void>>(`/admin/badges/${badgeId}/revoke`, { userIds }),
 
   // ==========================================
   // 3. COSMETICS & SHOP
@@ -278,8 +278,7 @@ export const gamificationService = {
   predictGame4: async (data: Game4PredictionRequest): Promise<GlobalResponse<GamePredictionResponse>> => {
     return (await axiosClient.post<GlobalResponse<GamePredictionResponse>>(
       '/games/prediction/bank-size',
-      data,
-      { skipToast: true }
+      data
     )) as unknown as GlobalResponse<GamePredictionResponse>;
   },
 

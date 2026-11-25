@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { CheckCheck, Settings, ArrowRight, Loader2, Inbox } from 'lucide-react';
 import { useNotifications, useMarkAllAsRead, useNotificationClock } from '../hooks/useNotification';
 import { NotificationItem } from './NotificationItem';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { PushSettingsModal } from './PushSettingsModal';
@@ -67,6 +69,9 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             </Button>
           </div>
         </div>
+        {markAllMutation.isError && (
+          <ActionError className="px-3" message={getActionErrorMessage(markAllMutation.error, 'Không thể đánh dấu tất cả là đã đọc. Hãy thử lại.')} />
+        )}
 
         {/* Notification List */}
         <div className="max-h-[min(24rem,50dvh)] space-y-1 overflow-y-auto overscroll-contain p-1">

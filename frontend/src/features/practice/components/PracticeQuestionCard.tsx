@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { ArrowLeft, ArrowRight, BarChart3, Check, Heart, Lightbulb, Loader2, Maximize2, MessageSquare, Star, X } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { PracticeQuestionDto } from '../types/practice.types';
@@ -21,13 +22,14 @@ interface PracticeQuestionCardProps {
   onOpenDiscussion: (questionId: number, code?: string) => void;
   localAnswerResult?: { isCorrect: boolean; selected: string[] };
   isUpdatingReaction: boolean;
+  reactionError?: string;
   onToggleReaction: () => void;
 }
 
 export function PracticeQuestionCard({
   question, selectedOptions, onToggleOption, onSubmitAnswer, isSubmittingAnswer, answerError,
   onPrevQuestion, onNextQuestion, hasPrev, hasNext, onOpenStats, onOpenRate, onOpenDiscussion, localAnswerResult,
-  isUpdatingReaction, onToggleReaction,
+  isUpdatingReaction, reactionError, onToggleReaction,
 }: PracticeQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const { questionId, questionCode, hiddenFields } = question;
@@ -59,6 +61,7 @@ export function PracticeQuestionCard({
           </span>
           {questionCode && <span className="font-mono">#{questionCode}</span>}
         </p>
+        <ActionError message={reactionError} />
         <div role="group" aria-label="Tương tác với câu hỏi" className="flex flex-wrap gap-2">
           <Button variant="ghost" className="min-h-11 min-w-11 px-2" aria-label="Thích câu hỏi" aria-pressed={reacted} disabled={isUpdatingReaction} onClick={onToggleReaction}>
             <Heart aria-hidden="true" className={reacted ? 'fill-current text-destructive' : undefined} />

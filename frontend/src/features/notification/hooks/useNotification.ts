@@ -120,7 +120,7 @@ export function useMarkAsRead() {
       if (context?.previousUnreadCount !== undefined) {
         setGamificationUnread(context.previousUnreadCount);
       }
-      toast.error('Không thể đánh dấu đã đọc thông báo.');
+      console.warn('[Notifications] Không thể đánh dấu đã đọc trong nền.');
     },
     onSuccess: (res, notificationId) => {
       if (!res.data) return;
@@ -214,7 +214,6 @@ export function useMarkAllAsRead() {
       if (context?.previousUnreadCount !== undefined) {
         setGamificationUnread(context.previousUnreadCount);
       }
-      toast.error('Không thể đánh dấu đọc tất cả.');
     },
     onSuccess: () => {
       toast.success('Đã đánh dấu đọc tất cả thông báo');
@@ -246,9 +245,6 @@ export function useUpdatePushSettings() {
     onSuccess: () => {
       toast.success('Cập nhật cài đặt thông báo thành công');
       queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.pushSettings() });
-    },
-    onError: () => {
-      toast.error('Lỗi khi cập nhật cài đặt thông báo');
     },
   });
 }

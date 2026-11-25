@@ -3,6 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { reactService, type ReactionType } from '@/features/feed/services/reactService';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { updatePracticeQuestion } from '@/features/practice/hooks/updatePracticeQuestion';
 import {
   ArrowLeft,
@@ -24,7 +25,6 @@ import {
 import { ErrorState } from '@/components/ui/error-state';
 import { SessionDiscussionPanel } from '@/features/practice/components/SessionDiscussionPanel';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/stores/useToastStore';
 import { StudyHeader } from './StudyHeader';
 
 export function PracticeWorkspacePage() {
@@ -77,7 +77,6 @@ function PracticeWorkspace({ numericSessionId, initialQuestionId, isSessionDiscu
     mutationFn: async ({ questionId, reactionType }: { questionId: number; reactionType: ReactionType }) => {
       const { data } = await reactService.toggleReact(
         { targetType: 'QUESTION', targetId: questionId, reactionType },
-        { skipToast: true },
       );
       if (!data) throw new Error('Không thể cập nhật lượt thích câu hỏi.');
       return data;
@@ -105,7 +104,6 @@ function PracticeWorkspace({ numericSessionId, initialQuestionId, isSessionDiscu
           myInteraction: { ...question.myInteraction, myReaction: previous.myReaction },
         }));
       }
-      toast.error('Không thể cập nhật lượt thích câu hỏi.');
     },
     onSuccess: async (data, { questionId }) => {
       await queryClient.cancelQueries({ queryKey: ['practiceSession', numericSessionId], exact: true });
@@ -292,6 +290,8 @@ function PracticeWorkspace({ numericSessionId, initialQuestionId, isSessionDiscu
               onOpenDiscussion={(id, code) => setDiscussionTarget({ id, code })}
               localAnswerResult={userAnswersRecord[currentQuestion.questionId]}
               isUpdatingReaction={reactionMutation.isPending}
+              reactionError={reactionMutation.isError && reactionMutation.variables?.questionId === currentQuestion.questionId
+                ? getActionErrorMessage(reactionMutation.error, 'Không thể cập nhật lượt thích câu hỏi.') : undefined}
               onToggleReaction={() => reactionMutation.mutate({
                 questionId: currentQuestion.questionId,
                 reactionType: currentQuestion.myInteraction.myReaction ?? 'LIKE',

@@ -4,6 +4,8 @@ import React, { useRef, useState } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useComments, useCommentReplies } from '../hooks/useComments';
 import { mediaService } from '@/services/mediaService';
+import { ActionError } from '@/components/ui/action-error';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -36,10 +38,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
     isCreating,
     createComment,
     deleteComment,
+    deleteError,
+    failedDeleteId,
     commentsQuery,
   } = useComments(targetType, targetId);
 
   const commentsRoot = useRef<HTMLDivElement>(null);
+  const [commentError, setCommentError] = useState<string>();
+  const [replyError, setReplyError] = useState<{ id: number; message: string }>();
   const [inputContent, setInputContent] = useState('');
   const [replyingToCommentId, setReplyingToCommentId] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState('');
@@ -49,10 +55,13 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCommentError(undefined);
     setIsUploadingMedia(true);
     try {
       const { publicUrl } = await mediaService.uploadViaPresign(file, 'POST');
       setCommentMediaUrl(publicUrl);
+    } catch (error) {
+      setCommentError(getActionErrorMessage(error, 'Không thể tải ảnh bình luận lên.'));
     } finally {
       setIsUploadingMedia(false);
     }
@@ -63,11 +72,12 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
     if (isCreating || (!inputContent.trim() && !commentMediaUrl)) return;
 
     try {
+      setCommentError(undefined);
       await createComment({ content: inputContent.trim(), mediaUrl: commentMediaUrl || undefined });
       setInputContent('');
       setCommentMediaUrl(null);
-    } catch {
-      // The mutation displays the error. Keep the draft for a retry.
+    } catch (failure) {
+      setCommentError(getActionErrorMessage(failure, 'Không thể đăng bình luận. Hãy thử lại.'));
     }
   };
 
@@ -75,11 +85,12 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
     if (isCreating || !replyContent.trim()) return;
 
     try {
+      setReplyError(undefined);
       await createComment({ content: replyContent.trim(), parentCommentId });
       setReplyContent('');
       setReplyingToCommentId(null);
-    } catch {
-      // Keep the reply for a retry.
+    } catch (failure) {
+      setReplyError({ id: parentCommentId, message: getActionErrorMessage(failure, 'Không thể gửi phản hồi. Hãy thử lại.') });
     }
   };
 
@@ -171,6 +182,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
               </div>
           </form>
 
+          <ActionError message={commentError} className="mb-4" />
           {/* 2. Comments List */}
           {isLoading ? (
               <div className="space-y-4 py-2" role="status">
@@ -282,6 +294,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                   <EditComment comment={comment} />
                                   <ReportCommentAction comment={comment} />
 
+                                  {failedDeleteId === comment.commentId && (
+                                    <ActionError message={getActionErrorMessage(deleteError, 'Không thể xóa bình luận. Hãy thử lại.')} />
+                                  )}
                                   {/* Reply Input Box */}
                                   {replyingToCommentId ===
                                       comment.commentId && (
@@ -323,6 +338,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                                       </div>
                                   )}
 
+                                  {replyingToCommentId === comment.commentId && replyError?.id === comment.commentId && (
+                                    <ActionError message={replyError.message} />
+                                  )}
                                   <CommentReplies key={comment.commentId} comment={comment}
                                     targetType={targetType} targetId={targetId} />
                               </div>
