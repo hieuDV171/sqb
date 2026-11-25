@@ -59,6 +59,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
 
     private record Snapshot(List<Candidate> submitted, List<Candidate> bank) {}
     private record Match(DuplicateWarning warning, boolean sameTopic) {}
+    private record StoredVectors(int submitted, int bank) {}
 
     @Async
     @TransactionalEventListener
@@ -88,6 +89,7 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
     }
 
     private void process(Long sessionId) {
+        long started = System.nanoTime();
         Instant now = Instant.now();
         Snapshot snapshot = transaction.execute(_ -> load(sessionId, now));
         if (snapshot == null) return;
@@ -95,14 +97,21 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
         List<Candidate> candidates = Stream.concat(snapshot.submitted().stream(), snapshot.bank().stream()).toList();
         Map<Long, float[]> vectors = new HashMap<>();
         List<Candidate> missing = candidates.stream().filter(candidate -> !validVector(candidate.embedding())).toList();
+        long embeddingStarted = System.nanoTime();
         for (int start = 0; start < missing.size(); start += EMBEDDING_BATCH_SIZE) {
             List<Candidate> batch = missing.subList(start, Math.min(start + EMBEDDING_BATCH_SIZE, missing.size()));
             List<float[]> generated = sidecar.getBatchTextEmbeddings(batch.stream().map(Candidate::embeddingText).toList());
-            if (generated == null || generated.size() != batch.size()) break;
+            if (generated == null || generated.size() != batch.size()) {
+                log.warn("Duplicate check incomplete embedding batch for session {}: requested={}, returned={}",
+                        sessionId, batch.size(), generated == null ? 0 : generated.size());
+                break;
+            }
             for (int index = 0; index < generated.size(); index++) {
                 if (validVector(generated.get(index))) vectors.put(batch.get(index).id(), generated.get(index));
             }
         }
+        log.info("Duplicate check embedding phase for session {}: needed={}, accepted={}, durationMs={}",
+                sessionId, missing.size(), vectors.size(), Duration.ofNanos(System.nanoTime() - embeddingStarted).toMillis());
 
         var hashes = new HashMap<String, Long>();
         var failedImages = new HashSet<String>();
@@ -128,8 +137,14 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
 
         boolean textFinished = vectors.size() == missing.size();
         Map<Long, List<DuplicateWarning>> warnings = findMatches(snapshot, vectors, hashes);
-        transaction.executeWithoutResult(_ -> storeResults(sessionId, snapshot, warnings, vectors, hashes,
+        StoredVectors stored = transaction.execute(_ -> storeResults(sessionId, snapshot, warnings, vectors, hashes,
                 failedImages, textFinished, Instant.now()));
+        if (stored != null) {
+            log.info("Duplicate check stored results for session {}: submittedVectors={}, bankVectors={}, "
+                            + "failedImages={}, durationMs={}",
+                    sessionId, stored.submitted(), stored.bank(), failedImages.size(),
+                    Duration.ofNanos(System.nanoTime() - started).toMillis());
+        }
     }
 
     private Snapshot load(Long sessionId, Instant now) {
@@ -186,18 +201,26 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
         }
     }
 
-    private void storeResults(Long sessionId, Snapshot snapshot, Map<Long, List<DuplicateWarning>> warnings,
+    private StoredVectors storeResults(Long sessionId, Snapshot snapshot, Map<Long, List<DuplicateWarning>> warnings,
             Map<Long, float[]> vectors, Map<String, Long> hashes, Set<String> failedImages, boolean textFinished,
             Instant now) {
-        if (sessions.lockReviewSessions(List.of(sessionId), false).isEmpty()) return;
+        if (sessions.lockReviewSessions(List.of(sessionId), false).isEmpty()) {
+            log.warn("Duplicate check skipped results for session {}: session no longer exists", sessionId);
+            return null;
+        }
         List<Question> current = questions.findBySessionId(sessionId);
         Map<Long, Long> expectedVersions = new HashMap<>();
         snapshot.submitted().forEach(candidate -> expectedVersions.put(candidate.id(), candidate.version()));
         var active = current.stream().filter(question -> question.getStatus() != QuestionStatus.REJECTED).toList();
         if (active.size() != expectedVersions.size() || active.stream().anyMatch(question ->
                 !expectedVersions.containsKey(question.getId())
-                || !Objects.equals(expectedVersions.get(question.getId()), question.getVersion()))) return;
+                || !Objects.equals(expectedVersions.get(question.getId()), question.getVersion()))) {
+            log.warn("Duplicate check skipped results for session {}: questions changed during processing "
+                            + "(snapshotCount={}, currentCount={})", sessionId, expectedVersions.size(), active.size());
+            return null;
+        }
 
+        int bankVectorCount = 0;
         var bankIds = snapshot.bank().stream().map(Candidate::id)
                 .filter(vectors::containsKey).toList();
         if (!bankIds.isEmpty()) {
@@ -206,12 +229,17 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
             for (Question question : questions.findAllById(bankIds)) {
                 if (Objects.equals(bankVersions.get(question.getId()), question.getVersion())) {
                     question.setTextEmbedding(vectors.get(question.getId()));
+                    bankVectorCount++;
                 }
             }
         }
 
+        int submittedVectorCount = 0;
         for (Question question : active) {
-            if (vectors.containsKey(question.getId())) question.setTextEmbedding(vectors.get(question.getId()));
+            if (vectors.containsKey(question.getId())) {
+                question.setTextEmbedding(vectors.get(question.getId()));
+                submittedVectorCount++;
+            }
             if (!warnings.containsKey(question.getId()) || question.getStatus() != QuestionStatus.PENDING) continue;
             List<DuplicateWarning> matches = warnings.get(question.getId());
             question.setDuplicateWarnings(matches);
@@ -246,5 +274,6 @@ public class DuplicateDetectionServiceImpl implements DuplicateDetectionService 
                 }
             }
         }
+        return new StoredVectors(submittedVectorCount, bankVectorCount);
     }
 }

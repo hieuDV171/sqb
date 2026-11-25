@@ -21,14 +21,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,11 +57,6 @@ class DuplicateDetectionServiceImplTest {
             TransactionCallback<?> action = invocation.getArgument(0);
             return action.doInTransaction(null);
         });
-        doAnswer(invocation -> {
-            Consumer<TransactionStatus> action = invocation.getArgument(0);
-            action.accept(null);
-            return null;
-        }).when(transaction).executeWithoutResult(any());
         when(sessions.findByIdFetchCourseClassAndQuestions(10L)).thenReturn(Optional.of(session));
         when(sessions.lockReviewSessions(List.of(10L), false)).thenReturn(List.of(10L));
         when(questions.findBySessionId(10L)).thenReturn(List.of(input));
