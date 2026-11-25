@@ -26,7 +26,7 @@ public record ProfileResponse(
         String coverUrl,
         @Schema(description = "URL khung avatar", example = "https://media.sqb.edu.vn/frames/cyber.webp")
         String frameUrl,
-        @Schema(description = "Giới tính", example = "MALE")
+        @Schema(description = "Giới tính. PREFER_NOT_TO_SAY chỉ trả về khi xem hồ sơ của chính mình.", example = "MALE")
         Gender gender,
         @Schema(description = "Ngày tháng năm sinh (chỉ hiển thị khi xem chính mình)", example = "2004-08-05")
         LocalDate dateOfBirth,

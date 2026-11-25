@@ -28,7 +28,7 @@ public record UpdateProfileRequest(
         @Schema(description = "Múi giờ người dùng", example = "Asia/Ho_Chi_Minh")
         String timezone,
 
-        @Schema(description = "Giới tính (chỉ nhận MALE hoặc FEMALE)", allowableValues = {"MALE", "FEMALE"}, example = "MALE")
+        @Schema(description = "Giới tính do người dùng chọn. PREFER_NOT_TO_SAY giữ lựa chọn này riêng tư.", example = "MALE")
         Gender gender,
 
         @Schema(description = "Ngày tháng năm sinh", example = "2004-08-05")

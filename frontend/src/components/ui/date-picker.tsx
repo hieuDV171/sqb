@@ -37,14 +37,17 @@ type DatePickerProps = {
   disabled?: boolean;
   allowClear?: boolean;
   allowYearJump?: boolean;
+  pastOnly?: boolean;
+  className?: string;
 };
 
-export function DatePicker({ id, value, onChange, disabled, allowClear, allowYearJump }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, disabled, allowClear, allowYearJump, pastOnly, className }: DatePickerProps) {
   const titleId = useId();
   const activeDay = useRef<HTMLButtonElement>(null);
   const localNow = new Date();
   const today = calendarDate(localNow.getFullYear(), localNow.getMonth(), localNow.getDate());
   const todayIso = isoDate(today);
+  const latest = pastOnly ? calendarDate(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 1) : null;
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(today);
   const [yearInput, setYearInput] = useState<string | null>(null);
@@ -54,7 +57,9 @@ export function DatePicker({ id, value, onChange, disabled, allowClear, allowYea
   const firstDay = mondayIndex(monthStart);
   const dayCount = calendarDate(year, month + 1, 0).getUTCDate();
   const targetYear = Number(yearInput);
-  const validTargetYear = Number.isInteger(targetYear) && targetYear >= 1 && targetYear <= 9999;
+  const lastYear = latest?.getUTCFullYear() ?? 9999;
+  const lastMonth = latest?.getUTCMonth() ?? 11;
+  const validTargetYear = Number.isInteger(targetYear) && targetYear >= 1 && targetYear <= lastYear;
 
   function choose(next: string) {
     onChange(next);
@@ -63,7 +68,7 @@ export function DatePicker({ id, value, onChange, disabled, allowClear, allowYea
 
   function move(next: Date, focusDay = false) {
     if (next.getUTCFullYear() < 1 || next.getUTCFullYear() > 9999) return;
-    setCursor(next);
+    setCursor(latest && next > latest ? latest : next);
     if (focusDay) requestAnimationFrame(() => activeDay.current?.focus());
   }
 
@@ -96,13 +101,13 @@ export function DatePicker({ id, value, onChange, disabled, allowClear, allowYea
   return (
     <Popover.Root open={open} onOpenChange={(next) => {
       if (next) {
-        setCursor(value ? new Date(value + 'T00:00:00Z') : today);
+        move(value ? new Date(value + 'T00:00:00Z') : latest ?? today);
         setYearInput(null);
       }
       setOpen(next);
     }}>
       <Popover.Trigger render={<Button id={id} type="button" variant="outline" disabled={disabled}
-        className={cn('w-full justify-between border-input bg-card', !value && 'text-muted-foreground')} />}>
+        className={cn('w-full justify-between border-input bg-card', !value && 'text-muted-foreground', className)} />}>
         {value ? value.split('-').reverse().join('/') : 'Chọn ngày'}
         <CalendarDays aria-hidden="true" className="text-academic" />
       </Popover.Trigger>
@@ -114,8 +119,8 @@ export function DatePicker({ id, value, onChange, disabled, allowClear, allowYea
               <Button type="button" size="icon" variant="ghost" aria-label="Năm trước" disabled={year === 1} onClick={() => move(addMonths(cursor, -12))}><ChevronsLeft aria-hidden="true" /></Button>
               <Button type="button" size="icon" variant="ghost" aria-label="Tháng trước" disabled={year === 1 && month === 0} onClick={() => move(addMonths(cursor, -1))}><ChevronLeft aria-hidden="true" /></Button>
               <p id={titleId} aria-live="polite" className="text-center text-sm font-semibold capitalize">{monthTitle.format(monthStart)}</p>
-              <Button type="button" size="icon" variant="ghost" aria-label="Tháng sau" disabled={year === 9999 && month === 11} onClick={() => move(addMonths(cursor, 1))}><ChevronRight aria-hidden="true" /></Button>
-              <Button type="button" size="icon" variant="ghost" aria-label="Năm sau" disabled={year === 9999} onClick={() => move(addMonths(cursor, 12))}><ChevronsRight aria-hidden="true" /></Button>
+              <Button type="button" size="icon" variant="ghost" aria-label="Tháng sau" disabled={year === lastYear && month === lastMonth} onClick={() => move(addMonths(cursor, 1))}><ChevronRight aria-hidden="true" /></Button>
+              <Button type="button" size="icon" variant="ghost" aria-label="Năm sau" disabled={year === lastYear} onClick={() => move(addMonths(cursor, 12))}><ChevronsRight aria-hidden="true" /></Button>
             </div>
             <div className="mt-2 grid grid-cols-7">
               {weekdays.map((day) => <span key={day} aria-hidden="true" className="py-2 text-center text-xs text-muted-foreground">{day}</span>)}
@@ -128,6 +133,7 @@ export function DatePicker({ id, value, onChange, disabled, allowClear, allowYea
                 return (
                   <Button key={iso} ref={focused ? activeDay : undefined} type="button" size="icon" variant={iso === value ? 'default' : 'ghost'}
                     aria-label={fullDate.format(date)} aria-pressed={iso === value} aria-current={isToday ? 'date' : undefined}
+                    disabled={pastOnly && iso >= todayIso}
                     tabIndex={focused ? 0 : -1} className={cn('h-11 w-full rounded-lg', isToday && iso !== value && 'bg-academic-soft text-academic')}
                     onKeyDown={(event) => onDayKeyDown(event, date)} onClick={() => choose(iso)}>
                     {index + 1}
@@ -141,7 +147,7 @@ export function DatePicker({ id, value, onChange, disabled, allowClear, allowYea
                   onClick={() => setYearInput((current) => current === null ? String(year) : null)}>Đổi năm</Button>
               )}
               {allowClear && value && <Button type="button" variant="ghost" onClick={() => choose('')}>Xóa ngày</Button>}
-              <Button type="button" variant="ghost" onClick={() => choose(todayIso)}>Hôm nay</Button>
+              {!pastOnly && <Button type="button" variant="ghost" onClick={() => choose(todayIso)}>Hôm nay</Button>}
             </div>
             {yearInput !== null && (
               <div className="mt-2 flex gap-2">

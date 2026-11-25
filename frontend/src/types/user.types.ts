@@ -10,7 +10,7 @@ export interface CursorPaginationDto {
 
 export type CursorResponse<T> = BaseCursorResponse<T>;
 
-export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
 
 export type FriendshipStatus = 'NONE' | 'PENDING' | 'ACCEPTED' | 'DECLINED';
 

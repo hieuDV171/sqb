@@ -13,6 +13,7 @@ import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.event.MediaCleanupEvent;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.user.Gender;
 import com.frozenheart.backend.core.entity.user.UserGamification;
 import com.frozenheart.backend.modules.gamification.repository.UserGamificationRepository;
 import com.frozenheart.backend.core.entity.user.UserProfile;
@@ -99,7 +100,7 @@ public class UserServiceImpl implements UserService {
                 .avatarUrl(userProfile.getAvatarUrl())
                 .coverUrl(userProfile.getCoverUrl())
                 .frameUrl(userProfile.getAvatarFrameUrl())
-                .gender(userProfile.getGender())
+                .gender(userProfile.getGender() == Gender.PREFER_NOT_TO_SAY ? null : userProfile.getGender())
                 .bio(userProfile.getBio())
                 .schoolFaculty(userProfile.getSchoolFaculty())
                 .major(userProfile.getMajor())

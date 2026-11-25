@@ -3,6 +3,8 @@ import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
+import { FilterSelect } from '@/components/ui/filter-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { mediaService } from '@/services/mediaService';
@@ -11,6 +13,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { toast } from '@/stores/useToastStore';
 import type { Gender, ProfileResponse, UpdateProfileRequest } from '@/types/user.types';
 import { AvatarWithFrame } from './AvatarWithFrame';
+import { DEFAULT_PROFILE_TIMEZONE, ProfileTimezoneSelect } from './ProfileTimezoneSelect';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -19,15 +22,21 @@ interface EditProfileModalProps {
 }
 
 const fieldClass = 'w-full rounded-xl border border-input bg-background px-3 py-2 text-sm';
+const genderOptions: { value: Gender; label: string }[] = [
+  { value: 'MALE', label: 'Nam' },
+  { value: 'FEMALE', label: 'Nữ' },
+  { value: 'OTHER', label: 'Khác' },
+  { value: 'PREFER_NOT_TO_SAY', label: 'Không muốn chia sẻ' },
+];
 
 export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalProps) {
   const queryClient = useQueryClient();
   const updateUser = useAuthStore((state) => state.updateUser);
   const [fullName, setFullName] = useState(profile.fullName ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
-  const [gender, setGender] = useState<Gender>(profile.gender ?? 'OTHER');
+  const [gender, setGender] = useState<string>(profile.gender ?? '');
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth ?? '');
-  const [timezone, setTimezone] = useState(profile.timezone ?? 'Asia/Ho_Chi_Minh');
+  const [timezone, setTimezone] = useState(profile.timezone?.trim() || DEFAULT_PROFILE_TIMEZONE);
   const [avatarUrl, setAvatarUrl] = useState<string>();
   const [coverUrl, setCoverUrl] = useState<string>();
   const [uploading, setUploading] = useState<'AVATAR' | 'COVER'>();
@@ -90,12 +99,13 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
       nameInput.current?.focus();
       return;
     }
+    const selectedGender = genderOptions.find((option) => option.value === gender)?.value;
     updateMutation.mutate({
       fullName: trimmedName,
       bio: bio.trim(),
-      gender,
-      dateOfBirth: dateOfBirth || undefined,
-      timezone: timezone.trim(),
+      gender: selectedGender !== profile.gender ? selectedGender : undefined,
+      dateOfBirth: dateOfBirth && dateOfBirth !== profile.dateOfBirth ? dateOfBirth : undefined,
+      timezone: timezone !== profile.timezone ? timezone : undefined,
       avatarUrl,
       coverUrl,
     });
@@ -149,25 +159,14 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
               <p id="profile-bio-limit" className="text-sm text-muted-foreground">{bio.length}/500 ký tự</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="profile-gender">Giới tính</Label>
-                <select id="profile-gender" value={gender} onChange={(event) => setGender(event.target.value as Gender)}
-                  className={`${fieldClass} min-h-11`}>
-                  <option value="MALE">Nam</option>
-                  <option value="FEMALE">Nữ</option>
-                  <option value="OTHER">Khác / Không công khai</option>
-                </select>
-              </div>
-              <div className="min-w-0 space-y-2">
-                <Label htmlFor="profile-birth-date">Ngày sinh</Label>
-                <Input id="profile-birth-date" type="date" value={dateOfBirth}
-                  onChange={(event) => setDateOfBirth(event.target.value)} />
+              <FilterSelect label="Giới tính" value={gender} options={genderOptions} onChange={setGender} disabled={busy} />
+              <div className="min-w-0 space-y-1.5">
+                <Label htmlFor="profile-birth-date" className="block leading-5">Ngày sinh</Label>
+                <DatePicker id="profile-birth-date" value={dateOfBirth} onChange={setDateOfBirth}
+                  disabled={busy} allowYearJump pastOnly className="min-h-11 font-normal" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="profile-timezone">Múi giờ hoạt động</Label>
-              <Input id="profile-timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} />
-            </div>
+            <ProfileTimezoneSelect value={timezone} onChange={setTimezone} disabled={busy} />
             {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
             <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Hủy</Button>

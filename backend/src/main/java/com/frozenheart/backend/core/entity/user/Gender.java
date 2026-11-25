@@ -2,5 +2,7 @@ package com.frozenheart.backend.core.entity.user;
 
 public enum Gender {
     MALE,
-    FEMALE
+    FEMALE,
+    OTHER,
+    PREFER_NOT_TO_SAY
 }

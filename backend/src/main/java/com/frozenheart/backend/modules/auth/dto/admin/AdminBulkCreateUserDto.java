@@ -37,7 +37,7 @@ public class AdminBulkCreateUserDto {
             @Schema(description = "Tên lớp sinh hoạt", example = "Khoa học máy tính 01-K69")
             String className,
 
-            @Schema(description = "Giới tính (chỉ nhận MALE hoặc FEMALE)", allowableValues = {"MALE", "FEMALE"}, example = "MALE")
+            @Schema(description = "Giới tính của người dùng, có thể bỏ trống", example = "MALE")
             Gender gender,
 
             @Schema(description = "Ngày tháng năm sinh (định dạng YYYY-MM-DD)", example = "2003-05-15")

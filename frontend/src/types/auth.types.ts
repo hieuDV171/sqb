@@ -1,3 +1,5 @@
+import type { Gender } from './user.types';
+
 export const DevicePlatform = {
     WEB: "WEB",
     IOS: "IOS",
@@ -8,7 +10,7 @@ export const DevicePlatform = {
 export type DevicePlatform = (typeof DevicePlatform)[keyof typeof DevicePlatform];
 
 export type UserRole = "STUDENT" | "LECTURER" | "ADMIN";
-export type Gender = "MALE" | "FEMALE" | "OTHER";
+export type { Gender };
 export type AuthTokenType = "ACCESS" | "ONBOARDING";
 export type AccountState = "EMAIL_VERIFICATION_REQUIRED" | "PASSWORD_CHANGE_REQUIRED" | "ACTIVE";
 
