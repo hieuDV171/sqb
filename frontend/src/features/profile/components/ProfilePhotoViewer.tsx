@@ -30,9 +30,9 @@ export function ProfilePhotoViewer({ url, label, initialAspectRatio = 1, classNa
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/75" />
         <Dialog.Popup
           initialFocus={closeButton}
-          className="fixed inset-x-3 top-1/2 z-50 mx-auto max-h-[calc(100dvh-1.5rem)] max-w-5xl -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-xl sm:p-4"
+          className="fixed inset-x-3 top-1/2 z-50 mx-auto flex max-h-[calc(100dvh-1.5rem)] max-w-5xl -translate-y-1/2 flex-col overflow-y-auto rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-xl sm:p-4"
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
             <Dialog.Title className="min-w-0 wrap-anywhere text-base font-semibold sm:text-lg">{label}</Dialog.Title>
             <Dialog.Close ref={closeButton} render={<Button variant="ghost" size="icon" className="size-11 shrink-0" />} aria-label="Đóng ảnh">
               <X aria-hidden="true" />
@@ -52,7 +52,11 @@ function PhotoContent({ url, label, initialAspectRatio }: { url: string; label: 
   const [aspectRatio, setAspectRatio] = useState(initialAspectRatio);
 
   return (
-    <div className="relative grid max-h-[calc(100dvh-9rem)] w-full place-items-center overflow-hidden rounded-xl bg-surface-subtle" style={{ aspectRatio }} aria-busy={status === 'loading'}>
+    <div
+      className={cn('relative grid min-h-0 w-full place-items-center rounded-xl bg-surface-subtle', status === 'error' && 'overflow-y-auto')}
+      style={{ aspectRatio: status === 'error' ? undefined : aspectRatio }}
+      aria-busy={status === 'loading'}
+    >
       {status === 'loading' && (
         <p role="status" className="absolute flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 aria-hidden="true" className="size-5 motion-safe:animate-spin" /> Đang tải ảnh…
@@ -68,7 +72,7 @@ function PhotoContent({ url, label, initialAspectRatio }: { url: string; label: 
         </div>
       ) : (
         <img key={attempt} src={url} alt={label}
-          className={cn('size-full object-contain', status === 'loading' && 'invisible')}
+          className={cn('absolute inset-0 size-full object-contain', status === 'loading' && 'invisible')}
           onLoad={(event) => {
             const image = event.currentTarget;
             setAspectRatio(image.naturalWidth / image.naturalHeight);

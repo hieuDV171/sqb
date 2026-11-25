@@ -1,5 +1,5 @@
-import { Fragment } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Fragment, useLayoutEffect } from 'react';
+import { Link, useLocation, useNavigationType, useParams } from 'react-router-dom';
 import { ArrowLeft, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -14,12 +14,25 @@ import { useProfile } from '@/features/profile/hooks/useProfile';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export function ProfilePage() {
+  const { key: locationKey } = useLocation();
+  const navigationType = useNavigationType();
   const { userId } = useParams<{ userId?: string }>();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const parsedId = Number(userId);
   const isValid = userId === undefined || (/^\d+$/.test(userId) && Number.isSafeInteger(parsedId) && parsedId > 0);
   const isOwnProfile = userId === undefined || parsedId === currentUserId;
   const profile = useProfile(isOwnProfile ? 'me' : parsedId, isValid);
+
+  useLayoutEffect(() => {
+    const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'instant' });
+    scrollToTop();
+
+    if (navigationType !== 'POP') return;
+
+    // Trình duyệt có thể khôi phục vị trí cuộn sau sự kiện popstate.
+    const frame = window.requestAnimationFrame(scrollToTop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [locationKey, navigationType]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 pb-10">
