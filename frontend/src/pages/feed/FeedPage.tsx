@@ -171,7 +171,7 @@ export function FeedPage() {
         </section>
 
         {/* Right Sidebar Column (4 cols) */}
-        <div className="sticky top-[calc(var(--app-header-bottom)+var(--space-4))] hidden lg:col-span-4 lg:block">
+        <div className="sticky top-[calc(var(--app-header-height)+var(--space-4))] hidden lg:col-span-4 lg:block">
           <FeedSidebarRight
             subjects={subjects}
             subjectsPending={subjectQuery.isPending}

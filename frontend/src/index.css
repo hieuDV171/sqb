@@ -67,10 +67,8 @@
   }
 
   html {
-    --app-connection-height: 0px;
-    --app-header-bottom: calc(var(--app-connection-height) + var(--app-header-height));
     min-width: 20rem;
-    scroll-padding-top: calc(var(--app-header-bottom) + var(--space-4));
+    scroll-padding-top: calc(var(--app-header-height) + var(--space-4));
     font-family: var(--font-sans), sans-serif;
     background: var(--background);
   }
@@ -108,13 +106,40 @@
 #root {
   --app-feedback-size: 3rem;
   --app-floating-right: max(1rem, env(safe-area-inset-right));
+  --app-floating-bottom: max(1rem, env(safe-area-inset-bottom));
   min-height: 100vh;
   width: 100%;
 }
 
+[data-slot="connection-status"] {
+  --connection-left: calc(var(--visible-sidebar-width, 0px) + max(var(--space-4), env(safe-area-inset-left)));
+  --connection-right: var(--app-floating-right);
+  left: var(--connection-left);
+  bottom: var(--app-floating-bottom);
+  max-width: min(23rem, calc(100% - var(--connection-left) - var(--connection-right)));
+}
+
 @media (width < 48rem) {
+  #root:has([data-slot="mobile-nav"]) {
+    --app-floating-bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+  }
+
   #root:has([data-slot="mobile-nav"]) [data-slot="feedback-button"] {
-    bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+    bottom: var(--app-floating-bottom);
+  }
+
+  #root:has([data-slot="feedback-button"]) [data-slot="connection-status"] {
+    --connection-right: calc(var(--app-floating-right) + var(--app-feedback-size) + var(--space-3));
+  }
+}
+
+@media (width >= 48rem) {
+  #root:has([data-slot="desktop-sidebar"]) {
+    --visible-sidebar-width: var(--app-sidebar-width);
+  }
+
+  #root:has([data-slot="desktop-sidebar"][data-collapsed="true"]) {
+    --visible-sidebar-width: var(--app-sidebar-collapsed-width);
   }
 }
 
@@ -134,7 +159,7 @@ main:has([data-feed-page], [data-study-workspace]) {
 }
 
 @utility sticky-study-progress {
-  --study-progress-top: calc(var(--app-header-bottom) + var(--space-4));
+  --study-progress-top: calc(var(--app-header-height) + var(--space-4));
   position: sticky;
   top: var(--study-progress-top);
   max-height: calc(100dvh - var(--study-progress-top) - var(--space-4));

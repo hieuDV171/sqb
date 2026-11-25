@@ -116,7 +116,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-(--app-connection-height) z-40 h-[var(--app-header-height)] border-b border-border bg-[var(--shell-header)] backdrop-blur-xl">
+      <header className="sticky top-0 z-40 h-[var(--app-header-height)] border-b border-border bg-[var(--shell-header)] backdrop-blur-xl">
         <div className="mx-auto flex h-full w-full max-w-[var(--app-content-max-width)] items-center gap-3 px-3 sm:px-5 lg:px-6">
           <div className="flex min-w-0 items-center gap-2 md:w-[calc(var(--app-sidebar-width)-1.5rem)] md:shrink-0">
             <button

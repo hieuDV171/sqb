@@ -749,6 +749,6 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 ### [ADR-093] Trạng thái kết nối trên frontend
 
-- **Ngày 26/11/2026.** Banner ở cấp ứng dụng đọc trạng thái mạng từ trình duyệt. Khi trình duyệt báo ngoại tuyến, frontend hủy bước kiểm tra máy chủ đang chạy và ưu tiên thông báo mất mạng.
-- Lỗi mạng, phản hồi 5xx hoặc yêu cầu API chờ 8 giây kích hoạt một lượt `GET /api/v1/actuator/health/readiness` trên API origin đang dùng. Banner lỗi SQB chỉ xuất hiện khi lượt kiểm tra xác nhận sự cố. Các thành phần vẫn xử lý lỗi thao tác tại chỗ.
+- **Ngày 26/11/2026.** Pop-up ở cấp ứng dụng đọc trạng thái mạng từ trình duyệt. Khi trình duyệt báo ngoại tuyến, frontend hủy bước kiểm tra máy chủ đang chạy và ưu tiên thông báo mất mạng. Pop-up nằm ở góc dưới bên trái vùng nội dung và phía trên thanh điều hướng trên điện thoại.
+- Lỗi mạng, phản hồi 5xx hoặc yêu cầu API chờ 8 giây kích hoạt một lượt `GET /api/v1/actuator/health/readiness` trên API origin đang dùng. Pop-up lỗi SQB chỉ xuất hiện khi lượt kiểm tra xác nhận sự cố. Các thành phần vẫn xử lý lỗi thao tác tại chỗ.
 - Mỗi tab có tối đa một lượt kiểm tra đang chạy. Lượt kiểm tra có thời hạn 5 giây. Trong thời gian có sự cố, frontend kiểm tra lại sau 15 giây hoặc khi người dùng bấm “Thử lại”. Yêu cầu ghi dữ liệu do người dùng thực hiện tiếp tục theo luồng riêng.

@@ -5,12 +5,12 @@ import { queryClient } from './lib/queryClient'
 import './index.css'
 import App from './App.tsx'
 import { AuthSessionGate } from './components/routing/AuthSessionGate'
-import { ConnectionStatusBanner } from './components/common/ConnectionStatusBanner'
+import { ConnectionStatusPopup } from './components/common/ConnectionStatusPopup'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ConnectionStatusBanner />
+      <ConnectionStatusPopup />
       <AuthSessionGate><App /></AuthSessionGate>
     </QueryClientProvider>
   </StrictMode>,
