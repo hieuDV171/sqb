@@ -92,7 +92,6 @@ function onOffline() {
 }
 
 function onOnline() {
-  publishStatus();
   void checkApiConnection();
 }
 
