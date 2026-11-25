@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.exam.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,13 +29,15 @@ public class GenerateExamRequest {
     private String title;
 
     @Schema(description = "Số lượng câu hỏi trong đề thi", example = "40")
+    @Positive(message = "Số câu hỏi phải lớn hơn 0")
     @Builder.Default
     private Integer questionCount = 40;
 
     @Schema(description = "Tỉ lệ phân bổ độ khó các câu hỏi")
     private DifficultyDistribution difficultyDistribution;
 
-    @Schema(description = "Trọng số các chủ đề/chương (tùy chọn)", example = "{\"Chương 1 - Tổng quan\": 0.2, \"Chương 2 - Quản lý tiến trình\": 0.5, \"Chương 3 - Định thời CPU\": 0.3}")
+    @Schema(description = "Trọng số theo ID chủ đề đang hoạt động cùng môn (tùy chọn, tổng bằng 1.0)",
+            example = "{\"12\": 0.2, \"13\": 0.5, \"14\": 0.3}")
     private Map<String, Double> topicWeights;
 
     @Schema(description = "Đảo ngẫu nhiên thứ tự các phương án lựa chọn A, B, C, D", example = "true")
@@ -71,7 +74,7 @@ public class GenerateExamRequest {
 
         @Schema(description = "Tỉ lệ câu chưa phân loại", example = "0.0")
         @Builder.Default
-        private Double unclassified = 1.0;
+        private Double unclassified = 0.0;
     }
 }
 

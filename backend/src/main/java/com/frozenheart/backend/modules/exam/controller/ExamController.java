@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.exam.controller;
 
 import com.frozenheart.backend.core.dto.GlobalResponse;
+import com.frozenheart.backend.modules.exam.dto.ExamBankSummary;
 import com.frozenheart.backend.modules.exam.dto.ExamDetailResponse;
 import com.frozenheart.backend.modules.exam.dto.ExamListResponse;
 import com.frozenheart.backend.modules.exam.dto.ExportResponse;
@@ -21,15 +22,23 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/exams")
+@RequestMapping("/lecturer/exams")
 public class ExamController {
 
     private final ExamService examService;
 
+    @Operation(summary = "Thống kê ngân hàng câu hỏi có thể dùng để tạo đề",
+            description = "Dành cho giảng viên phụ trách môn học và Admin. Đếm câu đã duyệt trong các phiên đã chốt theo độ khó và chủ đề.")
+    @GetMapping("/question-bank/{subjectId}/summary")
+    public ResponseEntity<GlobalResponse<ExamBankSummary>> getBankSummary(
+            @Parameter(description = "ID môn học cần xem thống kê ngân hàng", example = "12") @PathVariable Long subjectId) {
+        return ResponseEntity.ok(GlobalResponse.success(examService.getBankSummary(subjectId)));
+    }
+
     @Operation(summary = "Tự động sinh đề thi từ ngân hàng câu hỏi", description = "Dành cho giảng viên: bốc ngẫu nhiên câu hỏi đã được duyệt (APPROVED) theo môn học, số lượng yêu cầu, tỉ lệ độ khó và trọng số chủ đề, đồng thời gán vào các lớp học phần.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Tạo đề thi thành công"),
-            @ApiResponse(responseCode = "400", description = "Tham số không hợp lệ: Chưa chọn lớp học phần, không tìm thấy môn học hoặc ngân hàng đề trống"),
+            @ApiResponse(responseCode = "400", description = "Tham số không hợp lệ hoặc ngân hàng thiếu câu đáp ứng ma trận"),
             @ApiResponse(responseCode = "403", description = "Từ chối truy cập: Sinh viên không có quyền tạo đề thi")
     })
     @PostMapping("/generate")

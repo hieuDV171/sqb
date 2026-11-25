@@ -3,6 +3,7 @@ import type { GlobalResponse } from '@/types/response.types';
 import type { CourseClassResponse } from '@/features/course-class/types/courseClass.types';
 import type {
   GenerateExamRequest,
+  ExamBankSummary,
   ExamDetailResponse,
   ExamListResponse,
   ExportResponse,
@@ -11,6 +12,11 @@ import type {
 } from '../types/exam.types';
 
 export const examService = {
+  getBankSummary: (subjectId: number, signal: AbortSignal) =>
+    axiosClient.get<unknown, GlobalResponse<ExamBankSummary>>(
+      `/exams/question-bank/${subjectId}/summary`, { signal, skipToast: true },
+    ),
+
   /**
    * 21.1 Tự động sinh đề thi từ ngân hàng câu hỏi
    * POST /api/v1/exams/generate

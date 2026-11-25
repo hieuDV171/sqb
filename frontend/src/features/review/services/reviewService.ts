@@ -5,6 +5,7 @@ import type {
   ReviewableSessionsResponse,
   GetReviewableSessionsParams,
   SessionDetailReviewResponse,
+  DuplicateMatch,
   ApproveQuestionsRequest,
   ApproveQuestionsResponse,
   RejectQuestionsRequest,
@@ -16,6 +17,11 @@ import type {
 } from '../types/review.types';
 
 export const reviewService = {
+  getDuplicateMatches: (sessionId: number, questionId: number, signal: AbortSignal) =>
+    axiosClient.get<unknown, GlobalResponse<DuplicateMatch[]>>(
+      `/lecturer/sessions/${sessionId}/questions/${questionId}/duplicate-matches`, { signal, skipToast: true },
+    ),
+
   refineQuestion: async (questionId: number, prompt: string, previousEditLogId: number | undefined,
     onPreview: (preview: AiRefinementPreview) => void): Promise<AiRefinement> => {
     let offset = 0;

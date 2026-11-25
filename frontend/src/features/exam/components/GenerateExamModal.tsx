@@ -1,5 +1,5 @@
 import { useId, useState, type SubmitEvent } from 'react';
-import { FilePlus2, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, FilePlus2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { examDifficulties, getExamSubjects } from '../examPresentation';
-import { useGenerateExam, useLecturerClasses } from '../hooks/useExam';
+import { useExamBankSummary, useGenerateExam, useLecturerClasses } from '../hooks/useExam';
 import { ExamDialog } from './ExamDialog';
 
 interface GenerateExamModalProps {
@@ -18,7 +18,9 @@ interface GenerateExamModalProps {
 }
 
 const defaultPercentages = { easy: '30', medium: '50', hard: '20', unclassified: '0' };
-const questionCounts = [20, 30, 40, 50, 60].map((count) => ({ value: String(count), label: `${count} câu` }));
+const maxQuestionCount = 100;
+const invalidPercentage = (value: string) =>
+  value === '' || !Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 100;
 
 export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, onSuccess }: GenerateExamModalProps) {
   const id = useId();
@@ -29,6 +31,8 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   const [title, setTitle] = useState('');
   const [questionCount, setQuestionCount] = useState('40');
   const [percentages, setPercentages] = useState(defaultPercentages);
+  const [useTopicMatrix, setUseTopicMatrix] = useState(false);
+  const [topicPercentages, setTopicPercentages] = useState<Record<number, string>>({});
   const [shuffleOptions, setShuffleOptions] = useState(false);
   const [includeAnswerKey, setIncludeAnswerKey] = useState(false);
 
@@ -36,29 +40,46 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   const initialClass = classes.data?.find((courseClass) => courseClass.courseClassId === initialClassId);
   const selectedId = subjectId ?? initialClass?.subjectId ?? initialSubjectId;
   const selectedSubject = subjects.find((subject) => subject.id === selectedId);
+  const bankQuery = useExamBankSummary(selectedSubject?.id);
+  const bank = bankQuery.data;
   const availableClasses = classes.data?.filter((courseClass) => courseClass.subjectId === selectedSubject?.id) ?? [];
   const selectedClasses = availableClasses.filter((courseClass) =>
     classIds ? classIds.includes(courseClass.courseClassId) : courseClass.courseClassId === initialClass?.courseClassId,
   );
   const total = Object.values(percentages).reduce((sum, value) => sum + Number(value), 0);
-  const hasInvalidPercentage = Object.values(percentages).some((value) => (
-    value === '' || !Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 100
-  ));
-  const validMatrix = total === 100 && !hasInvalidPercentage;
+  const validMatrix = total === 100 && !Object.values(percentages).some(invalidPercentage);
+  const weightedTopics = bank?.topics.map(({ topicId }) => [topicId, topicPercentages[topicId] ?? '0'] as const) ?? [];
+  const topicTotal = weightedTopics.reduce((sum, [, value]) => sum + Number(value), 0);
+  const validTopics = !useTopicMatrix || (topicTotal === 100 && !weightedTopics.some(([, value]) => invalidPercentage(value)));
+  const count = Number(questionCount);
+  const validCount = Number.isInteger(count) && count >= 1 && count <= maxQuestionCount;
+  const invalidCount = questionCount !== '' && !validCount;
+  const bankTooSmall = bank != null && validCount && count > bank.totalQuestions;
+  const canGenerate = !!bank && selectedClasses.length > 0 && validCount && !bankTooSmall && validMatrix && validTopics;
+
+  function stepQuestionCount(step: -1 | 1) {
+    setQuestionCount((value) => {
+      const current = Number(value);
+      const whole = step === 1 ? Math.floor(current) : Math.ceil(current);
+      return String(Math.min(maxQuestionCount, Math.max(1, whole + step)));
+    });
+  }
 
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedSubject || selectedClasses.length === 0 || !validMatrix || generate.isPending) return;
+    if (!selectedSubject || !canGenerate || generate.isPending) return;
     generate.mutate({
       subjectId: selectedSubject.id,
       title: title.trim() || undefined,
-      questionCount: Number(questionCount),
+      questionCount: count,
       difficultyDistribution: {
         easy: Number(percentages.easy) / 100,
         medium: Number(percentages.medium) / 100,
         hard: Number(percentages.hard) / 100,
         unclassified: Number(percentages.unclassified) / 100,
       },
+      topicWeights: useTopicMatrix ? Object.fromEntries(weightedTopics.filter(([, value]) => Number(value) > 0)
+        .map(([topicId, value]) => [topicId, Number(value) / 100])) : undefined,
       shuffleOptions,
       includeAnswerKey,
       classIds: selectedClasses.map((courseClass) => courseClass.courseClassId),
@@ -66,7 +87,7 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   }
 
   return (
-    <ExamDialog title="Tạo đề thi" description="Chọn môn, lớp học phần và tỷ lệ độ khó cho đề thi."
+    <ExamDialog title="Tạo đề thi" description="Chọn môn, lớp học phần và ma trận cho đề thi."
       icon={FilePlus2} busy={generate.isPending} onClose={onClose}>
       <form onSubmit={submit} className="flex min-h-0 min-w-0 flex-col">
         <div className="min-h-0 overflow-y-auto">
@@ -90,7 +111,23 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                   onChange={(value) => {
                     setSubjectId(Number(value));
                     setClassIds([]);
+                    setUseTopicMatrix(false);
+                    setTopicPercentages({});
+                    generate.reset();
                   }} />
+                {selectedSubject && (bankQuery.isPending ? (
+                  <Skeleton role="status" aria-label="Đang tải ngân hàng câu hỏi" className="h-14 rounded-xl" />
+                ) : !bank ? (
+                  <div className="flex flex-wrap items-center gap-2" role="status">
+                    <p className="text-sm text-destructive">Không thể tải số liệu ngân hàng câu hỏi.</p>
+                    <Button type="button" variant="outline" onClick={() => void bankQuery.refetch()}>Thử lại</Button>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-surface-subtle p-3 text-sm" role="status">
+                    {bank.totalQuestions === 0 ? 'Ngân hàng chưa có câu hỏi nào dùng được để tạo đề.'
+                      : <>Ngân hàng câu hỏi · <strong>{bank.totalQuestions} câu đã duyệt</strong></>}
+                  </div>
+                ))}
                 {selectedSubject && (
                   <fieldset className="min-w-0 space-y-2">
                     <legend className="text-sm font-medium">Lớp học phần ({selectedClasses.length}/{availableClasses.length})</legend>
@@ -121,20 +158,46 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
               </div>
             )}
 
-            <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+            <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
               <div className="space-y-1.5">
                 <Label htmlFor={`${id}-title`}>Tiêu đề (không bắt buộc)</Label>
                 <Input id={`${id}-title`} className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} />
               </div>
-              <FilterSelect label="Số câu hỏi" value={questionCount} onChange={setQuestionCount} options={questionCounts} disabled={generate.isPending} />
+              <div className="space-y-1.5">
+                <Label htmlFor={`${id}-count`}>Số câu hỏi</Label>
+                <div className="flex gap-2">
+                  <Input id={`${id}-count`} type="number" inputMode="numeric" min={1} max={maxQuestionCount} step={1} required
+                    className="h-11 [appearance:textfield] md:h-11 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    aria-invalid={invalidCount || bankTooSmall}
+                    aria-describedby={bankTooSmall ? `${id}-count-range ${id}-count-error` : `${id}-count-range`}
+                    value={questionCount} onChange={(event) => setQuestionCount(event.target.value)} />
+                  <Button type="button" size="icon" variant="outline" className="size-11 shrink-0"
+                    aria-label="Giảm 1 câu" aria-controls={`${id}-count`} disabled={count <= 1}
+                    onClick={() => stepQuestionCount(-1)}>
+                    <ChevronDown aria-hidden="true" />
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" className="size-11 shrink-0"
+                    aria-label="Tăng 1 câu" aria-controls={`${id}-count`} disabled={count >= maxQuestionCount}
+                    onClick={() => stepQuestionCount(1)}>
+                    <ChevronUp aria-hidden="true" />
+                  </Button>
+                </div>
+                <p id={`${id}-count-range`} className={cn('text-sm', invalidCount ? 'text-destructive' : 'text-muted-foreground')}>
+                  {invalidCount ? `Nhập số nguyên từ 1 đến ${maxQuestionCount}.` : `Từ 1 đến ${maxQuestionCount} câu`}
+                </p>
+              </div>
             </div>
+            {bankTooSmall && <p id={`${id}-count-error`} role="status" className="text-sm text-destructive">
+              Ngân hàng chỉ có {bank.totalQuestions}/{count} câu. Hãy giảm số câu của đề.
+            </p>}
 
             <fieldset aria-describedby={`${id}-matrix-help ${id}-matrix-total`} className="min-w-0 space-y-2 border-t border-border pt-3">
               <legend className="pr-2 text-sm font-semibold">Ma trận độ khó</legend>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {examDifficulties.map(({ field, label, tone }) => (
+                {examDifficulties.map(({ field, count: countField, label, tone }) => (
                   <div key={field} className={cn('min-w-0 space-y-2 rounded-xl p-2.5', tone)}>
                     <Label htmlFor={`${id}-${field}`} className="leading-tight">{label}</Label>
+                    {bank && <p className="text-xs">Có {bank.statistic[countField] ?? 0} câu</p>}
                     <div className="relative text-foreground">
                       <Input id={`${id}-${field}`} type="number" min={0} max={100} step={1} required
                         aria-label={`Tỷ lệ ${label.toLowerCase()} (%)`}
@@ -149,9 +212,48 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                 Tổng {total}%{!validMatrix && ' · Nhập số nguyên từ 0 đến 100 cho mỗi nhóm, tổng phải bằng 100%.'}
               </p>
               <p id={`${id}-matrix-help`} className="text-sm text-muted-foreground">
-                Tỷ lệ là mục tiêu. Nếu một nhóm thiếu câu, hệ thống sẽ lấy thêm câu đã duyệt từ các nhóm còn lại nếu có.
+                Hệ thống làm tròn tỷ lệ ra số câu nguyên. Đề chỉ được tạo khi kho đáp ứng đủ ma trận.
               </p>
             </fieldset>
+
+            {bank && (bank.topics.length > 0 || useTopicMatrix) && (
+              <fieldset className="min-w-0 space-y-2 border-t border-border pt-2">
+                <legend className="pr-2 text-sm font-semibold">Ma trận chủ đề</legend>
+                <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" checked={useTopicMatrix} onChange={(event) => setUseTopicMatrix(event.target.checked)}
+                    className="size-4 shrink-0 accent-academic" />
+                  Phân bổ theo chủ đề
+                </label>
+                {useTopicMatrix && (
+                  <>
+                    <ul className="divide-y divide-border">
+                      {bank.topics.map((topic) => (
+                        <li key={topic.topicId} className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-2 py-2">
+                          <div className="min-w-0 space-y-1">
+                            <Label htmlFor={`${id}-topic-${topic.topicId}`} className="wrap-break-word">{topic.topicName}</Label>
+                            <p className="text-xs text-muted-foreground">
+                              {topic.totalQuestions} câu · {examDifficulties.map(({ count: countField, label }) =>
+                                `${label} ${topic.statistic[countField] ?? 0}`).join(' · ')}
+                            </p>
+                          </div>
+                          <div className="relative">
+                            <Input id={`${id}-topic-${topic.topicId}`} type="number" min={0} max={100} step={1} required
+                              aria-label={`Tỷ lệ chủ đề ${topic.topicName} (%)`} className="h-11 bg-background pr-7"
+                              value={topicPercentages[topic.topicId] ?? '0'}
+                              onChange={(event) => setTopicPercentages((previous) => ({ ...previous, [topic.topicId]: event.target.value }))} />
+                            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-sm text-muted-foreground">%</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <p role="status" className={cn('text-sm font-medium', validTopics ? 'text-success' : 'text-destructive')}>
+                      Tổng {topicTotal}%{!validTopics && ' · Tỷ lệ các chủ đề phải cộng đủ 100%.'}
+                    </p>
+                  </>
+                )}
+              </fieldset>
+            )}
+            {bank?.topics.length === 0 && <p className="text-sm text-muted-foreground">Môn học chưa có chủ đề đang hoạt động để lập ma trận chủ đề.</p>}
 
             <div className="flex flex-wrap gap-x-4 border-t border-border pt-2">
               <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
@@ -163,15 +265,17 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                 Kèm bảng đáp án
               </label>
             </div>
-            {generate.isError && <p role="alert" className="text-sm text-destructive">{generate.error.message || 'Không thể tạo đề thi. Vui lòng thử lại.'}</p>}
           </fieldset>
         </div>
-        <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border p-4 sm:px-5">
-          <Button type="button" variant="outline" disabled={generate.isPending} onClick={onClose}>Hủy</Button>
-          <Button type="submit" disabled={!selectedSubject || selectedClasses.length === 0 || !validMatrix || generate.isPending}>
-            {generate.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <FilePlus2 aria-hidden="true" />}
-            {generate.isPending ? 'Đang tạo đề…' : 'Tạo đề thi'}
-          </Button>
+        <footer className="shrink-0 space-y-2 border-t border-border p-4 sm:px-5">
+          {generate.isError && <p role="alert" className="text-sm text-destructive">{generate.error.message || 'Không thể tạo đề thi. Vui lòng thử lại.'}</p>}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" disabled={generate.isPending} onClick={onClose}>Hủy</Button>
+            <Button type="submit" disabled={!canGenerate || generate.isPending}>
+              {generate.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <FilePlus2 aria-hidden="true" />}
+              {generate.isPending ? 'Đang tạo đề…' : 'Tạo đề thi'}
+            </Button>
+          </div>
         </footer>
       </form>
     </ExamDialog>

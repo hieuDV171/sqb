@@ -734,3 +734,14 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 25/11/2026.** Cài đặt push so sánh theo giá trị ở cả cấu hình chung, danh mục và giờ yên lặng. Hibernate nhận biết bản sao JSONB cùng nội dung trong transaction gửi push, tránh ghi lại cấu hình vừa đọc.
 - PostgreSQL tổng hợp số lượt chọn theo khóa đáp án từ bản chụp `user_answers.selected_options`. Màn duyệt lấy một log gần nhất cho mỗi câu trong một truy vấn và fetch tác giả. Chọn thời điểm giảm dần, ưu tiên log có thời điểm rồi dùng ID giảm dần khi bằng nhau. API vẫn trả bản chụp của log đã chọn.
 - Entity `Report` dùng `private_evidence_key` để truy cập ảnh riêng và bỏ mapping cột `reports.evidence_urls`. Tham số URL tương thích khi nộp báo cáo tiếp tục đi qua bước kiểm quyền và lưu vào kho riêng. Kiểm kê dữ liệu cũ trước khi áp dụng changeset bỏ cột.
+
+### [ADR-091] Chọn câu theo đồng thời ma trận độ khó và chủ đề
+
+- **Ngày 25/11/2026.** API thống kê kho dùng truy vấn đếm theo chủ đề và độ khó trên câu đã phê duyệt trong phiên đã chốt của môn. Tỷ lệ chủ đề được gắn với ID của chủ đề đang hoạt động, thuộc đúng môn học.
+- Khi tạo đề, phân bổ số câu nguyên theo phần lẻ lớn nhất. Tìm số câu có thể chọn đồng thời theo hạn mức độ khó và chủ đề bằng luồng cực đại trên các nhóm có câu. Trả lỗi trước khi ghi dữ liệu nếu tổng tối đa thấp hơn yêu cầu. Chọn ngẫu nhiên trong mỗi nhóm được phân bổ.
+- Hai cột JSONB hiện có lưu bản chụp tỷ lệ yêu cầu và số câu thực tế tại thời điểm tạo. Ma trận chủ đề lưu thêm tên chủ đề và số câu theo từng độ khó. Đề cũ chưa có bản chụp tiếp tục đọc thống kê từ các câu của đề.
+
+### [ADR-092] Tải phương án và lời giải khi mở đối sánh
+
+- **Ngày 25/11/2026.** API duyệt phiên giữ dữ liệu cảnh báo gọn và tải chi tiết qua yêu cầu riêng khi người duyệt mở đối sánh. Các ID được lấy từ cảnh báo đã lưu của câu gốc, sau đó đọc cùng lúc và giới hạn trong cùng phiên hoặc ngân hàng đã duyệt cùng môn.
+- Hộp thoại hiện dữ liệu hiện hành của câu đối sánh, gồm ảnh, phương án, đáp án đúng và lời giải. Giữ đoạn trích đã lưu khi câu đối sánh hiện không khả dụng.

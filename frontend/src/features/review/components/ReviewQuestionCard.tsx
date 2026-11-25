@@ -11,6 +11,7 @@ import { RejectReasonPopover } from './RejectReasonPopover';
 import type { SessionQuestionReviewDto, DuplicateWarning, RejectionReasonCode } from '../types/review.types';
 
 interface ReviewQuestionCardProps {
+  sessionId: number;
   question: SessionQuestionReviewDto;
   questionNumber: number;
   duplicateWarnings: DuplicateWarning[];
@@ -24,7 +25,7 @@ interface ReviewQuestionCardProps {
 }
 
 export function ReviewQuestionCard({
-  question, questionNumber, duplicateWarnings, onRetryDuplicates, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
+  sessionId, question, questionNumber, duplicateWarnings, onRetryDuplicates, onApprove, onReject, onEdit, onRefine, readOnly, disabled,
 }: ReviewQuestionCardProps) {
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const approved = question.status === 'APPROVED';
@@ -53,7 +54,8 @@ export function ReviewQuestionCard({
             <StatusIcon aria-hidden="true" /> {approved ? 'Đã phê duyệt' : rejected ? 'Đã từ chối' : 'Chờ duyệt'}
           </Badge>
         </div>
-        {duplicateWarnings.length > 0 && <DuplicateWarningBadge warnings={duplicateWarnings} />}
+        {duplicateWarnings.length > 0 && <DuplicateWarningBadge sessionId={sessionId}
+          questionId={question.questionId} warnings={duplicateWarnings} />}
         {question.topicName && <span className="text-sm text-muted-foreground">{question.topicName}</span>}
       </header>
       <p className="text-sm text-muted-foreground">

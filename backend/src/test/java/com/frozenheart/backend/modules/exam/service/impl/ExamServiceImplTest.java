@@ -7,6 +7,7 @@ import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Subject;
+import com.frozenheart.backend.core.entity.session.Topic;
 import com.frozenheart.backend.core.entity.user.CourseClass;
 import com.frozenheart.backend.core.entity.user.ExamCourseClass;
 import com.frozenheart.backend.core.entity.user.User;
@@ -21,6 +22,7 @@ import com.frozenheart.backend.modules.exam.repository.ExamRepository;
 import com.frozenheart.backend.modules.exam.service.DocumentExportService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
+import com.frozenheart.backend.modules.session.repository.TopicRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -38,11 +40,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -62,6 +66,7 @@ class ExamServiceImplTest {
     @Mock private CourseClassRepository courseClassRepository;
     @Mock private ExamCourseClassRepository examCourseClassRepository;
     @Mock private ExamQuestionRepository examQuestionRepository;
+    @Mock private TopicRepository topicRepository;
     @Captor private ArgumentCaptor<Iterable<ExamCourseClass>> classLinks;
     @Spy private JsonMapper jsonMapper = JsonMapper.builder().build();
     @InjectMocks private ExamServiceImpl service;
@@ -121,7 +126,7 @@ class ExamServiceImplTest {
 
         var result = service.generateExam(GenerateExamRequest.builder().subjectId(subject.getId())
                 .classIds(List.of(courseClass.getId())).questionCount(1)
-                .difficultyDistribution(GenerateExamRequest.DifficultyDistribution.builder().build()).build());
+                .difficultyDistribution(GenerateExamRequest.DifficultyDistribution.builder().unclassified(1.0).build()).build());
 
         verify(examCourseClassRepository).saveAll(classLinks.capture());
         var link = classLinks.getValue().iterator().next();
@@ -132,6 +137,72 @@ class ExamServiceImplTest {
         assertEquals(1, result.getQuestionCount());
         assertEquals(1, result.getStatistic().getUnclassifiedCount());
         assertEquals(question.getId(), result.getQuestions().getFirst().getQuestionId());
+    }
+
+    @Test
+    void refusesToSaveWhenBothMatricesAreIndividuallyFeasibleButCannotBeMetTogether() {
+        authenticate(OWNER_ID, UserRole.LECTURER);
+        var subject = Subject.builder().id(12L).build();
+        var first = Topic.builder().id(1L).name("A").build();
+        var second = Topic.builder().id(2L).name("B").build();
+        when(subjectRepository.findById(12L)).thenReturn(Optional.of(subject));
+        when(topicRepository.findBySubjectIdOrderByNameAsc(12L)).thenReturn(List.of(first, second));
+        when(questionRepository.findApprovedBySubjectId(12L)).thenReturn(List.of(
+                bankQuestion(1L, first, QuestionDifficulty.EASY), bankQuestion(2L, first, QuestionDifficulty.EASY),
+                bankQuestion(3L, second, QuestionDifficulty.HARD), bankQuestion(4L, second, QuestionDifficulty.HARD),
+                bankQuestion(5L, second, QuestionDifficulty.HARD)));
+
+        var request = GenerateExamRequest.builder().subjectId(12L).classIds(List.of(31L)).questionCount(4)
+                .difficultyDistribution(GenerateExamRequest.DifficultyDistribution.builder().easy(0.25).hard(0.75).build())
+                .topicWeights(Map.of("1", 0.5, "2", 0.5)).build();
+
+        var error = assertThrows(AppException.class, () -> service.generateExam(request));
+        assertEquals(ResponseCode.INVALID_PARAMETER_VALUE, error.getResponseCode());
+        assertTrue(error.getMessage().contains("3/4"));
+        verifyNoInteractions(examRepository, examCourseClassRepository, examQuestionRepository);
+    }
+
+    @Test
+    void reallocatesSharedDifficultySlotsAndSnapshotsTheActualMatrix() {
+        authenticate(OWNER_ID, UserRole.LECTURER);
+        var subject = Subject.builder().id(12L).name("Công nghệ Web").build();
+        var first = Topic.builder().id(1L).name("A").build();
+        var second = Topic.builder().id(2L).name("B").build();
+        var hard = bankQuestion(2L, first, QuestionDifficulty.HARD);
+        var owner = User.builder().id(OWNER_ID).build();
+        when(subjectRepository.findById(12L)).thenReturn(Optional.of(subject));
+        when(userRepository.getReferenceById(OWNER_ID)).thenReturn(owner);
+        when(topicRepository.findBySubjectIdOrderByNameAsc(12L)).thenReturn(List.of(first, second));
+        when(questionRepository.findApprovedBySubjectId(12L)).thenReturn(List.of(
+                bankQuestion(1L, first, QuestionDifficulty.EASY), hard, bankQuestion(3L, second, QuestionDifficulty.EASY)));
+        when(courseClassRepository.findAllByIds(List.of(31L)))
+                .thenReturn(List.of(CourseClass.builder().id(31L).subject(subject).build()));
+        var savedExam = ArgumentCaptor.forClass(Exam.class);
+        when(examRepository.save(savedExam.capture())).thenAnswer(invocation -> {
+            Exam saved = invocation.getArgument(0);
+            saved.setId(EXAM_ID);
+            return saved;
+        });
+
+        var result = service.generateExam(GenerateExamRequest.builder().subjectId(12L).classIds(List.of(31L))
+                .questionCount(2).topicWeights(Map.of("1", 0.5, "2", 0.5))
+                .difficultyDistribution(GenerateExamRequest.DifficultyDistribution.builder().easy(0.5).hard(0.5).build())
+                .build());
+
+        assertEquals(List.of(2L, 3L), result.getQuestions().stream().map(q -> q.getQuestionId()).sorted().toList());
+        assertEquals(1, result.getTopicMatrix().rows().getFirst().actualByDifficulty().getHardCount());
+
+        first.setName("Đã đổi tên");
+        hard.setDifficulty(QuestionDifficulty.MEDIUM);
+        when(examRepository.findWithDetailsById(EXAM_ID)).thenReturn(Optional.of(savedExam.getValue()));
+        var reopened = service.getExamDetail(EXAM_ID);
+        assertEquals("A", reopened.getTopicMatrix().rows().getFirst().topicName());
+        assertEquals(0.5, reopened.getDifficultyMatrix().requested().getHard());
+        assertEquals(1, reopened.getStatistic().getHardCount());
+    }
+
+    private static Question bankQuestion(Long id, Topic topic, QuestionDifficulty difficulty) {
+        return Question.builder().id(id).status(QuestionStatus.APPROVED).topic(topic).difficulty(difficulty).build();
     }
 
     private void assertAccessDenied() {

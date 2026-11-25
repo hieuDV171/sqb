@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.frozenheart.backend.core.entity.session.Question;
+import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 
 @Repository
@@ -107,6 +108,30 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query("SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc JOIN FETCH cc.subject sub JOIN FETCH cc.semester LEFT JOIN FETCH q.topic t LEFT JOIN FETCH q.ownedMedias WHERE sub.id = :subjectId AND q.status = 'APPROVED' AND s.status = 'RESOLVED'")
     List<Question> findApprovedBySubjectId(@Param("subjectId") Long subjectId);
+
+    interface ExamBankCount {
+        Long getTopicId();
+        QuestionDifficulty getDifficulty();
+        long getQuestionCount();
+    }
+
+    @Query("""
+            SELECT t.id AS topicId, q.difficulty AS difficulty, COUNT(q) AS questionCount
+            FROM Question q LEFT JOIN q.topic t
+            WHERE q.session.courseClass.subject.id = :subjectId
+              AND q.status = 'APPROVED' AND q.session.status = 'RESOLVED'
+            GROUP BY t.id, q.difficulty
+            """)
+    List<ExamBankCount> countExamBankByTopicAndDifficulty(@Param("subjectId") Long subjectId);
+
+    @Query("""
+            SELECT DISTINCT q FROM Question q JOIN q.session s LEFT JOIN FETCH q.ownedMedias
+            WHERE q.id IN :ids
+              AND (s.id = :sessionId OR (s.courseClass.subject.id = :subjectId
+                AND q.status = 'APPROVED' AND s.status = 'RESOLVED'))
+            """)
+    List<Question> findReviewableDuplicateMatches(@Param("ids") List<Long> ids, @Param("sessionId") Long sessionId,
+                                                  @Param("subjectId") Long subjectId);
 
     @Query("""
             SELECT DISTINCT q FROM Question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc

@@ -1,5 +1,7 @@
 package com.frozenheart.backend.modules.session.service;
 
+import com.frozenheart.backend.modules.session.dto.DuplicateMatchResponse;
+import java.util.List;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsResponse;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
@@ -13,6 +15,8 @@ public interface QuestionReviewService {
     ReviewableSessionsResponse getReviewableSessions(Long after, Long before, Integer limit, Long courseClassId, String sortBy, String keyword);
 
     SessionDetailReviewResponse getSessionDetailForReview(Long sessionId);
+
+    List<DuplicateMatchResponse> getDuplicateMatches(Long sessionId, Long questionId);
 
     ApproveQuestionsResponse approveQuestions(ApproveQuestionsRequest request);
 

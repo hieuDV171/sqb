@@ -39,6 +39,7 @@ import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.core.util.AnonymizerUtil;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsResponse;
+import com.frozenheart.backend.modules.session.dto.DuplicateMatchResponse;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.EditQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.ReviewableSessionsResponse;
@@ -202,10 +203,7 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                                 UserProfile::getFullName));
 
         List<SessionDetailReviewResponse.SessionQuestionReviewDto> items = questions.stream().map(q -> {
-            List<String> imageUrls = q.getOwnedMedias() != null ? q.getOwnedMedias().stream()
-                    .filter(m -> m.getMediaTarget() == MediaTarget.CONTENT)
-                    .map(QuestionMedia::getUrl)
-                    .toList() : List.of();
+            List<String> imageUrls = contentImageUrls(q);
 
             List<String> correctKeys = q.getOptions() != null ? q.getOptions().stream()
                     .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
@@ -265,6 +263,32 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
                 .items(items)
                 .duplicateWarnings(allWarnings)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DuplicateMatchResponse> getDuplicateMatches(Long sessionId, Long questionId) {
+        JwtPayload reviewer = requireReviewerPayload();
+        var question = questionRepository.findByIdFetchSessionAndCourseClass(questionId)
+                .filter(item -> sessionId.equals(item.getSession().getId()))
+                .orElseThrow(() -> new AppException(ResponseCode.QUESTION_NOT_FOUND));
+        var session = question.getSession();
+        assertCanReviewSession(reviewer, session);
+        if (question.getDuplicateWarnings() == null || question.getDuplicateWarnings().isEmpty()) return List.of();
+        var ids = question.getDuplicateWarnings().stream().map(DuplicateWarning::similarQuestionId)
+                .filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return List.of();
+
+        return questionRepository.findReviewableDuplicateMatches(ids, sessionId, session.getCourseClass().getSubject().getId())
+                .stream().map(match -> new DuplicateMatchResponse(match.getId(), match.getContent(),
+                        contentImageUrls(match), match.getOptions() == null ? List.of() : match.getOptions(),
+                        match.getExplanation())).toList();
+    }
+
+    private static List<String> contentImageUrls(Question question) {
+        return question.getOwnedMedias() == null ? List.of() : question.getOwnedMedias().stream()
+                .filter(media -> media.getMediaTarget() == MediaTarget.CONTENT)
+                .map(QuestionMedia::getUrl).toList();
     }
 
     @Override

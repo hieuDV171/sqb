@@ -67,6 +67,14 @@ export interface DuplicateWarning {
   mediaUrl?: string;
 }
 
+export interface DuplicateMatch {
+  questionId: number;
+  content: string;
+  imageUrls: string[];
+  options: QuestionOption[];
+  explanation?: string | null;
+}
+
 export interface QuestionEditLogDto {
   editLogId: number;
   actorType: 'SYSTEM' | 'LECTURER' | 'ADMIN' | string;

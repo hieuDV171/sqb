@@ -181,7 +181,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                   </div>
                 )}
                 {questions.map((question, index) => (
-                  <ReviewQuestionCard key={question.questionId} question={question} questionNumber={index + 1}
+                  <ReviewQuestionCard key={question.questionId} sessionId={sessionId} question={question} questionNumber={index + 1}
                     duplicateWarnings={warningsByQuestion.get(question.questionId) ?? []}
                     onRetryDuplicates={() => retryDuplicateCheck.mutate(question.questionId)}
                     onApprove={(id) => approve.mutate({ questionIds: [id] })}

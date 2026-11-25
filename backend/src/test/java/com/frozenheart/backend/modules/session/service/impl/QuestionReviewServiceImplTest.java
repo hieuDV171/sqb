@@ -2,8 +2,10 @@ package com.frozenheart.backend.modules.session.service.impl;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.session.DuplicateWarning;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionDifficulty;
+import com.frozenheart.backend.core.entity.session.QuestionOption;
 import com.frozenheart.backend.core.entity.session.QuestionRejectionCode;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
 import com.frozenheart.backend.core.entity.session.Session;
@@ -155,6 +157,31 @@ class QuestionReviewServiceImplTest {
 
         assertEquals(ResponseCode.REVIEW_PERMISSION_DENIED, exception.getResponseCode());
         verifyNoInteractions(questionRepository);
+    }
+
+    @Test
+    void loadsTheStoredMatchIdsInOneBatchAndReturnsOptionsAndExplanation() {
+        setCurrentUser(7L, UserRole.LECTURER);
+        var source = questionAssignedTo(101L, 7L);
+        source.getSession().getCourseClass().setSubject(Subject.builder().id(12L).build());
+        var warning = DuplicateWarning.builder().similarQuestionId(102L).build();
+        source.setDuplicateWarnings(List.of(warning, warning));
+        var option = new QuestionOption();
+        option.setKey("B");
+        option.setIsCorrect(true);
+        var match = Question.builder().id(102L).content("Câu đối sánh").options(List.of(option))
+                .explanation("Lời giải").build();
+        when(questionRepository.findByIdFetchSessionAndCourseClass(101L)).thenReturn(Optional.of(source));
+        when(questionRepository.findReviewableDuplicateMatches(List.of(102L), 30L, 12L)).thenReturn(List.of(match));
+
+        var result = service.getDuplicateMatches(30L, 101L).getFirst();
+
+        assertEquals(102L, result.questionId());
+        assertEquals("Lời giải", result.explanation());
+        assertEquals(true, result.options().getFirst().getIsCorrect());
+        assertEquals(ResponseCode.QUESTION_NOT_FOUND, assertThrows(AppException.class,
+                () -> service.getDuplicateMatches(31L, 101L)).getResponseCode());
+        verify(questionRepository).findReviewableDuplicateMatches(List.of(102L), 30L, 12L);
     }
 
     @Test

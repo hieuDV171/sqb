@@ -1,6 +1,7 @@
 package com.frozenheart.backend.modules.exam.service;
 
 import com.frozenheart.backend.modules.exam.dto.ExamDetailResponse;
+import com.frozenheart.backend.modules.exam.dto.ExamBankSummary;
 import com.frozenheart.backend.modules.exam.dto.ExamListResponse;
 import com.frozenheart.backend.modules.exam.dto.ExportResponse;
 import com.frozenheart.backend.modules.exam.dto.GenerateExamRequest;
@@ -8,6 +9,7 @@ import com.frozenheart.backend.modules.exam.dto.GenerateExamRequest;
 public interface ExamService {
 
     ExamDetailResponse generateExam(GenerateExamRequest request);
+    ExamBankSummary getBankSummary(Long subjectId);
 
     ExamDetailResponse getExamDetail(Long examId);
 

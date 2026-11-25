@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.frozenheart.backend.core.dto.GlobalResponse;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsRequest;
 import com.frozenheart.backend.modules.session.dto.ApproveQuestionsResponse;
+import com.frozenheart.backend.modules.session.dto.DuplicateMatchResponse;
 import com.frozenheart.backend.modules.session.dto.EditQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.EditQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.ReviewableSessionsResponse;
@@ -28,6 +29,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @Tag(name = "18. Giảng viên Duyệt Câu hỏi (Question Review)", description = "Các API dành cho Giảng viên / Quản trị viên thẩm định, chỉnh sửa, phê duyệt hoặc từ chối câu hỏi đề xuất")
 @SecurityRequirement(name = "bearerAuth")
@@ -37,6 +39,15 @@ import lombok.RequiredArgsConstructor;
 public class QuestionReviewController {
 
     private final QuestionReviewService questionReviewService;
+
+    @Operation(summary = "Xem chi tiết các câu đối sánh khi duyệt",
+            description = "Đọc phương án, đáp án đúng và lời giải cho các cảnh báo đã lưu của một câu. Dành cho giảng viên phụ trách phiên hoặc Admin.")
+    @GetMapping("/sessions/{sessionId}/questions/{questionId}/duplicate-matches")
+    public ResponseEntity<GlobalResponse<List<DuplicateMatchResponse>>> getDuplicateMatches(
+            @Parameter(description = "ID phiên đang duyệt", example = "30") @PathVariable Long sessionId,
+            @Parameter(description = "ID câu có cảnh báo trùng", example = "105") @PathVariable Long questionId) {
+        return ResponseEntity.ok(GlobalResponse.success(questionReviewService.getDuplicateMatches(sessionId, questionId)));
+    }
 
     @Operation(summary = "Yêu cầu dò trùng câu hỏi lại",
             description = "Đưa câu hỏi đang chờ duyệt và đã có lượt dò lỗi trở lại hàng chờ xử lý. Dành cho quản trị viên hoặc giảng viên có quyền duyệt câu hỏi.")

@@ -2,6 +2,8 @@ import type { CourseClassResponse } from '@/features/course-class/types/courseCl
 import { questionDifficultyLabels } from '@/lib/questionDifficulty';
 import type { DifficultyDto, DifficultyDistribution, Statistic } from './types/exam.types';
 
+export const examPercentFormat = new Intl.NumberFormat('vi-VN', { style: 'percent', maximumFractionDigits: 2 });
+
 export const examDifficulties = [
   { value: 'EASY', field: 'easy', count: 'easyCount', label: questionDifficultyLabels.EASY, tone: 'bg-success-soft text-success', bar: 'bg-success' },
   { value: 'MEDIUM', field: 'medium', count: 'mediumCount', label: questionDifficultyLabels.MEDIUM, tone: 'bg-warning-soft text-warning', bar: 'bg-warning' },

@@ -9,8 +9,10 @@ import com.frozenheart.backend.core.entity.session.*;
 import com.frozenheart.backend.core.entity.user.*;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.exam.dto.DifficultyDto;
+import com.frozenheart.backend.modules.exam.dto.ExamBankSummary;
 import com.frozenheart.backend.modules.exam.dto.ExamDetailResponse;
 import com.frozenheart.backend.modules.exam.dto.ExamListResponse;
+import com.frozenheart.backend.modules.exam.dto.ExamMatrix;
 import com.frozenheart.backend.modules.exam.dto.ExportResponse;
 import com.frozenheart.backend.modules.exam.dto.GenerateExamRequest;
 import com.frozenheart.backend.modules.exam.dto.Statistic;
@@ -22,11 +24,13 @@ import com.frozenheart.backend.modules.exam.service.DocumentExportService;
 import com.frozenheart.backend.modules.exam.service.ExamService;
 import com.frozenheart.backend.modules.session.repository.QuestionRepository;
 import com.frozenheart.backend.modules.session.repository.SubjectRepository;
+import com.frozenheart.backend.modules.session.repository.TopicRepository;
 import com.frozenheart.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
@@ -47,6 +51,44 @@ public class ExamServiceImpl implements ExamService {
     private final ExamCourseClassRepository examCourseClassRepository;
     private final ExamQuestionRepository examQuestionRepository;
     private final CourseClassRepository courseClassRepository;
+    private final TopicRepository topicRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExamBankSummary getBankSummary(Long subjectId) {
+        JwtPayload actor = JwtPayload.getCurrentUserPayload();
+        UserRole role = UserRole.valueOf(actor.getRole());
+        if (role != UserRole.ADMIN && (role != UserRole.LECTURER
+                || topicRepository.countTeachingAssignments(subjectId, actor.getUserId()) == 0)) {
+            throw new AppException(ResponseCode.ACCESS_DENIED, "Bạn không phụ trách môn học này");
+        }
+        if (!subjectRepository.existsById(subjectId)) {
+            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE, "Không tìm thấy môn học");
+        }
+
+        var total = new EnumMap<QuestionDifficulty, Integer>(QuestionDifficulty.class);
+        Map<Long, Map<QuestionDifficulty, Integer>> perTopic = new HashMap<>();
+        for (var count : questionRepository.countExamBankByTopicAndDifficulty(subjectId)) {
+            var difficulty = Objects.requireNonNullElse(count.getDifficulty(), QuestionDifficulty.UNCLASSIFIED);
+            int size = Math.toIntExact(count.getQuestionCount());
+            total.merge(difficulty, size, Integer::sum);
+            if (count.getTopicId() != null) {
+                perTopic.computeIfAbsent(count.getTopicId(), ignored -> new EnumMap<>(QuestionDifficulty.class))
+                        .merge(difficulty, size, Integer::sum);
+            }
+        }
+        var topics = topicRepository.findBySubjectIdOrderByNameAsc(subjectId).stream().filter(Topic::isActive)
+                .map(topic -> {
+                    var counts = perTopic.getOrDefault(topic.getId(), Map.of());
+                    return new ExamBankSummary.TopicStock(topic.getId(), topic.getName(), totalCount(counts),
+                            ExamQuestionSelection.statistic(counts));
+                }).toList();
+        return new ExamBankSummary(subjectId, totalCount(total), ExamQuestionSelection.statistic(total), topics);
+    }
+
+    private static int totalCount(Map<QuestionDifficulty, Integer> counts) {
+        return counts.values().stream().mapToInt(Integer::intValue).sum();
+    }
 
     @Override
     @Transactional
@@ -69,67 +111,13 @@ public class ExamServiceImpl implements ExamService {
 
         User lecturer = userRepository.getReferenceById(lecturerId);
 
-        // Fetch APPROVED questions
-        List<Question> approvedQuestions = questionRepository.findApprovedBySubjectId(request.getSubjectId());
-        if (approvedQuestions.isEmpty()) {
-            throw new AppException(ResponseCode.INVALID_PARAMETER_VALUE,
-                    "Ngân hàng câu hỏi đã duyệt (APPROVED) cho môn học này đang trống");
-        }
-
-        // Filter & Group by difficulty
-        Map<QuestionDifficulty, List<Question>> byDifficulty = approvedQuestions.stream()
-                .collect(Collectors.groupingBy(
-                        q -> q.getDifficulty() != null ? q.getDifficulty() : QuestionDifficulty.UNCLASSIFIED));
-
         int targetTotal = request.getQuestionCount() != null ? request.getQuestionCount() : 10;
-        GenerateExamRequest.DifficultyDistribution dist = request.getDifficultyDistribution();
-
-        int targetEasy = dist != null && dist.getEasy() != null ? (int) Math.round(targetTotal * dist.getEasy())
-                : (int) Math.round(targetTotal * 0.0);
-        int targetMedium = dist != null && dist.getMedium() != null ? (int) Math.round(targetTotal * dist.getMedium())
-                : (int) Math.round(targetTotal * 0.0);
-        int targetHard = dist != null && dist.getHard() != null ? (int) Math.round(targetTotal * dist.getHard())
-                : (int) Math.round(targetTotal * 0.0);
-        int targetUnclassified = dist != null && dist.getUnclassified() != null
-                ? (int) Math.round(targetTotal * dist.getUnclassified())
-                : (dist == null ? targetTotal : 0);
-
-        List<Question> selectedQuestions = new ArrayList<>();
-        selectedQuestions.addAll(
-                pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.EASY, Collections.emptyList()), targetEasy));
-        selectedQuestions.addAll(pickQuestions(
-                byDifficulty.getOrDefault(QuestionDifficulty.MEDIUM, Collections.emptyList()), targetMedium));
-        selectedQuestions.addAll(
-                pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.HARD, Collections.emptyList()), targetHard));
-        selectedQuestions.addAll(
-                pickQuestions(byDifficulty.getOrDefault(QuestionDifficulty.UNCLASSIFIED, Collections.emptyList()),
-                        targetUnclassified));
-
-        // Nếu thừa câu do làm tròn -> Cắt về đúng targetTotal
-        if (selectedQuestions.size() > targetTotal) {
-            selectedQuestions = new ArrayList<>(selectedQuestions.subList(0, targetTotal));
-        }
-        // Nếu thiếu câu -> Backfill từ danh sách còn lại
-        else if (selectedQuestions.size() < targetTotal) {
-            Set<Long> selectedIds = selectedQuestions.stream().map(Question::getId).collect(Collectors.toSet());
-            List<Question> remaining = approvedQuestions.stream()
-                    .filter(q -> !selectedIds.contains(q.getId()))
-                    .collect(Collectors.toList());
-
-            selectedQuestions.addAll(pickQuestions(remaining, targetTotal - selectedQuestions.size()));
-        }
-
-        Collections.shuffle(selectedQuestions);
-
-        // Serialize JSON metadata
-        String diffJson = "";
-        String topicJson = "";
-        try {
-            diffJson = jsonMapper.writeValueAsString(request.getDifficultyDistribution());
-            topicJson = jsonMapper.writeValueAsString(request.getTopicWeights());
-        } catch (Exception e) {
-            log.warn("Failed to serialize difficulty/topic weights", e);
-        }
+        var weights = request.getTopicWeights();
+        var catalog = weights == null || weights.isEmpty() ? List.<Topic>of()
+                : topicRepository.findBySubjectIdOrderByNameAsc(subject.getId());
+        var selection = ExamQuestionSelection.select(questionRepository.findApprovedBySubjectId(subject.getId()),
+                targetTotal, request.getDifficultyDistribution(), weights, catalog);
+        var selectedQuestions = selection.questions();
 
         String examTitle = request.getTitle() != null && !request.getTitle().isBlank()
                 ? request.getTitle()
@@ -142,8 +130,8 @@ public class ExamServiceImpl implements ExamService {
                 .subject(subject)
                 .lecturer(lecturer)
                 .questionCount(selectedQuestions.size())
-                .difficultyDistributionJson(diffJson)
-                .topicWeightsJson(topicJson)
+                .difficultyDistributionJson(jsonMapper.writeValueAsString(selection.difficulty()))
+                .topicWeightsJson(jsonMapper.writeValueAsString(selection.topics()))
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -287,14 +275,6 @@ public class ExamServiceImpl implements ExamService {
 
     // --- Helpers ---
 
-    private List<Question> pickQuestions(List<Question> source, int count) {
-        if (source.isEmpty() || count <= 0)
-            return Collections.emptyList();
-        List<Question> shuffled = new ArrayList<>(source);
-        Collections.shuffle(shuffled);
-        return shuffled.subList(0, Math.min(count, shuffled.size()));
-    }
-
     private String generateOptionKey(int index) {
 
         StringBuilder key = new StringBuilder();
@@ -387,13 +367,17 @@ public class ExamServiceImpl implements ExamService {
             }
         }
 
+        var difficultyMatrix = readMatrix(exam.getDifficultyDistributionJson(), "actual", ExamMatrix.Difficulty.class);
+        var topicMatrix = readMatrix(exam.getTopicWeightsJson(), "rows", ExamMatrix.Topics.class);
         return ExamDetailResponse.builder()
                 .examId(exam.getId())
                 .title(exam.getTitle())
                 .subjectName(exam.getSubject() != null ? exam.getSubject().getName() : "")
                 .questionCount(exam.getQuestionCount())
                 .questions(qDtos)
-                .statistic(Statistic.builder()
+                .difficultyMatrix(difficultyMatrix)
+                .topicMatrix(topicMatrix)
+                .statistic(difficultyMatrix != null ? difficultyMatrix.actual() : Statistic.builder()
                         .easyCount(easy)
                         .mediumCount(medium)
                         .hardCount(hard)
@@ -401,5 +385,16 @@ public class ExamServiceImpl implements ExamService {
                         .build())
                 .createdAt(exam.getCreatedAt())
                 .build();
+    }
+
+    private <T> T readMatrix(String json, String snapshotField, Class<T> type) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            var node = jsonMapper.readTree(json);
+            return node != null && node.hasNonNull(snapshotField) ? jsonMapper.treeToValue(node, type) : null;
+        } catch (JacksonException e) {
+            log.warn("Could not read saved exam matrix of type {}", type.getSimpleName(), e);
+            return null;
+        }
     }
 }

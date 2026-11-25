@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { examDifficulties } from '../examPresentation';
+import { examDifficulties, examPercentFormat } from '../examPresentation';
 import { useExamDetail } from '../hooks/useExam';
 import { ExamDialog } from './ExamDialog';
 import { ExamDifficultySummary } from './ExamDifficultySummary';
@@ -35,7 +35,35 @@ export function ExamDetailModal({ examId, onClose }: ExamDetailModalProps) {
           <ErrorState title="Không thể tải chi tiết đề thi" onRetry={() => void query.refetch()} />
         ) : (
           <>
-            {exam.statistic && <ExamDifficultySummary statistic={exam.statistic} />}
+            {exam.statistic && <ExamDifficultySummary statistic={exam.statistic} requested={exam.difficultyMatrix?.requested} />}
+            {!!exam.topicMatrix?.rows.length && (
+              <section aria-label="Ma trận chủ đề" className="space-y-2 rounded-xl bg-surface-subtle p-3">
+                <h3 className="text-sm font-medium">Ma trận chủ đề</h3>
+                <ul className="divide-y divide-border">
+                  {exam.topicMatrix.rows.map((row) => (
+                    <li key={row.topicId ?? 'untagged'} className="space-y-2 py-2 text-sm">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <p className="font-medium wrap-break-word">{row.topicName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {row.requestedCount != null && row.requestedWeight != null && (
+                            <>Yêu cầu {examPercentFormat.format(row.requestedWeight)} ({row.requestedCount} câu) · </>
+                          )}
+                          <strong className="font-semibold text-foreground">{row.actualCount} câu thực tế</strong>
+                        </p>
+                      </div>
+                      <dl className="flex flex-wrap gap-1.5 text-xs">
+                        {examDifficulties.map(({ field, count, label, tone }) => (
+                          <div key={field} className={cn('flex gap-1.5 rounded-md px-2 py-0.5', tone)}>
+                            <dt>{label}</dt>
+                            <dd className="font-semibold tabular-nums">{row.actualByDifficulty[count] ?? 0}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {exam.questions.length === 0 ? (
               <EmptyState icon={ClipboardList} title="Đề thi chưa có câu hỏi" />
             ) : (

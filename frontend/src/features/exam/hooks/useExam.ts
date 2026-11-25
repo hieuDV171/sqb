@@ -11,9 +11,18 @@ export const EXAM_KEYS = {
   all: ['exams'] as const,
   list: (subjectId?: number) => [...EXAM_KEYS.all, 'list', subjectId] as const,
   detail: (examId?: number) => [...EXAM_KEYS.all, 'detail', examId] as const,
+  bankSummary: (subjectId?: number) => [...EXAM_KEYS.all, 'bank-summary', subjectId] as const,
   classes: (params?: { semesterId?: number; includeHistory?: boolean }) =>
     [...EXAM_KEYS.all, 'lecturer-classes', params] as const,
 };
+
+export function useExamBankSummary(subjectId?: number) {
+  return useQuery({
+    queryKey: EXAM_KEYS.bankSummary(subjectId),
+    enabled: subjectId !== undefined,
+    queryFn: async ({ signal }) => subjectId === undefined ? null : (await examService.getBankSummary(subjectId, signal)).data,
+  });
+}
 
 export function useMyExams(params?: {
   subjectId?: number;

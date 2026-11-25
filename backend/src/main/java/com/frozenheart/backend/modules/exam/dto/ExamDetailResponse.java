@@ -36,6 +36,12 @@ public class ExamDetailResponse {
     @Schema(description = "Thống kê câu hỏi theo độ khó")
     private Statistic statistic;
 
+    @Schema(description = "Bản chụp tỷ lệ độ khó và số câu tại thời điểm tạo đề, có ở đề mới")
+    private ExamMatrix.Difficulty difficultyMatrix;
+
+    @Schema(description = "Bản chụp tỷ lệ chủ đề và số câu theo độ khó tại thời điểm tạo đề, có ở đề mới")
+    private ExamMatrix.Topics topicMatrix;
+
     @Schema(description = "Thời gian tạo đề", example = "2026-10-06T09:00:00Z")
     private Instant createdAt;
 

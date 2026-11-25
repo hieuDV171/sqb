@@ -21,6 +21,13 @@ export interface Statistic {
   unclassifiedCount?: number;
 }
 
+export interface ExamBankSummary {
+  subjectId: number;
+  totalQuestions: number;
+  statistic: Statistic;
+  topics: { topicId: number; topicName: string; totalQuestions: number; statistic: Statistic }[];
+}
+
 // ==========================================
 // 2. EXAM GENERATION & DETAIL
 // ==========================================
@@ -60,7 +67,18 @@ export interface ExamDetailResponse {
   questionCount: number;
   questions: ExamQuestionDto[];
   statistic?: Statistic;
+  difficultyMatrix?: { requested?: DifficultyDistribution | null; actual: Statistic } | null;
+  topicMatrix?: { rows: ExamTopicMatrixRow[] } | null;
   createdAt: string;
+}
+
+export interface ExamTopicMatrixRow {
+  topicId?: number | null;
+  topicName: string;
+  requestedWeight?: number | null;
+  requestedCount?: number | null;
+  actualCount: number;
+  actualByDifficulty: Statistic;
 }
 
 // ==========================================
