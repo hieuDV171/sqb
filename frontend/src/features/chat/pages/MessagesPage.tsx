@@ -58,7 +58,7 @@ export function MessagesPage() {
   }, []);
 
   return (
-    <div className="mx-auto flex h-[max(24rem,calc(100dvh-var(--app-header-height)-var(--app-mobile-nav-height)-4rem-env(safe-area-inset-bottom)))] max-w-7xl overflow-hidden rounded-2xl border border-border bg-card md:h-[max(24rem,calc(100dvh-var(--app-header-height)-3rem))] lg:h-[max(24rem,calc(100dvh-var(--app-header-height)-4rem))]">
+    <div className="mx-auto flex h-[max(24rem,calc(100dvh-var(--app-header-bottom)-var(--app-mobile-nav-height)-4rem-env(safe-area-inset-bottom)))] max-w-7xl overflow-hidden rounded-2xl border border-border bg-card md:h-[max(24rem,calc(100dvh-var(--app-header-bottom)-3rem))] lg:h-[max(24rem,calc(100dvh-var(--app-header-bottom)-4rem))]">
       {/* Cột trái: Danh sách hội thoại (Ẩn trên màn hình nhỏ nếu đang mở chat) */}
       <div
         className={`h-full min-h-0 w-full shrink-0 flex-col md:w-72 xl:w-96 ${

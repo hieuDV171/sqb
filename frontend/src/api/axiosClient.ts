@@ -2,6 +2,7 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import humps from "humps";
 import { useAuthStore } from "../stores/useAuthStore";
 import { ACCESS_REQUEST_HEADERS, API_BASE_URL, getAccessGatewayError, isAccessTokenExpiring, refreshAccessToken } from "./accessSession";
+import { finishApiRequest, reportApiConnectionFailure, trackApiRequest } from "./connectivity";
 
 declare module "axios" {
     export interface AxiosRequestConfig {
@@ -45,21 +46,27 @@ axiosClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) 
     if (config.params) {
         config.params = humps.decamelizeKeys(config.params);
     }
+    trackApiRequest(config);
     return config;
 });
 
 // Response Interceptor: Tự động Refresh Token khi 401 và chuyển snake_case -> camelCase bằng humps
 axiosClient.interceptors.response.use(
-    (response) => humps.camelizeKeys(
-        response.data, response.config.preserveEnumKeys ? preserveEnumKeys : undefined
-    ) as unknown as typeof response, // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
+    (response) => {
+        finishApiRequest(response.config, true);
+        return humps.camelizeKeys(
+            response.data, response.config.preserveEnumKeys ? preserveEnumKeys : undefined
+        ) as unknown as typeof response; // Trả về trực tiếp GlobalResponse<T> đã convert thành camelCase
+    },
     async (error) => {
+        finishApiRequest(error.config);
         if (axios.isCancel(error)) return Promise.reject(error);
 
         const gatewayError = getAccessGatewayError(error);
         if (gatewayError) {
             return Promise.reject(gatewayError);
         }
+        reportApiConnectionFailure(error);
 
         const originalRequest = error.config;
         const formattedError = error.response?.data ? humps.camelizeKeys(error.response.data) : error;

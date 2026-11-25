@@ -67,8 +67,10 @@
   }
 
   html {
+    --app-connection-height: 0px;
+    --app-header-bottom: calc(var(--app-connection-height) + var(--app-header-height));
     min-width: 20rem;
-    scroll-padding-top: calc(var(--app-header-height) + var(--space-4));
+    scroll-padding-top: calc(var(--app-header-bottom) + var(--space-4));
     font-family: var(--font-sans), sans-serif;
     background: var(--background);
   }
@@ -132,7 +134,7 @@ main:has([data-feed-page], [data-study-workspace]) {
 }
 
 @utility sticky-study-progress {
-  --study-progress-top: calc(var(--app-header-height) + var(--space-4));
+  --study-progress-top: calc(var(--app-header-bottom) + var(--space-4));
   position: sticky;
   top: var(--study-progress-top);
   max-height: calc(100dvh - var(--study-progress-top) - var(--space-4));

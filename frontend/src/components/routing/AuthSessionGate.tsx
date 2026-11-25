@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AUTH_EVENT_KEY, useAuthStore } from '@/stores/useAuthStore';
 import { restoreWebSession } from '@/api/webSession';
 import { getAccessGatewayError } from '@/api/accessSession';
+import { reportApiConnectionFailure } from '@/api/connectivity';
 import { queryClient } from '@/lib/queryClient';
 import { stompClient } from '@/lib/stompClient';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ export function AuthSessionGate({ children }: { children: ReactNode }) {
         setStatus('ready');
       }).catch((failure: unknown) => {
         if (disposed || current !== generation.current) return;
+        reportApiConnectionFailure(failure);
         setError(getAccessGatewayError(failure)?.message ?? 'Chưa kết nối được với máy chủ. Vui lòng kiểm tra kết nối và thử lại.');
         setStatus('error');
       });

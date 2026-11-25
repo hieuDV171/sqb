@@ -24,7 +24,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'sticky top-[var(--app-header-height)] z-30 hidden h-[calc(100dvh-var(--app-header-height))] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex',
+        'sticky top-(--app-header-bottom) z-30 hidden h-[calc(100dvh-var(--app-header-bottom))] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex',
         isCollapsed ? 'w-[var(--app-sidebar-collapsed-width)]' : 'w-[var(--app-sidebar-width)]'
       )}
       aria-label="Điều hướng chính"

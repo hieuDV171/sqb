@@ -155,6 +155,7 @@ const roleOptions: { value: UserRole; label: string }[] = [
 const genderOptions: { value: Gender; label: string }[] = [
   { value: "MALE", label: "Nam" },
   { value: "FEMALE", label: "Nữ" },
+  { value: "OTHER", label: "Khác" },
 ];
 
 function AccountSelect<Value extends string>({ id, label, placeholder, value, options, onChange, disabled, isRequired, error }: {

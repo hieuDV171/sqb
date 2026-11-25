@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { ACCESS_REAUTH_MESSAGE, AccessGatewayError, isAccessGatewayResponse, isAdminHostname, resolveApiBaseUrl } from '../lib/adminAccess';
 
 export const API_BASE_URL = resolveApiBaseUrl(window.location, import.meta.env.VITE_API_BASE_URL);
-export const ACCESS_REQUEST_HEADERS = isAdminHostname(window.location.hostname)
+export const ACCESS_REQUEST_HEADERS: Record<string, string> = isAdminHostname(window.location.hostname)
     ? { 'X-Requested-With': 'XMLHttpRequest' }
     : {};
 
