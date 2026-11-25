@@ -165,22 +165,24 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={`${id}-count`}>Số câu hỏi</Label>
-                <div className="flex gap-2">
+                <div className="relative">
                   <Input id={`${id}-count`} type="number" inputMode="numeric" min={1} max={maxQuestionCount} step={1} required
-                    className="h-11 [appearance:textfield] md:h-11 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="h-13 [appearance:textfield] pe-13 md:h-13 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     aria-invalid={invalidCount || bankTooSmall}
                     aria-describedby={bankTooSmall ? `${id}-count-range ${id}-count-error` : `${id}-count-range`}
                     value={questionCount} onChange={(event) => setQuestionCount(event.target.value)} />
-                  <Button type="button" size="icon" variant="outline" className="size-11 shrink-0"
-                    aria-label="Giảm 1 câu" aria-controls={`${id}-count`} disabled={count <= 1}
-                    onClick={() => stepQuestionCount(-1)}>
-                    <ChevronDown aria-hidden="true" />
-                  </Button>
-                  <Button type="button" size="icon" variant="outline" className="size-11 shrink-0"
-                    aria-label="Tăng 1 câu" aria-controls={`${id}-count`} disabled={count >= maxQuestionCount}
-                    onClick={() => stepQuestionCount(1)}>
-                    <ChevronUp aria-hidden="true" />
-                  </Button>
+                  <div className="absolute inset-y-px end-px grid w-11 grid-rows-2 divide-y divide-input overflow-hidden rounded-e-[calc(var(--radius-xl)-1px)] border-s border-input">
+                    <Button type="button" size="icon-xs" variant="ghost" className="size-full rounded-none focus-visible:ring-inset"
+                      aria-label="Tăng 1 câu" aria-controls={`${id}-count`} disabled={count >= maxQuestionCount}
+                      onClick={() => stepQuestionCount(1)}>
+                      <ChevronUp aria-hidden="true" className="size-3.5" />
+                    </Button>
+                    <Button type="button" size="icon-xs" variant="ghost" className="size-full rounded-none focus-visible:ring-inset"
+                      aria-label="Giảm 1 câu" aria-controls={`${id}-count`} disabled={count <= 1}
+                      onClick={() => stepQuestionCount(-1)}>
+                      <ChevronDown aria-hidden="true" className="size-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 <p id={`${id}-count-range`} className={cn('text-sm', invalidCount ? 'text-destructive' : 'text-muted-foreground')}>
                   {invalidCount ? `Nhập số nguyên từ 1 đến ${maxQuestionCount}.` : `Từ 1 đến ${maxQuestionCount} câu`}
