@@ -1,11 +1,13 @@
 package com.frozenheart.backend.core.entity.session;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@EqualsAndHashCode
 @Schema(description = "Lựa chọn đáp án của câu hỏi trắc nghiệm")
 public class QuestionOption {
     @Schema(description = "Ký tự định danh đáp án (A, B, C, D...)", example = "A")
