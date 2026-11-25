@@ -13,6 +13,8 @@ import { deviceService } from '@/services/deviceService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getErrorMessage } from './errorMessage';
 
+declare const __FIREBASE_SW_HASH__: string;
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -31,6 +33,8 @@ let isFidLifecycleBound = false;
 
 const FID_STORAGE_KEY = 'sqb_fid';
 const PENDING_FID_PREFIX = 'sqb_pending_fid_unregister:';
+const FIREBASE_SW_PATH = '/firebase-messaging-sw.js';
+const FIREBASE_SW_OPTIONS: RegistrationOptions = { scope: '/', updateViaCache: 'none' };
 
 function hasActiveSession() {
   const { isAuthenticated, tokenType, accountState } = useAuthStore.getState();
@@ -124,8 +128,23 @@ function getFirebaseSwUrl(): string {
     storageBucket: firebaseConfig.storageBucket || '',
     messagingSenderId: firebaseConfig.messagingSenderId || '',
     appId: firebaseConfig.appId || '',
+    sqbVersion: __FIREBASE_SW_HASH__,
   });
-  return `/firebase-messaging-sw.js?${params.toString()}`;
+  return `${FIREBASE_SW_PATH}?${params.toString()}`;
+}
+
+async function refreshExistingFirebaseWorker(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+
+  const registration = await navigator.serviceWorker.getRegistration('/');
+  const worker = registration?.installing ?? registration?.waiting ?? registration?.active;
+  if (!worker) return;
+
+  const currentUrl = new URL(worker.scriptURL);
+  const nextUrl = new URL(getFirebaseSwUrl(), window.location.origin);
+  if (currentUrl.pathname === FIREBASE_SW_PATH && currentUrl.href !== nextUrl.href) {
+    await navigator.serviceWorker.register(nextUrl.href, FIREBASE_SW_OPTIONS);
+  }
 }
 
 /**
@@ -152,10 +171,7 @@ export async function requestFid(): Promise<string | null> {
     bindFidLifecycleListeners(messaging);
 
     // Đăng ký Service Worker với query params cấu hình động
-    const swUrl = getFirebaseSwUrl();
-    const registration = await navigator.serviceWorker.register(swUrl, {
-      scope: '/',
-    });
+    const registration = await navigator.serviceWorker.register(getFirebaseSwUrl(), FIREBASE_SW_OPTIONS);
 
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
@@ -234,6 +250,11 @@ export async function syncCurrentFidIfAuthenticated(): Promise<void> {
 
   const fid = localStorage.getItem(FID_STORAGE_KEY);
   if (!fid) return;
+
+  // Migrate existing subscriptions to the versioned worker URL without prompting again.
+  void refreshExistingFirebaseWorker().catch((error) => {
+    console.warn('[FID] Chưa cập nhật được Service Worker:', getErrorMessage(error));
+  });
 
   try {
     await deviceService.syncFid(fid);

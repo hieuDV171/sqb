@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.frozenheart.backend.core.constant.Time;
 import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 public class PushNotificationServiceImpl implements PushNotificationService {
 
     private static final int FCM_MULTICAST_LIMIT = 500;
+    private static final String PUSH_NOTIFICATION_ID_PARAM = "pushNotificationId";
 
     private final UserDeviceRepository userDeviceRepository;
     private final UserPushSettingRepository userPushSettingRepository;
@@ -100,11 +102,11 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                             .setBody(delivery.body())
                             .setImage(delivery.iconUrl())
                             .build())
-                    .putData("notificationId", delivery.notificationId().toString());
+                    .putData("notificationId", delivery.notificationId().toString())
+                    .putData("targetUrl", notificationClickUrl(delivery));
 
             if (delivery.targetType() != null) messageBuilder.putData("targetType", delivery.targetType().name());
             if (delivery.targetId() != null) messageBuilder.putData("targetId", delivery.targetId().toString());
-            if (delivery.targetUrl() != null) messageBuilder.putData("targetUrl", delivery.targetUrl());
             if (pushType != null) messageBuilder.putData("pushType", pushType.name());
 
             MulticastMessage message = messageBuilder.build();
@@ -120,6 +122,14 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         } catch (Exception e) {
             log.error("[PushNotificationService] Lỗi khi gửi multicast push notification: {}", e.getMessage());
         }
+    }
+
+    private static String notificationClickUrl(Delivery delivery) {
+        String target = Objects.requireNonNullElse(delivery.targetUrl(), "/notifications");
+        // Older workers navigate to targetUrl without reading the separate notificationId field.
+        return UriComponentsBuilder.fromUriString(target)
+                .replaceQueryParam(PUSH_NOTIFICATION_ID_PARAM, delivery.notificationId())
+                .build().toUriString();
     }
 
     private void collectInvalidDevices(List<SendResponse> responses, List<String> fids,
