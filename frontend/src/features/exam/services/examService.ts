@@ -11,21 +11,23 @@ import type {
   ExportQuestionsParams,
 } from '../types/exam.types';
 
+const examApiPath = '/lecturer/exams';
+
 export const examService = {
   getBankSummary: (subjectId: number, signal: AbortSignal) =>
     axiosClient.get<unknown, GlobalResponse<ExamBankSummary>>(
-      `/exams/question-bank/${subjectId}/summary`, { signal, skipToast: true },
+      `${examApiPath}/question-bank/${subjectId}/summary`, { signal, skipToast: true },
     ),
 
   /**
    * 21.1 Tự động sinh đề thi từ ngân hàng câu hỏi
-   * POST /api/v1/exams/generate
+   * POST /api/v1/lecturer/exams/generate
    */
   generateExam: async (
     data: GenerateExamRequest
   ): Promise<GlobalResponse<ExamDetailResponse>> => {
     return axiosClient.post<unknown, GlobalResponse<ExamDetailResponse>>(
-      '/exams/generate',
+      `${examApiPath}/generate`,
       data,
       { skipToast: true },
     );
@@ -33,17 +35,17 @@ export const examService = {
 
   /**
    * 21.2 Xem chi tiết đề thi
-   * GET /api/v1/exams/{examId}
+   * GET /api/v1/lecturer/exams/{examId}
    */
   getExamDetail: async (
     examId: number
   ): Promise<GlobalResponse<ExamDetailResponse>> => {
-    return axiosClient.get<unknown, GlobalResponse<ExamDetailResponse>>(`/exams/${examId}`);
+    return axiosClient.get<unknown, GlobalResponse<ExamDetailResponse>>(`${examApiPath}/${examId}`);
   },
 
   /**
    * 21.3 Lấy danh sách đề thi của giảng viên
-   * GET /api/v1/exams/my-exams
+   * GET /api/v1/lecturer/exams/my-exams
    */
   getMyExams: async (params?: {
     subjectId?: number;
@@ -52,7 +54,7 @@ export const examService = {
     limit?: number;
   }): Promise<GlobalResponse<ExamListResponse>> => {
     return axiosClient.get<unknown, GlobalResponse<ExamListResponse>>(
-      '/exams/my-exams',
+      `${examApiPath}/my-exams`,
       {
         params: {
           subject_id: params?.subjectId,
@@ -66,14 +68,14 @@ export const examService = {
 
   /**
    * 21.4 Xuất file đề thi (PDF / Excel)
-   * GET /api/v1/exams/{examId}/export
+   * GET /api/v1/lecturer/exams/{examId}/export
    */
   exportExam: async (
     examId: number,
     params?: ExportExamParams
   ): Promise<GlobalResponse<ExportResponse>> => {
     return axiosClient.get<unknown, GlobalResponse<ExportResponse>>(
-      `/exams/${examId}/export`,
+      `${examApiPath}/${examId}/export`,
       {
         skipToast: true,
         params: {

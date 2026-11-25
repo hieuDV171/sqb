@@ -531,7 +531,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 ### [ADR-059] Quyền xem và xuất đề thi
 
-- `GET /exams/{examId}` và `GET /exams/{examId}/export` chỉ dành cho giảng viên tạo đề hoặc Admin, theo phạm vi quản lý đề thi. Kiểm tra vai trò trước khi truy vấn và đối chiếu người tạo trước khi trả nội dung hoặc gọi dịch vụ xuất tệp. Gán đề cho lớp chưa cấp quyền xem đáp án cho sinh viên hoặc giảng viên khác.
+- `GET /lecturer/exams/{examId}` và `GET /lecturer/exams/{examId}/export` chỉ dành cho giảng viên tạo đề hoặc Admin, theo phạm vi quản lý đề thi. Kiểm tra vai trò trước khi truy vấn và đối chiếu người tạo trước khi trả nội dung hoặc gọi dịch vụ xuất tệp. Gán đề cho lớp chưa cấp quyền xem đáp án cho sinh viên hoặc giảng viên khác.
 
 ### [ADR-060] Lưu tệp xuất học thuật trong bucket R2 riêng tư
 
