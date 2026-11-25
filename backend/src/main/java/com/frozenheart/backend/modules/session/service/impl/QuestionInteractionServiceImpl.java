@@ -35,6 +35,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.exception.AppException;
+import com.frozenheart.backend.modules.session.dto.AnswerOptionCountProjection;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionRequest;
 import com.frozenheart.backend.modules.session.dto.AnswerQuestionResponse;
 import com.frozenheart.backend.modules.session.dto.QuestionRatingsResponse;
@@ -264,20 +265,10 @@ public class QuestionInteractionServiceImpl implements QuestionInteractionServic
                                 : 0L;
                 double correctRate = totalAnswer > 0 ? (double) correctCount / totalAnswer : 0.0;
 
-                List<List<QuestionOption>> selectedOptionsLists = userAnswerRepository
-                                .findSelectedOptionsByQuestionId(questionId);
-                Map<String, Long> optionDistribution = new HashMap<>();
-                if (selectedOptionsLists != null) {
-                        for (List<QuestionOption> list : selectedOptionsLists) {
-                                if (list != null) {
-                                        for (QuestionOption opt : list) {
-                                                if (opt.getKey() != null) {
-                                                        optionDistribution.merge(opt.getKey(), 1L, Long::sum);
-                                                }
-                                        }
-                                }
-                        }
-                }
+                Map<String, Long> optionDistribution = userAnswerRepository.countSelectedOptionsByQuestionId(questionId)
+                                .stream()
+                                .collect(Collectors.toMap(AnswerOptionCountProjection::getOptionKey,
+                                                AnswerOptionCountProjection::getSelectionCount));
 
                 RatingStatisticsProjection ratingStats = userRatingRepository.getRatingStatsSummary(questionId);
                 double avgRating = ratingStats != null && ratingStats.getAvgRating() != null

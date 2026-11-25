@@ -22,8 +22,22 @@ public interface QuestionEditLogRepository extends JpaRepository<QuestionEditLog
 
     List<QuestionEditLog> findByQuestionIdInOrderByCreatedAtDesc(List<Long> questionIds);
 
-    @Query("SELECT l FROM QuestionEditLog l LEFT JOIN FETCH l.actor WHERE l.question.id IN :questionIds ORDER BY l.createdAt DESC")
-    List<QuestionEditLog> findByQuestionIdInFetchActorOrderByCreatedAtDesc(@Param("questionIds") List<Long> questionIds);
+    @Query("""
+            SELECT l FROM QuestionEditLog l LEFT JOIN FETCH l.actor
+            WHERE l.id IN (
+                SELECT ranked.logId
+                FROM (
+                    SELECT candidate.id AS logId, row_number() OVER (
+                        PARTITION BY candidate.question.id
+                        ORDER BY candidate.createdAt DESC NULLS LAST, candidate.id DESC
+                    ) AS logRank
+                    FROM QuestionEditLog candidate
+                    WHERE candidate.question.id IN :questionIds
+                ) ranked
+                WHERE ranked.logRank = 1
+            )
+            """)
+    List<QuestionEditLog> findLatestByQuestionIdInFetchActor(@Param("questionIds") List<Long> questionIds);
 
     @Query("SELECT l FROM QuestionEditLog l JOIN FETCH l.question q JOIN FETCH q.session s JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.lecturer WHERE l.id = :id")
     Optional<QuestionEditLog> findByIdFetchQuestion(@Param("id") Long id);

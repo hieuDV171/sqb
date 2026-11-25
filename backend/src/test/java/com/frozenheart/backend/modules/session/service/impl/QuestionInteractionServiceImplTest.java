@@ -17,6 +17,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.UserRatingId;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import com.frozenheart.backend.core.entity.user.CourseClass;
+import com.frozenheart.backend.modules.session.dto.AnswerOptionCountProjection;
 import com.frozenheart.backend.modules.session.dto.AnswerStatisticsProjection;
 import com.frozenheart.backend.modules.session.dto.QuestionStatisticsResponse;
 import com.frozenheart.backend.modules.session.dto.RateQuestionRequest;
@@ -39,11 +40,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
@@ -171,7 +174,10 @@ class QuestionInteractionServiceImplTest {
         when(userAnswerRepository.getAnswerStatsSummary(questionId)).thenReturn(answerStatistics);
         when(answerStatistics.getTotalAnswers()).thenReturn(10L);
         when(answerStatistics.getCorrectAnswers()).thenReturn(7L);
-        when(userAnswerRepository.findSelectedOptionsByQuestionId(questionId)).thenReturn(List.of());
+        var selection = mock(AnswerOptionCountProjection.class);
+        when(selection.getOptionKey()).thenReturn("B");
+        when(selection.getSelectionCount()).thenReturn(7L);
+        when(userAnswerRepository.countSelectedOptionsByQuestionId(questionId)).thenReturn(List.of(selection));
         when(userRatingRepository.getRatingStatsSummary(questionId)).thenReturn(ratingStatistics);
         when(ratingStatistics.getAvgRating()).thenReturn(3.5);
         when(ratingStatistics.getTotalRatings()).thenReturn(6L);
@@ -185,6 +191,7 @@ class QuestionInteractionServiceImplTest {
 
         assertEquals(10L, response.totalAnswer());
         assertEquals(0.7, response.correctRate());
+        assertEquals(Map.of("B", 7L), response.optionDistribution());
         assertEquals(3.5, response.ratingSummary().avgRating());
         assertEquals(6L, response.ratingSummary().totalRatings());
         assertEquals(2L, response.ratingSummary().distribution().get("4"));

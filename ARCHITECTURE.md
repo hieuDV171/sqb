@@ -728,3 +728,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Service worker mở trang đích trong ứng dụng và chuyển ID qua tham số `pushNotificationId`. Với push có ID mà thiếu đường dẫn, trang đích là trung tâm thông báo. Push cũ thiếu ID tiếp tục điều hướng theo đường dẫn sẵn có.
 - Frontend gọi API đánh dấu một thông báo đã đọc bằng phiên xác thực, xóa tham số khỏi URL và đồng bộ danh sách cùng số chưa đọc theo phản hồi API.
 - Vite tính SHA-256 từ nội dung `public/firebase-messaging-sw.js` khi build và đưa vào tham số `sqbVersion` của URL đăng ký để vượt qua cache CDN của URL cũ. Khi mở web với FID hiện có và quyền thông báo đã cấp, frontend cập nhật đăng ký cùng scope. Push mới cũng đặt `pushNotificationId` ngay trong `data.targetUrl` để worker cũ chỉ đọc đường dẫn vẫn chuyển được ID.
+
+### [ADR-090] Đọc dữ liệu JSONB trong thống kê, duyệt và báo cáo
+
+- **Ngày 25/11/2026.** Cài đặt push so sánh theo giá trị ở cả cấu hình chung, danh mục và giờ yên lặng. Hibernate nhận biết bản sao JSONB cùng nội dung trong transaction gửi push, tránh ghi lại cấu hình vừa đọc.
+- PostgreSQL tổng hợp số lượt chọn theo khóa đáp án từ bản chụp `user_answers.selected_options`. Màn duyệt lấy một log gần nhất cho mỗi câu trong một truy vấn và fetch tác giả. Chọn thời điểm giảm dần, ưu tiên log có thời điểm rồi dùng ID giảm dần khi bằng nhau. API vẫn trả bản chụp của log đã chọn.
+- Entity `Report` dùng `private_evidence_key` để truy cập ảnh riêng và bỏ mapping cột `reports.evidence_urls`. Tham số URL tương thích khi nộp báo cáo tiếp tục đi qua bước kiểm quyền và lưu vào kho riêng. Kiểm kê dữ liệu cũ trước khi áp dụng changeset bỏ cột.

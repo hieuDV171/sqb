@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1795592323457-8
+      author: ADMIN
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: evidence_urls
+            tableName: reports
+

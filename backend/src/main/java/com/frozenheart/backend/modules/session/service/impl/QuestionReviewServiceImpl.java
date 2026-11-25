@@ -184,11 +184,10 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
 
         List<Long> questionIds = questions.stream().map(Question::getId).toList();
         Map<Long, QuestionEditLog> editLogMap = questionIds.isEmpty() ? Map.of()
-                : questionEditLogRepository.findByQuestionIdInFetchActorOrderByCreatedAtDesc(questionIds).stream()
+                : questionEditLogRepository.findLatestByQuestionIdInFetchActor(questionIds).stream()
                         .collect(Collectors.toMap(
                                 log -> log.getQuestion().getId(),
-                                log -> log,
-                                (existing, _) -> existing));
+                                log -> log));
 
         List<Long> actorUserIds = editLogMap.values().stream()
                 .filter(l -> l.getActor() != null)
