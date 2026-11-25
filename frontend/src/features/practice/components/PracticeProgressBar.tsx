@@ -17,7 +17,7 @@ export function PracticeProgressBar({ questions, currentIndex, onSelectQuestion,
       <div className="space-y-2">
         <h2 id="practice-progress" className="font-semibold">Tiến độ</h2>
         <p className="text-sm text-muted-foreground" role="status">Đã trả lời {answeredCount}/{questions.length} câu</p>
-        <progress aria-label="Số câu đã trả lời" className="block h-2 w-full accent-primary" max={questions.length} value={answeredCount} />
+        <progress aria-label="Số câu đã trả lời" className="block h-2 w-full rounded-progress text-primary" max={questions.length} value={answeredCount} />
       </div>
       <nav aria-label="Chọn câu hỏi" className="flex flex-wrap gap-2">
         {questions.map(({ questionId, myInteraction, hiddenFields }, index) => {

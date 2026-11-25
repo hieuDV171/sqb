@@ -139,7 +139,7 @@ function ReviewWorkspace({ sessionId, queue }: { sessionId: number; queue: { pat
                 <div className="space-y-1.5">
                   <h2 className="font-semibold">Tiến độ duyệt</h2>
                   <p className="text-sm text-muted-foreground" aria-live="polite">{processed}/{total} câu đã xử lý</p>
-                  <progress aria-label="Số câu đã xử lý" value={processed} max={total} className="h-2 w-full accent-academic" />
+                  <progress aria-label="Số câu đã xử lý" value={processed} max={total} className="h-2 w-full rounded-progress text-academic" />
                 </div>
                 {processed === total && (
                   <p className="text-sm text-success">

@@ -139,6 +139,28 @@ main:has([data-feed-page], [data-study-workspace]) {
   overflow-y: auto;
 }
 
+@utility rounded-progress {
+  appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 9999px;
+  background-color: var(--input);
+
+  &::-webkit-progress-bar {
+    background-color: transparent;
+  }
+
+  &::-webkit-progress-value {
+    border-radius: 9999px;
+    background-color: currentColor;
+  }
+
+  &::-moz-progress-bar {
+    border-radius: 9999px;
+    background-color: currentColor;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
