@@ -1,5 +1,5 @@
 import { useId, useState, type SubmitEvent } from 'react';
-import { ChevronDown, ChevronUp, FilePlus2, Loader2 } from 'lucide-react';
+import { FilePlus2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { examDifficulties, getExamSubjects } from '../examPresentation';
 import { useExamBankSummary, useGenerateExam, useLecturerClasses } from '../hooks/useExam';
 import { ExamDialog } from './ExamDialog';
+import { maxQuestionCount, QuestionCountInput } from './QuestionCountInput';
 
 interface GenerateExamModalProps {
   initialClassId?: number;
@@ -18,7 +19,7 @@ interface GenerateExamModalProps {
 }
 
 const defaultPercentages = { easy: '30', medium: '50', hard: '20', unclassified: '0' };
-const maxQuestionCount = 100;
+const untaggedTopicKey = 'untagged';
 const invalidPercentage = (value: string) =>
   value === '' || !Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 100;
 
@@ -32,7 +33,7 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   const [questionCount, setQuestionCount] = useState('40');
   const [percentages, setPercentages] = useState(defaultPercentages);
   const [useTopicMatrix, setUseTopicMatrix] = useState(false);
-  const [topicPercentages, setTopicPercentages] = useState<Record<number, string>>({});
+  const [topicPercentages, setTopicPercentages] = useState<Record<string, string>>({});
   const [shuffleOptions, setShuffleOptions] = useState(false);
   const [includeAnswerKey, setIncludeAnswerKey] = useState(false);
 
@@ -48,22 +49,17 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   );
   const total = Object.values(percentages).reduce((sum, value) => sum + Number(value), 0);
   const validMatrix = total === 100 && !Object.values(percentages).some(invalidPercentage);
-  const weightedTopics = bank?.topics.map(({ topicId }) => [topicId, topicPercentages[topicId] ?? '0'] as const) ?? [];
-  const topicTotal = weightedTopics.reduce((sum, [, value]) => sum + Number(value), 0);
-  const validTopics = !useTopicMatrix || (topicTotal === 100 && !weightedTopics.some(([, value]) => invalidPercentage(value)));
+  const weightedTopics = bank?.topics.map((topic) => {
+    const key = topic.topicId?.toString() ?? untaggedTopicKey;
+    return { ...topic, key, percentage: topicPercentages[key] ?? '0' };
+  }) ?? [];
+  const topicTotal = weightedTopics.reduce((sum, { percentage }) => sum + Number(percentage), 0);
+  const validTopics = !useTopicMatrix || (topicTotal === 100 && !weightedTopics.some(({ percentage }) => invalidPercentage(percentage)));
   const count = Number(questionCount);
   const validCount = Number.isInteger(count) && count >= 1 && count <= maxQuestionCount;
   const invalidCount = questionCount !== '' && !validCount;
   const bankTooSmall = bank != null && validCount && count > bank.totalQuestions;
   const canGenerate = !!bank && selectedClasses.length > 0 && validCount && !bankTooSmall && validMatrix && validTopics;
-
-  function stepQuestionCount(step: -1 | 1) {
-    setQuestionCount((value) => {
-      const current = Number(value);
-      const whole = step === 1 ? Math.floor(current) : Math.ceil(current);
-      return String(Math.min(maxQuestionCount, Math.max(1, whole + step)));
-    });
-  }
 
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,8 +74,8 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
         hard: Number(percentages.hard) / 100,
         unclassified: Number(percentages.unclassified) / 100,
       },
-      topicWeights: useTopicMatrix ? Object.fromEntries(weightedTopics.filter(([, value]) => Number(value) > 0)
-        .map(([topicId, value]) => [topicId, Number(value) / 100])) : undefined,
+      topicWeights: useTopicMatrix ? Object.fromEntries(weightedTopics.filter(({ percentage }) => Number(percentage) > 0)
+        .map(({ key, percentage }) => [key, Number(percentage) / 100])) : undefined,
       shuffleOptions,
       includeAnswerKey,
       classIds: selectedClasses.map((courseClass) => courseClass.courseClassId),
@@ -158,32 +154,16 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
               </div>
             )}
 
-            <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+            <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
               <div className="space-y-1.5">
                 <Label htmlFor={`${id}-title`}>Tiêu đề (không bắt buộc)</Label>
-                <Input id={`${id}-title`} className="h-11" value={title} onChange={(event) => setTitle(event.target.value)} />
+                <Input id={`${id}-title`} className="h-11 md:h-11" value={title} onChange={(event) => setTitle(event.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={`${id}-count`}>Số câu hỏi</Label>
-                <div className="relative">
-                  <Input id={`${id}-count`} type="number" inputMode="numeric" min={1} max={maxQuestionCount} step={1} required
-                    className="h-13 [appearance:textfield] pe-13 md:h-13 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    aria-invalid={invalidCount || bankTooSmall}
-                    aria-describedby={bankTooSmall ? `${id}-count-range ${id}-count-error` : `${id}-count-range`}
-                    value={questionCount} onChange={(event) => setQuestionCount(event.target.value)} />
-                  <div className="absolute inset-y-px end-px grid w-11 grid-rows-2 divide-y divide-input overflow-hidden rounded-e-[calc(var(--radius-xl)-1px)] border-s border-input">
-                    <Button type="button" size="icon-xs" variant="ghost" className="size-full rounded-none focus-visible:ring-inset"
-                      aria-label="Tăng 1 câu" aria-controls={`${id}-count`} disabled={count >= maxQuestionCount}
-                      onClick={() => stepQuestionCount(1)}>
-                      <ChevronUp aria-hidden="true" className="size-3.5" />
-                    </Button>
-                    <Button type="button" size="icon-xs" variant="ghost" className="size-full rounded-none focus-visible:ring-inset"
-                      aria-label="Giảm 1 câu" aria-controls={`${id}-count`} disabled={count <= 1}
-                      onClick={() => stepQuestionCount(-1)}>
-                      <ChevronDown aria-hidden="true" className="size-3.5" />
-                    </Button>
-                  </div>
-                </div>
+                <QuestionCountInput id={`${id}-count`} value={questionCount} onChange={setQuestionCount}
+                  invalid={invalidCount || bankTooSmall}
+                  describedBy={bankTooSmall ? `${id}-count-range ${id}-count-error` : `${id}-count-range`} />
                 <p id={`${id}-count-range`} className={cn('text-sm', invalidCount ? 'text-destructive' : 'text-muted-foreground')}>
                   {invalidCount ? `Nhập số nguyên từ 1 đến ${maxQuestionCount}.` : `Từ 1 đến ${maxQuestionCount} câu`}
                 </p>
@@ -228,23 +208,32 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                 </label>
                 {useTopicMatrix && (
                   <>
-                    <ul className="divide-y divide-border">
-                      {bank.topics.map((topic) => (
-                        <li key={topic.topicId} className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-2 py-2">
-                          <div className="min-w-0 space-y-1">
-                            <Label htmlFor={`${id}-topic-${topic.topicId}`} className="wrap-break-word">{topic.topicName}</Label>
-                            <p className="text-xs text-muted-foreground">
-                              {topic.totalQuestions} câu · {examDifficulties.map(({ count: countField, label }) =>
-                                `${label} ${topic.statistic[countField] ?? 0}`).join(' · ')}
-                            </p>
+                    <ul className="space-y-2">
+                      {weightedTopics.map((topic) => (
+                        <li key={topic.key} className="space-y-3 rounded-xl border border-border bg-surface-subtle p-3">
+                          <div className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-3">
+                            <div className="min-w-0 space-y-1.5">
+                              <Label htmlFor={`${id}-topic-${topic.key}`} className="wrap-break-word font-semibold leading-tight">{topic.topicName}</Label>
+                              <p className="w-fit rounded-md bg-muted px-2 py-0.5 text-sm font-semibold tabular-nums">
+                                {topic.totalQuestions} câu trong kho
+                              </p>
+                            </div>
+                            <div className="relative">
+                              <Input id={`${id}-topic-${topic.key}`} type="number" min={0} max={100} step={1} required
+                                aria-label={`Tỷ lệ chủ đề ${topic.topicName} (%)`} className="h-11 bg-background pr-7"
+                                value={topic.percentage}
+                                onChange={(event) => setTopicPercentages((previous) => ({ ...previous, [topic.key]: event.target.value }))} />
+                              <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-sm text-muted-foreground">%</span>
+                            </div>
                           </div>
-                          <div className="relative">
-                            <Input id={`${id}-topic-${topic.topicId}`} type="number" min={0} max={100} step={1} required
-                              aria-label={`Tỷ lệ chủ đề ${topic.topicName} (%)`} className="h-11 bg-background pr-7"
-                              value={topicPercentages[topic.topicId] ?? '0'}
-                              onChange={(event) => setTopicPercentages((previous) => ({ ...previous, [topic.topicId]: event.target.value }))} />
-                            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-sm text-muted-foreground">%</span>
-                          </div>
+                          <dl className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                            {examDifficulties.map(({ count: countField, field, label, tone }) => (
+                              <div key={field} className={cn('flex min-w-0 flex-col justify-between gap-1 rounded-lg px-2 py-1.5', tone)}>
+                                <dt className="text-xs leading-tight">{label}</dt>
+                                <dd className="text-base font-semibold tabular-nums">{topic.statistic[countField] ?? 0}</dd>
+                              </div>
+                            ))}
+                          </dl>
                         </li>
                       ))}
                     </ul>

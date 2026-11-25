@@ -72,18 +72,18 @@ public class ExamServiceImpl implements ExamService {
             var difficulty = Objects.requireNonNullElse(count.getDifficulty(), QuestionDifficulty.UNCLASSIFIED);
             int size = Math.toIntExact(count.getQuestionCount());
             total.merge(difficulty, size, Integer::sum);
-            if (count.getTopicId() != null) {
-                perTopic.computeIfAbsent(count.getTopicId(), ignored -> new EnumMap<>(QuestionDifficulty.class))
-                        .merge(difficulty, size, Integer::sum);
-            }
+            perTopic.computeIfAbsent(count.getTopicId(), ignored -> new EnumMap<>(QuestionDifficulty.class))
+                    .merge(difficulty, size, Integer::sum);
         }
         var topics = topicRepository.findBySubjectIdOrderByNameAsc(subjectId).stream().filter(Topic::isActive)
-                .map(topic -> {
-                    var counts = perTopic.getOrDefault(topic.getId(), Map.of());
-                    return new ExamBankSummary.TopicStock(topic.getId(), topic.getName(), totalCount(counts),
-                            ExamQuestionSelection.statistic(counts));
-                }).toList();
+                .map(topic -> topicStock(topic.getId(), topic.getName(), perTopic.getOrDefault(topic.getId(), Map.of())))
+                .collect(Collectors.toCollection(ArrayList::new));
+        topics.add(topicStock(null, ExamQuestionSelection.UNTAGGED_TOPIC_NAME, perTopic.getOrDefault(null, Map.of())));
         return new ExamBankSummary(subjectId, totalCount(total), ExamQuestionSelection.statistic(total), topics);
+    }
+
+    private static ExamBankSummary.TopicStock topicStock(Long id, String name, Map<QuestionDifficulty, Integer> counts) {
+        return new ExamBankSummary.TopicStock(id, name, totalCount(counts), ExamQuestionSelection.statistic(counts));
     }
 
     private static int totalCount(Map<QuestionDifficulty, Integer> counts) {

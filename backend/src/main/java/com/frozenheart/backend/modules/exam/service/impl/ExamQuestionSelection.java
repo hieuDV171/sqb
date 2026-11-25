@@ -14,13 +14,18 @@ import java.util.*;
 import static com.frozenheart.backend.core.entity.session.QuestionDifficulty.*;
 
 final class ExamQuestionSelection {
+    static final String UNTAGGED_TOPIC_NAME = "Chưa được phân loại chủ đề";
+    private static final String UNTAGGED_TOPIC_KEY = "untagged";
+    private static final TopicBucket UNTAGGED_TOPIC = new TopicBucket(null, UNTAGGED_TOPIC_NAME);
     private static final List<QuestionDifficulty> DIFFICULTIES = List.of(EASY, MEDIUM, HARD, UNCLASSIFIED);
     private static final Map<QuestionDifficulty, String> LABELS = Map.of(
             EASY, "Dễ", MEDIUM, "Trung bình", HARD, "Khó", UNCLASSIFIED, "Chưa phân loại");
 
     record Result(List<Question> questions, ExamMatrix.Difficulty difficulty, ExamMatrix.Topics topics) {}
 
-    private record Group(Topic topic, Double weight, Integer quota, Map<QuestionDifficulty, List<Question>> questions) {
+    private record TopicBucket(Long id, String name) {}
+
+    private record Group(TopicBucket topic, Integer quota, Map<QuestionDifficulty, List<Question>> questions) {
         int count() {
             return questions.values().stream().mapToInt(List::size).sum();
         }
@@ -32,18 +37,18 @@ final class ExamQuestionSelection {
                          Map<String, Double> weights, List<Topic> catalog) {
         if (total <= 0) throw invalid("Số câu hỏi phải lớn hơn 0.");
         var difficultyQuotas = difficultyQuotas(difficulty, total);
-        Map<Topic, Double> topicWeights = resolveTopics(weights, catalog);
+        var topicWeights = resolveTopics(weights, catalog);
         var topicQuotas = quotas(topicWeights, total, "tỷ lệ chủ đề");
         if (bank.size() < total) throw shortage("ngân hàng có " + bank.size() + "/" + total + " câu đã duyệt.");
 
         Map<Long, Group> groupsById = new LinkedHashMap<>();
-        topicWeights.forEach((topic, weight) -> groupsById.put(topic.getId(),
-                new Group(topic, weight, topicQuotas.get(topic), new EnumMap<>(QuestionDifficulty.class))));
+        topicQuotas.forEach((topic, quota) -> groupsById.put(topic.id(),
+                new Group(topic, quota, new EnumMap<>(QuestionDifficulty.class))));
         if (groupsById.isEmpty()) groupsById.put(null,
-                new Group(null, null, null, new EnumMap<>(QuestionDifficulty.class)));
+                new Group(null, null, new EnumMap<>(QuestionDifficulty.class)));
 
         for (Question question : bank) {
-            Group group = topicWeights.isEmpty() ? groupsById.get(null) : groupsById.get(topicId(question));
+            Group group = groupsById.get(topicWeights.isEmpty() ? null : topicId(question));
             if (group != null) group.questions().computeIfAbsent(difficultyOf(question), ignored -> new ArrayList<>()).add(question);
         }
 
@@ -51,7 +56,7 @@ final class ExamQuestionSelection {
         var deficits = new ArrayList<String>();
         for (Group group : groups) {
             if (group.quota() != null && group.count() < group.quota()) {
-                deficits.add(group.topic().getName() + " có " + group.count() + "/" + group.quota() + " câu");
+                deficits.add(group.topic().name() + " có " + group.count() + "/" + group.quota() + " câu");
             }
         }
         difficultyQuotas.forEach((level, quota) -> {
@@ -64,7 +69,7 @@ final class ExamQuestionSelection {
         Collections.shuffle(selected);
         var actual = new EnumMap<QuestionDifficulty, Integer>(QuestionDifficulty.class);
         Map<Long, Map<QuestionDifficulty, Integer>> topicCounts = new LinkedHashMap<>();
-        Map<Long, Topic> topics = new LinkedHashMap<>();
+        Map<Long, TopicBucket> topics = new LinkedHashMap<>();
         groupsById.forEach((id, group) -> {
             if (group.topic() != null) topics.put(id, group.topic());
         });
@@ -72,35 +77,36 @@ final class ExamQuestionSelection {
             var level = difficultyOf(question);
             var topicId = topicId(question);
             actual.merge(level, 1, Integer::sum);
-            topics.putIfAbsent(topicId, question.getTopic());
+            topics.computeIfAbsent(topicId, id -> id == null ? UNTAGGED_TOPIC : new TopicBucket(id, question.getTopic().getName()));
             topicCounts.computeIfAbsent(topicId, ignored -> new EnumMap<>(QuestionDifficulty.class))
                     .merge(level, 1, Integer::sum);
         }
 
         var rows = topics.entrySet().stream().sorted(Map.Entry.comparingByKey(Comparator.nullsLast(Long::compareTo)))
                 .map(entry -> {
-                    Topic topic = entry.getValue();
+                    var topic = entry.getValue();
                     var counts = topicCounts.getOrDefault(entry.getKey(), Map.of());
-                    return new ExamMatrix.TopicRow(entry.getKey(), topic == null ? "Chưa gán chủ đề" : topic.getName(),
+                    return new ExamMatrix.TopicRow(topic.id(), topic.name(),
                             topicWeights.get(topic), topicQuotas.get(topic),
                             counts.values().stream().mapToInt(Integer::intValue).sum(), statistic(counts));
                 }).toList();
         return new Result(selected, new ExamMatrix.Difficulty(difficulty, statistic(actual)), new ExamMatrix.Topics(rows));
     }
 
-    private static Map<Topic, Double> resolveTopics(Map<String, Double> weights, List<Topic> catalog) {
+    private static Map<TopicBucket, Double> resolveTopics(Map<String, Double> weights, List<Topic> catalog) {
         if (weights == null || weights.isEmpty()) return Collections.emptyMap();
-        Map<String, Topic> byId = new HashMap<>();
-        Map<String, Topic> byName = new HashMap<>();
+        Map<String, TopicBucket> byId = new HashMap<>();
+        Map<String, TopicBucket> byName = new HashMap<>();
         for (Topic topic : catalog) {
             if (topic.isActive()) {
-                byId.put(topic.getId().toString(), topic);
-                byName.put(topic.getName(), topic);
+                var bucket = new TopicBucket(topic.getId(), topic.getName());
+                byId.put(topic.getId().toString(), bucket);
+                byName.put(topic.getName(), bucket);
             }
         }
-        Map<Topic, Double> resolved = new TreeMap<>(Comparator.comparing(Topic::getId));
+        Map<TopicBucket, Double> resolved = new TreeMap<>(Comparator.comparing(TopicBucket::id, Comparator.nullsLast(Long::compareTo)));
         weights.forEach((key, weight) -> {
-            Topic topic = byId.getOrDefault(key, byName.get(key));
+            var topic = UNTAGGED_TOPIC_KEY.equals(key) ? UNTAGGED_TOPIC : byId.getOrDefault(key, byName.get(key));
             if (topic == null || resolved.containsKey(topic)) {
                 throw invalid("Chủ đề " + key + " không hợp lệ, không còn hoạt động hoặc bị chọn lặp.");
             }

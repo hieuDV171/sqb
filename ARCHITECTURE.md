@@ -740,6 +740,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 25/11/2026.** API thống kê kho dùng truy vấn đếm theo chủ đề và độ khó trên câu đã phê duyệt trong phiên đã chốt của môn. Tỷ lệ chủ đề được gắn với ID của chủ đề đang hoạt động, thuộc đúng môn học.
 - Khi tạo đề, phân bổ số câu nguyên theo phần lẻ lớn nhất. Tìm số câu có thể chọn đồng thời theo hạn mức độ khó và chủ đề bằng luồng cực đại trên các nhóm có câu. Trả lỗi trước khi ghi dữ liệu nếu tổng tối đa thấp hơn yêu cầu. Chọn ngẫu nhiên trong mỗi nhóm được phân bổ.
 - Hai cột JSONB hiện có lưu bản chụp tỷ lệ yêu cầu và số câu thực tế tại thời điểm tạo. Ma trận chủ đề lưu thêm tên chủ đề và số câu theo từng độ khó. Đề cũ chưa có bản chụp tiếp tục đọc thống kê từ các câu của đề.
+- Thống kê kho và ma trận đề có nhóm “Chưa được phân loại chủ đề” cho câu có `topic_id` rỗng, kể cả khi kho đang có 0 câu trong nhóm. Yêu cầu tạo đề dùng khóa `untagged` để phân bổ tỷ lệ cho nhóm này. Câu có chủ đề đã lưu trữ vẫn tính vào tổng kho của môn.
 
 ### [ADR-092] Tải phương án và lời giải khi mở đối sánh
 

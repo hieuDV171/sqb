@@ -25,7 +25,7 @@ export interface ExamBankSummary {
   subjectId: number;
   totalQuestions: number;
   statistic: Statistic;
-  topics: { topicId: number; topicName: string; totalQuestions: number; statistic: Statistic }[];
+  topics: { topicId?: number | null; topicName: string; totalQuestions: number; statistic: Statistic }[];
 }
 
 // ==========================================

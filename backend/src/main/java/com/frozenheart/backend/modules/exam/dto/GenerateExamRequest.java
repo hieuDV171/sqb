@@ -36,8 +36,8 @@ public class GenerateExamRequest {
     @Schema(description = "Tỉ lệ phân bổ độ khó các câu hỏi")
     private DifficultyDistribution difficultyDistribution;
 
-    @Schema(description = "Trọng số theo ID chủ đề đang hoạt động cùng môn (tùy chọn, tổng bằng 1.0)",
-            example = "{\"12\": 0.2, \"13\": 0.5, \"14\": 0.3}")
+    @Schema(description = "Trọng số theo ID chủ đề đang hoạt động cùng môn. Dùng khóa untagged cho câu chưa được phân loại chủ đề. Tổng bằng 1.0 nếu có.",
+            example = "{\"12\": 0.2, \"13\": 0.5, \"untagged\": 0.3}")
     private Map<String, Double> topicWeights;
 
     @Schema(description = "Đảo ngẫu nhiên thứ tự các phương án lựa chọn A, B, C, D", example = "true")

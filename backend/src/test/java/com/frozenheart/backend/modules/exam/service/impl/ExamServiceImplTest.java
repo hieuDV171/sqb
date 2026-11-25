@@ -44,10 +44,12 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -199,6 +201,77 @@ class ExamServiceImplTest {
         assertEquals("A", reopened.getTopicMatrix().rows().getFirst().topicName());
         assertEquals(0.5, reopened.getDifficultyMatrix().requested().getHard());
         assertEquals(1, reopened.getStatistic().getHardCount());
+    }
+
+    @Test
+    void countsUntaggedQuestionsByDifficultyWithoutIncludingArchivedTopicsInThatGroup() {
+        authenticate(OWNER_ID, UserRole.LECTURER);
+        var active = Topic.builder().id(1L).name("HTTP").build();
+        var archived = Topic.builder().id(2L).name("Archive").archived(true).build();
+        when(topicRepository.countTeachingAssignments(12L, OWNER_ID)).thenReturn(1L);
+        when(subjectRepository.existsById(12L)).thenReturn(true);
+        when(topicRepository.findBySubjectIdOrderByNameAsc(12L)).thenReturn(List.of(active, archived));
+        var counts = List.of(
+                bankCount(1L, QuestionDifficulty.EASY, 2), bankCount(2L, QuestionDifficulty.HARD, 3),
+                bankCount(null, QuestionDifficulty.HARD, 4), bankCount(null, null, 5));
+        when(questionRepository.countExamBankByTopicAndDifficulty(12L)).thenReturn(counts);
+
+        var summary = service.getBankSummary(12L);
+        var untagged = summary.topics().getLast();
+        assertEquals(14, summary.totalQuestions());
+        assertEquals(2, summary.topics().size());
+        assertEquals(1L, summary.topics().getFirst().topicId());
+        assertNull(untagged.topicId());
+        assertEquals("Chưa được phân loại chủ đề", untagged.topicName());
+        assertEquals(9, untagged.totalQuestions());
+        assertEquals(4, untagged.statistic().getHardCount());
+        assertEquals(5, untagged.statistic().getUnclassifiedCount());
+    }
+
+    @Test
+    void appliesUntaggedWeightAndSnapshotsItWithTheOtherTopics() {
+        authenticate(OWNER_ID, UserRole.LECTURER);
+        var subject = Subject.builder().id(12L).build();
+        var active = Topic.builder().id(1L).name("HTTP").build();
+        when(subjectRepository.findById(12L)).thenReturn(Optional.of(subject));
+        when(topicRepository.findBySubjectIdOrderByNameAsc(12L)).thenReturn(List.of(active));
+        when(questionRepository.findApprovedBySubjectId(12L)).thenReturn(List.of(
+                bankQuestion(1L, active, QuestionDifficulty.EASY), bankQuestion(2L, null, QuestionDifficulty.HARD)));
+        when(examRepository.save(any(Exam.class))).thenAnswer(invocation -> {
+            Exam saved = invocation.getArgument(0);
+            saved.setId(EXAM_ID);
+            return saved;
+        });
+
+        var result = service.generateExam(GenerateExamRequest.builder().subjectId(12L).title("Đề thử").classIds(List.of(31L))
+                .questionCount(2).topicWeights(Map.of("1", 0.5, "untagged", 0.5))
+                .difficultyDistribution(GenerateExamRequest.DifficultyDistribution.builder().easy(0.5).hard(0.5).build())
+                .build());
+
+        var untagged = result.getTopicMatrix().rows().getLast();
+        assertEquals(List.of(1L, 2L), result.getQuestions().stream().map(q -> q.getQuestionId()).sorted().toList());
+        assertNull(untagged.topicId());
+        assertEquals(0.5, untagged.requestedWeight());
+        assertEquals(1, untagged.requestedCount());
+        assertEquals(1, untagged.actualByDifficulty().getHardCount());
+    }
+
+    @Test
+    void doesNotUseQuestionsWithArchivedTopicsToFillUntaggedQuota() {
+        var archived = Topic.builder().id(2L).name("Archive").archived(true).build();
+        var bank = List.of(bankQuestion(1L, archived, QuestionDifficulty.HARD));
+
+        var error = assertThrows(AppException.class,
+                () -> ExamQuestionSelection.select(bank, 1, null, Map.of("untagged", 1.0), List.of(archived)));
+        assertTrue(error.getMessage().contains("Chưa được phân loại chủ đề có 0/1 câu"));
+    }
+
+    private static QuestionRepository.ExamBankCount bankCount(Long topicId, QuestionDifficulty difficulty, long count) {
+        var row = mock(QuestionRepository.ExamBankCount.class);
+        when(row.getTopicId()).thenReturn(topicId);
+        when(row.getDifficulty()).thenReturn(difficulty);
+        when(row.getQuestionCount()).thenReturn(count);
+        return row;
     }
 
     private static Question bankQuestion(Long id, Topic topic, QuestionDifficulty difficulty) {
