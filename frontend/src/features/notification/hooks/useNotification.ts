@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useStompStatus, useStompSubscription } from '@/lib/stompClient';
 import { notificationService } from '../services/notificationService';
 import type {
@@ -17,6 +18,7 @@ export const NOTIFICATION_KEYS = {
 };
 
 type NotificationPages = InfiniteData<NotificationListResponseDto>;
+const PUSH_NOTIFICATION_ID_PARAM = 'pushNotificationId';
 
 export function useNotificationClock() {
   const [now, setNow] = useState(Date.now);
@@ -69,9 +71,9 @@ export function useMarkAsRead() {
   const setGamificationUnread = useGamificationStore((s) => s.setUnreadNotifications);
 
   return useMutation({
-    mutationFn: (notificationId: number) =>
+    mutationFn: (notificationId: number | string) =>
       notificationService.markAsRead(notificationId),
-    onMutate: async (notificationId: number) => {
+    onMutate: async (notificationId) => {
       // 1. Dừng các query notifications đang chạy để tránh xung đột
       await queryClient.cancelQueries({ queryKey: NOTIFICATION_KEYS.lists });
 
@@ -79,6 +81,12 @@ export function useMarkAsRead() {
       const previousNotifications = queryClient.getQueriesData<NotificationPages>({
         queryKey: NOTIFICATION_KEYS.lists,
       });
+      const isTarget = (itemId: number) => String(itemId) === String(notificationId);
+      const isKnownUnread = previousNotifications.some(([, data]) =>
+        data?.pages.some((page) => page.items.some((item) => isTarget(item.notificationId) && !item.readAt))
+      );
+      if (!isKnownUnread) return;
+
       const previousUnreadCount = useGamificationStore.getState().unreadNotifications;
 
       // 3. Optimistic Update: Giảm badge đếm trên HUD Store ngay lập tức (không để âm)
@@ -93,7 +101,7 @@ export function useMarkAsRead() {
           pages: oldData.pages.map((page) => ({
             ...page,
             unreadCount: Math.max(0, page.unreadCount - 1),
-            items: page.items.map((item) => item.notificationId === notificationId
+            items: page.items.map((item) => isTarget(item.notificationId)
               ? { ...item, readAt: item.readAt || nowIso }
               : item),
           })),
@@ -114,17 +122,52 @@ export function useMarkAsRead() {
       }
       toast.error('Không thể đánh dấu đã đọc thông báo.');
     },
-    onSuccess: (res) => {
-      // 5. Đồng bộ chính xác số lượng unread do server trả về
-      if (res.data?.unreadCount !== undefined) {
-        setGamificationUnread(res.data.unreadCount);
-      }
+    onSuccess: (res, notificationId) => {
+      if (!res.data) return;
+      const { unreadCount, readAt } = res.data;
+      setGamificationUnread(unreadCount);
+      queryClient.setQueriesData<NotificationPages>(
+        { queryKey: NOTIFICATION_KEYS.lists },
+        (oldData) => oldData && ({
+          ...oldData,
+          pages: oldData.pages.map((page) => ({
+            ...page,
+            unreadCount,
+            items: page.items.map((item) => String(item.notificationId) === String(notificationId)
+              ? { ...item, readAt }
+              : item),
+          })),
+        })
+      );
     },
     onSettled: () => {
       // 6. Luôn làm mới ngầm sau cùng
       queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.lists });
     },
   });
+}
+
+export function usePushNotificationClick() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { mutate: markAsRead } = useMarkAsRead();
+  const handledLocation = useRef<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get(PUSH_NOTIFICATION_ID_PARAM);
+    if (id === null || handledLocation.current === location.key) return;
+
+    handledLocation.current = location.key;
+    if (/^[1-9]\d{0,18}$/.test(id)) markAsRead(id);
+
+    params.delete(PUSH_NOTIFICATION_ID_PARAM);
+    const search = params.toString();
+    void navigate({ pathname: location.pathname, search: search ? `?${search}` : '', hash: location.hash }, {
+      replace: true,
+      state: location.state,
+    });
+  }, [location, markAsRead, navigate]);
 }
 
 export function useMarkAllAsRead() {

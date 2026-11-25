@@ -59,13 +59,13 @@ import java.time.DayOfWeek;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.frozenheart.backend.core.dto.event.PushNotificationEvent;
 import com.frozenheart.backend.core.entity.notification.Notification;
 import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationMetadata;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.modules.notification.service.NotificationWriter;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter.PushMessage;
 import org.springframework.context.ApplicationEventPublisher;
 import com.frozenheart.backend.modules.exam.repository.CourseClassRepository;
 import com.frozenheart.backend.modules.user.repository.UserCourseClassRepository;
@@ -918,19 +918,7 @@ public class GamificationServiceImpl implements GamificationService {
                         .targetUrl("/questions/" + questionId)
                         .creadtedAt(Instant.now())
                         .build();
-                notificationWriter.create(authorNotif);
-
-                eventPublisher.publishEvent(PushNotificationEvent.single(
-                        authorId,
-                        "Câu hỏi bị trừ điểm do phát hiện sai sót",
-                        "Câu hỏi của bạn tại môn [" + subjectName + "] đã bị trừ "
-                                + Point.GAME5_AUTHOR_PENALTY.getPoints() + " điểm do có sai sót được xác nhận bởi Giảng viên.",
-                        null,
-                        NotificationTargetType.QUESTION,
-                        questionId,
-                        "/questions/" + questionId,
-                        PushNotificationType.ACADEMIC
-                ));
+                notificationWriter.createWithPush(new PushMessage(authorNotif), PushNotificationType.ACADEMIC);
             }
         }
     }
@@ -1107,7 +1095,7 @@ public class GamificationServiceImpl implements GamificationService {
                 .filter(p -> p.getUser() != null)
                 .collect(Collectors.groupingBy(p -> p.getUser().getId()));
 
-        List<Notification> notificationsToSave = new ArrayList<>();
+        List<PushMessage> notificationsToSave = new ArrayList<>();
         Instant now = Instant.now();
 
         for (Map.Entry<Long, List<PointHistory>> entry : userHistoriesMap.entrySet()) {
@@ -1137,37 +1125,24 @@ public class GamificationServiceImpl implements GamificationService {
                         .build());
             }
 
+            String body = "Chúc mừng bạn! Bạn đã phát hiện chính xác " + confirmedList.size()
+                    + " câu hỏi có sai sót trong kỳ (+ " + totalBonus + " điểm).";
             Notification notif = Notification.builder()
                     .receiver(userRepository.getReferenceById(userId))
                     .actor(null)
                     .type(NotificationType.GAME5_SEMESTER_RECAP)
                     .category(NotificationCategory.GAMIFICATION)
                     .title("Tổng kết điểm thưởng phát hiện lỗi câu hỏi cuối kỳ")
-                    .body("Chúc mừng bạn! Bạn đã phát hiện chính xác " + confirmedList.size()
-                            + " câu hỏi có sai sót trong kỳ (+ " + totalBonus + " điểm). Nhấn để xem chi tiết các câu hỏi.")
+                    .body(body + " Nhấn để xem chi tiết các câu hỏi.")
                     .targetType(NotificationTargetType.USER)
                     .targetId(userId)
                     .metadata(NotificationMetadata.builder().confirmedQuestions(confirmedList).build())
                     .creadtedAt(now)
                     .build();
-            notificationsToSave.add(notif);
-
-            eventPublisher.publishEvent(PushNotificationEvent.single(
-                    userId,
-                    "Tổng kết điểm thưởng phát hiện lỗi câu hỏi cuối kỳ",
-                    "Chúc mừng bạn! Bạn đã phát hiện chính xác " + confirmedList.size()
-                            + " câu hỏi có sai sót trong kỳ (+ " + totalBonus + " điểm).",
-                    null,
-                    NotificationTargetType.USER,
-                    userId,
-                    null,
-                    PushNotificationType.GAMIFICATION
-            ));
+            notificationsToSave.add(new PushMessage(notif, notif.getTitle(), body, null));
         }
 
-        if (!notificationsToSave.isEmpty()) {
-            notificationWriter.createAll(notificationsToSave);
-        }
+        notificationWriter.createAllWithPush(notificationsToSave, PushNotificationType.GAMIFICATION);
     }
 
     // =========================================================================
@@ -1561,7 +1536,7 @@ public class GamificationServiceImpl implements GamificationService {
         activityFeedService.logActivity(null, ActionType.CREATED_POST, ActivityFeedTargetType.POST, savedPost.getId(), feedMeta);
 
         // 5. Gửi thông báo In-app và Push Notification cho các sinh viên đạt giải
-        List<Notification> notifs = new ArrayList<>();
+        List<PushMessage> notifs = new ArrayList<>();
         for (LeaderboardWinnerEntry w : winners) {
             String notifTitle = isEndOfSemester
                     ? "🏆 Vinh danh chung cuộc học kỳ " + semester.getName() + "!"
@@ -1569,7 +1544,7 @@ public class GamificationServiceImpl implements GamificationService {
 
             String notifBody = getNotifBody(semester, isEndOfSemester, w);
 
-            notifs.add(Notification.builder()
+            Notification notification = Notification.builder()
                     .receiver(userRepository.getReferenceById(w.userId()))
                     .actor(null)
                     .type(NotificationType.LEADERBOARD_HONOR)
@@ -1579,23 +1554,11 @@ public class GamificationServiceImpl implements GamificationService {
                     .targetType(NotificationTargetType.POST)
                     .targetId(savedPost.getId())
                     .creadtedAt(now)
-                    .build());
-
-            eventPublisher.publishEvent(PushNotificationEvent.single(
-                    w.userId(),
-                    notifTitle,
-                    notifBody,
-                    null,
-                    NotificationTargetType.POST,
-                    savedPost.getId(),
-                    null,
-                    PushNotificationType.GAMIFICATION
-            ));
+                    .build();
+            notifs.add(new PushMessage(notification));
         }
 
-        if (!notifs.isEmpty()) {
-            notificationWriter.createAll(notifs);
-        }
+        notificationWriter.createAllWithPush(notifs, PushNotificationType.GAMIFICATION);
 
         log.info("[HonorPost] Đã tạo thành công bài post vinh danh (ID: {}) cho học kỳ {}", savedPost.getId(), semester.getName());
     }

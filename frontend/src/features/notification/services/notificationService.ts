@@ -33,7 +33,7 @@ export const notificationService = {
    * POST /api/v1/notifications/{id}/read
    */
   markAsRead: async (
-    notificationId: number
+    notificationId: number | string
   ): Promise<GlobalResponse<ReadNotificationResponseDto>> => {
     return axiosClient.post<GlobalResponse<ReadNotificationResponseDto>, GlobalResponse<ReadNotificationResponseDto>>(
       `/notifications/${notificationId}/read`

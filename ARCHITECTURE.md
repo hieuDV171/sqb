@@ -721,3 +721,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - **Ngày 25/11/2026.** Dùng `Asia/Ho_Chi_Minh` để gửi, lưu và trả múi giờ Việt Nam. Yêu cầu sửa hồ sơ với mã cũ nhận lỗi tham số. Khi tạo tài khoản hoặc nhập hàng loạt, mã cũ đi qua nhánh giá trị mặc định như các mã không hợp lệ khác. Hồ sơ đã lưu mã cũ được trả về và lưu lại theo mã chuẩn.
 - Frontend lấy danh sách từ `Intl.supportedValuesOf('timeZone')`. Múi giờ Việt Nam xuất hiện một lần với nhãn “Việt Nam (UTC+07:00)”. Lọc bí danh cũ do trình duyệt có thể trả về.
+
+### [ADR-089] Đánh dấu thông báo đã đọc khi mở từ push
+
+- **Ngày 25/11/2026.** Push mang ID của bản ghi thông báo đã lưu dưới dạng chuỗi và chỉ gửi sau khi giao dịch commit. Cấu hình, hồ sơ và thiết bị của người nhận được tải theo lô trước khi gửi.
+- Service worker mở trang đích trong ứng dụng và chuyển ID qua tham số `pushNotificationId`. Với push có ID mà thiếu đường dẫn, trang đích là trung tâm thông báo. Push cũ thiếu ID tiếp tục điều hướng theo đường dẫn sẵn có.
+- Frontend gọi API đánh dấu một thông báo đã đọc bằng phiên xác thực, xóa tham số khỏi URL và đồng bộ danh sách cùng số chưa đọc theo phản hồi API.

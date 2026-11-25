@@ -29,13 +29,13 @@ import com.frozenheart.backend.modules.session.service.impl.QuestionDuplicateCom
 import com.frozenheart.backend.modules.session.service.impl.QuestionDuplicateComparison.ExactIdentity;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
-import com.frozenheart.backend.core.dto.event.PushNotificationEvent;
 import com.frozenheart.backend.core.entity.notification.Notification;
 import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.modules.notification.service.NotificationWriter;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter.PushMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -92,7 +92,7 @@ public class AiAutomatedReviewScheduler {
         Map<Session, List<Question>> finalizedQuestionsBySession = new LinkedHashMap<>();
         Map<Semester, List<UserPointRewardDto>> rewardsBySemester = new LinkedHashMap<>();
         List<Post> autoPostsToSave = new ArrayList<>();
-        List<Notification> autoNotificationsToSave = new ArrayList<>();
+        List<PushMessage> autoNotificationsToSave = new ArrayList<>();
 
         for (Session session : targetSessions.stream().sorted(Comparator.comparing(Session::getId)).toList()) {
             List<Question> questionsList = session.getQuestions() != null ? new ArrayList<>(session.getQuestions())
@@ -174,19 +174,10 @@ public class AiAutomatedReviewScheduler {
                         .targetId(session.getId())
                         .creadtedAt(now)
                         .build();
-                autoNotificationsToSave.add(notif);
-
-                // 2. Gửi thông báo đẩy bất đồng bộ (Push Notification Event - không tiết lộ số
-                // lượng câu)
-                eventPublisher.publishEvent(PushNotificationEvent.single(
-                        proposer.getId(),
+                autoNotificationsToSave.add(new PushMessage(notif,
                         "Câu hỏi của bạn đã được phê duyệt!",
                         "Phiên đề xuất môn [" + subjectName + "] đã có câu hỏi được chấp nhận vào Ngân hàng câu hỏi.",
-                        null,
-                        NotificationTargetType.SESSION,
-                        session.getId(),
-                        "/sessions/" + session.getId(),
-                        PushNotificationType.ACADEMIC));
+                        "/sessions/" + session.getId()));
             }
         }
 
@@ -208,9 +199,7 @@ public class AiAutomatedReviewScheduler {
             List<Long> pIds = savedPosts.stream().map(Post::getId).toList();
             eventPublisher.publishEvent(EntitySearchSyncEvent.upsertBatch(EntitySearchSyncEvent.EntityType.POST, pIds));
         }
-        if (!autoNotificationsToSave.isEmpty()) {
-            notificationWriter.createAll(autoNotificationsToSave);
-        }
+        notificationWriter.createAllWithPush(autoNotificationsToSave, PushNotificationType.ACADEMIC);
         rewardsBySemester.forEach((semester, rewards) ->
                 counterMetricsService.awardPointsAndApprovedQuestionsBatch(rewards, semester));
 

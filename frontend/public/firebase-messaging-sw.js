@@ -1,3 +1,45 @@
+// Register before Firebase so we handle clicks on its automatically displayed notifications too.
+self.addEventListener('notificationclick', (event) => {
+  const notificationData = event.notification.data;
+  const data = notificationData?.FCM_MSG?.data ?? notificationData;
+  if (!data) return;
+
+  event.stopImmediatePropagation();
+  event.notification.close();
+  event.waitUntil(openPushTarget(data));
+});
+
+async function openPushTarget(data) {
+  const notificationId = typeof data.notificationId === 'string' && /^[1-9]\d{0,18}$/.test(data.notificationId)
+    ? data.notificationId
+    : null;
+  const fallback = notificationId ? '/notifications' : '/';
+  let target = new URL(fallback, self.location.origin);
+  try {
+    const requested = new URL(data.targetUrl || data.url || fallback, self.location.origin);
+    if (requested.origin === self.location.origin) target = requested;
+  } catch {
+    // Keep the in-app fallback for an invalid destination.
+  }
+  if (notificationId) target.searchParams.set('pushNotificationId', notificationId);
+
+  const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const client = windowClients.find((tab) => new URL(tab.url).origin === self.location.origin);
+  if (client) {
+    if (!notificationId && target.href === new URL('/', self.location.origin).href) return client.focus();
+    try {
+      const navigated = await client.navigate(target.href);
+      if (navigated) return navigated.focus();
+    } catch {
+      // Fall back to opening the destination if the current tab cannot navigate.
+    }
+  }
+  return self.clients.openWindow(target.href);
+}
+
+// Existing notifications can be handled as soon as the worker updates.
+self.addEventListener('install', (event) => event.waitUntil(self.skipWaiting()));
+
 // Scripts for firebase and firebase messaging in Service Worker
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
@@ -22,40 +64,13 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message: ', payload);
-    
-    const notificationTitle = payload.notification?.title || payload.data?.title || 'Thông báo mới từ SQB';
-    const notificationOptions = {
-      body: payload.notification?.body || payload.data?.body || '',
+    // Firebase already displays messages with a notification payload.
+    if (payload.notification) return;
+
+    return self.registration.showNotification(payload.data?.title || 'Thông báo mới từ SQB', {
+      body: payload.data?.body || '',
       icon: '/favicon.svg?v=sqb-3',
       data: payload.data,
-    };
-
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    });
   });
 }
-
-// Lắng nghe sự kiện người dùng bấm vào thông báo hệ thống
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  const targetUrl = event.notification.data?.targetUrl || event.notification.data?.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // 1. Nếu đã có tab SQB đang mở, focus vào tab đó và điều hướng
-      for (const client of windowClients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          if ('navigate' in client && targetUrl !== '/') {
-            client.navigate(targetUrl);
-          }
-          return client.focus();
-        }
-      }
-      // 2. Nếu chưa có tab nào mở, mở window mới
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
-  );
-});

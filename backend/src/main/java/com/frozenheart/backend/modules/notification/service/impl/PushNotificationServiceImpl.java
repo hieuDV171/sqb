@@ -1,6 +1,6 @@
 package com.frozenheart.backend.modules.notification.service.impl;
 
-import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
+import com.frozenheart.backend.core.dto.event.PushNotificationEvent.Delivery;
 import com.frozenheart.backend.core.entity.user.*;
 import com.frozenheart.backend.modules.device.repository.UserDeviceRepository;
 import com.frozenheart.backend.modules.notification.service.PushNotificationService;
@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PushNotificationServiceImpl implements PushNotificationService {
 
+    private static final int FCM_MULTICAST_LIMIT = 500;
+
     private final UserDeviceRepository userDeviceRepository;
     private final UserPushSettingRepository userPushSettingRepository;
     private final UserProfileRepository userProfileRepository;
@@ -37,37 +39,12 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
     @Override
     @Transactional
-    public void sendPush(Long userId, String title, String body, String iconUrl,
-                         NotificationTargetType targetType, Long targetId, String targetUrl,
-                         PushNotificationType pushType) {
-        if (userId == null || firebaseMessaging.isEmpty()) {
+    public void sendPushBatch(List<Delivery> deliveries, PushNotificationType pushType) {
+        if (deliveries.isEmpty() || firebaseMessaging.isEmpty()) {
             return;
         }
 
-        if (!isPushAllowedForUser(userId, pushType)) {
-            log.debug("[PushNotificationService] Push notification bị chặn bởi cài đặt hoặc khung giờ yên lặng của user {}", userId);
-            return;
-        }
-
-        List<UserDevice> activeDevices = userDeviceRepository.findByUserIdAndIsActiveTrue(userId);
-        List<String> fids = distinctFids(activeDevices);
-        if (fids.isEmpty()) {
-            return;
-        }
-
-        sendMulticastToDevices(fids, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
-    }
-
-    @Override
-    @Transactional
-    public void sendPushBatch(List<Long> userIds, String title, String body, String iconUrl,
-                              NotificationTargetType targetType, Long targetId, String targetUrl,
-                              PushNotificationType pushType) {
-        if (userIds == null || userIds.isEmpty() || firebaseMessaging.isEmpty()) {
-            return;
-        }
-
-        List<Long> distinctUserIds = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        List<Long> distinctUserIds = deliveries.stream().map(Delivery::userId).distinct().toList();
 
         // 1. Lọc các user cho phép nhận push
         Map<Long, UserPushSetting> settingsMap = userPushSettingRepository.findAllById(distinctUserIds).stream()
@@ -90,49 +67,44 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         }
 
         // 2. Lấy thiết bị active theo lô (0 N+1)
-        List<UserDevice> activeDevices = userDeviceRepository.findActiveDevicesByUserIds(allowedUserIds);
-        List<String> fids = distinctFids(activeDevices);
-        if (fids.isEmpty()) {
-            return;
-        }
+        Map<Long, List<UserDevice>> devicesByUser = userDeviceRepository.findActiveDevicesByUserIds(allowedUserIds).stream()
+                .filter(device -> device.getFid() != null && !device.getFid().isBlank())
+                .collect(Collectors.groupingBy(device -> device.getUser().getId()));
 
-        // Chia nhóm tối đa 500 FID/lần gửi theo giới hạn của FCM Multicast
-        int batchSize = 500;
-        for (int i = 0; i < fids.size(); i += batchSize) {
-            List<String> subFids = fids.subList(i, Math.min(i + batchSize, fids.size()));
-            sendMulticastToDevices(subFids, activeDevices, title, body, iconUrl, targetType, targetId, targetUrl, pushType);
+        List<UserDevice> invalidDevices = new ArrayList<>();
+        for (Delivery delivery : deliveries) {
+            List<UserDevice> devices = devicesByUser.getOrDefault(delivery.userId(), List.of());
+            Map<String, UserDevice> devicesByFid = devices.stream()
+                    .filter(UserDevice::isActive)
+                    .collect(Collectors.toMap(UserDevice::getFid, device -> device, (first, _) -> first));
+            List<String> fids = new ArrayList<>(devicesByFid.keySet());
+            for (int i = 0; i < fids.size(); i += FCM_MULTICAST_LIMIT) {
+                List<String> subFids = fids.subList(i, Math.min(i + FCM_MULTICAST_LIMIT, fids.size()));
+                sendMulticastToDevices(subFids, devicesByFid, delivery, pushType, invalidDevices);
+            }
+        }
+        if (!invalidDevices.isEmpty()) {
+            userDeviceRepository.saveAll(invalidDevices);
+            log.info("[PushNotificationService] Đã vô hiệu hóa {} thiết bị có FID không hợp lệ", invalidDevices.size());
         }
     }
 
-    private static List<String> distinctFids(List<UserDevice> devices) {
-        return devices.stream()
-                .map(UserDevice::getFid)
-                .filter(fid -> fid != null && !fid.isBlank())
-                .distinct()
-                .toList();
-    }
-
-    private void sendMulticastToDevices(List<String> fids, List<UserDevice> devices,
-                                        String title, String body, String iconUrl,
-                                        NotificationTargetType targetType, Long targetId,
-                                        String targetUrl, PushNotificationType pushType) {
-
-        if (firebaseMessaging.isEmpty()) {
-            return;
-        }
-
+    private void sendMulticastToDevices(List<String> fids, Map<String, UserDevice> devicesByFid,
+                                        Delivery delivery, PushNotificationType pushType,
+                                        List<UserDevice> invalidDevices) {
         try {
             MulticastMessage.Builder messageBuilder = MulticastMessage.builder()
                     .addAllFids(fids)
                     .setNotification(Notification.builder()
-                            .setTitle(title)
-                            .setBody(body)
-                            .setImage(iconUrl)
-                            .build());
+                            .setTitle(delivery.title())
+                            .setBody(delivery.body())
+                            .setImage(delivery.iconUrl())
+                            .build())
+                    .putData("notificationId", delivery.notificationId().toString());
 
-            if (targetType != null) messageBuilder.putData("targetType", targetType.name());
-            if (targetId != null) messageBuilder.putData("targetId", String.valueOf(targetId));
-            if (targetUrl != null) messageBuilder.putData("targetUrl", targetUrl);
+            if (delivery.targetType() != null) messageBuilder.putData("targetType", delivery.targetType().name());
+            if (delivery.targetId() != null) messageBuilder.putData("targetId", delivery.targetId().toString());
+            if (delivery.targetUrl() != null) messageBuilder.putData("targetUrl", delivery.targetUrl());
             if (pushType != null) messageBuilder.putData("pushType", pushType.name());
 
             MulticastMessage message = messageBuilder.build();
@@ -143,47 +115,26 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
             // Tự động dọn dẹp các FID đã hết hạn / không hợp lệ
             if (response.getFailureCount() > 0) {
-                handleFailedFids(response.getResponses(), fids, devices);
+                collectInvalidDevices(response.getResponses(), fids, devicesByFid, invalidDevices);
             }
         } catch (Exception e) {
             log.error("[PushNotificationService] Lỗi khi gửi multicast push notification: {}", e.getMessage());
         }
     }
 
-    private void handleFailedFids(List<SendResponse> responses, List<String> fids, List<UserDevice> devices) {
-        Map<String, UserDevice> deviceMap = devices.stream()
-                .filter(d -> d.getFid() != null)
-                .collect(Collectors.toMap(UserDevice::getFid, d -> d, (d1, _) -> d1));
-
-        List<UserDevice> invalidDevices = new ArrayList<>();
+    private void collectInvalidDevices(List<SendResponse> responses, List<String> fids,
+                                       Map<String, UserDevice> devicesByFid, List<UserDevice> invalidDevices) {
         for (int i = 0; i < responses.size(); i++) {
             SendResponse res = responses.get(i);
             if (!res.isSuccessful()) {
                 MessagingErrorCode errorCode = res.getException() != null ? res.getException().getMessagingErrorCode() : null;
                 if (errorCode == MessagingErrorCode.UNREGISTERED || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
-                    String failedFid = fids.get(i);
-                    UserDevice failedDevice = deviceMap.get(failedFid);
-                    if (failedDevice != null) {
-                        failedDevice.setActive(false);
-                        invalidDevices.add(failedDevice);
-                    }
+                    UserDevice failedDevice = devicesByFid.get(fids.get(i));
+                    failedDevice.setActive(false);
+                    invalidDevices.add(failedDevice);
                 }
             }
         }
-
-        if (!invalidDevices.isEmpty()) {
-            userDeviceRepository.saveAll(invalidDevices);
-            log.info("[PushNotificationService] Đã vô hiệu hóa {} thiết bị có FID không hợp lệ", invalidDevices.size());
-        }
-    }
-
-    private boolean isPushAllowedForUser(Long userId, PushNotificationType pushType) {
-        UserPushSetting setting = userPushSettingRepository.findById(userId).orElse(null);
-        String userTz = userProfileRepository.findByUserId(userId)
-                .map(UserProfile::getTimezone)
-                .filter(tz -> !tz.isBlank())
-                .orElse(Time.DEFAULT_TIMEZONE);
-        return isPushAllowed(setting, pushType, userTz);
     }
 
     private boolean isPushAllowed(UserPushSetting setting, PushNotificationType pushType, String userTimezone) {

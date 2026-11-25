@@ -53,9 +53,7 @@ public interface UserDeviceRepository extends JpaRepository<UserDevice, Long> {
     @Query("UPDATE UserDevice d SET d.isActive = false, d.fid = null WHERE d.user.id IN :userIds")
     void deactivateForAccounts(@Param("userIds") Collection<Long> userIds);
 
-    List<UserDevice> findByUserIdAndIsActiveTrue(Long userId);
-
-    @Query("SELECT ud FROM UserDevice ud WHERE ud.user.id IN :userIds AND ud.isActive = true")
+    @Query("SELECT ud FROM UserDevice ud JOIN FETCH ud.user u WHERE u.id IN :userIds AND ud.isActive = true")
     List<UserDevice> findActiveDevicesByUserIds(@Param("userIds") Collection<Long> userIds);
 
 }

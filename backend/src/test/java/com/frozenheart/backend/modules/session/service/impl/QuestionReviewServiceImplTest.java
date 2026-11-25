@@ -12,6 +12,7 @@ import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.post.Post;
 import com.frozenheart.backend.core.entity.user.CourseClass;
+import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.core.exception.AppException;
@@ -51,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -234,7 +236,7 @@ class QuestionReviewServiceImplTest {
         verify(sessionRepository).save(session);
         verify(gamificationService).onSessionsFinalized(Map.of(session, List.of(question)));
         verify(counterMetricsService).awardPointsAndApprovedQuestionsBatch(anyList(), org.mockito.ArgumentMatchers.same(semester));
-        verify(notificationWriter).create(any());
+        verify(notificationWriter).createWithPush(any(), eq(PushNotificationType.ACADEMIC));
         verify(questionRepository, never()).saveAll(anyList());
     }
 

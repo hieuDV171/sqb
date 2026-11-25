@@ -72,13 +72,13 @@ import com.frozenheart.backend.modules.post.repository.PostRepository;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent;
 import com.frozenheart.backend.core.dto.event.EntitySearchSyncEvent.EntityType;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
-import com.frozenheart.backend.core.dto.event.PushNotificationEvent;
 import com.frozenheart.backend.core.entity.notification.Notification;
 import com.frozenheart.backend.core.entity.notification.NotificationCategory;
 import com.frozenheart.backend.core.entity.notification.NotificationTargetType;
 import com.frozenheart.backend.core.entity.notification.NotificationType;
 import com.frozenheart.backend.core.entity.user.PushNotificationType;
 import com.frozenheart.backend.modules.notification.service.NotificationWriter;
+import com.frozenheart.backend.modules.notification.service.NotificationWriter.PushMessage;
 import org.springframework.context.ApplicationEventPublisher;
 
 @Service
@@ -538,26 +538,21 @@ public class QuestionReviewServiceImpl implements QuestionReviewService {
         Post savedPost = postRepository.save(posts.getFirst());
         eventPublisher.publishEvent(EntitySearchSyncEvent.upsert(EntityType.POST, savedPost.getId()));
 
-        notificationWriter.create(Notification.builder()
+        String title = "Câu hỏi của bạn đã được phê duyệt!";
+        Notification notification = Notification.builder()
                 .receiver(proposer)
                 .actor(session.getReviewer())
                 .type(NotificationType.QUESTION_APPROVED)
                 .category(NotificationCategory.ACADEMIC)
-                .title("Câu hỏi của bạn đã được phê duyệt!")
+                .title(title)
                 .body("Phiên đề xuất môn [" + subjectName + "] (" + subjectCode + ") đã có câu hỏi được duyệt.")
                 .targetType(NotificationTargetType.SESSION)
                 .targetId(session.getId())
                 .creadtedAt(now)
-                .build());
-        eventPublisher.publishEvent(PushNotificationEvent.single(
-                proposer.getId(),
-                "Câu hỏi của bạn đã được phê duyệt!",
+                .build();
+        notificationWriter.createWithPush(new PushMessage(notification, title,
                 "Phiên đề xuất môn [" + subjectName + "] đã có câu hỏi được chấp nhận vào Ngân hàng câu hỏi.",
-                null,
-                NotificationTargetType.SESSION,
-                session.getId(),
-                "/sessions/" + session.getId(),
-                PushNotificationType.ACADEMIC));
+                "/sessions/" + session.getId()), PushNotificationType.ACADEMIC);
 
         counterMetricsService.awardPointsAndApprovedQuestionsBatch(List.of(UserPointRewardDto.builder()
                 .userId(proposer.getId())
