@@ -758,3 +758,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 26/11/2026.** API lịch sử trả `last_read_message_id` và chạy trong transaction chỉ đọc. Gửi tin mới giữ nguyên mốc đọc của người gửi. Số tin chưa đọc bỏ qua tin đã xóa ở phía người xem, tin do chính người xem gửi và dòng hệ thống.
 - Frontend dùng `IntersectionObserver` để theo dõi tin đến trong tab đang hiển thị. Mốc chỉ tiến qua chuỗi tin đã vào vùng nhìn theo thứ tự và chờ nếu còn lịch sử chưa tải trước mốc dự kiến. Danh sách hội thoại và chấm báo giảm theo mốc mới.
 - `/app/chat.read` dùng cập nhật có điều kiện trên cột hiện có để biên nhận trùng hoặc cũ từ nhiều tab không lùi mốc. Phát hành frontend và backend cùng đợt.
+
+### [ADR-095] Trạng thái hoạt động trong chat trực tiếp
+
+- **Ngày 26/11/2026.** Tab đang hiển thị gửi heartbeat STOMP mỗi 15 giây. Redis lưu mốc hết hạn 45 giây theo kết nối. Tab ẩn hoặc kết nối đã đóng rút mốc còn tối đa 5 giây. Một tài khoản đang hoạt động khi còn ít nhất một kết nối chưa hết hạn.
+- Lua cập nhật thời hạn và ghi thay đổi nguyên tử. Backend thu các thay đổi theo lô mỗi giây, kiểm tra thành viên và quyền chặn hai chiều rồi phát qua hàng đợi STOMP riêng. Heartbeat dùng danh tính của kết nối đã xác thực. Hộp thư lấy trạng thái ban đầu theo lô và đồng bộ lại sau khi kết nối hoặc định kỳ khi mở chat.
+- Phạm vi là chat 1–1 trong hộp thư thường và một instance backend dùng STOMP simple broker. Trạng thái chỉ dùng Redis. Phát hành backend trước frontend để ứng dụng nhận được các đích STOMP mới.

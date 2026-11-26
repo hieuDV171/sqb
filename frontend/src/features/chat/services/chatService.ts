@@ -2,6 +2,7 @@ import { axiosClient } from '@/api/axiosClient';
 import type { CursorResponse, GlobalResponse } from '@/types/response.types';
 import type {
   ConversationListResponseDto,
+  ChatPresenceDto,
   ConversationDetailDto,
   CreateDirectConversationDto,
   CreateGroupConversationDto,
@@ -22,6 +23,13 @@ import type {
 } from '../types/chat.types';
 
 export const chatService = {
+  getPresence(conversationIds: number[], signal: AbortSignal) {
+    return axiosClient.get<unknown, GlobalResponse<ChatPresenceDto[]>>('/conversations/presence', {
+      params: { conversationIds: conversationIds.join(',') },
+      signal,
+    });
+  },
+
   getGroupCandidates(conversationId: number | undefined, search: string, after?: number) {
     return axiosClient.get<unknown, GlobalResponse<CursorResponse<GroupCandidateDto>>>('/conversations/group/candidates', {
       params: { conversationId, search, after },

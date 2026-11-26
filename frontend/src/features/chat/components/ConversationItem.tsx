@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import type { ConversationDto } from '../types/chat.types';
 import { formatChatTime, truncate } from '../utils/chatUtils';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useChatPresenceStore } from '../stores/useChatPresenceStore';
+import { ChatPresenceDot } from './ChatPresenceDot';
 import {
   Users,
   Lock,
@@ -37,6 +39,7 @@ export function ConversationItem({
   onLeave,
 }: ConversationItemProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const peerActive = useChatPresenceStore((state) => state.byConversation[conversation.conversationId]?.active === true);
 
   const isGroup = conversation.type === 'GROUP';
   const hasUnread = conversation.unreadCount > 0;
@@ -102,6 +105,7 @@ export function ConversationItem({
           ) : (
             <UserAvatar name={conversation.displayName} avatarUrl={conversation.displayAvatarUrl} className="size-11" decorative />
           )}
+          {!isGroup && !isHiddenMode && !conversation.hiddenAt && peerActive && <ChatPresenceDot />}
           {conversation.hiddenAt && (
             <span className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full bg-warning-soft text-warning ring-2 ring-card">
               <Lock aria-hidden="true" className="size-3" /><span className="sr-only">Hội thoại ẩn</span>

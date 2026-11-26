@@ -9,6 +9,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { useChatRealtimeListener, FloatingChatWidget } from '@/features/chat';
+import { useChatPresence } from '@/features/chat/hooks/useChatPresence';
 import { NOTIFICATION_KEYS, useNotificationRealtime, usePushNotificationClick } from '@/features/notification/hooks/useNotification';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sqb-sidebar-collapsed';
@@ -51,6 +52,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Lắng nghe các sự kiện WebSocket STOMP toàn cục (tin nhắn mới, biên nhận đọc)
   useChatRealtimeListener();
+  useChatPresence();
   useNotificationRealtime();
   usePushNotificationClick();
 

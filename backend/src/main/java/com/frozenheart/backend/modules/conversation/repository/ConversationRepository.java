@@ -10,11 +10,39 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ConversationRepository extends JpaRepository<Conversation, Long> {
+
+  interface PresenceLink {
+    Long getConversationId();
+    Long getViewerId();
+    Long getSubjectId();
+  }
+
+  String PRESENCE_LINKS = """
+      SELECT c.id AS conversationId, viewer.id.userId AS viewerId, subject.id.userId AS subjectId
+      FROM Conversation c
+      JOIN c.participants viewer
+      JOIN c.participants subject ON subject.id.userId <> viewer.id.userId
+      WHERE c.type = 'DIRECT' AND viewer.leftAt IS NULL AND subject.leftAt IS NULL
+        AND viewer.hiddenAt IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM UserBlock b
+          WHERE (b.id.blockerId = viewer.id.userId AND b.id.blockedId = subject.id.userId)
+             OR (b.id.blockerId = subject.id.userId AND b.id.blockedId = viewer.id.userId)
+        )
+      """;
+
+  @Query(PRESENCE_LINKS + " AND viewer.id.userId = :viewerId AND c.id IN :conversationIds")
+  List<PresenceLink> findPresencePeers(@Param("viewerId") Long viewerId,
+      @Param("conversationIds") Collection<Long> conversationIds);
+
+  @Query(PRESENCE_LINKS + " AND subject.id.userId IN :subjectIds")
+  List<PresenceLink> findPresenceViewers(@Param("subjectIds") Collection<Long> subjectIds);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT c FROM Conversation c WHERE c.id = :id")

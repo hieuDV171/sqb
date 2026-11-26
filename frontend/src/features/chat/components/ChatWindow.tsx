@@ -5,6 +5,8 @@ import { useStompStatus } from '@/lib/stompClient';
 import { useEffect, useState, useMemo } from 'react';
 import { getGroupExitReason, useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '../hooks/useChat';
 import { useChatStore } from '../stores/useChatStore';
+import { useChatPresenceStore } from '../stores/useChatPresenceStore';
+import { ChatPresenceDot } from './ChatPresenceDot';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import type { MessageDto } from '../types/chat.types';
@@ -78,6 +80,8 @@ function UnlockedChatWindow({
   }, [conversationsData, hiddenData, isPinUnlocked, conversationId]);
 
   const isGroup = (conversation?.type ?? messageData?.pages[0]?.conversationType) === 'GROUP';
+  const peerActive = useChatPresenceStore((state) => state.byConversation[conversationId]?.active === true);
+  const showPresence = peerActive && !isGroup && !conversation?.hiddenAt && !messageData?.pages[0]?.hiddenAt;
   const displayName = conversation?.displayName ?? messageData?.pages[0]?.groupName;
   const displayAvatar = conversation?.displayAvatarUrl ?? messageData?.pages[0]?.groupAvatarUrl;
   const { data: members, error: membersError } = useGroupMembers(conversationId, isGroup);
@@ -130,7 +134,10 @@ function UnlockedChatWindow({
           {isGroup && !displayAvatar ? (
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-academic-soft text-academic"><Users aria-hidden="true" className="size-5" /></span>
           ) : (
-            <UserAvatar name={displayName} avatarUrl={displayAvatar} decorative />
+            <span className="relative shrink-0">
+              <UserAvatar name={displayName} avatarUrl={displayAvatar} decorative />
+              {showPresence && <ChatPresenceDot decorative />}
+            </span>
           )}
 
           {/* Title & Subtitle */}
@@ -140,7 +147,8 @@ function UnlockedChatWindow({
             </h3>
 
             <div className="truncate text-xs text-muted-foreground">
-              {isGroup ? `${members?.length ?? conversation?.memberCount ?? 0} thành viên` : 'Trò chuyện trực tiếp'}
+              {isGroup ? `${members?.length ?? conversation?.memberCount ?? 0} thành viên`
+                : showPresence ? 'Đang hoạt động' : 'Trò chuyện trực tiếp'}
             </div>
           </div>
         </div>

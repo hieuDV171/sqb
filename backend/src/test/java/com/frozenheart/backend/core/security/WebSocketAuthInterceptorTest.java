@@ -31,10 +31,11 @@ class WebSocketAuthInterceptorTest {
 
     @Mock JwtService jwtService;
     @Mock UserDetailsService userDetailsService;
+    @Mock AccountWebSocketSessions accountSessions;
 
     @Test
     void rejectsOnboardingTokenBeforeStompAuthentication() {
-        WebSocketAuthInterceptor interceptor = new WebSocketAuthInterceptor(jwtService, userDetailsService);
+        WebSocketAuthInterceptor interceptor = new WebSocketAuthInterceptor(jwtService, userDetailsService, accountSessions);
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
         accessor.setNativeHeader("Authorization", "Bearer onboarding-token");
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
@@ -75,11 +76,13 @@ class WebSocketAuthInterceptorTest {
 
     @Test
     void clientsCannotSubscribeToPhysicalQueuesOrPublishBrokerMessages() {
-        var interceptor = new WebSocketAuthInterceptor(jwtService, userDetailsService);
+        var interceptor = new WebSocketAuthInterceptor(jwtService, userDetailsService, accountSessions);
         var user = authenticate("sender", 10L);
 
         assertDoesNotThrow(() -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/messages", user), null));
         assertDoesNotThrow(() -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/notifications", user), null));
+        assertDoesNotThrow(() -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/chat-presence", user), null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/20/queue/chat-presence", user), null));
         assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/queue/notifications", null), null));
         assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SUBSCRIBE, "/user/20/queue/notifications", user), null));
         assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(stompMessage(StompCommand.SEND, "/user/queue/notifications", user), null));
@@ -114,7 +117,7 @@ class WebSocketAuthInterceptorTest {
         accessor.setNativeHeader("Authorization", "Bearer " + token);
         accessor.setLeaveMutable(true);
         var message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
-        new WebSocketAuthInterceptor(jwtService, userDetailsService).preSend(message, null);
+        new WebSocketAuthInterceptor(jwtService, userDetailsService, accountSessions).preSend(message, null);
         assertEquals(userId, JwtPayload.getUserId(accessor.getUser()));
         return accessor.getUser();
     }

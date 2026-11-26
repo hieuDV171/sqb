@@ -63,8 +63,11 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
         String socketId = SimpMessageHeaderAccessor.getSessionId(event.getMessage().getHeaders());
         JwtPayload payload = JwtPayload.fromPrincipal(event.getUser());
         if (socketId != null && payload != null && payload.getUserId() != null && sockets.containsKey(socketId)) {
-            accounts.put(socketId, payload);
-            if (isAccountSessionInvalid(payload)) close(sockets.get(socketId));
+            if (isAccountSessionInvalid(payload)) {
+                close(sockets.get(socketId));
+            } else {
+                accounts.put(socketId, payload);
+            }
         }
     }
 
@@ -73,11 +76,23 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
         accounts.remove(event.getSessionId());
     }
 
+    boolean isAuthenticatedSocket(String socketId, JwtPayload payload) {
+        return socketId != null && payload != null && accounts.get(socketId) == payload && sockets.containsKey(socketId);
+    }
+
+    void registerAuthenticatedSocket(String socketId, JwtPayload payload) {
+        if (socketId != null && sockets.containsKey(socketId)) accounts.put(socketId, payload);
+    }
+
     @Override
     public Message<?> preSend(Message<?> message, @NonNull MessageChannel channel) {
         if (SimpMessageHeaderAccessor.getMessageType(message.getHeaders()) != SimpMessageType.MESSAGE) return message;
         String socketId = SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
         JwtPayload payload = socketId == null ? null : accounts.get(socketId);
+        String destination = SimpMessageHeaderAccessor.getDestination(message.getHeaders());
+        if (destination != null && destination.equals("/queue/chat-presence-user" + socketId)) {
+            return isAuthenticatedSocket(socketId, payload) ? message : null;
+        }
         if (payload != null && isAccountSessionInvalid(payload)) {
             close(sockets.get(socketId));
             return null;
@@ -110,7 +125,9 @@ public class AccountWebSocketSessions implements ChannelInterceptor {
 
     private void disconnect(Set<Long> accountIds) {
         accounts.forEach((socketId, payload) -> {
-            if (accountIds.contains(payload.getUserId())) close(sockets.get(socketId));
+            if (accountIds.contains(payload.getUserId()) && accounts.remove(socketId, payload)) {
+                close(sockets.get(socketId));
+            }
         });
     }
 

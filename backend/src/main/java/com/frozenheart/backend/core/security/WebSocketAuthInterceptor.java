@@ -23,11 +23,13 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
-    private static final Set<String> CHAT_COMMANDS = Set.of("/app/chat.send", "/app/chat.read", "/app/chat.typing");
-    private static final Set<String> USER_SUBSCRIPTIONS = Set.of("/user/queue/messages", "/user/queue/notifications");
+    private static final String PRESENCE_HEARTBEAT = "/app/chat.presence";
+    private static final Set<String> CHAT_COMMANDS = Set.of("/app/chat.send", "/app/chat.read", "/app/chat.typing", PRESENCE_HEARTBEAT);
+    private static final Set<String> USER_SUBSCRIPTIONS = Set.of("/user/queue/messages", "/user/queue/notifications", "/user/queue/chat-presence");
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final AccountWebSocketSessions accountSessions;
 
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
@@ -37,6 +39,9 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             checkClientDestination(accessor);
             if (accessor.getCommand() == StompCommand.SEND || accessor.getCommand() == StompCommand.SUBSCRIBE) {
                 JwtPayload payload = JwtPayload.fromPrincipal(accessor.getUser());
+                if (PRESENCE_HEARTBEAT.equals(accessor.getDestination())) {
+                    return accountSessions.isAuthenticatedSocket(accessor.getSessionId(), payload) ? message : null;
+                }
                 if (payload == null || !jwtService.isTokenValid(payload,
                         userDetailsService.loadUserByUsername(payload.getUsername()))) {
                     throw new MessageDeliveryException("Unauthorized: Account session was revoked");
@@ -77,6 +82,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                                 UsernamePasswordAuthenticationToken.authenticated(userId.toString(), null, userDetails.getAuthorities());
                         authentication.setDetails(jwtPayload);
                         accessor.setUser(authentication);
+                        accountSessions.registerAuthenticatedSocket(accessor.getSessionId(), jwtPayload);
                         log.debug("[WebSocketAuthInterceptor] WebSocket authenticated user: {} (ID: {})", username, jwtPayload.getUserId());
                     } else {
                         log.error("[WebSocketAuthInterceptor] WebSocket CONNECT rejected: Token is expired or invalid for user {}", username);

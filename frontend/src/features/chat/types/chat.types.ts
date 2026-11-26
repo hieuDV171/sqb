@@ -47,6 +47,12 @@ export interface ConversationListResponseDto {
   totalConversations: number;
 }
 
+export interface ChatPresenceDto {
+  conversationId: number;
+  active: boolean;
+  observedAt: number;
+}
+
 export interface ConversationMemberDto {
   userId: number;
   fullName: string;

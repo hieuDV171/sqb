@@ -11,9 +11,12 @@ import com.frozenheart.backend.core.security.AccountWebSocketSessions;
 import com.frozenheart.backend.core.security.JwtService;
 import com.frozenheart.backend.core.security.TokenType;
 import com.frozenheart.backend.core.security.WebSocketAuthInterceptor;
+import com.frozenheart.backend.modules.conversation.controller.ChatPresenceController;
 import com.frozenheart.backend.modules.conversation.controller.ChatWebSocketController;
+import com.frozenheart.backend.modules.conversation.dto.ChatPresenceDto;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.ChatRealtimePublisher;
+import com.frozenheart.backend.modules.conversation.service.ChatPresenceService;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatAccess;
 import com.frozenheart.backend.modules.conversation.service.HiddenChatOutboundGuard;
 import com.frozenheart.backend.modules.conversation.service.impl.ChatWebSocketServiceImpl;
@@ -24,6 +27,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.socket.CloseStatus;
@@ -44,6 +48,9 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -54,6 +61,35 @@ class ChatTypingStompTest {
 
     private static final JsonMapper MAPPER = JsonMapper.builder()
             .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE).build();
+
+    @Test
+    void presenceHeartbeatsUseTheAuthenticatedAccountAndSocket() throws Exception {
+        try (var context = startBroker(mock(UserParticipantRepository.class), Map.of("sender", 1L, "viewer", 2L))) {
+            var sessions = context.getBean(AccountWebSocketSessions.class);
+            var handler = sessions.decorate(context.getBean("subProtocolWebSocketHandler", WebSocketHandler.class));
+            var presence = context.getBean(ChatPresenceService.class);
+            var senderFrames = new ArrayList<String>();
+            var viewerFrames = new ArrayList<String>();
+            var socket = connect(handler, "sender", senderFrames);
+            var viewer = connect(handler, "viewer", viewerFrames);
+            handler.handleMessage(viewer, frame("SUBSCRIBE\nid:presence\ndestination:/user/queue/chat-presence\n\n"));
+
+            handler.handleMessage(socket, frame("SEND\ndestination:/app/chat.presence\n\n{\"active\":true}"));
+            handler.handleMessage(socket, frame("SEND\ndestination:/app/chat.presence\n\n{\"active\":false}"));
+            handler.handleMessage(socket, frame("SEND\ndestination:/app/chat.presence\n\n{\"active\":true,\"user_id\":99}"));
+
+            verify(presence, atLeastOnce()).heartbeat(1L, "sender", true);
+            verify(presence).heartbeat(1L, "sender", false);
+            verify(presence, never()).heartbeat(eq(99L), any(), anyBoolean());
+
+            context.getBean(SimpMessagingTemplate.class).convertAndSendToUser("2", "/queue/chat-presence",
+                    List.of(new ChatPresenceDto(84, true, 123_456)));
+            assertTrue(receivedEvents(senderFrames).isEmpty());
+            var event = receivedEvents(viewerFrames).getFirst().get(0);
+            assertEquals(84L, event.get("conversation_id").asLong());
+            assertTrue(event.get("active").asBoolean());
+        }
+    }
 
     @Test
     void typingFramesReachTheOtherUsersPrivateQueue() throws Exception {
@@ -153,14 +189,17 @@ class ChatTypingStompTest {
             factory.registerSingleton("jsonMapper", MAPPER);
             factory.registerSingleton("jwtService", jwt);
             factory.registerSingleton("userDetailsService", userDetails);
-            factory.registerSingleton("authInterceptor", new WebSocketAuthInterceptor(jwt, userDetails));
+            var sessions = new AccountWebSocketSessions(jwt, userDetails);
+            factory.registerSingleton("accountWebSocketSessions", sessions);
+            factory.registerSingleton("authInterceptor", new WebSocketAuthInterceptor(jwt, userDetails, sessions));
+            factory.registerSingleton("chatPresenceService", mock(ChatPresenceService.class));
             factory.registerSingleton("hiddenChatAccess", mock(HiddenChatAccess.class));
             factory.registerSingleton("participants", participants);
             factory.registerSingleton("userProfiles", mock(UserProfileRepository.class));
         });
-        context.register(WebSocketConfig.class, AccountWebSocketSessions.class, SynchronousChannels.class,
+        context.register(WebSocketConfig.class, SynchronousChannels.class,
                 HiddenChatOutboundGuard.class, ChatRealtimePublisher.class, TypingServiceConfig.class,
-                ChatWebSocketController.class);
+                ChatWebSocketController.class, ChatPresenceController.class);
         context.refresh();
         return context;
     }
