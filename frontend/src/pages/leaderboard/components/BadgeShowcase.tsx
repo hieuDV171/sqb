@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { BadgeResponseDto, UserBadgeResponseDto, BadgeTier } from '@/types/gamification.types';
 import { getBadgeTriggerLabel } from '@/types/gamification.types';
-import { Award, Lock, Sparkles, CheckCircle2, Users, Filter, Tag } from 'lucide-react';
+import { Award, Lock, CheckCircle2, Users, Filter, Tag } from 'lucide-react';
 
 interface BadgeShowcaseProps {
   allBadges: BadgeResponseDto[];
@@ -84,7 +84,7 @@ export function BadgeShowcase({ allBadges, userBadges }: BadgeShowcaseProps) {
       <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="space-y-1.5 max-w-xl text-center md:text-left">
           <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center justify-center md:justify-start gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
+            <Award aria-hidden="true" className="size-5 text-amber-500" />
             Bộ Sưu Tập Huy Hiệu Vinh Danh
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">

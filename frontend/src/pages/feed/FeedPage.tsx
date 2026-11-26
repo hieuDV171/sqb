@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { FeedSidebarRight } from './components/FeedSidebarRight';
 import { useSubjectOptions } from '@/features/session/hooks/useSubjectOptions';
-import { MessageSquarePlus, Loader2, Sparkles } from 'lucide-react';
+import { MessageSquarePlus, Loader2, UsersRound } from 'lucide-react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -88,7 +88,7 @@ export function FeedPage() {
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Sparkles className="size-4" aria-hidden="true" />
+            <UsersRound className="size-4" aria-hidden="true" />
             Social Mode
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Bảng tin học thuật</h1>

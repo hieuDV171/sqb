@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Flame, Check, Gift, Sparkles } from 'lucide-react';
+import { X, Flame, Check, Gift, CalendarCheck } from 'lucide-react';
 import { useGamificationStore } from '../stores/useGamificationStore';
 import { useDailyCheckIn } from '../hooks/useGamification';
 import { ActionError } from '@/components/ui/action-error';
+import { Button } from '@/components/ui/button';
 import { getActionErrorMessage } from '@/lib/errorMessage';
 import { SqbCoin } from '@/components/common/SqbCoin';
 
@@ -28,7 +29,7 @@ export function DailyCheckInModal({
   // Particle Confetti Launcher
   const triggerConfetti = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -187,7 +188,7 @@ export function DailyCheckInModal({
                       <Check className="w-4 h-4 stroke-[3]" />
                     </div>
                   ) : isGrandPrize ? (
-                    <div className="w-9 h-9 rounded-2xl bg-linear-to-tr from-amber-400 to-yellow-300 text-amber-950 flex items-center justify-center shadow-md animate-bounce">
+                    <div className="w-9 h-9 rounded-2xl bg-linear-to-tr from-amber-400 to-yellow-300 text-amber-950 flex items-center justify-center shadow-md motion-safe:animate-bounce">
                       <Gift className="w-5 h-5" />
                     </div>
                   ) : (
@@ -223,7 +224,7 @@ export function DailyCheckInModal({
         {/* Streak Info Callout */}
         <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-600 text-white shrink-0 shadow-xs">
-            <Sparkles className="w-5 h-5" />
+            <CalendarCheck aria-hidden="true" className="size-5" />
           </div>
           <div className="text-xs space-y-0.5">
             <p className="font-bold text-slate-800 dark:text-slate-200">
@@ -243,25 +244,15 @@ export function DailyCheckInModal({
               <span>Hôm nay bạn đã hoàn thành điểm danh! Hẹn gặp lại vào ngày mai.</span>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
-              disabled={checkInMutation.isPending}
               onClick={handleCheckIn}
-              className="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2.5"
+              pending={{ active: checkInMutation.isPending, label: 'Đang xác nhận…' }}
+              className="h-auto min-h-12 w-full whitespace-normal px-4 py-3 text-base"
             >
-              <Flame className="w-5 h-5 fill-amber-300 text-amber-300 animate-pulse" />
-              <span className="flex items-center gap-1.5">
-                {checkInMutation.isPending ? (
-                  'Đang xác nhận...'
-                ) : (
-                  <>
-                    <span>Điểm Danh Ngay (+{(currentStreak + 1) % 7 === 0 ? '5' : '1'} xu SQB</span>
-                    <SqbCoin className="w-5 h-5 drop-shadow-md" />
-                    <span>)</span>
-                  </>
-                )}
-              </span>
-            </button>
+              <Flame aria-hidden="true" className="size-5" />
+              Điểm danh ngay (+{(currentStreak + 1) % 7 === 0 ? '5' : '1'} xu SQB)
+            </Button>
           )}
           {!hasCheckedInToday && checkInMutation.isError && (
             <ActionError className="mt-2" message={getActionErrorMessage(checkInMutation.error, 'Không thể điểm danh. Hãy thử lại.')} />

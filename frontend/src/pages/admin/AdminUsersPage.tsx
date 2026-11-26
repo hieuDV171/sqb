@@ -32,12 +32,12 @@ import {
   Users,
   KeyRound,
   CheckCircle2,
+  CircleX,
   AlertCircle,
   Check,
   ChevronDown,
   Eye,
   EyeOff,
-  RefreshCw,
   Trash2,
   PlusCircle,
   Info,
@@ -609,9 +609,9 @@ export function AdminUsersPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={isExcelUploading} className="min-h-11 w-full sm:w-auto">
-                  {isExcelUploading ? <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" /> : <Upload aria-hidden="true" />}
-                  {isExcelUploading ? "Đang nhập danh sách…" : "Nhập danh sách lớp"}
+                <Button type="submit" className="min-h-11 w-full sm:w-auto"
+                  pending={{ active: isExcelUploading, label: "Đang nhập danh sách…" }}>
+                  <Upload aria-hidden="true" /> Nhập danh sách lớp
                 </Button>
               </div>
             </form>
@@ -782,42 +782,43 @@ export function AdminUsersPage() {
 
                   <Button
                     type="submit"
-                    disabled={isBulkLoading}
                     className="min-h-11 w-full sm:w-auto"
+                    pending={{ active: isBulkLoading, label: "Đang tạo tài khoản…" }}
                   >
-                    {isBulkLoading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo tài khoản...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4" /> Xác nhận tạo {usersToImport.length} tài khoản
-                      </>
-                    )}
+                    <UserPlus aria-hidden="true" /> Xác nhận tạo {usersToImport.length} tài khoản
                   </Button>
                 </div>
               </form>
 
-              {/* Bulk Result Details */}
+              <p role="status" aria-atomic="true" className="sr-only">
+                {bulkResult && `Kết quả tạo tài khoản. Thành công ${bulkResult.totalSuccess}, thất bại ${bulkResult.totalFailed}.`}
+              </p>
               {bulkResult && (
-                <div className="mt-6 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-3">
-                  <div className="flex items-center gap-4 text-xs font-semibold">
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      ✅ Thành công: {bulkResult.totalSuccess}
-                    </span>
-                    <span className="text-rose-600 dark:text-rose-400">
-                      ❌ Thất bại: {bulkResult.totalFailed}
-                    </span>
-                  </div>
+                <section aria-labelledby="bulk-result-title" className="space-y-3 rounded-xl border border-border bg-surface-subtle p-4">
+                  <h3 id="bulk-result-title" className="text-sm font-semibold">Kết quả tạo tài khoản</h3>
+                  <dl className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-border bg-card p-3">
+                      <dt className="flex items-center gap-2 text-sm font-medium">
+                        <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-success" /> Thành công
+                      </dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums">{bulkResult.totalSuccess}</dd>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card p-3">
+                      <dt className="flex items-center gap-2 text-sm font-medium">
+                        <CircleX aria-hidden="true" className={cn("size-4 shrink-0", bulkResult.totalFailed > 0 ? "text-destructive" : "text-muted-foreground")} /> Thất bại
+                      </dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums">{bulkResult.totalFailed}</dd>
+                    </div>
+                  </dl>
                   {bulkResult.errors.length > 0 && (
-                    <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg text-xs text-red-600 space-y-1">
-                      <p className="font-bold">Chi tiết lỗi:</p>
-                      {bulkResult.errors.map((err, i) => (
-                        <p key={i}>• {err}</p>
-                      ))}
+                    <div className="space-y-1 rounded-lg border border-destructive/20 bg-card p-3 text-sm">
+                      <p className="font-semibold text-destructive">Chi tiết lỗi</p>
+                      <ul className="list-disc space-y-1 break-words pl-5">
+                        {bulkResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                      </ul>
                     </div>
                   )}
-                </div>
+                </section>
               )}
             </CardContent>
           </Card>
@@ -884,9 +885,10 @@ export function AdminUsersPage() {
               </p>
 
               <div className="flex justify-end">
-                <Button type="submit" variant="destructive" disabled={isResetLoading} className="min-h-11 w-full sm:w-auto">
-                  {isResetLoading ? <RefreshCw aria-hidden="true" className="motion-safe:animate-spin" /> : <KeyRound aria-hidden="true" />}
-                  {isResetLoading ? "Đang cấp lại mật khẩu…" : "Cấp lại mật khẩu"}
+                <Button type="submit" variant="destructive" className="min-h-11 w-full sm:w-auto"
+                  pending={{ active: isResetLoading, label: "Đang cấp lại mật khẩu…" }}>
+                  <KeyRound aria-hidden="true" />
+                  Cấp lại mật khẩu
                 </Button>
               </div>
             </form>

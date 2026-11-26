@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { ArrowLeft, ArrowRight, BarChart3, Check, Heart, Lightbulb, Loader2, Maximize2, MessageSquare, Star, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BarChart3, Check, Heart, Lightbulb, Maximize2, MessageSquare, Star, X } from 'lucide-react';
 import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -150,9 +150,9 @@ export function PracticeQuestionCard({
       ) : (
         <div className="space-y-2">
           {answerError && <p role="alert" className="text-sm text-destructive">{answerError}</p>}
-          <Button className="min-h-11" disabled={!selectedOptions.length || isSubmittingAnswer} onClick={onSubmitAnswer}>
-            {isSubmittingAnswer && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
-            {isSubmittingAnswer ? 'Đang kiểm tra…' : 'Kiểm tra đáp án'}
+          <Button className="min-h-11" disabled={!selectedOptions.length} onClick={onSubmitAnswer}
+            pending={{ active: isSubmittingAnswer, label: 'Đang kiểm tra…' }}>
+            Kiểm tra đáp án
           </Button>
         </div>
       )}

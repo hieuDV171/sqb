@@ -1,7 +1,7 @@
 import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
-import { Target, Zap, Trophy, Sparkles } from 'lucide-react';
+import { Target, Zap, Trophy, Star } from 'lucide-react';
 
 interface ReachedMilestoneCardProps {
   item: ActivityFeedItemDto;
@@ -79,7 +79,7 @@ export function ReachedMilestoneCard({ item }: ReachedMilestoneCardProps) {
               : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200'
           }`}
         >
-          <Sparkles className={`w-4 h-4 ${hasCheered ? 'text-purple-600' : ''}`} />
+          <Star aria-hidden="true" className={`size-4 ${hasCheered ? 'fill-current text-purple-600' : ''}`} />
           <span>{hasCheered ? 'Đã thả sao' : 'Cổ vũ bạn ấy'}</span>
           <span className="ml-1 text-slate-400 dark:text-slate-500 font-normal">({cheers})</span>
         </button>

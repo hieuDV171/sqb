@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { RefreshCw, Sparkles, ArrowDown } from 'lucide-react';
+import { RefreshCw, ArrowDown } from 'lucide-react';
 
 interface PullToRefreshFeedProps {
   onRefresh: () => Promise<void> | void;
@@ -140,7 +140,7 @@ export const PullToRefreshFeed: React.FC<PullToRefreshFeedProps> = ({
             disabled={isRefreshing}
             className="pointer-events-auto absolute top-0 group flex min-h-11 items-center gap-2.5 px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-medium text-xs md:text-sm shadow-xl hover:shadow-blue-500/30 ring-2 ring-white dark:ring-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring cursor-pointer"
           >
-            <Sparkles aria-hidden="true" className="w-4 h-4 text-amber-300" />
+            <RefreshCw aria-hidden="true" className="size-4" />
             <span>
               {newCount > 0 ? <><strong>{newCount}</strong> hoạt động mới</> : 'Có cập nhật mới'}
             </span>

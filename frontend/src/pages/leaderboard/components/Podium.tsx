@@ -1,7 +1,7 @@
 import { getAvatarInitial } from '@/lib/avatar';
 import type { LeaderboardEntryDto, LeaderboardScope } from '@/types/gamification.types';
 import { getRewardCoins } from '@/types/gamification.types';
-import { Trophy, Medal, Award, Crown, Coins, Zap, Sparkles } from 'lucide-react';
+import { Trophy, Medal, Award, Crown, Coins, Zap } from 'lucide-react';
 
 interface PodiumProps {
   topUsers: LeaderboardEntryDto[];
@@ -80,7 +80,6 @@ export function Podium({ topUsers, scope }: PodiumProps) {
             <div className="relative mb-3 flex flex-col items-center">
               <div className="relative flex items-center justify-center mb-1">
                 <Crown className="w-8 h-8 sm:w-10 sm:h-10 text-amber-500 fill-amber-400 animate-bounce" />
-                <Sparkles className="w-4 h-4 text-amber-400 absolute -top-1 -right-2 animate-pulse" />
               </div>
 
               <div className="relative">
@@ -96,7 +95,7 @@ export function Podium({ topUsers, scope }: PodiumProps) {
                 {/* Reward Badge Gold / Subject Top 1 Badge */}
                 {scope === 'SUBJECT' ? (
                   <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-full text-xs font-extrabold flex items-center gap-1 shadow-md ring-2 ring-white dark:ring-slate-900 whitespace-nowrap">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                    <Medal aria-hidden="true" className="size-3.5 text-amber-300" />
                     Thủ Khoa Môn
                   </div>
                 ) : (

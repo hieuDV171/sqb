@@ -1,7 +1,7 @@
 import { getAvatarInitial } from '@/lib/avatar';
 import { useState } from 'react';
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
-import { Award, Sparkles, Heart, Crown } from 'lucide-react';
+import { Award, Heart, Crown } from 'lucide-react';
 
 interface EarnedBadgeCardProps {
   item: ActivityFeedItemDto;
@@ -35,7 +35,7 @@ export function EarnedBadgeCard({ item }: EarnedBadgeCardProps) {
                 {item.actor.fullName}
               </h4>
               <span className="text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700/60 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                <Award aria-hidden="true" className="size-3" />
                 Mở khóa Huy hiệu mới
               </span>
             </div>

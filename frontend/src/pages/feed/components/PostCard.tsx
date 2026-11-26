@@ -8,7 +8,6 @@ import {
   Share2,
   Bookmark,
   GraduationCap,
-  Sparkles,
   Trophy,
   MoreHorizontal,
   Globe,
@@ -120,7 +119,7 @@ export function PostCard({ post, onToggleLike, onAddComment }: PostCardProps) {
                 )}
                 {isSystemRewardPost && (
                   <span className="text-[10px] font-extrabold bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-700/60 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <Trophy aria-hidden="true" className="size-3" />
                     Vinh danh SQB
                   </span>
                 )}

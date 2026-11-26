@@ -7,7 +7,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import type { CursorResponse } from '@/types/user.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { reactService } from '../../services/reactService';
-import { Award, Sparkles, Heart } from 'lucide-react';
+import { Award, Heart } from 'lucide-react';
 
 interface EarnedBadgeCardProps {
   item: ActivityFeedItemDto;
@@ -73,7 +73,7 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
         </div>
 
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 font-semibold text-xs border border-amber-300 dark:border-amber-700">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <Award aria-hidden="true" className="size-3.5" />
           <span>Thành tích mới</span>
         </div>
       </div>

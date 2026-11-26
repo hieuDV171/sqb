@@ -1,5 +1,4 @@
 import { AlertDialog } from '@base-ui/react/alert-dialog';
-import { Loader2 } from 'lucide-react';
 import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 
@@ -34,9 +33,9 @@ export function CompleteReviewDialog({ mode, pendingCount, isRefreshing, isSubmi
           <div className="flex flex-wrap justify-end gap-2">
             <AlertDialog.Close render={<Button variant="outline" className="min-h-11" disabled={isSubmitting} />}>Xem lại</AlertDialog.Close>
             <Button variant={approve ? 'default' : 'destructive'} className="min-h-11"
-              onClick={onConfirm} disabled={isSubmitting || isRefreshing || (approve && pendingCount === 0)}>
-              {isSubmitting && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
-              {isSubmitting ? 'Đang lưu…' : approve ? `Duyệt ${pendingCount} câu` : 'Xác nhận chốt phiên'}
+              onClick={onConfirm} disabled={isRefreshing || (approve && pendingCount === 0)}
+              pending={{ active: isSubmitting, label: approve ? 'Đang duyệt…' : 'Đang chốt phiên…' }}>
+              {approve ? `Duyệt ${pendingCount} câu` : 'Xác nhận chốt phiên'}
             </Button>
           </div>
         </AlertDialog.Popup>

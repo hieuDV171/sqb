@@ -8,7 +8,6 @@ import {
   HelpCircle,
   Moon,
   ShieldCheck,
-  Sparkles,
   Sun,
   Users,
   X,
@@ -155,7 +154,6 @@ export function LoginPage() {
 
           <div className="max-w-xl py-12">
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-accent px-3 py-1.5 text-xs font-bold uppercase tracking-[0.11em] text-accent-foreground">
-              <Sparkles className="size-3.5" aria-hidden="true" />
               Học cùng cộng đồng
             </span>
             <h1 id="welcome-title" className="mt-6 text-balance text-4xl font-bold leading-[1.12] tracking-[-0.04em] xl:text-5xl">

@@ -1,5 +1,5 @@
 import { useId, useState, type SubmitEvent } from 'react';
-import { FilePlus2, Loader2 } from 'lucide-react';
+import { FilePlus2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
 import { Input } from '@/components/ui/input';
@@ -262,9 +262,8 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
           {generate.isError && <p role="alert" className="text-sm text-destructive">{generate.error.message || 'Không thể tạo đề thi. Vui lòng thử lại.'}</p>}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" disabled={generate.isPending} onClick={onClose}>Hủy</Button>
-            <Button type="submit" disabled={!canGenerate || generate.isPending}>
-              {generate.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <FilePlus2 aria-hidden="true" />}
-              {generate.isPending ? 'Đang tạo đề…' : 'Tạo đề thi'}
+            <Button type="submit" disabled={!canGenerate} pending={{ active: generate.isPending, label: 'Đang tạo đề…' }}>
+              <FilePlus2 aria-hidden="true" /> Tạo đề thi
             </Button>
           </div>
         </footer>

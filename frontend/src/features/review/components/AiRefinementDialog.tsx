@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowUp, ChevronDown, CircleAlert, FileText, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, CircleAlert, FilePenLine, FileText, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/stores/useToastStore';
@@ -227,7 +227,7 @@ export function AiRefinementDialog({ question, sessionId, open, onClose }: {
           className="fixed inset-x-2 top-1/2 z-50 mx-auto flex h-[min(42rem,calc(100dvh-1rem))] max-w-2xl -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card sm:inset-x-4 sm:h-[min(42rem,calc(100dvh-2rem))]">
           <header className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-academic-soft text-academic">
-              <Sparkles aria-hidden="true" className="size-5" />
+              <FilePenLine aria-hidden="true" className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
               <Dialog.Title className="font-bold leading-tight">AI tinh chỉnh câu hỏi</Dialog.Title>

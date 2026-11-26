@@ -6,6 +6,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@layer base {
+  :where(.button-feedback, button:not([data-slot])) {
+    transition-property: background-color, border-color, color, box-shadow, opacity, scale;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  :where(.button-feedback, button:not([data-slot])):where(:active:not(:disabled, [aria-disabled="true"], [data-disabled], [aria-haspopup], :focus-visible)) {
+    @media (prefers-reduced-motion: no-preference) {
+      scale: 0.97;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      filter: brightness(0.92);
+    }
+  }
+}
+
 @theme inline {
   --font-sans: "Geist Variable", "Segoe UI", sans-serif;
   --font-heading: "Geist Variable", "Segoe UI", sans-serif;

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { Button } from '@/components/ui/button';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { useLectureVideoUpload } from '../hooks/useLectureVideoUpload';
@@ -88,6 +89,7 @@ export const CreatePostBox: React.FC = () => {
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isCreating || isUploadingMedia) return;
     setError(undefined);
 
     // 1. Kiểm tra validation cho LEARNING_VIDEO
@@ -179,10 +181,10 @@ export const CreatePostBox: React.FC = () => {
             </button>
           </div>
 
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
             {postType === 'LEARNING_VIDEO'
-              ? '🎓 Chế độ đăng bài giảng cho sinh viên'
-              : '📝 Chế độ bài viết mạng xã hội'}
+              ? <><GraduationCap aria-hidden="true" className="size-3.5" /> Chế độ đăng bài giảng cho sinh viên</>
+              : <><FileText aria-hidden="true" className="size-3.5" /> Chế độ bài viết mạng xã hội</>}
           </span>
         </div>
       )}
@@ -430,34 +432,15 @@ export const CreatePostBox: React.FC = () => {
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={
-              isCreating ||
-              isUploadingMedia ||
-              (postType === 'LEARNING_VIDEO'
-                ? !selectedSubjectId || !lectureReady || !content.trim()
-                : !content.trim() && mediaList.length === 0)
-            }
-            className={cn(
-              'flex items-center gap-2 px-5 py-2 rounded-2xl text-white font-medium text-sm shadow-md active:scale-95 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
-              postType === 'LEARNING_VIDEO'
-                ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'
-                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
-            )}
+          <Button type="submit" className="min-h-11"
+            disabled={isUploadingMedia || (postType === 'LEARNING_VIDEO'
+              ? !selectedSubjectId || !lectureReady || !content.trim()
+              : !content.trim() && mediaList.length === 0)}
+            pending={{ active: isCreating, label: postType === 'LEARNING_VIDEO' ? 'Đang xuất bản…' : 'Đang đăng…' }}
           >
-            {isCreating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{postType === 'LEARNING_VIDEO' ? 'Đang xuất bản...' : 'Đang đăng...'}</span>
-              </>
-            ) : (
-              <>
-                <span>{postType === 'LEARNING_VIDEO' ? 'Xuất bản bài giảng' : 'Đăng bài'}</span>
-                <Send className="w-3.5 h-3.5" />
-              </>
-            )}
-          </button>
+            <Send aria-hidden="true" />
+            {postType === 'LEARNING_VIDEO' ? 'Xuất bản bài giảng' : 'Đăng bài'}
+          </Button>
         </div>
       </form>
     </section>

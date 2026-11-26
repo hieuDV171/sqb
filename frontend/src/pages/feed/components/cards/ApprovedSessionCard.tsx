@@ -1,6 +1,6 @@
 import { getAvatarInitial } from '@/lib/avatar';
 import type { ActivityFeedItemDto } from '@/types/activityFeed.types';
-import { CheckCircle2, BookOpen, Zap, Coins, Sparkles, ExternalLink, Award } from 'lucide-react';
+import { CheckCircle2, BookOpen, Zap, Coins, ExternalLink, Award } from 'lucide-react';
 
 interface ApprovedSessionCardProps {
   item: ActivityFeedItemDto;
@@ -32,7 +32,7 @@ export function ApprovedSessionCard({ item }: ApprovedSessionCardProps) {
                 {item.actor.fullName}
               </h4>
               <span className="text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800/60 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 aria-hidden="true" className="size-3" />
                 Đề xuất được phê duyệt
               </span>
             </div>

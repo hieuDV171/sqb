@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Menu } from '@base-ui/react/menu';
+import { Popover } from '@base-ui/react/popover';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ActionError } from '@/components/ui/action-error';
 import { getActionErrorMessage } from '@/lib/errorMessage';
+import { cn } from '@/lib/utils';
 import { usePostReact } from '../hooks/usePostReact';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { CommentSection } from './CommentSection';
@@ -21,7 +23,8 @@ import { useToastStore } from '@/stores/useToastStore';
 import {
   ThumbsUp,
   Heart,
-  Sparkles,
+  Star,
+  ChevronDown,
   MessageCircle,
   Share2,
   MoreHorizontal,
@@ -45,7 +48,6 @@ const REACTIONS = [
     color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-50 dark:bg-blue-950/40',
     ringColor: 'ring-blue-300 dark:ring-blue-800',
-    emoji: '👍',
   },
   {
     type: 'LOVE' as ReactionType,
@@ -54,16 +56,14 @@ const REACTIONS = [
     color: 'text-rose-600 dark:text-rose-400',
     bgColor: 'bg-rose-50 dark:bg-rose-950/40',
     ringColor: 'ring-rose-300 dark:ring-rose-800',
-    emoji: '❤️',
   },
   {
     type: 'WOW' as ReactionType,
     label: 'Tuyệt vời',
-    icon: Sparkles,
-    color: 'text-amber-500 dark:text-amber-400',
+    icon: Star,
+    color: 'text-amber-700 dark:text-amber-400',
     bgColor: 'bg-amber-50 dark:bg-amber-950/40',
     ringColor: 'ring-amber-300 dark:ring-amber-800',
-    emoji: '😮',
   },
 ];
 
@@ -93,11 +93,11 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
     (content.myReaction as ReactionType) || (content.reactedByMe ? 'LIKE' : null);
   const likeCount = content.reactCount || 0;
   const currentReactionConfig = REACTIONS.find((r) => r.type === myReaction);
+  const ActiveReactionIcon = currentReactionConfig?.icon ?? ThumbsUp;
 
   const [deleteError, setDeleteError] = useState<string>();
   const [showComments, setShowComments] = useState<boolean>(initiallyShowComments);
   const [showReactionPicker, setShowReactionPicker] = useState<boolean>(false);
-  const pickerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isLecturerModalOpen, setIsLecturerModalOpen] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
@@ -108,20 +108,6 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
   const displayName = isApprovalPost && actor.userId != null ? 'Sinh viên ẩn danh' : actor.fullName;
   const isAuthor = !isApprovalPost && user?.id != null && user.id === actor.userId;
   const canEditLecturerNote = isApprovalPost && content.canEditLecturerNote === true;
-
-  const handleMouseEnterPicker = () => {
-    if (pickerTimeoutRef.current) {
-      clearTimeout(pickerTimeoutRef.current);
-      pickerTimeoutRef.current = null;
-    }
-    setShowReactionPicker(true);
-  };
-
-  const handleMouseLeavePicker = () => {
-    pickerTimeoutRef.current = setTimeout(() => {
-      setShowReactionPicker(false);
-    }, 250);
-  };
 
   const handleSelectReaction = (type: ReactionType) => {
     setShowReactionPicker(false);
@@ -416,72 +402,47 @@ export const PostFeedCard: React.FC<PostFeedCardProps> = ({
 
       {/* 5. Post Actions (Like, Comment, Share, Lecturer Note quick button) */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-sm text-muted-foreground">
-        <div className="flex items-center gap-1 md:gap-2">
-          {/* Reaction Button with Floating Popover Picker (LIKE, LOVE, WOW) */}
-          <div
-            className="relative"
-            onMouseEnter={handleMouseEnterPicker}
-            onMouseLeave={handleMouseLeavePicker}
-          >
-            {/* Floating Reaction Bar (Facebook / LinkedIn Style) */}
-            {showReactionPicker && (
-              <div
-                className="absolute bottom-full left-0 mb-2 z-30 flex items-center gap-1.5 p-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150"
-                onMouseEnter={handleMouseEnterPicker}
-                onMouseLeave={handleMouseLeavePicker}
-              >
-                {REACTIONS.map((r) => {
-                  const isSelected = myReaction === r.type;
-                  return (
-                    <button
-                      key={r.type}
-                      type="button"
-                      disabled={isReacting}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectReaction(r.type);
-                      }}
-                      className={`group/btn relative flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 hover:scale-125 active:scale-95 cursor-pointer ${
-                        isSelected
-                          ? `${r.bgColor} ring-2 ${r.ringColor}`
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
-                      title={r.label}
-                    >
-                      <span className="text-xl leading-none select-none drop-shadow-xs">{r.emoji}</span>
-                      <span className="absolute -top-7 px-1.5 py-0.5 rounded-md bg-slate-900 text-white text-[10px] font-medium opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
-                        {r.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <button
+        <div className="flex flex-wrap items-center gap-1 md:gap-2">
+          <div className="flex items-center">
+            <Button
               type="button"
+              variant="ghost"
               onClick={handleMainButtonClick}
               disabled={isReacting}
-              aria-pressed={myReaction !== null}
-              className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3 transition-colors ${
-                currentReactionConfig
-                  ? `${currentReactionConfig.color} font-bold ${currentReactionConfig.bgColor}`
-                  : 'hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
-              }`}
+              focusableWhenDisabled
+              aria-busy={isReacting || undefined}
+              aria-label={currentReactionConfig ? `Bỏ cảm xúc ${currentReactionConfig.label}` : 'Thích'}
+              className={cn('min-h-11 gap-1.5 rounded-r-none px-3', currentReactionConfig?.color, currentReactionConfig?.bgColor)}
             >
-              {currentReactionConfig ? (
-                <>
-                  <span className="text-base leading-none select-none">{currentReactionConfig.emoji}</span>
-                  <span>{currentReactionConfig.label}</span>
-                </>
-              ) : (
-                <>
-                  <ThumbsUp className="w-4 h-4" />
-                  <span>Thích</span>
-                </>
-              )}
+              <ActiveReactionIcon aria-hidden="true" />
+              <span>{currentReactionConfig?.label ?? 'Thích'}</span>
               {likeCount > 0 && <span className="text-xs font-semibold">{likeCount}</span>}
-            </button>
+            </Button>
+            <Popover.Root open={showReactionPicker} onOpenChange={setShowReactionPicker}>
+              <Popover.Trigger
+                render={<Button type="button" variant="ghost" size="icon" focusableWhenDisabled className="size-11 rounded-l-none" />}
+                aria-label="Chọn cảm xúc" disabled={isReacting} openOnHover delay={180} closeDelay={180}
+              >
+                <ChevronDown aria-hidden="true" />
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Positioner side="top" align="center" sideOffset={6} collisionPadding={8} className="z-50">
+                  <Popover.Popup aria-label="Cảm xúc bài viết" className="flex origin-(--transform-origin) gap-1 rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg motion-safe:transition-[opacity,scale] motion-safe:duration-150 motion-safe:data-starting-style:scale-[0.97] data-starting-style:opacity-0">
+                    {REACTIONS.map(({ type, label, icon: Icon, color, bgColor, ringColor }) => {
+                      const selected = myReaction === type;
+                      return (
+                        <Button key={type} type="button" variant="ghost" aria-pressed={selected}
+                          disabled={isReacting} onClick={() => handleSelectReaction(type)}
+                          className={cn('min-h-11 gap-1.5 px-2.5 text-xs', color, selected && cn(bgColor, 'ring-1 ring-inset', ringColor))}
+                        >
+                          <Icon aria-hidden="true" /> {label}
+                        </Button>
+                      );
+                    })}
+                  </Popover.Popup>
+                </Popover.Positioner>
+              </Popover.Portal>
+            </Popover.Root>
           </div>
 
           {/* Comment Toggle Button */}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
-import { Award, CheckCircle2, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { Award, CheckCircle2, BookOpen, ArrowRight, TrendingUp } from 'lucide-react';
 import { PostFeedCard } from '../PostFeedCard';
 
 interface ApprovedSessionCardProps {
@@ -72,7 +72,7 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
 
         {content.pointsEarned && (
           <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-xl w-fit">
-            <Sparkles className="w-3.5 h-3.5" />
+            <TrendingUp aria-hidden="true" className="size-3.5" />
             <span>+{content.pointsEarned} Điểm Gamification đóng góp</span>
           </div>
         )}
