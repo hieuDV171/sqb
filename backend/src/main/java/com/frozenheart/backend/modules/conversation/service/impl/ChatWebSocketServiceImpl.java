@@ -134,11 +134,6 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         conversation.setUpdatedAt(now);
         conversationRepository.save(conversation);
 
-        // Cập nhật người gửi đã đọc tin nhắn của chính mình
-        senderParticipant.setLastReadMessage(savedMessage);
-        senderParticipant.setLastMessageReadAt(now);
-        userParticipantRepository.save(senderParticipant);
-
         // Lấy profile người gửi để broadcast dùng UserSummaryDto
         UserProfile senderProfile = userProfileRepository.findByUserId(currentUserId).orElse(null);
         UserSummaryDto senderSummary = UserSummaryDto.builder()
@@ -211,9 +206,10 @@ public class ChatWebSocketServiceImpl implements ChatWebSocketService {
         }
 
         Instant now = Instant.now();
-        participant.setLastReadMessage(message);
-        participant.setLastMessageReadAt(now);
-        userParticipantRepository.save(participant);
+        if (userParticipantRepository.advanceReadReceipt(currentUserId, request.getConversationId(),
+                message, message.getId(), now) == 0) {
+            return;
+        }
 
         UserProfile readerProfile = userProfileRepository.findByUserId(currentUserId).orElse(null);
         User currentUser = userRepository.findById(currentUserId).orElse(null);

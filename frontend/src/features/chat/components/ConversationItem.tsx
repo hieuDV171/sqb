@@ -39,7 +39,7 @@ export function ConversationItem({
   const currentUserId = useAuthStore((s) => s.user?.id);
 
   const isGroup = conversation.type === 'GROUP';
-  const hasUnread = conversation.unreadCount > 0 && !isActive;
+  const hasUnread = conversation.unreadCount > 0;
 
   const renderLastMessage = () => {
     if (!conversation.lastMessage) {

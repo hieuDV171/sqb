@@ -30,6 +30,9 @@ public class MessageListResponseDto {
     @Schema(description = "Thời điểm ẩn hoặc mốc lịch sử bị ẩn theo ngữ cảnh hội thoại; có thể null", example = "2026-11-19T07:00:00Z")
     private Instant hiddenAt;
 
+    @Schema(description = "ID tin nhắn đã đọc gần nhất của người gọi", example = "120")
+    private Long lastReadMessageId;
+
     @Schema(description = "Tin nhắn và dòng hệ thống trong trang lịch sử hiện tại, dùng chung con trỏ")
     private List<MessageDto> messages;
 

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useSta
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { useMessages } from '../hooks/useChat';
+import { useChatStore } from '../stores/useChatStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { MessageBubble } from './MessageBubble';
 import { formatDateDivider } from '../utils/chatUtils';
@@ -11,23 +12,29 @@ import { Loader2, MessageSquareDashed } from 'lucide-react';
 interface MessageListProps {
   conversationId: number;
   isGroup: boolean;
+  canMarkRead: boolean;
   onReplyMessage: (message: MessageDto) => void;
   onDeleteMessage: (message: MessageDto) => void;
   onImageClick?: (url: string) => void;
 }
 
+const READ_VISIBILITY_THRESHOLD = 0.01;
+
 export function MessageList({
   conversationId,
   isGroup,
+  canMarkRead,
   onReplyMessage,
   onDeleteMessage,
   onImageClick,
 }: MessageListProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const sendReadReceipt = useChatStore((s) => s.sendReadReceipt);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [jump, setJump] = useState<{ messageId: number } | null>(null);
   const focusedJump = useRef<typeof jump>(null);
+  const seenMessages = useRef(new Set<number>());
 
   const {
     data,
@@ -53,6 +60,13 @@ export function MessageList({
   const prependAnchor = useRef<{ height: number; top: number; pages: number } | null>(null);
   const pageCount = data?.pages.length ?? 0;
   const lastMessageId = allMessages.at(-1)?.messageId;
+  const lastReadMessageId = data?.pages[0]?.lastReadMessageId ?? 0;
+  const oldestMessageId = allMessages[0]?.messageId;
+  const hasReadBoundary = !hasNextPage || (oldestMessageId != null && oldestMessageId <= lastReadMessageId);
+  const unreadIds = useMemo(() => new Set(allMessages.filter((message) =>
+    message.messageId > lastReadMessageId && message.messageType !== 'SYSTEM'
+    && message.senderId != null && message.senderId !== currentUserId
+  ).map((message) => message.messageId)), [allMessages, currentUserId, lastReadMessageId]);
   const oldestCursor = data?.pages.at(-1)?.pagination.after;
   const targetLoaded = jump !== null && allMessages.some((message) => message.messageId === jump.messageId);
   const targetMayBeOlder = jump !== null && hasNextPage && oldestCursor != null && oldestCursor > jump.messageId;
@@ -80,6 +94,52 @@ export function MessageList({
     const container = scrollContainerRef.current;
     if (container && nearBottom.current) container.scrollTop = container.scrollHeight;
   }, [conversationId, lastMessageId]);
+
+  useEffect(() => {
+    const root = scrollContainerRef.current;
+    if (!root || !canMarkRead || unreadIds.size === 0 || typeof IntersectionObserver === 'undefined') return;
+    const document = root.ownerDocument;
+    const seen = seenMessages.current;
+    for (const id of seen) {
+      if (!unreadIds.has(id)) seen.delete(id);
+    }
+
+    const sendVisibleReceipt = () => {
+      if (!hasReadBoundary) return;
+      // The server stores a single read cursor. Stop before the first unseen message.
+      let readThrough: number | undefined;
+      for (const id of unreadIds) {
+        if (!seen.has(id)) break;
+        readThrough = id;
+      }
+      if (readThrough != null) sendReadReceipt(conversationId, readThrough);
+    };
+
+    // The viewport intersection also accounts for clipping by the scroll container.
+    const observer = new IntersectionObserver((entries) => {
+      if (document.visibilityState !== 'visible') return;
+      for (const entry of entries) {
+        if (entry.isIntersecting && entry.intersectionRatio >= READ_VISIBILITY_THRESHOLD) {
+          seen.add(Number((entry.target as HTMLElement).dataset.messageId));
+        }
+      }
+      sendVisibleReceipt();
+    }, { threshold: READ_VISIBILITY_THRESHOLD });
+
+    const observeVisibleTab = () => {
+      observer.disconnect();
+      observer.takeRecords();
+      if (document.visibilityState !== 'visible') return;
+      root.querySelectorAll('[data-unread-message]').forEach((row) => observer.observe(row));
+    };
+    observeVisibleTab();
+    document.addEventListener('visibilitychange', observeVisibleTab);
+    return () => {
+      observer.disconnect();
+      observer.takeRecords();
+      document.removeEventListener('visibilitychange', observeVisibleTab);
+    };
+  }, [canMarkRead, conversationId, hasReadBoundary, sendReadReceipt, unreadIds]);
 
   useLayoutEffect(() => {
     if (!jump || !targetLoaded || focusedJump.current === jump) return;
@@ -231,6 +291,7 @@ export function MessageList({
               ) : (
                 <div
                   data-message-id={message.messageId}
+                  data-unread-message={unreadIds.has(message.messageId) ? '' : undefined}
                   tabIndex={-1}
                   className={`flow-root rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     jump?.messageId === message.messageId ? 'bg-accent ring-2 ring-inset ring-primary/60' : ''

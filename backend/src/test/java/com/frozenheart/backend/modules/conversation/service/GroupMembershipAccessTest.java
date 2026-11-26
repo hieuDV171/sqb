@@ -7,12 +7,14 @@ import com.frozenheart.backend.core.entity.conversation.ConversationType;
 import com.frozenheart.backend.core.entity.conversation.Message;
 import com.frozenheart.backend.core.entity.conversation.MessageType;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
+import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserParticipantRepository;
 import com.frozenheart.backend.modules.conversation.service.impl.ConversationServiceImpl;
 import com.frozenheart.backend.modules.conversation.service.impl.MessageServiceImpl;
+import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,7 @@ class GroupMembershipAccessTest {
     @Mock private ConversationRepository conversations;
     @Mock private UserParticipantRepository participants;
     @Mock private MessageRepository messages;
+    @Mock private UserProfileRepository profiles;
     @Mock private HiddenChatAccess hiddenChatAccess;
     @InjectMocks private MessageServiceImpl messageService;
     @InjectMocks private ConversationServiceImpl conversationService;
@@ -114,6 +117,26 @@ class GroupMembershipAccessTest {
 
         assertEquals(1, messageService.getMessages(GROUP_ID, null, 1).getMessages().size());
         assertNull(member.getLastReadMessage());
+        verify(participants, never()).save(member);
+    }
+
+    @Test
+    void refreshingLatestHistoryReturnsTheExistingReceiptWithoutMarkingLoadedMessagesRead() {
+        var group = Conversation.builder().id(GROUP_ID).type(ConversationType.GROUP).build();
+        var previous = Message.builder().id(24L).build();
+        var member = UserParticipant.builder().lastReadMessage(previous).build();
+        var sender = User.builder().id(1L).email("sender@example.com").build();
+        var incoming = Message.builder().id(25L).conversation(group).sender(sender).messageType(MessageType.TEXT).build();
+        when(conversations.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(participants.findByUserIdAndConversationId(MEMBER_ID, GROUP_ID)).thenReturn(Optional.of(member));
+        when(messages.findMessagesCursor(GROUP_ID, MEMBER_ID, Long.MAX_VALUE, PageRequest.of(0, 2)))
+                .thenReturn(List.of(incoming));
+
+        var page = messageService.getMessages(GROUP_ID, null, 1);
+
+        assertEquals(25L, page.getMessages().getFirst().getMessageId());
+        assertEquals(24L, page.getLastReadMessageId());
+        assertEquals(previous, member.getLastReadMessage());
         verify(participants, never()).save(member);
     }
 }

@@ -8,8 +8,10 @@ import com.frozenheart.backend.core.entity.conversation.MessageType;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
+import com.frozenheart.backend.modules.conversation.dto.ws.ReadWsMessageRequestDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.SendWsMessageRequestDto;
 import com.frozenheart.backend.modules.conversation.dto.ws.WsMessageBroadcastDto;
+import com.frozenheart.backend.modules.conversation.dto.ws.WsReadReceiptBroadcastDto;
 import com.frozenheart.backend.modules.conversation.repository.ConversationRepository;
 import com.frozenheart.backend.modules.conversation.repository.MessageRepository;
 import com.frozenheart.backend.modules.conversation.repository.UserDeletedMessageOnlyMeRepository;
@@ -27,6 +29,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -37,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -111,5 +115,34 @@ class ChatWebSocketReplyTest {
         assertTrue(event.getValue().getReplyToMessage().isUnavailable());
         assertNull(event.getValue().getReplyToMessage().getSenderName());
         assertEquals("Tin nhắn gốc không còn hiển thị", event.getValue().getReplyToMessage().getContentPreview());
+        verify(userParticipantRepository, never()).save(replierParticipant);
+    }
+
+    @Test
+    void onlyBroadcastsReceiptsThatAdvanceTheReadCursor() {
+        var conversation = Conversation.builder().id(10L).build();
+        var author = User.builder().id(1L).build();
+        var reader = User.builder().id(2L).build();
+        var authorParticipant = UserParticipant.builder().user(author).build();
+        var readerParticipant = UserParticipant.builder().user(reader).build();
+        var message = Message.builder().id(21L).conversation(conversation).sender(author).messageType(MessageType.TEXT).build();
+        var session = JwtPayload.builder().userId(2L).build();
+        var request = new ReadWsMessageRequestDto();
+        request.setConversationId(10L);
+        request.setMessageId(21L);
+
+        when(userParticipantRepository.findByUserIdAndConversationId(2L, 10L)).thenReturn(Optional.of(readerParticipant));
+        when(messageRepository.findById(21L)).thenReturn(Optional.of(message));
+        when(userParticipantRepository.advanceReadReceipt(eq(2L), eq(10L), eq(message), eq(21L), any(Instant.class)))
+                .thenReturn(1, 0);
+        when(userParticipantRepository.findByConversationIdAndLeftAtIsNull(10L))
+                .thenReturn(List.of(authorParticipant, readerParticipant));
+
+        service.handleReadMessage(session, request);
+        service.handleReadMessage(session, request);
+
+        var event = ArgumentCaptor.forClass(WsReadReceiptBroadcastDto.class);
+        verify(realtimePublisher).deliver(eq(authorParticipant), event.capture());
+        assertEquals(21L, event.getValue().getMessageId());
     }
 }

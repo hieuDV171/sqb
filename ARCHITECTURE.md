@@ -752,3 +752,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 26/11/2026.** Pop-up ở cấp ứng dụng đọc trạng thái mạng từ trình duyệt. Khi trình duyệt báo ngoại tuyến, frontend hủy bước kiểm tra máy chủ đang chạy và ưu tiên thông báo mất mạng. Pop-up nằm ở góc dưới bên trái vùng nội dung và phía trên thanh điều hướng trên điện thoại.
 - Lỗi mạng, phản hồi 5xx hoặc yêu cầu API chờ 8 giây kích hoạt một lượt `GET /api/v1/actuator/health/readiness` trên API origin đang dùng. Pop-up lỗi SQB chỉ xuất hiện khi lượt kiểm tra xác nhận sự cố. Các thành phần vẫn xử lý lỗi thao tác tại chỗ.
 - Mỗi tab có tối đa một lượt kiểm tra đang chạy. Lượt kiểm tra có thời hạn 5 giây. Trong thời gian có sự cố, frontend kiểm tra lại sau 15 giây hoặc khi người dùng bấm “Thử lại”. Yêu cầu ghi dữ liệu do người dùng thực hiện tiếp tục theo luồng riêng.
+
+### [ADR-094] Biên nhận đọc tin nhắn theo vùng hiển thị
+
+- **Ngày 26/11/2026.** API lịch sử trả `last_read_message_id` và chạy trong transaction chỉ đọc. Gửi tin mới giữ nguyên mốc đọc của người gửi. Số tin chưa đọc bỏ qua tin đã xóa ở phía người xem, tin do chính người xem gửi và dòng hệ thống.
+- Frontend dùng `IntersectionObserver` để theo dõi tin đến trong tab đang hiển thị. Mốc chỉ tiến qua chuỗi tin đã vào vùng nhìn theo thứ tự và chờ nếu còn lịch sử chưa tải trước mốc dự kiến. Danh sách hội thoại và chấm báo giảm theo mốc mới.
+- `/app/chat.read` dùng cập nhật có điều kiện trên cột hiện có để biên nhận trùng hoặc cũ từ nhiều tab không lùi mốc. Phát hành frontend và backend cùng đợt.

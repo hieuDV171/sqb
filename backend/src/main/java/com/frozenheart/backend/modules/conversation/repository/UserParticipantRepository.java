@@ -1,12 +1,15 @@
 package com.frozenheart.backend.modules.conversation.repository;
 
+import com.frozenheart.backend.core.entity.conversation.Message;
 import com.frozenheart.backend.core.entity.conversation.UserParticipant;
 import com.frozenheart.backend.core.entity.conversation.UserParticipantId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +18,17 @@ import java.util.Optional;
 public interface UserParticipantRepository extends JpaRepository<UserParticipant, UserParticipantId> {
 
     Optional<UserParticipant> findByUserIdAndConversationId(Long userId, Long conversationId);
+
+    @Modifying
+    @Query("""
+        UPDATE UserParticipant p
+        SET p.lastReadMessage = :message, p.lastMessageReadAt = :readAt
+        WHERE p.id.userId = :userId AND p.id.conversationId = :conversationId
+          AND p.leftAt IS NULL
+          AND (p.lastReadMessage IS NULL OR p.lastReadMessage.id < :messageId)
+        """)
+    int advanceReadReceipt(@Param("userId") Long userId, @Param("conversationId") Long conversationId,
+            @Param("message") Message message, @Param("messageId") Long messageId, @Param("readAt") Instant readAt);
 
     @Query("""
         SELECT p

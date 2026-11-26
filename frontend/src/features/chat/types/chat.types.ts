@@ -110,6 +110,7 @@ export interface MessageListResponseDto {
   groupName?: string | null;
   groupAvatarUrl?: string | null;
   hiddenAt?: string | null;
+  lastReadMessageId?: number | null;
   conversationId: number;
   conversationType: ConversationType;
   messages: MessageDto[];

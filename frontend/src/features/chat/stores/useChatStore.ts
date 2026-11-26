@@ -202,8 +202,24 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
   },
 
   sendReadReceipt: (conversationId, messageId) => {
+    const messagesKey = CHAT_QUERY_KEYS.messages(conversationId);
+    const history = queryClient.getQueryData<InfiniteData<MessageListResponseDto>>(messagesKey);
+    const newestPage = history?.pages[0];
+    const previousReadId = newestPage?.lastReadMessageId ?? 0;
+    if (!history || !newestPage || messageId <= previousReadId) return false;
     if (!stompClient.send('/app/chat.read', { conversationId, messageId })) return false;
 
+    queryClient.setQueryData<InfiniteData<MessageListResponseDto>>(messagesKey, {
+      ...history,
+      pages: [{ ...newestPage, lastReadMessageId: messageId }, ...history.pages.slice(1)],
+    });
+    const currentUserId = useAuthStore.getState().user?.id;
+    const incoming = history.pages.flatMap((page) => page.messages).filter((message) =>
+      message.messageType !== 'SYSTEM' && message.senderId != null && message.senderId !== currentUserId
+    );
+    const newlyRead = incoming.filter((message) => message.messageId > previousReadId && message.messageId <= messageId).length;
+    const stillUnread = incoming.filter((message) => message.messageId > messageId).length;
+    const newestLoadedId = newestPage.messages[0]?.messageId ?? messageId;
     const listKey = get().hiddenConversationIds.includes(conversationId)
       ? CHAT_QUERY_KEYS.hiddenConversations
       : CHAT_QUERY_KEYS.conversations;
@@ -213,11 +229,13 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
         ...current,
         pages: current.pages.map((page) => ({
           ...page,
-          items: page.items.map((conversation) =>
-            conversation.conversationId === conversationId && messageId >= (conversation.lastMessage?.messageId ?? 0)
-              ? { ...conversation, unreadCount: 0 }
-              : conversation
-          ),
+          items: page.items.map((conversation) => {
+            if (conversation.conversationId !== conversationId) return conversation;
+            const unreadCount = (conversation.lastMessage?.messageId ?? 0) <= newestLoadedId
+              ? Math.min(conversation.unreadCount, stillUnread)
+              : Math.max(0, conversation.unreadCount - newlyRead);
+            return { ...conversation, unreadCount };
+          }),
         })),
       };
     });
@@ -301,8 +319,7 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
                 messageType: dto.messageType,
                 createdAt: dto.createdAt,
               },
-              unreadCount:
-                dto.sender.userId === currentUserId ? 0 : (conv.unreadCount || 0) + 1,
+              unreadCount: (conv.unreadCount || 0) + (dto.sender.userId === currentUserId ? 0 : 1),
               updatedAt: dto.createdAt,
             };
           }

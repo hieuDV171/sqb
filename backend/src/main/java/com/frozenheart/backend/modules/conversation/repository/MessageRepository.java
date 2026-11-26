@@ -29,6 +29,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
           AND m.sender.id != :userId
           AND (m.messageType IS NULL OR m.messageType <> com.frozenheart.backend.core.entity.conversation.MessageType.SYSTEM)
           AND (p.lastReadMessage IS NULL OR m.id > p.lastReadMessage.id)
+          AND NOT EXISTS (
+              SELECT 1 FROM UserDeletedMessageOnlyMe d
+              WHERE d.id.userId = :userId AND d.id.messageId = m.id
+          )
         GROUP BY m.conversation.id
         """)
     List<UnreadCount> countUnreadMessages(

@@ -44,7 +44,7 @@ public class MessageServiceImpl implements MessageService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public MessageListResponseDto getMessages(Long conversationId, Long after, Integer limit) {
         Long currentUserId = JwtPayload.getCurrentUserPayload().getUserId();
 
@@ -146,18 +146,6 @@ public class MessageServiceImpl implements MessageService {
                     .build();
         }).collect(Collectors.toList());
 
-        // Loading older history must not move the read receipt backwards.
-        if (cursor == Long.MAX_VALUE) {
-            Message newestMessage = messages.stream().filter(message -> message.getMessageType() != MessageType.SYSTEM)
-                    .findFirst().orElse(null);
-            Message lastRead = participant.getLastReadMessage();
-            if (newestMessage != null && (lastRead == null || newestMessage.getId() > lastRead.getId())) {
-                participant.setLastReadMessage(newestMessage);
-                participant.setLastMessageReadAt(Instant.now());
-                userParticipantRepository.save(participant);
-            }
-        }
-
         CursorPaginationDto pagination = CursorPaginationDto.builder()
                 .after(nextCursor)
                 .hasNext(hasNext)
@@ -169,6 +157,7 @@ public class MessageServiceImpl implements MessageService {
                 .groupName(conversation.getType() == ConversationType.GROUP ? conversation.getName() : null)
                 .groupAvatarUrl(conversation.getType() == ConversationType.GROUP ? conversation.getAvatarUrl() : null)
                 .hiddenAt(participant.getHiddenAt())
+                .lastReadMessageId(participant.getLastReadMessage() == null ? null : participant.getLastReadMessage().getId())
                 .messages(messageDtos)
                 .pagination(pagination)
                 .build();
