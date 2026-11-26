@@ -222,10 +222,10 @@ export const CreatePostBox: React.FC = () => {
               <span
                 className={`absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border border-white dark:border-slate-900 ${
                   user.role === 'LECTURER'
-                    ? 'bg-amber-500 text-white'
+                    ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-amber-950'
                     : user.role === 'ADMIN'
-                    ? 'bg-rose-500 text-white'
-                    : 'bg-blue-500 text-white'
+                    ? 'bg-rose-500 text-white dark:bg-rose-400 dark:text-rose-950'
+                    : 'bg-blue-500 text-white dark:bg-blue-400 dark:text-blue-950'
                 }`}
               >
                 {user.role === 'LECTURER' ? 'GV' : user.role === 'ADMIN' ? 'AD' : 'SV'}
