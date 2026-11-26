@@ -9,7 +9,6 @@ import {
   Database,
   FileText,
   Home,
-  MessageSquare,
   Monitor,
   Newspaper,
   PlusCircle,
@@ -45,7 +44,6 @@ export const ROLE_NAV_SECTIONS: Record<UserRole, NavSection[]> = {
       items: [
         { label: 'Bảng tin', shortLabel: 'Trang chủ', path: '/feed', icon: Newspaper },
         { label: 'Bạn bè', path: '/friends', icon: Users },
-        { label: 'Tin nhắn', path: '/messages', icon: MessageSquare },
       ],
     },
     {
@@ -87,7 +85,6 @@ export const ROLE_NAV_SECTIONS: Record<UserRole, NavSection[]> = {
       items: [
         { label: 'Bảng tin', path: '/feed', icon: Newspaper },
         { label: 'Bạn bè & Đồng nghiệp', path: '/friends', icon: Users },
-        { label: 'Tin nhắn trao đổi', path: '/messages', icon: MessageSquare },
       ],
     },
     {
@@ -167,7 +164,6 @@ export const MOBILE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
       activePrefixes: ['/lecturer/sessions', '/lecturer/reviews'],
     },
     { label: 'Lớp học phần', shortLabel: 'Lớp học', path: '/lecturer/course-classes', icon: School },
-    { label: 'Tin nhắn', shortLabel: 'Tin nhắn', path: '/messages', icon: MessageSquare },
   ],
   ADMIN: [
     { label: 'Quản lý tài khoản', shortLabel: 'Tài khoản', path: '/admin/users', icon: Users },

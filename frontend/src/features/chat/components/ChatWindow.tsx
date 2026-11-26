@@ -51,6 +51,7 @@ function UnlockedChatWindow({
   onMembershipLost,
 }: ChatWindowProps) {
   const { typingMap, isPinUnlocked } = useChatStore();
+  const sendReadReceipt = useChatStore((state) => state.sendReadReceipt);
   const realtime = useStompStatus();
   const [replyToId, setReplyToId] = useState<number | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -82,6 +83,14 @@ function UnlockedChatWindow({
   const displayAvatar = conversation?.displayAvatarUrl ?? messageData?.pages[0]?.groupAvatarUrl;
   const { data: members, error: membersError } = useGroupMembers(conversationId, isGroup);
   const groupExitReason = getGroupExitReason(messages.error) ?? getGroupExitReason(membersError);
+  const latestReadableMessageId = messageData?.pages[0]?.messages.find((message) => message.messageType !== 'SYSTEM')?.messageId;
+  const hasUnread = conversation?.unreadCount !== 0;
+
+  useEffect(() => {
+    if (realtime === 'CONNECTED' && messages.isSuccess && !groupExitReason && hasUnread && latestReadableMessageId != null) {
+      sendReadReceipt(conversationId, latestReadableMessageId);
+    }
+  }, [conversationId, groupExitReason, hasUnread, latestReadableMessageId, messages.isSuccess, realtime, sendReadReceipt]);
 
   useEffect(() => {
     if (groupExitReason) onMembershipLost?.();

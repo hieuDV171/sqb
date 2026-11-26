@@ -129,6 +129,11 @@ export function useConversations(limit: number = 20) {
   });
 }
 
+export function useHasUnreadMessages() {
+  const { data } = useConversations();
+  return data?.pages.some((page) => page.items.some((conversation) => conversation.unreadCount > 0)) ?? false;
+}
+
 /**
  * Hook lấy danh sách cuộc trò chuyện trong kho ẩn (chỉ chạy khi đã mở khóa PIN)
  */

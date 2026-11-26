@@ -202,10 +202,26 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
   },
 
   sendReadReceipt: (conversationId, messageId) => {
-    return stompClient.send('/app/chat.read', {
-      conversationId,
-      messageId,
+    if (!stompClient.send('/app/chat.read', { conversationId, messageId })) return false;
+
+    const listKey = get().hiddenConversationIds.includes(conversationId)
+      ? CHAT_QUERY_KEYS.hiddenConversations
+      : CHAT_QUERY_KEYS.conversations;
+    queryClient.setQueryData<InfiniteData<ConversationListResponseDto>>(listKey, (current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          items: page.items.map((conversation) =>
+            conversation.conversationId === conversationId && messageId >= (conversation.lastMessage?.messageId ?? 0)
+              ? { ...conversation, unreadCount: 0 }
+              : conversation
+          ),
+        })),
+      };
     });
+    return true;
   },
 
   sendTyping: (conversationId, typing) => {
@@ -217,7 +233,6 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
 
   handleIncomingWsMessage: (dto, hidden = false) => {
     const currentUserId = useAuthStore.getState().user?.id;
-    const { activeConversationId, openFloatingChats } = get();
 
     // 1. Chuyển đổi payload thành MessageDto để bổ sung vào cache
     const newMessage: MessageDto = {
@@ -268,18 +283,14 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
 
     // 3. Cập nhật danh sách hội thoại ['conversations']
     const listKey = hidden ? CHAT_QUERY_KEYS.hiddenConversations : CHAT_QUERY_KEYS.conversations;
+    let found = false;
     queryClient.setQueryData<InfiniteData<ConversationListResponseDto>>(listKey, (oldData) => {
       if (!oldData || !oldData.pages) return oldData;
-
-      const isCurrentActive =
-        activeConversationId === dto.conversationId ||
-        openFloatingChats.includes(dto.conversationId);
-
-      let found = false;
       const updatedPages = oldData.pages.map((page) => {
         const items = page.items.map((conv) => {
           if (conv.conversationId === dto.conversationId) {
             found = true;
+            if (dto.messageId <= (conv.lastMessage?.messageId ?? 0)) return conv;
             return {
               ...conv,
               lastMessage: {
@@ -291,9 +302,7 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
                 createdAt: dto.createdAt,
               },
               unreadCount:
-                isCurrentActive || dto.sender.userId === currentUserId
-                  ? 0
-                  : (conv.unreadCount || 0) + 1,
+                dto.sender.userId === currentUserId ? 0 : (conv.unreadCount || 0) + 1,
               updatedAt: dto.createdAt,
             };
           }
@@ -302,24 +311,15 @@ export const useChatStore = create<ChatStoreState>()((set, get) => ({
         return { ...page, items };
       });
 
-      // Nếu hội thoại mới chưa có trong cache thì invalidate để tải lại
-      if (!found) {
-        queryClient.invalidateQueries({ queryKey: listKey });
-      }
-
-      return {
+      return found ? {
         ...oldData,
         pages: updatedPages,
-      };
+      } : oldData;
     });
 
-    // 4. Nếu người dùng đang mở hội thoại này và tin nhắn không phải của chính mình -> tự gửi biên nhận đã đọc
-    if (
-      (activeConversationId === dto.conversationId ||
-        openFloatingChats.includes(dto.conversationId)) &&
-      dto.sender.userId !== currentUserId
-    ) {
-      get().sendReadReceipt(dto.conversationId, dto.messageId);
+    // Hội thoại mới hoặc ở trang chưa tải sẽ xuất hiện đầu danh sách.
+    if (!found) {
+      void queryClient.invalidateQueries({ queryKey: listKey, exact: true });
     }
   },
 

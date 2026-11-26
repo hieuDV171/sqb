@@ -28,7 +28,7 @@ export function MobileNav({ isOpen, onOpen, onClose }: MobileNavProps) {
     <>
       <nav
         data-slot="mobile-nav"
-        className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(var(--app-mobile-nav-height)+env(safe-area-inset-bottom))] grid-cols-5 border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-20px_rgb(15_23_42_/_0.45)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(var(--app-mobile-nav-height)+env(safe-area-inset-bottom))] auto-cols-fr grid-flow-col border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-20px_rgb(15_23_42_/_0.45)] backdrop-blur-xl md:hidden"
         aria-label="Điều hướng di động"
       >
         {mobileItems.map((item) => {

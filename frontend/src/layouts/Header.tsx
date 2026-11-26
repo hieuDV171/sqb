@@ -7,6 +7,7 @@ import {
   KeyRound,
   LogOut,
   Menu,
+  MessageSquare,
   Monitor,
   Moon,
   Search,
@@ -22,6 +23,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { BrandMark } from '@/components/common/BrandMark';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { useHasUnreadMessages } from '@/features/chat/hooks/useChat';
 import { NotificationDropdown } from '@/features/notification';
 import { GlobalSearchModal } from '@/features/search';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -45,12 +47,14 @@ const ROLE_LABELS = {
 export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   const { user } = useAuthStore();
   const avatarName = useCurrentUserAvatarName(user);
+  const hasUnreadMessages = useHasUnreadMessages();
   const { unreadNotifications } = useGamificationStore();
   const { theme, toggleTheme } = useThemeStore();
   const { logout } = useAuth();
   const stompStatus = useStompStatus();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMessagesPage = location.pathname === '/messages' || location.pathname.startsWith('/messages/');
   const searchQuery = location.pathname === '/search'
     ? new URLSearchParams(location.search).get('q') ?? ''
     : '';
@@ -117,7 +121,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
   return (
     <>
       <header className="sticky top-0 z-40 h-[var(--app-header-height)] border-b border-border bg-[var(--shell-header)] backdrop-blur-xl">
-        <div className="mx-auto flex h-full w-full max-w-[var(--app-content-max-width)] items-center gap-3 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto flex h-full w-full max-w-[var(--app-content-max-width)] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:px-6">
           <div className="flex min-w-0 items-center gap-2 md:w-[calc(var(--app-sidebar-width)-1.5rem)] md:shrink-0">
             <button
               type="button"
@@ -177,6 +181,26 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu }: HeaderProps) {
             >
               {theme === 'dark' ? <Sun className="size-5 text-reward" /> : <Moon className="size-5" />}
             </button>
+
+            <Link
+              to="/messages"
+              onClick={() => setOpenPanel(null)}
+              aria-label={hasUnreadMessages ? 'Tin nhắn, có tin chưa đọc' : 'Tin nhắn'}
+              aria-current={isMessagesPage ? 'page' : undefined}
+              title="Tin nhắn"
+              className={cn(
+                'relative grid size-11 place-items-center rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+                isMessagesPage ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <MessageSquare className="size-5" aria-hidden="true" />
+              {hasUnreadMessages && (
+                <span aria-hidden="true" className="absolute right-2 top-2 size-2.5 rounded-full bg-destructive ring-2 ring-[var(--shell-header)]" />
+              )}
+            </Link>
+            <span role="status" aria-atomic="true" className="sr-only">
+              {hasUnreadMessages ? 'Bạn có tin nhắn chưa đọc' : ''}
+            </span>
 
             <div ref={notificationPanelRef} className="relative">
               <button
