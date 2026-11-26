@@ -4,6 +4,8 @@ import { RefreshCw, Sparkles, ArrowDown } from 'lucide-react';
 interface PullToRefreshFeedProps {
   onRefresh: () => Promise<void> | void;
   newCount?: number;
+  updateAvailable?: boolean;
+  controls: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -13,6 +15,8 @@ const MAX_PULL = 110; // px
 export const PullToRefreshFeed: React.FC<PullToRefreshFeedProps> = ({
   onRefresh,
   newCount = 0,
+  updateAvailable = false,
+  controls,
   children,
 }) => {
   const [pullDistance, setPullDistance] = useState(0);
@@ -69,7 +73,8 @@ export const PullToRefreshFeed: React.FC<PullToRefreshFeedProps> = ({
 
   // Scroll to top helper when user clicks the floating dynamic refresh button
   const handlePillClick = async () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'instant' : 'smooth' });
     await handleRefresh();
   };
 
@@ -121,30 +126,36 @@ export const PullToRefreshFeed: React.FC<PullToRefreshFeedProps> = ({
         </div>
       </div>
 
-      {/* 2. Dynamic Floating Action Pill (When new posts arrive or on manual hover) */}
-      <div className="sticky top-20 z-30 flex justify-center pointer-events-none mb-3">
-        {newCount > 0 ? (
+      {controls}
+
+      {/* Keep the button out of the list's flow so its arrival does not move cards. */}
+      <div className="pointer-events-none sticky top-20 z-30 mb-3 flex h-0 justify-center">
+        <span className="sr-only" role="status">
+          {newCount > 0 ? `${newCount} hoạt động mới trong Bảng tin` : updateAvailable ? 'Bảng tin có cập nhật mới' : ''}
+        </span>
+        {(newCount > 0 || updateAvailable) && (
           <button
             type="button"
             onClick={handlePillClick}
             disabled={isRefreshing}
-            className="pointer-events-auto group flex items-center gap-2.5 px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-medium text-xs md:text-sm shadow-xl hover:shadow-blue-500/30 ring-2 ring-white dark:ring-slate-900 hover:scale-105 active:scale-95 transition-all duration-300 animate-bounce cursor-pointer"
+            className="pointer-events-auto absolute top-0 group flex min-h-11 items-center gap-2.5 px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-medium text-xs md:text-sm shadow-xl hover:shadow-blue-500/30 ring-2 ring-white dark:ring-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+            <Sparkles aria-hidden="true" className="w-4 h-4 text-amber-300" />
             <span>
-              <strong>{newCount}</strong> hoạt động mới
+              {newCount > 0 ? <><strong>{newCount}</strong> hoạt động mới</> : 'Có cập nhật mới'}
             </span>
-            <span className="text-white/60">•</span>
+            <span aria-hidden="true" className="text-white/60">•</span>
             <span className="flex items-center gap-1 group-hover:underline">
               Bấm để làm mới
               <RefreshCw
-                className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                  isRefreshing ? 'animate-spin' : 'group-hover:rotate-180'
+                aria-hidden="true"
+                className={`w-3.5 h-3.5 motion-safe:transition-transform duration-300 ${
+                  isRefreshing ? 'motion-safe:animate-spin' : 'motion-safe:group-hover:rotate-180'
                 }`}
               />
             </span>
           </button>
-        ) : null}
+        )}
       </div>
 
       {/* 3. Feed Content Body */}

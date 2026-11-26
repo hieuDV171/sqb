@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { useActivityFeed, type FeedFilter } from '@/features/feed/hooks/useActivityFeed';
-import { useNewFeedCount } from '@/features/feed/hooks/useNewFeedCount';
 import { useLectureVideos } from '@/features/feed/hooks/useLectureVideos';
 import { PullToRefreshFeed } from '@/features/feed/components/PullToRefreshFeed';
 import { FeedFilterTabs } from '@/features/feed/components/FeedFilterTabs';
@@ -20,13 +19,15 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 export function FeedRoute() {
   const [searchParams] = useSearchParams();
+  const userId = useAuthStore((state) => state.user?.id);
+  const role = useAuthStore((state) => state.user?.role);
   const legacyPostId = Number(searchParams.get('postId'));
 
   if (Number.isSafeInteger(legacyPostId) && legacyPostId > 0) {
     return <Navigate to={`/posts/${legacyPostId}`} replace />;
   }
 
-  return <FeedPage />;
+  return <FeedPage key={`${userId}:${role}`} />;
 }
 
 export function FeedPage() {
@@ -47,26 +48,25 @@ export function FeedPage() {
     isLoading,
     isError,
     isLoadingError,
+    isPaused,
     isFetchNextPageError,
-    refetch,
+    refresh,
+    newCount,
+    updateAvailable,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
     isFetching,
   } = useActivityFeed(currentFilter);
 
-  const { newCount, markRefreshed } = useNewFeedCount(!showVideos);
-
   const handleRefresh = async () => {
     if (refreshInFlight.current) return;
     refreshInFlight.current = true;
     setIsRefreshing(true);
     setRefreshFailed(false);
-    const startedAt = Date.now();
     try {
-      const result = showVideos ? await videos.refetch() : await refetch();
-      if (result.isError) setRefreshFailed(true);
-      else if (!showVideos) markRefreshed(startedAt);
+      const success = showVideos ? navigator.onLine && (await videos.refetch()).isSuccess : await refresh();
+      setRefreshFailed(!success);
     } finally {
       refreshInFlight.current = false;
       setIsRefreshing(false);
@@ -80,7 +80,7 @@ export function FeedPage() {
         return item.content.subjectCode === selectedCode;
       })
     : items;
-  const canAutoLoad = !showVideos && displayedItems.length > 0 && hasNextPage && !isError && !isFetching;
+  const canAutoLoad = !showVideos && displayedItems.length > 0 && hasNextPage && !isError && !isFetching && !isPaused;
   const { sentinel, supportsAutoLoad } = useInfiniteScroll(canAutoLoad, fetchNextPage, data?.pages.length ?? 0);
 
   return (
@@ -104,14 +104,19 @@ export function FeedPage() {
           <CreatePostBox />
 
           {/* Dynamic Pull-to-Refresh & Floating Action Pill */}
-          <PullToRefreshFeed onRefresh={handleRefresh} newCount={showVideos ? 0 : newCount}>
-            {/* Feed Filter Tabs */}
-            <FeedFilterTabs
-              currentFilter={currentFilter}
-              onFilterChange={(filter) => { setRefreshFailed(false); setCurrentFilter(filter); }}
-              onManualRefresh={handleRefresh}
-              isRefreshing={isRefreshing}
-            />
+          <PullToRefreshFeed
+            onRefresh={handleRefresh}
+            newCount={showVideos ? 0 : newCount}
+            updateAvailable={!showVideos && updateAvailable}
+            controls={(
+              <FeedFilterTabs
+                currentFilter={currentFilter}
+                onFilterChange={(filter) => { setRefreshFailed(false); setCurrentFilter(filter); }}
+                onManualRefresh={handleRefresh}
+                isRefreshing={isRefreshing}
+              />
+            )}
+          >
             {refreshFailed && <p role="status" className="mb-4 text-sm text-destructive">Không thể làm mới. Vui lòng thử lại.</p>}
 
             {showVideos ? (
@@ -124,11 +129,11 @@ export function FeedPage() {
                   <FeedCardSkeleton />
                   <FeedCardSkeleton />
                 </div>
-                ) : isLoadingError ? (
+              ) : isLoadingError || (!data && isPaused) ? (
                 <ErrorState
                   title="Không thể tải dòng hoạt động"
-                  message="Đã có lỗi xảy ra khi đồng bộ bảng tin từ máy chủ. Vui lòng thử lại."
-                  onRetry={() => refetch()}
+                  message={isPaused ? 'Bạn đang ngoại tuyến. Bảng tin sẽ tải khi kết nối trở lại.' : 'Đã có lỗi xảy ra khi đồng bộ bảng tin từ máy chủ. Vui lòng thử lại.'}
+                  onRetry={handleRefresh}
                 />
               ) : displayedItems.length === 0 ? (
                 <EmptyState
@@ -160,7 +165,7 @@ export function FeedPage() {
                       <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> Đang tải thêm hoạt động…
                     </p>
                   )}
-                  <Button variant="outline" onClick={() => void fetchNextPage({ cancelRefetch: false })} disabled={isFetching}
+                  <Button variant="outline" onClick={() => void fetchNextPage({ cancelRefetch: false })} disabled={isFetching || isPaused}
                     className={supportsAutoLoad && displayedItems.length > 0 && !isFetchNextPageError ? 'sr-only focus-visible:not-sr-only' : 'my-4 min-h-11'}>
                     {isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm hoạt động cũ hơn'}
                   </Button>

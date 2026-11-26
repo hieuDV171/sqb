@@ -15,10 +15,11 @@ export const feedService = {
    */
   getActivityFeeds: async (
     after?: number,
-    limit: number = 20
+    limit: number = 20,
+    signal?: AbortSignal,
   ): Promise<GlobalResponse<CursorResponse<ActivityFeedItemDto>>> => {
     const response = await axiosClient.get<unknown, GlobalResponse<CursorResponse<ApiFeedItem>>>(
-      '/activity-feeds', { params: { after, limit } },
+      '/activity-feeds', { params: { after, limit }, signal },
     );
     return {
       ...response,

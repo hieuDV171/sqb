@@ -764,3 +764,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 26/11/2026.** Tab đang hiển thị gửi heartbeat STOMP mỗi 15 giây. Redis lưu mốc hết hạn 45 giây theo kết nối. Tab ẩn hoặc kết nối đã đóng rút mốc còn tối đa 5 giây. Một tài khoản đang hoạt động khi còn ít nhất một kết nối chưa hết hạn.
 - Lua cập nhật thời hạn và ghi thay đổi nguyên tử. Backend thu các thay đổi theo lô mỗi giây, kiểm tra thành viên và quyền chặn hai chiều rồi phát qua hàng đợi STOMP riêng. Heartbeat dùng danh tính của kết nối đã xác thực. Hộp thư lấy trạng thái ban đầu theo lô và đồng bộ lại sau khi kết nối hoặc định kỳ khi mở chat.
 - Phạm vi là chat 1–1 trong hộp thư thường và một instance backend dùng STOMP simple broker. Trạng thái chỉ dùng Redis. Phát hành backend trước frontend để ứng dụng nhận được các đích STOMP mới.
+
+### [ADR-096] Cache trang đầu Bảng tin và làm mới nền
+
+- **Ngày 26/11/2026.** IndexedDB giữ một bản trang đầu gồm tối đa 20 mục, con trỏ và thời điểm yêu cầu. Bản lưu có hạn 30 phút, gắn với tài khoản, vai trò và sự kiện phiên hiện tại. Frontend chỉ khôi phục sau khi xác minh tài khoản, dọn bản lưu khi đăng nhập hoặc đăng xuất và đối chiếu phiên trước khi ghi phản hồi.
+- React Query dùng cache riêng theo tài khoản. Khi vào Bảng tin hoặc kết nối phục hồi, frontend lấy trang đầu. Nếu người dùng đang cuộn, frontend giữ danh sách và đưa bản mới vào nút cập nhật sẵn có. Khi thứ tự trang đầu hoặc con trỏ thay đổi, lần tải tiếp bắt đầu từ con trỏ mới. Lỗi tải nền giữ danh sách đang đọc.
+- Tận dụng các endpoint Bảng tin hiện có. Phạm vi ngoại tuyến là trang đã mở trong phiên đang hoạt động.

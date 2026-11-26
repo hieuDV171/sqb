@@ -1,6 +1,12 @@
 import { create } from 'zustand';
+import { clearFeedSnapshot } from '../features/feed/services/feedSnapshot.ts';
 
 export const AUTH_EVENT_KEY = 'sqb-auth-event';
+
+export function getAuthEventMarker() {
+  try { return localStorage.getItem(AUTH_EVENT_KEY); }
+  catch { return null; }
+}
 
 function publishAuthEvent(type: 'login' | 'logout') {
   try {
@@ -61,7 +67,10 @@ export const useAuthStore = create<AuthState>()(
           adminAccessDenied: false,
           user: { ...user, role: user.role || 'STUDENT' },
         });
-        if (notify) publishAuthEvent('login');
+        if (notify) {
+          publishAuthEvent('login');
+          void clearFeedSnapshot();
+        }
       },
 
       setTokens: (accessToken) =>
@@ -92,7 +101,10 @@ export const useAuthStore = create<AuthState>()(
           adminAccessDenied: false,
           user: null,
         });
-        if (notify) publishAuthEvent('logout');
+        if (notify) {
+          publishAuthEvent('logout');
+          void clearFeedSnapshot();
+        }
       },
     }),
 );

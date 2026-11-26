@@ -5,6 +5,7 @@ import { getAccessGatewayError } from '@/api/accessSession';
 import { reportApiConnectionFailure } from '@/api/connectivity';
 import { queryClient } from '@/lib/queryClient';
 import { stompClient } from '@/lib/stompClient';
+import { clearFeedSnapshot } from '@/features/feed/services/feedSnapshot';
 import { Button } from '@/components/ui/button';
 import { SessionLoading } from './SessionLoading';
 import { warmInitialRoute } from './routeModules';
@@ -29,7 +30,10 @@ export function AuthSessionGate({ children }: { children: ReactNode }) {
           // Header/feed reuse the profile already validated during restoration.
           queryClient.setQueryData(['userProfile', 'me'], session.profile);
           useAuthStore.getState().setAuth(session.accessToken, session.user, 'ACCESS', 'ACTIVE', false);
-        } else useAuthStore.getState().logout(false);
+        } else {
+          useAuthStore.getState().logout(false);
+          void clearFeedSnapshot();
+        }
         setStatus('ready');
       }).catch((failure: unknown) => {
         if (disposed || current !== generation.current) return;
