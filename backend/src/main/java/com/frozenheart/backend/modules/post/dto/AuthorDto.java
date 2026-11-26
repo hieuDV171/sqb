@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.post.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.frozenheart.backend.core.entity.user.User;
 import com.frozenheart.backend.core.entity.user.UserProfile;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,6 +26,10 @@ public class AuthorDto {
     private String avatarUrl;
     @Schema(description = "URL khung trang trí avatar, null/rỗng khi không có", example = "https://media.example.com/frame.png")
     private String frameUrl;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "Vai trò hiển thị của tác giả bài viết hoặc sự kiện Bảng tin",
+            allowableValues = {"STUDENT", "LECTURER", "ADMIN", "SYSTEM"}, example = "STUDENT")
+    private String role;
 
     public static AuthorDto fromUser(User user, UserProfile profile) {
         return AuthorDto.builder()
@@ -35,12 +40,20 @@ public class AuthorDto {
                 .build();
     }
 
+    public static AuthorDto fromUserWithRole(User user, UserProfile profile) {
+        AuthorDto author = fromUser(user, profile);
+        var role = user.getRole();
+        author.setRole(role != null ? role.name() : null);
+        return author;
+    }
+
     public static AuthorDto getSystemAuthor() {
         return AuthorDto.builder()
                 .userId(null)
                 .fullName("Hệ thống")
                 .avatarUrl("/assets/system-avatar.png")
                 .frameUrl(null)
+                .role("SYSTEM")
                 .build();
     }
 }

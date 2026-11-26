@@ -12,7 +12,7 @@ export interface AuthorDto {
     fullName: string;
     avatarUrl?: string;
     frameUrl?: string;
-    role?: "STUDENT" | "LECTURER" | "ADMIN";
+    role?: "STUDENT" | "LECTURER" | "ADMIN" | "SYSTEM";
     schoolFaculty?: string;
 }
 

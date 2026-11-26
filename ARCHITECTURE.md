@@ -770,3 +770,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 26/11/2026.** IndexedDB giữ một bản trang đầu gồm tối đa 20 mục, con trỏ và thời điểm yêu cầu. Bản lưu có hạn 30 phút, gắn với tài khoản, vai trò và sự kiện phiên hiện tại. Frontend chỉ khôi phục sau khi xác minh tài khoản, dọn bản lưu khi đăng nhập hoặc đăng xuất và đối chiếu phiên trước khi ghi phản hồi.
 - React Query dùng cache riêng theo tài khoản. Khi vào Bảng tin hoặc kết nối phục hồi, frontend lấy trang đầu. Nếu người dùng đang cuộn, frontend giữ danh sách và đưa bản mới vào nút cập nhật sẵn có. Khi thứ tự trang đầu hoặc con trỏ thay đổi, lần tải tiếp bắt đầu từ con trỏ mới. Lỗi tải nền giữ danh sách đang đọc.
 - Tận dụng các endpoint Bảng tin hiện có. Phạm vi ngoại tuyến là trang đã mở trong phiên đang hoạt động.
+
+### [ADR-097] Vai trò hiển thị của tác giả Bảng tin và bài viết
+
+- **Ngày 27/11/2026.** DTO `actor` của Bảng tin và `author` của bài viết hoặc video lấy `role` từ tài khoản tác giả đã được tải. Frontend hiển thị `SV`, `GV` và `AD` tương ứng.
+- DTO tác giả Hệ thống trả `role: SYSTEM` và `user_id: null`. Thẻ Bảng tin hiển thị nhãn xanh `HT` và tiếp tục áp dụng quy tắc ẩn danh của ADR-083. Enum vai trò của tài khoản, quyền xác thực và schema giữ nguyên.

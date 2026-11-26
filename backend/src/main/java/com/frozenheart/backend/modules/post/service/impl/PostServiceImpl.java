@@ -469,8 +469,9 @@ public class PostServiceImpl implements PostService {
         AuthorDto authorDto = approvalPost
                 ? AuthorDto.getSystemAuthor()
                 : mapUserToAuthorDto(post.getPoster(), profileByUserId);
-        AuthorDto notedLecturerDto = approvalPost && post.getLecturerNote() != null && post.getNotedLecturer() != null
-                ? mapUserToAuthorDto(post.getNotedLecturer(), profileByUserId) : null;
+        User notedLecturer = post.getNotedLecturer();
+        AuthorDto notedLecturerDto = approvalPost && post.getLecturerNote() != null && notedLecturer != null
+                ? AuthorDto.fromUser(notedLecturer, profileByUserId.get(notedLecturer.getId())) : null;
 
         return PostResponseDto.builder()
                 .postId(post.getId())
@@ -546,12 +547,6 @@ public class PostServiceImpl implements PostService {
         if (user == null) {
             return AuthorDto.getSystemAuthor();
         }
-        UserProfile profile = profileByUserId.get(user.getId());
-        return AuthorDto.builder()
-                .userId(user.getId())
-                .fullName(profile != null ? profile.getFullName() : user.getEmail())
-                .avatarUrl(profile != null ? profile.getAvatarUrl() : null)
-                .frameUrl(profile != null ? profile.getAvatarFrameUrl() : null)
-                .build();
+        return AuthorDto.fromUserWithRole(user, profileByUserId.get(user.getId()));
     }
 }

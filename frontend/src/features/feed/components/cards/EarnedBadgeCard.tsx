@@ -7,6 +7,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import type { CursorResponse } from '@/types/user.types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { reactService } from '../../services/reactService';
+import { AuthorRoleBadge } from '../AuthorRoleBadge';
 import { Award, Heart } from 'lucide-react';
 
 interface EarnedBadgeCardProps {
@@ -45,12 +46,15 @@ export const EarnedBadgeCard: React.FC<EarnedBadgeCardProps> = ({ item }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-3">
-          <UserAvatar
-            avatarUrl={actor.avatarUrl}
-            name={actor.fullName}
-            className="ring-2 ring-amber-500/40"
-            decorative
-          />
+          <div className="relative shrink-0">
+            <UserAvatar
+              avatarUrl={actor.avatarUrl}
+              name={actor.fullName}
+              className="ring-2 ring-amber-500/40"
+              decorative
+            />
+            <AuthorRoleBadge role={actor.role} />
+          </div>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-slate-900 dark:text-white text-sm">

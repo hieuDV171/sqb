@@ -13,6 +13,7 @@ import com.frozenheart.backend.core.entity.socialinteraction.InteractionTargetTy
 import com.frozenheart.backend.core.entity.socialinteraction.React;
 import com.frozenheart.backend.core.entity.socialinteraction.ReactionType;
 import com.frozenheart.backend.core.entity.user.User;
+import com.frozenheart.backend.core.entity.user.UserRole;
 import com.frozenheart.backend.modules.activityfeed.repository.ActivityFeedRepository;
 import com.frozenheart.backend.modules.socialgraph.friendship.repository.FriendshipRepository;
 import com.frozenheart.backend.modules.post.repository.PostRepository;
@@ -26,6 +27,7 @@ import com.frozenheart.backend.modules.user.repository.UserProfileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -61,6 +63,26 @@ class ActivityFeedServiceImplTest {
     }
 
     @ParameterizedTest
+    @EnumSource(UserRole.class)
+    void ordinaryPostEventReturnsTheAuthorsRole(UserRole role) {
+        var service = new ActivityFeedServiceImpl(feedRepository, profileRepository, friendshipRepository,
+                followRepository, blockRepository, postRepository, new LecturerNoteAccess(postRepository),
+                sessionRepository, questionRepository, reactRepository);
+        var author = User.builder().id(5L).email("author@example.test").role(role).build();
+        var post = Post.builder().id(200L).poster(author).postType(PostType.SOCIAL_POST)
+                .visibility(PostVisibility.PUBLIC).build();
+        var event = ActivityFeed.builder().id(300L).targetType(ActivityFeedTargetType.POST)
+                .actionType(ActionType.CREATED_POST).targetId(200L).user(author).build();
+        when(feedRepository.findAnonymousFeeds(anyLong(), any())).thenReturn(List.of(event));
+        when(postRepository.findByIdInAndDeletedAtIsNull(List.of(200L))).thenReturn(List.of(post));
+
+        var actor = service.getActivityFeeds(null, 20).items().getFirst().getActor();
+
+        assertEquals(5L, actor.getUserId());
+        assertEquals(role.name(), actor.getRole());
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void approvalEventUsesPostInteractionsAndSessionClassForNote(boolean teachesSessionClass) {
         var service = new ActivityFeedServiceImpl(feedRepository, profileRepository, friendshipRepository,
@@ -72,7 +94,7 @@ class ActivityFeedServiceImplTest {
         var session = new Session();
         session.setId(100L);
         session.setStatus(SessionStatus.RESOLVED);
-        var student = User.builder().id(5L).email("student@example.test").build();
+        var student = User.builder().id(5L).email("student@example.test").role(UserRole.STUDENT).build();
         session.setProposer(student);
         session.setReviewer(User.builder().id(9L).build());
         var post = Post.builder().id(200L).session(session).postType(PostType.QUESTION_APPROVED_NOTIFICATION)
@@ -97,6 +119,7 @@ class ActivityFeedServiceImplTest {
         assertEquals(ActivityFeedTargetType.POST, item.getTargetType());
         assertEquals(200L, item.getTargetId());
         assertEquals("Hệ thống", item.getActor().getFullName());
+        assertEquals("SYSTEM", item.getActor().getRole());
         assertNull(item.getActor().getUserId());
         assertEquals("/assets/system-avatar.png", item.getActor().getAvatarUrl());
         assertNull(item.getActor().getFrameUrl());

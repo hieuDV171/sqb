@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { ActivityFeedItemDto } from '../../types/feed.types';
 import { Award, CheckCircle2, BookOpen, ArrowRight, TrendingUp } from 'lucide-react';
 import { PostFeedCard } from '../PostFeedCard';
+import { AuthorRoleBadge } from '../AuthorRoleBadge';
 
 interface ApprovedSessionCardProps {
   item: ActivityFeedItemDto;
@@ -20,9 +21,12 @@ export const ApprovedSessionCard: React.FC<ApprovedSessionCardProps> = ({ item }
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-3">
-          <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-academic-soft text-academic ring-2 ring-emerald-500/40">
-            <Award className="size-5" />
-          </span>
+          <div className="relative shrink-0">
+            <span aria-hidden="true" className="grid size-10 place-items-center rounded-full bg-academic-soft text-academic ring-2 ring-emerald-500/40">
+              <Award className="size-5" />
+            </span>
+            <AuthorRoleBadge role={actor.userId == null ? 'SYSTEM' : undefined} />
+          </div>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-slate-900 dark:text-white text-sm">

@@ -106,6 +106,7 @@ class PostServiceImplTest {
         assertTrue(response.pagination().hasNext());
         assertFalse(response.items().getFirst().isReactedByMe());
         assertNull(response.items().getFirst().getMyReaction());
+        assertEquals("STUDENT", response.items().getFirst().getAuthor().getRole());
         assertTrue(response.items().getLast().isReactedByMe());
         assertEquals(ReactionType.LOVE, response.items().getLast().getMyReaction());
         verify(reactRepository).findUserReactsByTargetIds(7L, InteractionTargetType.POST, List.of(44L, 40L));
@@ -146,6 +147,7 @@ class PostServiceImplTest {
         assertEquals(reactionType, response.getMyReaction());
         assertEquals(reactionType != null, response.isReactedByMe());
         assertEquals(userId, response.getAuthor().getUserId());
+        assertEquals("STUDENT", response.getAuthor().getRole());
     }
 
     @ParameterizedTest
@@ -162,6 +164,7 @@ class PostServiceImplTest {
         var response = service.getPostById(42L);
         assertTrue(response.isCanEditLecturerNote());
         assertEquals("Hệ thống", response.getAuthor().getFullName());
+        assertEquals("SYSTEM", response.getAuthor().getRole());
         assertNull(response.getAuthor().getUserId());
         assertEquals("/assets/system-avatar.png", response.getAuthor().getAvatarUrl());
         assertNull(response.getAuthor().getFrameUrl());

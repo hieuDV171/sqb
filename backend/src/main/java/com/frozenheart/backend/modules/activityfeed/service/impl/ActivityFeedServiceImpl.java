@@ -273,7 +273,7 @@ public class ActivityFeedServiceImpl implements ActivityFeedService {
             actorDto = AuthorDto.getSystemAuthor();
         } else {
             User actor = feed.getUser();
-            actorDto = AuthorDto.fromUser(actor, profileMap.get(actor.getId()));
+            actorDto = AuthorDto.fromUserWithRole(actor, profileMap.get(actor.getId()));
         }
 
         Map<String, Object> contentMap = new LinkedHashMap<>();
