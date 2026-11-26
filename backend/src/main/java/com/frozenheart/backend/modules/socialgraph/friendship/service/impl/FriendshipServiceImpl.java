@@ -83,12 +83,7 @@ public class FriendshipServiceImpl implements FriendshipService {
                                                         "Bạn đã gửi lời mời kết bạn cho người này rồi");
                                 } else {
                                         // Người kia đã gửi lời mời cho mình trước đó -> Tự động chấp nhận
-                                        existing.setStatus(FriendshipStatus.ACCEPTED);
-                                        existing.setAcceptedAt(Instant.now());
-                                        Friendship saved = friendshipRepository.save(existing);
-
-                                        counterMetricsService.incrementFriendsCount(requesterId, 1);
-                                        counterMetricsService.incrementFriendsCount(addresseeId, 1);
+                                        Friendship saved = acceptPendingRequest(existing);
 
                                         // Tự động follow addressee (nếu chưa follow)
                                         followService.followUser(addresseeId);
@@ -142,21 +137,26 @@ public class FriendshipServiceImpl implements FriendshipService {
                                         "Chỉ người dùng đồng cấp (cùng vai trò) mới có thể chấp nhận kết bạn");
                 }
 
-                friendship.setStatus(FriendshipStatus.ACCEPTED);
-                friendship.setAcceptedAt(Instant.now());
-
-                Friendship saved = friendshipRepository.save(friendship);
-
-                counterMetricsService.incrementFriendsCount(currentUserId, 1);
-                counterMetricsService.incrementFriendsCount(requesterId, 1);
-
-                badgeService.checkAndGrantBadges(friendship.getReceiver(), BadgeTriggerEvent.ACCEPTED_FRIENDS, null);
-                badgeService.checkAndGrantBadges(friendship.getSender(), BadgeTriggerEvent.ACCEPTED_FRIENDS, null);
+                Friendship saved = acceptPendingRequest(friendship);
 
                 // Tự động follow requester khi chấp nhận lời mời kết bạn (nếu chưa follow)
                 followService.followUser(requesterId);
 
                 return mapToResponseDto(saved);
+        }
+
+        private Friendship acceptPendingRequest(Friendship friendship) {
+                friendship.setStatus(FriendshipStatus.ACCEPTED);
+                friendship.setAcceptedAt(Instant.now());
+                Friendship saved = friendshipRepository.save(friendship);
+
+                User receiver = saved.getReceiver();
+                User sender = saved.getSender();
+                counterMetricsService.incrementFriendsCount(receiver.getId(), 1);
+                counterMetricsService.incrementFriendsCount(sender.getId(), 1);
+                badgeService.checkAndGrantBadges(receiver, BadgeTriggerEvent.ACCEPTED_FRIENDS, null);
+                badgeService.checkAndGrantBadges(sender, BadgeTriggerEvent.ACCEPTED_FRIENDS, null);
+                return saved;
         }
 
         @Override

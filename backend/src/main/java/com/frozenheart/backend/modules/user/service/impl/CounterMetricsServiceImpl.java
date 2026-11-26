@@ -1,5 +1,6 @@
 package com.frozenheart.backend.modules.user.service.impl;
 
+import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.event.PointAddedEvent;
 import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.prediction.PointHistory;
@@ -8,6 +9,7 @@ import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
 import com.frozenheart.backend.core.entity.session.Semester;
 import com.frozenheart.backend.core.entity.session.Subject;
 import com.frozenheart.backend.core.entity.user.*;
+import com.frozenheart.backend.core.exception.AppException;
 import com.frozenheart.backend.modules.badge.service.BadgeService;
 import com.frozenheart.backend.modules.gamification.repository.CoinTransactionRepository;
 import com.frozenheart.backend.modules.gamification.repository.PointHistoryRepository;
@@ -115,6 +117,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         if (userIds.isEmpty())
             return;
 
+        Semester scoringSemester = currentSemesterService.lockSemesterForPoints(semester);
         Map<Long, UserProfile> profileMap = userProfileRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(UserProfile::getUserId, p -> p));
 
@@ -157,7 +160,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .targetType(reward.targetType())
                         .targetId(reward.targetId())
                         .subject(reward.subject())
-                        .semester(semester)
+                        .semester(scoringSemester)
                         .createdAt(Instant.now())
                         .build();
                 historiesToSave.add(history);
@@ -179,7 +182,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                         .userId(reward.userId())
                         .points(reward.pointsDelta())
                         .subjectId(reward.subject() != null ? reward.subject().getId() : null)
-                        .semesterId(semester != null ? semester.getId() : null)
+                        .semesterId(scoringSemester != null ? scoringSemester.getId() : null)
                         .build());
             }
         }
@@ -203,9 +206,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 .map(UserPointRewardDto::userId)
                 .collect(Collectors.toSet());
         if (!approvedUserIds.isEmpty()) {
-            List<User> usersWithApproved = approvedUserIds.stream()
-                    .map(userRepository::getReferenceById)
-                    .toList();
+            List<User> usersWithApproved = userRepository.findAllById(approvedUserIds);
             badgeService.checkAndGrantBadgesBatch(usersWithApproved, BadgeTriggerEvent.APPROVED_QUESTIONS, null);
         }
 
@@ -214,9 +215,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 .map(UserPointRewardDto::userId)
                 .collect(Collectors.toSet());
         if (!pointsUserIds.isEmpty()) {
-            List<User> usersWithPoints = pointsUserIds.stream()
-                    .map(userRepository::getReferenceById)
-                    .toList();
+            List<User> usersWithPoints = userRepository.findAllById(pointsUserIds);
             badgeService.checkAndGrantBadgesBatch(usersWithPoints, BadgeTriggerEvent.PUBLIC_POINTS, null);
         }
     }
@@ -235,6 +234,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
             return;
         }
 
+        Semester semester = currentSemesterService.lockSemesterForPoints(currentSemesterService.findCurrentSemester());
         PointHistoryReason finalReason = reason != null ? reason : PointHistoryReason.PUBLIC_POINTS_AWARDED;
 
         userGamificationRepository.findById(userId).ifPresentOrElse(g -> {
@@ -260,7 +260,6 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         });
 
         User userRef = userRepository.getReferenceById(userId);
-        Semester semester = currentSemesterService.findCurrentSemester();
         PointHistory history = PointHistory.builder()
                 .user(userRef)
                 .points(pointsDelta)
@@ -291,6 +290,10 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         if (userId == null || pointsDelta <= 0)
             return;
 
+        Semester scoringSemester = currentSemesterService.lockSemesterForPoints(semester);
+        if (scoringSemester == null) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Cần học kỳ đang mở để ghi điểm bí mật.");
+        }
         PointHistoryReason finalReason = reason != null ? reason : PointHistoryReason.SECRET_POINTS_AWARDED;
 
         userGamificationRepository.findById(userId).ifPresentOrElse(g -> {
@@ -313,7 +316,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 .targetType(targetType)
                 .targetId(targetId)
                 .subject(subject)
-                .semester(semester)
+                .semester(scoringSemester)
                 .createdAt(Instant.now())
                 .build();
         pointHistoryRepository.save(history);
@@ -328,6 +331,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
         if (userId == null || pointsDelta <= 0)
             return;
 
+        Semester scoringSemester = currentSemesterService.lockSemesterForPoints(semester);
         PointHistoryReason finalReason = reason != null ? reason : PointHistoryReason.PUBLIC_POINTS_DEDUCTED;
 
         userGamificationRepository.findById(userId).ifPresent(g -> {
@@ -347,7 +351,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                     .targetType(targetType)
                     .targetId(targetId)
                     .subject(subject)
-                    .semester(semester)
+                    .semester(scoringSemester)
                     .createdAt(Instant.now())
                     .build();
             pointHistoryRepository.save(history);
@@ -357,7 +361,7 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                             .userId(userId)
                             .points(-pointsDelta)
                             .subjectId(subject != null ? subject.getId() : null)
-                            .semesterId(semester != null ? semester.getId() : null)
+                            .semesterId(scoringSemester != null ? scoringSemester.getId() : null)
                             .build());
         });
     }
@@ -365,9 +369,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
     @Override
     @Transactional
     public void finalizeSemesterPoints(Semester semester) {
-        List<UserGamification> gamifications = userGamificationRepository.findAll();
-        List<UserGamification> toSave = new ArrayList<>();
-        List<User> usersToGrantBadges = new ArrayList<>();
+        List<UserGamification> gamifications = userGamificationRepository.findAllBySecretPointsGreaterThan(0.0);
+        List<Long> recipientIds = new ArrayList<>();
         List<CoinTransaction> coinTransactionsToSave = new ArrayList<>();
 
         for (UserGamification g : gamifications) {
@@ -378,10 +381,8 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
                 g.setPublicPoints(currentPublic + currentSecret);
                 g.setCoinBalance(g.getCoinBalance() + currentSecret);
                 g.setSecretPoints(0.0);
-                toSave.add(g);
-
                 User userRef = userRepository.getReferenceById(g.getUserId());
-                usersToGrantBadges.add(userRef);
+                recipientIds.add(g.getUserId());
 
                 CoinTransaction coinTx = CoinTransaction.builder()
                         .user(userRef)
@@ -406,16 +407,13 @@ public class CounterMetricsServiceImpl implements CounterMetricsService {
             }
         }
 
-        if (!toSave.isEmpty()) {
-            userGamificationRepository.saveAll(toSave);
-        }
         if (!coinTransactionsToSave.isEmpty()) {
             coinTransactionRepository.saveAll(coinTransactionsToSave);
         }
 
         // Tự động kiểm tra và trao huy hiệu PUBLIC_POINTS theo lô (ngăn ngừa N+1)
-        if (!usersToGrantBadges.isEmpty()) {
-            badgeService.checkAndGrantBadgesBatch(usersToGrantBadges, BadgeTriggerEvent.PUBLIC_POINTS, null);
+        if (!recipientIds.isEmpty()) {
+            badgeService.checkAndGrantBadgesBatch(userRepository.findAllById(recipientIds), BadgeTriggerEvent.PUBLIC_POINTS, null);
         }
     }
 

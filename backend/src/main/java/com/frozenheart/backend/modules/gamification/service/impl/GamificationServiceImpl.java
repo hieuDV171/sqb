@@ -954,13 +954,16 @@ public class GamificationServiceImpl implements GamificationService {
             predsBySubject.computeIfAbsent(p.getTargetId(), _ -> new ArrayList<>()).add(p);
         }
 
+        Map<Long, Long> bankSizes = predsBySubject.isEmpty() ? Map.of()
+                : questionRepository.countApprovedBankQuestionsBySubjects(predsBySubject.keySet()).stream()
+                        .collect(Collectors.toMap(QuestionRepository.SubjectBankSize::getSubjectId,
+                                QuestionRepository.SubjectBankSize::getQuestionCount));
         List<UserPointRewardDto> game4Rewards = new ArrayList<>();
         for (Map.Entry<Long, List<Prediction>> entry : predsBySubject.entrySet()) {
             Long subjectId = entry.getKey();
             List<Prediction> preds = entry.getValue();
 
-            long actualBankSize = questionRepository.countBySessionCourseClassSubjectIdAndStatus(subjectId,
-                    QuestionStatus.APPROVED);
+            long actualBankSize = bankSizes.getOrDefault(subjectId, 0L);
 
             preds.sort((p1, p2) -> {
                 long diff1 = getBankSizeDiff(p1, actualBankSize);
@@ -998,34 +1001,6 @@ public class GamificationServiceImpl implements GamificationService {
             counterMetricsService.awardGamePointsBatch(game4Rewards, current);
         }
 
-        // Migrate các câu APPROVED sang legacy_questions kèm imageUrls
-        List<Question> approvedQuestions = questionRepository.findFinalizedApprovedQuestionsFetchMedias();
-
-        List<LegacyQuestion> legacyToSave = approvedQuestions.stream()
-                .map(q -> {
-                    List<String> imageUrls = (q.getOwnedMedias() != null)
-                            ? q.getOwnedMedias().stream()
-                                    .map(QuestionMedia::getUrl)
-                                    .filter(Objects::nonNull)
-                                    .toList()
-                            : List.of();
-                    return LegacyQuestion.builder()
-                            .content(q.getContent())
-                            .options(q.getOptions())
-                            .explanation(q.getExplanation())
-                            .imageUrls(imageUrls)
-                            .llmGenerated(q.isLlmGenerated())
-                            .used(false)
-                            .importedAt(Instant.now())
-                            .build();
-                })
-                .toList();
-
-        legacyQuestionRepository.saveAll(legacyToSave);
-
-        // Reset toàn bộ is_used = false trong legacy_questions cho học kỳ mới
-        legacyQuestionRepository.resetAllIsUsedToFalse();
-
         // Redis receives point events after commit. Use the ledger to include awards in this transaction.
         List<LeaderboardAggregation> finalRanks = pointHistoryRepository.findFinalSemesterRanks(
                 current.getId(), PageRequest.of(0, LeaderboardRankCriteria.MAX_SEMESTER_RANK));
@@ -1059,11 +1034,29 @@ public class GamificationServiceImpl implements GamificationService {
             log.error("[GamificationService] Lỗi khi tạo bài post vinh danh cuối kỳ: {}", e.getMessage());
         }
 
+        archiveSemesterQuestions(current.getId());
         current.setFinalized(true);
 
         leaderboardService.scheduleOldSemesterCleanup(current.getId());
 
         log.info("[GamificationService] Finalized semester successfully.");
+    }
+
+    private void archiveSemesterQuestions(Long semesterId) {
+        legacyQuestionRepository.resetAllIsUsedToFalse();
+        Instant importedAt = Instant.now();
+        List<LegacyQuestion> questions = questionRepository.findFinalizedApprovedQuestionsFetchMedias(semesterId).stream()
+                .map(q -> LegacyQuestion.builder()
+                        .content(q.getContent())
+                        .options(q.getOptions())
+                        .explanation(q.getExplanation())
+                        .imageUrls(q.getOwnedMedias().stream().map(QuestionMedia::getUrl).filter(Objects::nonNull).toList())
+                        .llmGenerated(q.isLlmGenerated())
+                        .used(false)
+                        .importedAt(importedAt)
+                        .build())
+                .toList();
+        legacyQuestionRepository.saveAll(questions);
     }
 
     private long getBankSizeDiff(Prediction p, long actualBankSize) {

@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -203,7 +204,7 @@ public class Game3ResolutionService {
     }
 
     private record QuestionEvaluation(long questionId, String questionCode, Integer displayOrder,
-            Double declaredConfidence, Double averageRating, long ratingCount, QuestionVerdict verdict) {
+            Double declaredConfidence, Double averageRating, long ratingCount, QuestionVerdict verdict) implements Serializable {
     }
 
     private void awardWinners(List<Prediction> winners, Semester semester) {

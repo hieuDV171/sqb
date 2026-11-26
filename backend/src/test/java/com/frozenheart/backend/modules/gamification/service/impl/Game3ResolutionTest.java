@@ -3,6 +3,7 @@ package com.frozenheart.backend.modules.gamification.service.impl;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryReason;
 import com.frozenheart.backend.core.entity.prediction.PointHistoryTargetType;
 import com.frozenheart.backend.core.entity.prediction.Prediction;
+import com.frozenheart.backend.core.entity.prediction.PredictionData;
 import com.frozenheart.backend.core.entity.prediction.PredictionStatus;
 import com.frozenheart.backend.core.entity.session.Question;
 import com.frozenheart.backend.core.entity.session.QuestionStatus;
@@ -18,6 +19,7 @@ import com.frozenheart.backend.modules.session.repository.UserRatingRepository;
 import com.frozenheart.backend.modules.session.repository.UserRatingRepository.Game3QuestionRating;
 import com.frozenheart.backend.modules.user.dto.UserPointRewardDto;
 import com.frozenheart.backend.modules.user.service.CounterMetricsService;
+import org.hibernate.internal.util.SerializationHelper;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
 import tools.jackson.databind.json.JsonMapper;
@@ -124,7 +126,8 @@ class Game3ResolutionTest {
         assertEquals(FIRST_DUE, prediction.getResolvedAt());
 
         var mapper = JsonMapper.builder().build();
-        var result = mapper.readTree(mapper.writeValueAsString(prediction.getActualData().getData()));
+        var snapshot = (PredictionData) SerializationHelper.clone(prediction.getActualData());
+        var result = mapper.readTree(mapper.writeValueAsString(snapshot.getData()));
         assertEquals(6, result.path("nonMatchingQuestions").asInt());
         var evidence = result.path("questionEvaluations");
         assertEquals(10, evidence.size());

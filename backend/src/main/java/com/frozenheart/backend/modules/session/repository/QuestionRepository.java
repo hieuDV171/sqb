@@ -1,7 +1,8 @@
 package com.frozenheart.backend.modules.session.repository;
 
-import java.util.List;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -91,11 +92,25 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.session s LEFT JOIN FETCH s.courseClass cc LEFT JOIN FETCH cc.subject LEFT JOIN FETCH cc.semester LEFT JOIN FETCH cc.lecturer LEFT JOIN FETCH s.proposer LEFT JOIN FETCH q.topic WHERE q.id IN :ids")
     List<Question> findByIdInFetchSessionCourseClassAndProposer(@Param("ids") List<Long> ids);
 
-    @Query("SELECT COUNT(q) FROM Question q WHERE q.session.courseClass.subject.id = :subjectId AND q.status = :status AND q.session.status = 'RESOLVED'")
-    long countBySessionCourseClassSubjectIdAndStatus(@Param("subjectId") Long subjectId, @Param("status") QuestionStatus status);
+    interface SubjectBankSize {
+        Long getSubjectId();
+        long getQuestionCount();
+    }
 
-    @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.ownedMedias WHERE q.status = 'APPROVED' AND q.session.status = 'RESOLVED'")
-    List<Question> findFinalizedApprovedQuestionsFetchMedias();
+    @Query("""
+            SELECT cc.subject.id AS subjectId, COUNT(q) AS questionCount
+            FROM Question q JOIN q.session s JOIN s.courseClass cc
+            WHERE cc.subject.id IN :subjectIds AND q.status = 'APPROVED' AND s.status = 'RESOLVED'
+            GROUP BY cc.subject.id
+            """)
+    List<SubjectBankSize> countApprovedBankQuestionsBySubjects(@Param("subjectIds") Collection<Long> subjectIds);
+
+    @Query("""
+            SELECT DISTINCT q FROM Question q JOIN q.session s
+            LEFT JOIN FETCH q.ownedMedias
+            WHERE s.courseClass.semester.id = :semesterId AND q.status = 'APPROVED' AND s.status = 'RESOLVED'
+            """)
+    List<Question> findFinalizedApprovedQuestionsFetchMedias(@Param("semesterId") Long semesterId);
 
     @Query("SELECT q.id FROM Question q WHERE q.status != 'APPROVED'")
     List<Long> findNonApprovedQuestionIds();

@@ -43,34 +43,14 @@ public class UserCurrencyServiceImpl implements UserCurrencyService {
             return;
         }
 
-        // Thực hiện trừ tiền bằng câu lệnh Atomic SQL cấp Database (Row-level exclusive lock)
-        int updated = userGamificationRepository.deductCoinBalance(userId, amount);
-        if (updated == 0) {
-            double currentBalance = getBalance(userId);
-            if (currentBalance < amount) {
-                throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Số dư của bạn không đủ để thực hiện giao dịch này");
-            }
-            throw new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy thông tin ví của người dùng");
+        UserGamification wallet = userGamificationRepository.findWalletForUpdate(userId).orElse(null);
+        if (wallet == null || wallet.getCoinBalance() < amount) {
+            throw new AppException(ResponseCode.ACTION_NOT_ALLOWED, "Số dư của bạn không đủ để thực hiện giao dịch này");
         }
 
-        double balanceAfter = getBalance(userId);
-        User userRef = userRepository.getReferenceById(userId);
-
-        // Ghi sổ cái bất biến (CoinTransaction - Ledger)
-        CoinTransaction tx = CoinTransaction.builder()
-                .user(userRef)
-                .amount(-amount)
-                .balanceAfter(balanceAfter)
-                .type(type != null ? type : CoinTransactionType.BUY_COSMETIC)
-                .description(description)
-                .targetType(targetType)
-                .targetId(targetId)
-                .createdAt(Instant.now())
-                .build();
-        coinTransactionRepository.save(tx);
-
-        log.info("[UserCurrencyServiceImpl] Deducted {} from user {} (Balance after: {}, Reason: {})",
-                amount, userId, balanceAfter, description);
+        wallet.setCoinBalance(wallet.getCoinBalance() - amount);
+        recordTransaction(wallet, -amount, type != null ? type : CoinTransactionType.BUY_COSMETIC,
+                description, targetType, targetId);
     }
 
     @Override
@@ -87,26 +67,28 @@ public class UserCurrencyServiceImpl implements UserCurrencyService {
             return;
         }
 
-        int updated = userGamificationRepository.addCoinBalance(userId, amount);
-        if (updated == 0) {
-            // Nếu tài khoản cũ chưa có bản ghi gamification, khởi tạo mới
-            User userRef = userRepository.getReferenceById(userId);
-            UserGamification newGamification = UserGamification.builder()
-                    .user(userRef)
-                    .coinBalance(amount)
-                    .build();
-            userGamificationRepository.save(newGamification);
-        }
+        UserGamification wallet = userGamificationRepository.findWalletForUpdate(userId)
+                .orElseGet(() -> createWalletIfAbsent(userId));
+        wallet.setCoinBalance(wallet.getCoinBalance() + amount);
+        recordTransaction(wallet, amount, type != null ? type : CoinTransactionType.GAME_REWARD,
+                description, targetType, targetId);
+    }
 
-        double balanceAfter = getBalance(userId);
-        User userRef = userRepository.getReferenceById(userId);
+    private UserGamification createWalletIfAbsent(Long userId) {
+        // Serialize initialization for older accounts without a wallet row to lock.
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.RESOURCE_NOT_FOUND, "Không tìm thấy tài khoản."));
+        return userGamificationRepository.findWalletForUpdate(userId)
+                .orElseGet(() -> userGamificationRepository.save(UserGamification.builder().user(user).build()));
+    }
 
-        // Ghi sổ cái bất biến (CoinTransaction - Ledger)
+    private void recordTransaction(UserGamification wallet, double amount, CoinTransactionType type, String description,
+                                   CoinTransactionTargetType targetType, Long targetId) {
         CoinTransaction tx = CoinTransaction.builder()
-                .user(userRef)
+                .user(wallet.getUser())
                 .amount(amount)
-                .balanceAfter(balanceAfter)
-                .type(type != null ? type : CoinTransactionType.GAME_REWARD)
+                .balanceAfter(wallet.getCoinBalance())
+                .type(type)
                 .description(description)
                 .targetType(targetType)
                 .targetId(targetId)
@@ -114,8 +96,8 @@ public class UserCurrencyServiceImpl implements UserCurrencyService {
                 .build();
         coinTransactionRepository.save(tx);
 
-        log.info("[UserCurrencyService] Added {} to user {} (Balance after: {}, Reason: {})",
-                amount, userId, balanceAfter, description);
+        log.info("[UserCurrencyService] Changed balance by {} for user {} (Balance after: {}, Reason: {})",
+                amount, wallet.getUserId(), wallet.getCoinBalance(), description);
     }
 
     @Override

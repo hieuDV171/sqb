@@ -775,3 +775,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 - **Ngày 27/11/2026.** DTO `actor` của Bảng tin và `author` của bài viết hoặc video lấy `role` từ tài khoản tác giả đã được tải. Frontend hiển thị `SV`, `GV` và `AD` tương ứng.
 - DTO tác giả Hệ thống trả `role: SYSTEM` và `user_id: null`. Thẻ Bảng tin hiển thị nhãn xanh `HT` và tiếp tục áp dụng quy tắc ẩn danh của ADR-083. Enum vai trò của tài khoản, quyền xác thực và schema giữ nguyên.
+
+### [ADR-098] Giữ sổ điểm và kho câu hỏi nhất quán khi chốt học kỳ
+
+- **Ngày 27/11/2026.** Ghi điểm lấy khóa chia sẻ trên dòng học kỳ và kiểm tra cờ chốt trong cùng lệnh SQL. Chốt kỳ dùng khóa ghi trên dòng này. Khoản điểm công khai phát sinh muộn vẫn cập nhật số liệu cá nhân và có `semester_id = NULL`, vì vậy không đổi thứ hạng kỳ đã chốt. Điểm bí mật Game 5 cần học kỳ đang mở để kết chuyển đúng kỳ.
+- Chi tiết chấm Game 3 hỗ trợ sao chép qua Java serialization của Hibernate và dùng cấu trúc JSONB đã có. Lưu trữ câu hỏi lấy các câu đã duyệt thuộc phiên đã chốt trong đúng học kỳ đang tổng kết. Game 4 đếm số câu được duyệt theo lô trên kho tích lũy của các môn có dự đoán.
+- Giao dịch xu khóa dòng ví trước khi thay đổi số dư. Sổ xu dùng số dư từ cùng entity đã cập nhật, kể cả khi ví được tải từ đầu giao dịch chốt kỳ. Các thay đổi dùng schema hiện có.

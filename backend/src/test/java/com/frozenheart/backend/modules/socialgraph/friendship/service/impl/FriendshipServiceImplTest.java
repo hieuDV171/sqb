@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.socialgraph.friendship.service.impl;
 
 import com.frozenheart.backend.core.constant.ResponseCode;
 import com.frozenheart.backend.core.dto.jwt.JwtPayload;
+import com.frozenheart.backend.core.entity.badge.BadgeTriggerEvent;
 import com.frozenheart.backend.core.entity.socialinteraction.Friendship;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipId;
 import com.frozenheart.backend.core.entity.socialinteraction.FriendshipStatus;
@@ -130,6 +131,31 @@ class FriendshipServiceImplTest {
 
         assertEquals(FriendshipStatus.ACCEPTED, response.getStatus());
         verify(followService).followUser(1L);
+    }
+
+    @Test
+    void crossedRequestsAwardAcceptedFriendsBadgesToBothUsers() {
+        authenticate(2L);
+        User sender = user(1L, UserRole.STUDENT);
+        User receiver = user(2L, UserRole.STUDENT);
+        Friendship row = request(1L, 2L, FriendshipStatus.PENDING);
+        row.setSender(sender);
+        row.setReceiver(receiver);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(repository.findFriendshipsBetweenForUpdate(2L, 1L)).thenReturn(Optional.of(row));
+        when(repository.save(row)).thenReturn(row);
+        var request = new SendFriendRequestDto();
+        request.setAddresseeId(1L);
+
+        var response = service.sendFriendRequest(request);
+
+        assertEquals(FriendshipStatus.ACCEPTED, response.getStatus());
+        verify(counterMetricsService).incrementFriendsCount(sender.getId(), 1);
+        verify(counterMetricsService).incrementFriendsCount(receiver.getId(), 1);
+        verify(badgeService).checkAndGrantBadges(sender, BadgeTriggerEvent.ACCEPTED_FRIENDS, null);
+        verify(badgeService).checkAndGrantBadges(receiver, BadgeTriggerEvent.ACCEPTED_FRIENDS, null);
+        verify(followService).followUser(sender.getId());
     }
 
     @Test

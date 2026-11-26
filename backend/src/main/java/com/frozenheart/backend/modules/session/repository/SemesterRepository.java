@@ -28,9 +28,14 @@ public interface SemesterRepository extends JpaRepository<Semester, Long> {
     @Query(value = """
             SELECT id FROM semesters
             WHERE id IN (:ids) AND active = true AND is_finalized = false
-            ORDER BY id FOR NO KEY UPDATE
+            ORDER BY id FOR SHARE
             """, nativeQuery = true)
     List<Long> lockOpenSemesterIds(@Param("ids") Set<Long> ids);
+
+    @Query(value = """
+            SELECT id FROM semesters WHERE id = :id AND is_finalized = false FOR SHARE
+            """, nativeQuery = true)
+    Optional<Long> lockUnfinalizedSemesterId(@Param("id") Long id);
 
     List<Semester> findAllByOrderByIdDesc();
 
