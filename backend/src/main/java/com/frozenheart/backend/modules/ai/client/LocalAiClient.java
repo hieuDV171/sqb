@@ -43,7 +43,7 @@ public class LocalAiClient {
     public LocalAiClient(@Value("${app.ai-server.url}") String aiServerUrl,
             @Value("${app.ai-server.model}") String modelName,
             @Value("${app.ai-server.api-key}") String apiKey,
-            @Value("${ai.sidecar.url}") String sidecarUrl) {
+            @Value("${aisidecar.url}") String sidecarUrl) {
         String baseUrl = aiServerUrl.strip().replaceAll("/+$", "");
         this.modelName = modelName.strip();
         this.configured = !baseUrl.isBlank() && !this.modelName.isBlank()

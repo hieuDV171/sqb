@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @Getter
 @Setter
-@ConfigurationProperties(prefix = "ai.sidecar")
+@ConfigurationProperties(prefix = "aisidecar")
 public class AiSidecarProperties {
     private String url = "http://localhost:8000";
     private long timeout = 45000;

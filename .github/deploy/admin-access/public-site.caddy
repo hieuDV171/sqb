@@ -16,7 +16,7 @@ hieudv.id.vn, www.hieudv.id.vn, snsqb.duckdns.org {
 		}
 
 		handle {
-			root * /var/www/sqb-frontend/dist
+			root * /var/www/sqb-webclient/dist
 			try_files {path} /index.html
 			file_server
 		}

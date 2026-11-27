@@ -11,8 +11,8 @@ on:
       backend_image:
         description: Optional BE image by digest (defaults to deployed image)
         type: string
-      sidecar_image:
-        description: Optional sidecar image by digest (defaults to deployed image)
+      aisidecar_image:
+        description: Optional AISidecar image by digest (defaults to deployed image)
         type: string
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.detect.outputs.backend }}
-      sidecar: ${{ steps.detect.outputs.sidecar }}
+      aisidecar: ${{ steps.detect.outputs.aisidecar }}
       stack: ${{ steps.detect.outputs.stack }}
     steps:
       - uses: actions/checkout@v4
@@ -50,48 +50,48 @@ jobs:
     with:
       service: backend
 
-  build-sidecar:
+  build-aisidecar:
     needs: changes
-    if: needs.changes.outputs.sidecar == 'true'
+    if: needs.changes.outputs.aisidecar == 'true'
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/build-production-image.yml
     with:
-      service: ai-sidecar
+      service: aisidecar
 
   deploy-backend:
     needs: [changes, build-backend]
-    if: needs.changes.outputs.stack == 'false' && needs.changes.outputs.sidecar == 'false' && needs.build-backend.result == 'success'
+    if: needs.changes.outputs.stack == 'false' && needs.changes.outputs.aisidecar == 'false' && needs.build-backend.result == 'success'
     uses: ./.github/workflows/deploy-production.yml
     with:
       target: backend
       backend_image: ${{ needs.build-backend.outputs.image }}
     secrets: inherit
 
-  deploy-sidecar:
-    needs: [changes, build-sidecar]
-    if: needs.changes.outputs.stack == 'false' && needs.changes.outputs.backend == 'false' && needs.build-sidecar.result == 'success'
+  deploy-aisidecar:
+    needs: [changes, build-aisidecar]
+    if: needs.changes.outputs.stack == 'false' && needs.changes.outputs.backend == 'false' && needs.build-aisidecar.result == 'success'
     uses: ./.github/workflows/deploy-production.yml
     with:
-      target: ai-sidecar
-      sidecar_image: ${{ needs.build-sidecar.outputs.image }}
+      target: aisidecar
+      aisidecar_image: ${{ needs.build-aisidecar.outputs.image }}
     secrets: inherit
 
   deploy-stack:
-    needs: [changes, build-backend, build-sidecar]
+    needs: [changes, build-backend, build-aisidecar]
     if: >-
       ${{ !cancelled() && needs.changes.result == 'success' &&
       (needs.changes.outputs.stack == 'true' ||
-       (needs.changes.outputs.backend == 'true' && needs.changes.outputs.sidecar == 'true')) &&
+       (needs.changes.outputs.backend == 'true' && needs.changes.outputs.aisidecar == 'true')) &&
       (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
-      (needs.build-sidecar.result == 'success' || needs.build-sidecar.result == 'skipped') }}
+      (needs.build-aisidecar.result == 'success' || needs.build-aisidecar.result == 'skipped') }}
     uses: ./.github/workflows/deploy-production.yml
     with:
       target: stack
-      services: ${{ needs.changes.outputs.stack == 'false' && 'ai-sidecar backend' || '' }}
+      services: ${{ needs.changes.outputs.stack == 'false' && 'aisidecar backend' || '' }}
       backend_image: ${{ needs.build-backend.outputs.image }}
-      sidecar_image: ${{ needs.build-sidecar.outputs.image }}
+      aisidecar_image: ${{ needs.build-aisidecar.outputs.image }}
       use_applied_env: true
     secrets: inherit
 
@@ -102,5 +102,5 @@ jobs:
       target: stack
       services: ${{ inputs.services }}
       backend_image: ${{ inputs.backend_image }}
-      sidecar_image: ${{ inputs.sidecar_image }}
+      aisidecar_image: ${{ inputs.aisidecar_image }}
     secrets: inherit

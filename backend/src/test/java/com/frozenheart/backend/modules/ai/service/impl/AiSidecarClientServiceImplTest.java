@@ -40,7 +40,7 @@ class AiSidecarClientServiceImplTest {
                 .withInitializer(new ConfigDataApplicationContextInitializer())
                 .withConfiguration(AutoConfigurations.of(JacksonAutoConfiguration.class))
                 .withUserConfiguration(AiSidecarConfig.class)
-                .withPropertyValues("ai.sidecar.url=http://sidecar.test")
+                .withPropertyValues("aisidecar.url=http://sidecar.test")
                 .run(context -> verifyBtpropAudit(context.getBean(RestClient.class)));
     }
 

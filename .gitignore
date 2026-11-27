@@ -17,14 +17,14 @@ TASK_TRACKER.md
 REPORT_MODERATION_PLAN.md
 /design-system
 VPS_CONFIG.txt
-DEPLOY_FRONTEND.txt
+DEPLOY_WEBCLIENT.txt
 PGNV_Đồng Văn Hiếu_20224980.xlsx
 ADMIN_ACCESS_GUIDE.md
-FRONTEND_ROADMAP.md
+WEBCLIENT_ROADMAP.md
 /backend/scripts/migrate-question-reports.sql
 
 # Local deployment notes, test reports, and scaffold documentation
 /.github/**/*.md
 /backend/docs/**/*.md
-/frontend/docs/**/*.md
-/frontend/README.md
+/webclient/docs/**/*.md
+/webclient/README.md

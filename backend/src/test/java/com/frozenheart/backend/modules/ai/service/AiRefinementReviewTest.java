@@ -91,8 +91,8 @@ class AiRefinementReviewTest {
 
     @Test
     void sidecarOnlyConfigurationIsNotUsedAsTheGenerator() {
-        var client = new LocalAiClient("http://ai-sidecar:8000/", "text-embedding-3-small", "",
-                "http://ai-sidecar:8000");
+        var client = new LocalAiClient("http://aisidecar:8000/", "text-embedding-3-small", "",
+                "http://aisidecar:8000");
 
         assertThatExceptionOfType(AppException.class)
                 .isThrownBy(() -> client.generateRequiredCompletion("system", "prompt"))
@@ -124,7 +124,7 @@ class AiRefinementReviewTest {
         server.start();
         try {
             var client = new LocalAiClient("http://127.0.0.1:" + server.getAddress().getPort(),
-                    "gpt-6-luna", "shared-fixture-key", "http://ai-sidecar:8000");
+                    "gpt-6-luna", "shared-fixture-key", "http://aisidecar:8000");
 
             var response = client.generateRequiredCompletion("system", "prompt");
 

@@ -202,8 +202,8 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày quyết định:** 30/09/2026
 - **Bối cảnh:** Trước đây thư mục `embedding-service` chỉ phục vụ sinh vector (`/embed/text`, `/embed/image`). Khi tích hợp thuật toán kiểm soát ảo giác Cây Niềm Tin BTProp (NAACL 2025), service này mở rộng thành bộ đồng xử lý AI chuyên dụng bằng Python. Cần cấu trúc lại cấu hình và định danh cho chuẩn mực kiến trúc.
 - **Quyết định:**
-  - Đổi tên thư mục `embedding-service/` $\rightarrow$ `ai-sidecar/`.
-  - Thay thế trực tiếp cấu hình `embedding.service` thành `ai.sidecar` trong `application.yaml` (`AI_SIDECAR_URL`, timeout 45s).
+  - Đổi tên thư mục `embedding-service/` thành `ai-sidecar/`. ADR-099 ghi nhận tên hiện tại.
+  - Thay cấu hình `embedding.service` bằng `ai.sidecar` trong `application.yaml` vào thời điểm triển khai ban đầu.
   - Xóa bỏ `EmbeddingServiceProperties` và `EmbeddingConfig`, thay bằng `AiSidecarProperties` và `AiSidecarConfig`.
   - Hợp nhất client phía Java thành `AiSidecarClientService` đảm nhận cả tạo Embedding và gọi BTProp Audit (`POST /api/v1/ai/btprop/audit`).
   - Viết lại `BtpropHallucinationCheckerService` gọi trực tiếp sang AI Sidecar, tích hợp cơ chế Graceful Degradation (Fallback UNVERIFIED nếu Sidecar bận/timeout).
@@ -480,7 +480,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Giảng viên phụ trách lớp và Admin xem bản tinh chỉnh cùng kết quả BTProp trong phiên đang mở. Cảnh báo hoặc kết quả chưa kiểm chứng cần xác nhận tự rà soát. BE khóa phiên khi áp dụng, kiểm tra bản đề xuất còn chờ và câu hỏi chưa được sửa sau khi tạo bản AI. Tệp ảnh đáp án lấy từ câu hỏi gốc theo khóa lựa chọn.
 - Trang duyệt giữ nội dung đang soạn và các lượt trao đổi theo ID câu hỏi. Giảng viên có thể đóng và mở lại hộp thoại kể cả khi đang kiểm chứng. Rời trang hoặc tải lại sẽ bỏ nháp tại trình duyệt. Áp dụng bản đề xuất sẽ bắt đầu lại hội thoại từ câu hỏi đã cập nhật. API tinh chỉnh nhận tùy chọn `previous_edit_log_id` của bản đề xuất còn chờ, thuộc cùng câu hỏi và người duyệt. Backend đối chiếu thời điểm câu hỏi cập nhật và dùng nội dung văn bản của bản đó cùng câu gốc khi sinh bản kế tiếp.
 - Luồng xem sớm dùng SSE qua POST. Backend gửi bản xem trước và model sinh nội dung trước khi gọi BTProp. Sự kiện xem trước chưa có ID áp dụng. Backend gửi kết quả cuối kèm ID sau khi giao dịch lưu nhật ký hoàn tất. Hộp thoại khóa gửi tiếp và các thao tác với bản AI của câu đó trong lúc chờ kết quả cuối.
-- Compose cấp cùng `AI_SERVER_API_KEY` và `AI_MODEL` cho backend sinh đề xuất và AI Sidecar kiểm chứng BTProp. Mặc định dùng `gpt-6-luna`. Hai client gửi `reasoning_effort=none` cho Luna để dùng các tham số lấy mẫu và `logprobs` của BTProp. Backend gọi `AI_SERVER_URL` qua `/v1/chat/completions` để sinh đề xuất và gọi `AI_SIDECAR_URL` cho embedding và BTProp. Compose nối `AI_SIDECAR_URL` tới `http://ai-sidecar:8000`. Sidecar gọi OpenAI để thực hiện BTProp.
+- Compose cấp cùng `AI_SERVER_API_KEY` và `AI_MODEL` cho backend sinh đề xuất và AI Sidecar kiểm chứng BTProp. Mặc định dùng `gpt-6-luna`. Hai client gửi `reasoning_effort=none` cho Luna để dùng các tham số lấy mẫu và `logprobs` của BTProp. Backend gọi `AI_SERVER_URL` qua `/v1/chat/completions` để sinh đề xuất và gọi `AISIDECAR_URL` cho embedding và BTProp. Compose nối `AISIDECAR_URL` tới `http://aisidecar:8000`. Sidecar gọi OpenAI để thực hiện BTProp.
 - Nếu dịch vụ sinh thiếu cấu hình hoặc gặp lỗi, luồng duyệt báo 503 trước khi lưu bản đề xuất hoặc gọi BTProp. Giới hạn kết nối/đọc khi sinh lần lượt là 3/20 giây. BTProp dùng 10/45 giây; frontend giới hạn thời gian chờ một lượt tinh chỉnh ở 85 giây.
 - Admin được trao thủ công mọi huy hiệu đang hoạt động. Vô hiệu hóa giữ các lượt đã trao. Danh mục và màn Admin lấy số người đạt theo lô; JSON tiêu chí ghi duy nhất trường phân loại `type`.
 - Hồ sơ dùng tải trực tiếp cho ảnh đại diện và ảnh bìa. Đề xuất phiên dùng presign và kiểm tra tồn tại theo lô trước khi nộp. Khi lưu nghiệp vụ, BE xác nhận tệp vĩnh viễn. API thống kê quan hệ giữ tương thích và được đánh dấu deprecated.
@@ -494,7 +494,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 
 ### [ADR-053] Triển khai Backend và AI sidecar độc lập
 
-- `deploy-backend.yml` và `deploy-ai-sidecar.yml` theo dõi thư mục tương ứng trên `master`, dùng cache Buildx riêng và triển khai image theo digest. Hai workflow cập nhật từng service bằng `up -d --no-deps` trong cùng project Compose `sqb`. VPS kiểm tra readiness của Spring hoặc `/health` của sidecar rồi lưu image đã sẵn sàng trong `/opt/sqb/.deploy-images/`.
+- `deploy-stack.yml` theo dõi thư mục dịch vụ trên `master`. `deploy-backend.yml` và `deploy-aisidecar.yml` dùng để chạy thủ công. Mỗi dịch vụ có cache Buildx riêng và triển khai theo digest. VPS kiểm tra readiness của Spring hoặc `/health` của AISidecar rồi lưu image đã sẵn sàng trong `/opt/sqb/.deploy-images/`.
 - ADR-065 thay thế trigger push và cách áp dụng Compose của ADR này. Workflow Stack vẫn có chế độ thủ công để khởi tạo hoặc khôi phục. Workflow dùng các image đã sẵn sàng nếu không chọn digest khác và áp dụng theo thứ tự hạ tầng, sidecar, BE. Lần đầu chuyển từ cấu hình cũ, script lấy digest từ image của container hiện có. Stack mới hoàn toàn dùng các image trong `.env.prod`.
 - Khi đổi hợp đồng HTTP, triển khai sidecar hỗ trợ hợp đồng cũ và mới, chuyển BE, rồi bỏ hợp đồng cũ sau khi hết nhu cầu rollback. Có thể chạy từng workflow với tùy chọn `deploy` tắt để xuất image và chọn cặp digest cụ thể trong workflow Stack. Sidecar mới vẫn phải phục vụ BE đang chạy trong lúc chuyển phiên bản.
 
@@ -611,7 +611,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Tái sử dụng hồ sơ bootstrap trong query cache `['userProfile', 'me']` chỉ sau kiểm tra generation còn hiệu lực; tránh gọi `/users/me` lặp từ Header/feed. Login/account setup tách lazy, Firebase Push của layout import sau mount và dọn listener khi unmount.
 - Gom icon và Base UI primitives dùng chung bằng Rolldown codeSplitting groups (minShareCount=2), giữ route/video lazy. Chấp nhận tăng entry tải trực tiếp để giảm request nhỏ; phép đo fixture 1280×900 cho JS 85→47 request, LCP 4,588→3,444 giây, tổng gzip đã tải 352,2→340,6 kB. Không coi đây là benchmark production.
 - Giữ nguyên refresh rotation/Web Locks, lỗi mạng cho thử lại, Access gateway và thông báo thay đổi phiên giữa các tab. Thêm bốn User Timing `sqb:*` chỉ ghi tên/thời lượng trong trình duyệt để phân tích; không gửi telemetry, không ghi credential.
-- Không đổi backend contract, query/entity/schema/Liquibase hoặc cơ chế media permanent. Phép đo localhost chỉ kiểm chứng frontend; cần Record and reload trên môi trường đích để phân bổ LCP thực. Chi tiết tại `frontend/docs/STARTUP_PERFORMANCE.md`.
+- Không đổi backend contract, query/entity/schema/Liquibase hoặc cơ chế media permanent. Phép đo localhost chỉ kiểm chứng frontend; cần Record and reload trên môi trường đích để phân bổ LCP thực. Chi tiết tại `webclient/docs/STARTUP_PERFORMANCE.md`.
 
 ### [ADR-072] Quản lý vòng đời autosave, overlay và dữ liệu môn học
 
@@ -781,3 +781,9 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Ngày 27/11/2026.** Ghi điểm lấy khóa chia sẻ trên dòng học kỳ và kiểm tra cờ chốt trong cùng lệnh SQL. Chốt kỳ dùng khóa ghi trên dòng này. Khoản điểm công khai phát sinh muộn vẫn cập nhật số liệu cá nhân và có `semester_id = NULL`, vì vậy không đổi thứ hạng kỳ đã chốt. Điểm bí mật Game 5 cần học kỳ đang mở để kết chuyển đúng kỳ.
 - Chi tiết chấm Game 3 hỗ trợ sao chép qua Java serialization của Hibernate và dùng cấu trúc JSONB đã có. Lưu trữ câu hỏi lấy các câu đã duyệt thuộc phiên đã chốt trong đúng học kỳ đang tổng kết. Game 4 đếm số câu được duyệt theo lô trên kho tích lũy của các môn có dự đoán.
 - Giao dịch xu khóa dòng ví trước khi thay đổi số dư. Sổ xu dùng số dư từ cùng entity đã cập nhật, kể cả khi ví được tải từ đầu giao dịch chốt kỳ. Các thay đổi dùng schema hiện có.
+
+### [ADR-099] Đổi tên các module ứng dụng và định danh triển khai
+
+- **Ngày 28/11/2026.** Tên thư mục, workflow, image và dịch vụ mới dùng `aisidecar`, `webclient` và `mobileclient`. Backend đọc cấu hình `aisidecar` với biến `AISIDECAR_URL`. MobileClient dùng package Dart `mobileclient` và ID Android/iOS `com.frozenheart.mobileclient`.
+- **Chuyển Webclient trên VPS.** Nếu website đang dùng `/var/www/sqb-frontend` và đường dẫn mới chưa tồn tại, chạy `sudo ln -sT -- /var/www/sqb-frontend /var/www/sqb-webclient` trước đợt deploy đầu. Khi `/var/www/sqb-webclient/dist` đã đọc được, áp dụng cấu hình Caddy cho cả public và admin. `deploy-webclient.yml` đọc `WEBCLIENT_BASE_URL` và hỗ trợ biến GitHub cũ trong giai đoạn chuyển tiếp.
+- **Chuyển AISidecar trên VPS.** Cấp quyền đọc package GHCR `sqb-aisidecar` cho tài khoản triển khai. Đợt đầu chạy Stack với cả `aisidecar` và `backend` mới. Script đọc digest và dịch vụ cũ để khôi phục khi readiness thất bại. Sau khi cả hai dịch vụ mới ổn định, kiểm tra rồi dừng container `sqb-ai-sidecar` cũ. Chuyển `AI_SIDECAR_IMAGE` trong môi trường sang `AISIDECAR_IMAGE` khi cập nhật cấu hình vận hành.

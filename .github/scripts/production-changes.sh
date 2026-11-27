@@ -4,7 +4,7 @@ set -euo pipefail
 before=$1
 after=$2
 backend=false
-sidecar=false
+aisidecar=false
 stack=false
 
 if git cat-file -e "$before^{commit}" 2>/dev/null; then
@@ -14,16 +14,16 @@ if git cat-file -e "$before^{commit}" 2>/dev/null; then
   while IFS= read -r -d '' path; do
     case "$path" in
       backend/*) backend=true ;;
-      ai-sidecar/*) sidecar=true ;;
-      .github/workflows/build-production-image.yml) backend=true; sidecar=true ;;
+      aisidecar/*) aisidecar=true ;;
+      .github/workflows/build-production-image.yml) backend=true; aisidecar=true ;;
       docker-compose.prod.yml|.github/workflows/deploy-stack.yml|.github/workflows/deploy-production.yml|.github/scripts/deploy-production.sh|.github/scripts/production-changes.sh|.github/deploy/*) stack=true ;;
     esac
   done < "$paths"
 else
   echo '::warning::Previous revision unavailable. Applying the complete production revision.'
   backend=true
-  sidecar=true
+  aisidecar=true
   stack=true
 fi
 
-printf 'backend=%s\nsidecar=%s\nstack=%s\n' "$backend" "$sidecar" "$stack" >> "$GITHUB_OUTPUT"
+printf 'backend=%s\naisidecar=%s\nstack=%s\n' "$backend" "$aisidecar" "$stack" >> "$GITHUB_OUTPUT"

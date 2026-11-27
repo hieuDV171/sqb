@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Thuật toán kiểm tra ảo giác BTPROP (Belief Tree Propagation)
- * Kết nối tới Python AI Sidecar (FastAPI) để dựng cây niềm tin và suy luận xác suất Markov.
+ * Kết nối tới Python AISidecar (FastAPI) để dựng cây niềm tin và suy luận xác suất Markov.
  * Dựa trên bài báo khoa học NAACL 2025:
  * "A Probabilistic Framework for LLM Hallucination Detection via Belief Tree Propagation"
  */
@@ -69,7 +69,7 @@ public class BtpropHallucinationCheckerService {
             }
         }
 
-        // 2. Chuyển đổi danh sách options sang DTO của AI Sidecar (Hỗ trợ nhiều lựa chọn & nhiều đáp án đúng)
+        // 2. Chuyển đổi danh sách options sang DTO của AISidecar (Hỗ trợ nhiều lựa chọn & nhiều đáp án đúng)
         List<BtpropSidecarRequest.OptionDto> sidecarOptions = new ArrayList<>();
         if (suggested.options() != null) {
             for (QuestionOption opt : suggested.options()) {
@@ -91,12 +91,12 @@ public class BtpropHallucinationCheckerService {
                 .explanation(suggested.explanation() != null ? suggested.explanation() : "")
                 .build();
 
-        // 3. Gọi sang AI Sidecar để thẩm định qua Cây Niềm Tin
+        // 3. Gọi sang AISidecar để thẩm định qua Cây Niềm Tin
         BtpropSidecarResponse response = aiSidecarClientService.auditQuestion(request);
 
-        // Fallback an toàn (Graceful Degradation): Nếu AI Sidecar gặp lỗi hoặc timeout, không chặn đứng luồng làm việc
+        // Fallback an toàn (Graceful Degradation): Nếu AISidecar gặp lỗi hoặc timeout, không chặn đứng luồng làm việc
         if (response == null || !"complete".equalsIgnoreCase(response.status()) || response.confidenceScore() == null) {
-            log.warn("[BTProp] AI Sidecar phản hồi không sẵn sàng. Fallback sang cảnh báo UNVERIFIED.");
+            log.warn("[BTProp] AISidecar phản hồi không sẵn sàng. Fallback sang cảnh báo UNVERIFIED.");
             return fallbackAudit(response);
         }
 
@@ -127,7 +127,7 @@ public class BtpropHallucinationCheckerService {
     private AiRefineResponse.BtpropAuditDto fallbackAudit(BtpropSidecarResponse response) {
         String detail = (response != null && response.issues() != null && !response.issues().isEmpty())
                 ? String.join("; ", response.issues())
-                : "Không thể kết nối đến AI Sidecar BTProp hoặc Sidecar chưa cấu hình API Key. Cần giảng viên tự rà soát.";
+                : "Không thể kết nối đến AISidecar BTProp hoặc dịch vụ chưa cấu hình API Key. Cần giảng viên tự rà soát.";
 
         List<AiRefineResponse.ViolationDto> violations = toViolations(response);
         violations.addFirst(AiRefineResponse.ViolationDto.builder()

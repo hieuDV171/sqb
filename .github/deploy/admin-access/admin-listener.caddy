@@ -8,7 +8,7 @@ http://admin.hieudv.id.vn:9080 {
 	}
 
 	route {
-		# Keep the admin browser origin isolated from the public frontend.
+		# Keep the admin browser origin isolated from the public Webclient.
 		@cross_origin {
 			header Origin *
 			not header Origin https://admin.hieudv.id.vn
@@ -25,7 +25,7 @@ http://admin.hieudv.id.vn:9080 {
 		}
 
 		handle {
-			root * /var/www/sqb-frontend/dist
+			root * /var/www/sqb-webclient/dist
 			try_files {path} /index.html
 			file_server
 		}

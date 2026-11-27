@@ -12,7 +12,7 @@
 
 ## Công nghệ
 
-Frontend dùng React, TypeScript và Vite. Backend dùng Spring Boot, PostgreSQL và Redis, với dịch vụ AI hỗ trợ chạy trên FastAPI.
+Webclient dùng React, TypeScript và Vite. Backend dùng Spring Boot, PostgreSQL và Redis, với dịch vụ AI hỗ trợ chạy trên FastAPI.
 
 [Kiến trúc hệ thống](ARCHITECTURE.md) · [Tài liệu API (Swagger UI)](https://hieudv.id.vn/api/v1/docs)
 
