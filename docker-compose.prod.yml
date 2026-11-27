@@ -58,7 +58,7 @@ services:
   # 4. PYTHON FASTAPI AISIDECAR (EMBEDDINGS & BTPROP)
   # ========================================================
   aisidecar:
-    image: ${AISIDECAR_IMAGE:-${AI_SIDECAR_IMAGE:-}}
+    image: ${AISIDECAR_IMAGE}
     container_name: sqb-aisidecar
     restart: unless-stopped
     environment:

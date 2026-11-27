@@ -9,8 +9,8 @@ tools_dir=.deploy-tools
 env_snapshot=''
 backend_image=${DEPLOY_BACKEND_IMAGE:-}
 aisidecar_image=${DEPLOY_AISIDECAR_IMAGE:-}
-legacy_aisidecar_service=ai-sidecar
-legacy_stack=false
+previous_aisidecar=''
+previous_aisidecar_id=''
 
 cleanup() {
   if [[ -n $env_snapshot ]]; then rm -f -- "$env_snapshot"; fi
@@ -37,14 +37,20 @@ validate_image() {
   fi
 }
 
+validate_aisidecar_latest() {
+  if [[ ! $aisidecar_image =~ ^ghcr\.io/[a-z0-9][a-z0-9-]*/sqb-aisidecar:latest$ ]]; then
+    echo 'Expected a GHCR sqb-aisidecar:latest image reference' >&2
+    exit 1
+  fi
+}
+
 case "$target" in
   backend)
     validate_image backend "$backend_image"
     docker pull "$backend_image"
     ;;
   aisidecar)
-    validate_image aisidecar "$aisidecar_image"
-    docker pull "$aisidecar_image"
+    validate_aisidecar_latest
     ;;
   stack)
     if [[ -n $backend_image ]]; then
@@ -52,8 +58,7 @@ case "$target" in
       docker pull "$backend_image"
     fi
     if [[ -n $aisidecar_image ]]; then
-      validate_image aisidecar "$aisidecar_image"
-      docker pull "$aisidecar_image"
+      validate_aisidecar_latest
     fi
     ;;
   env) ;;
@@ -70,12 +75,10 @@ else
   flock -x -w 600 8
 fi
 
-if [[ -f $compose_file ]] && grep -Eq "^[[:space:]]{2}$legacy_aisidecar_service:" "$compose_file"; then
-  legacy_stack=true
-  if [[ $target != stack ]]; then
-    echo 'Deploy the complete production stack to install the AISidecar service rename first.' >&2
-    exit 1
-  fi
+if [[ $target != backend ]]; then
+  read -r previous_aisidecar previous_aisidecar_id < <(
+    docker container inspect --format '{{.Config.Image}} {{.Image}}' sqb-aisidecar 2>/dev/null
+  ) || true
 fi
 
 if [[ $target == stack ]]; then
@@ -94,10 +97,8 @@ cp -- "$env_source" "$env_snapshot"
 compose_env_file=$env_snapshot
 
 compose() {
-  local flags=() file
-  for file in "$image_dir/backend.env" "$image_dir/aisidecar.env"; do
-    if [[ -f $file ]]; then flags+=(--env-file "$file"); fi
-  done
+  local flags=()
+  if [[ -f $image_dir/backend.env ]]; then flags+=(--env-file "$image_dir/backend.env"); fi
   docker compose -p sqb --project-directory "$PWD" --env-file "$compose_env_file" \
     "${flags[@]}" -f "$compose_file" "$@"
 }
@@ -133,11 +134,6 @@ deployed_image() {
 
 last_ready_image() {
   local service=$1 variable=$2 file="$image_dir/$1.env" line
-  if [[ $legacy_stack == true && $service == aisidecar ]]; then
-    service=$legacy_aisidecar_service
-    variable=AI_SIDECAR_IMAGE
-    file="$image_dir/$service.env"
-  fi
   if [[ -f $file ]]; then
     IFS= read -r line < "$file"
     printf '%s\n' "${line#"$variable="}"
@@ -158,6 +154,26 @@ record_existing_image() {
   if [[ -f $image_dir/$service.env ]]; then return; fi
   image=$(deployed_image "$service")
   if [[ -n $image ]]; then record_image "$service" "$variable" "$image"; fi
+}
+
+pull_aisidecar() {
+  if [[ -n $previous_aisidecar_id ]]; then
+    docker image tag "$previous_aisidecar_id" sqb-local/aisidecar:rollback
+  fi
+  docker pull "$aisidecar_image"
+}
+
+keep_running_aisidecar_image() {
+  # Environment and stack updates without a new image reuse the running release.
+  if [[ $previous_aisidecar == *:latest ]]; then
+    docker image tag "$previous_aisidecar_id" "$previous_aisidecar"
+  fi
+}
+
+restore_aisidecar_tag() {
+  if [[ -n $previous_aisidecar_id && -n ${DEPLOY_AISIDECAR_IMAGE:-} ]]; then
+    docker image tag "$previous_aisidecar_id" "$DEPLOY_AISIDECAR_IMAGE"
+  fi
 }
 
 wait_ready() {
@@ -262,29 +278,32 @@ case "$target" in
     record_image backend BACKEND_IMAGE "$backend_image"
     ;;
   aisidecar)
-    record_existing_image aisidecar AISIDECAR_IMAGE
     export AISIDECAR_IMAGE="$aisidecar_image"
     validate_compose
-    compose up -d --no-deps --pull never aisidecar
-    wait_ready aisidecar
-    record_image aisidecar AISIDECAR_IMAGE "$aisidecar_image"
+    pull_aisidecar
+    if ! compose up -d --no-deps --no-build --pull never aisidecar || ! wait_ready aisidecar; then
+      if [[ -n $previous_aisidecar ]]; then
+        restore_aisidecar_tag
+        export AISIDECAR_IMAGE="$previous_aisidecar"
+        restore_apps aisidecar
+      fi
+      exit 1
+    fi
     ;;
   env)
     backend_image=$(last_ready_image backend BACKEND_IMAGE)
-    aisidecar_image=$(last_ready_image aisidecar AISIDECAR_IMAGE)
-    if [[ -z $backend_image || -z $aisidecar_image ]]; then
+    if [[ -z $backend_image || -z $previous_aisidecar ]]; then
       echo 'No installed application images. Deploy the production stack first.' >&2
       exit 1
     fi
-    export BACKEND_IMAGE="$backend_image" AISIDECAR_IMAGE="$aisidecar_image"
+    keep_running_aisidecar_image
+    export BACKEND_IMAGE="$backend_image" AISIDECAR_IMAGE="$previous_aisidecar"
     validate_compose
     apply_runtime_env
     ;;
   stack)
     record_existing_image backend BACKEND_IMAGE
-    record_existing_image aisidecar AISIDECAR_IMAGE
     previous_backend=$(last_ready_image backend BACKEND_IMAGE)
-    previous_aisidecar=$(last_ready_image aisidecar AISIDECAR_IMAGE)
     backend_image=${backend_image:-$previous_backend}
     aisidecar_image=${aisidecar_image:-$previous_aisidecar}
     if [[ -n $backend_image ]]; then export BACKEND_IMAGE="$backend_image"; fi
@@ -315,10 +334,6 @@ case "$target" in
       echo 'Include aisidecar when specifying an AISidecar image.' >&2
       exit 1
     fi
-    if [[ $legacy_stack == true && ( -z ${DEPLOY_BACKEND_IMAGE:-} || -z ${DEPLOY_AISIDECAR_IMAGE:-} ) ]]; then
-      echo 'The AISidecar rename requires deploying both services with their new image digests.' >&2
-      exit 1
-    fi
     if [[ -n ${DEPLOY_SERVICES:-} && $env_source == .env.prod && -f $image_dir/applied.env ]]; then
       affected=$(changed_env_services)
       while IFS= read -r service; do
@@ -341,29 +356,31 @@ case "$target" in
     attempted_apps=()
     for service in aisidecar backend; do
       if ! grep -Fxq "$service" <<< "$services"; then continue; fi
-      attempted_apps+=("$service")
       dependency_flags=()
+      pull_policy=missing
       if [[ $service == aisidecar || -n ${DEPLOY_SERVICES:-} ]]; then dependency_flags+=(--no-deps); fi
-      if ! compose up -d --no-build --pull missing "${dependency_flags[@]}" "$service" || ! wait_ready "$service"; then
+      if [[ $service == aisidecar ]]; then
+        if [[ -n ${DEPLOY_AISIDECAR_IMAGE:-} ]]; then
+          pull_aisidecar
+          pull_policy=never
+        elif [[ -n $previous_aisidecar ]]; then
+          keep_running_aisidecar_image
+          pull_policy=never
+        fi
+      fi
+      attempted_apps+=("$service")
+      if ! compose up -d --no-build --pull "$pull_policy" "${dependency_flags[@]}" "$service" || ! wait_ready "$service"; then
+        restore_aisidecar_tag
         if [[ -f docker-compose.prod.yml && -n $previous_backend && -n $previous_aisidecar ]]; then
           compose_file=docker-compose.prod.yml
           if [[ -f $image_dir/applied.env ]]; then compose_env_file="$image_dir/applied.env"; fi
           export BACKEND_IMAGE="$previous_backend" AISIDECAR_IMAGE="$previous_aisidecar"
-          if [[ $legacy_stack == true ]]; then
-            export AI_SIDECAR_IMAGE="$previous_aisidecar"
-            attempted_apps=("$legacy_aisidecar_service" "${attempted_apps[@]:1}")
-          fi
           restore_apps "${attempted_apps[@]}"
         fi
         exit 1
       fi
     done
 
-    if grep -Fxq aisidecar <<< "$services"; then
-      aisidecar_image=$(deployed_image aisidecar)
-      [[ -n $aisidecar_image ]]
-      record_image aisidecar AISIDECAR_IMAGE "$aisidecar_image"
-    fi
     if grep -Fxq backend <<< "$services"; then
       backend_image=$(deployed_image backend)
       [[ -n $backend_image ]]

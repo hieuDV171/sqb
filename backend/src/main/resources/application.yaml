@@ -139,8 +139,8 @@ logging:
 
 # AISidecar service configuration (Embeddings & BTProp Hallucination Checker)
 aisidecar:
-  url: ${AISIDECAR_URL:${AI_SIDECAR_URL:http://localhost:8000}}
-  timeout: ${AISIDECAR_TIMEOUT:${AI_SIDECAR_TIMEOUT:45000}}
+  url: ${AISIDECAR_URL:http://localhost:8000}
+  timeout: ${AISIDECAR_TIMEOUT:45000}
 
 springdoc:
   api-docs:

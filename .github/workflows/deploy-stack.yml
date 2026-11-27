@@ -12,7 +12,7 @@ on:
         description: Optional BE image by digest (defaults to deployed image)
         type: string
       aisidecar_image:
-        description: Optional AISidecar image by digest (defaults to deployed image)
+        description: Optional AISidecar GHCR :latest reference to pull (defaults to the running image)
         type: string
 
 permissions:

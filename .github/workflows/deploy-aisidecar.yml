@@ -9,8 +9,8 @@ on:
         default: true
 
 concurrency:
-  group: sqb-aisidecar-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.ref == 'refs/heads/master' && 'sqb-production-stack' || format('sqb-aisidecar-{0}', github.ref) }}
+  queue: max
 
 permissions:
   contents: read

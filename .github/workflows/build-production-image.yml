@@ -8,7 +8,7 @@ on:
         type: string
     outputs:
       image:
-        description: Immutable GHCR image reference
+        description: Image reference for deployment. AISidecar uses latest on master.
         value: ${{ jobs.build.outputs.image }}
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image: ${{ steps.metadata.outputs.repository }}@${{ steps.publish.outputs.digest }}
+      image: ${{ inputs.service == 'aisidecar' && github.ref == 'refs/heads/master' && format('{0}:latest', steps.metadata.outputs.repository) || format('{0}@{1}', steps.metadata.outputs.repository, steps.publish.outputs.digest) }}
 
     steps:
       - uses: actions/checkout@v4
