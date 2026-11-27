@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getAdminPageRedirect, isAccessGatewayResponse, resolveApiBaseUrl } from '@/lib/adminAccess.ts';
+import { getAdminPageRedirect, isAccessGatewayResponse, resolveApiBaseUrl } from '../src/lib/adminAccess.ts';
 
 test('production API and SockJS URLs stay on the current origin even with the old build variable', () => {
   for (const hostname of ['admin.hieudv.id.vn', 'hieudv.id.vn', 'www.hieudv.id.vn', 'snsqb.duckdns.org']) {
@@ -32,7 +32,7 @@ test('old production admin routes navigate through the protected origin without 
 
 test('Access denials are distinct from backend authentication, permissions, and network errors', () => {
   assert.equal(isAccessGatewayResponse(401, ''), true);
-  assert.equal(isAccessGatewayResponse(403, '<html>Access denied</html>'), true);
+  assert.equal(isAccessGatewayResponse(403, '<html lang="vi-VN">Access denied</html>'), true);
   assert.equal(isAccessGatewayResponse(401, { code: '9995', message: 'Token expired', data: null }), false);
   assert.equal(isAccessGatewayResponse(403, { code: '1013', message: 'Onboarding required' }), false);
   assert.equal(isAccessGatewayResponse(undefined, undefined), false);
