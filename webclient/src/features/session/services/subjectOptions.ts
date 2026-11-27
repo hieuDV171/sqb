@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import { sessionService } from './sessionService';
 import { courseClassService } from '@/features/course-class/services/courseClassService';
 import type { UserRole } from '@/stores/useAuthStore';
-import type { SubjectResponse } from '../types/session.types';
+import type { SubjectResponse } from '@/features/session';
 
 export type SubjectScope = 'enrolled' | 'catalog' | 'publishing';
 

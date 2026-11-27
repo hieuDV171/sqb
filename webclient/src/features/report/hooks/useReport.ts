@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { reportService } from '../services/reportService';
-import type { CreateReportRequestDto, ReportFilters, ResolveReportRequest } from '../types/report.types';
+import { reportService } from '@/features/report';
+import type { CreateReportRequestDto, ReportFilters, ResolveReportRequest } from '@/features/report';
 import { toast } from '@/stores/useToastStore';
 
 export function useCreateReport() {

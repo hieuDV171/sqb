@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { sessionService } from '../services/sessionService';
-import type { SessionStatus } from '../types/session.types';
+import { sessionService } from '@/features/session';
+import type { SessionStatus } from '@/features/session';
 
 interface UseMySubmissionsOptions {
   subjectId?: number;

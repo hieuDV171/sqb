@@ -3,7 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, Mail, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { useGroupInvitations, useRespondGroupInvitation } from '../hooks/useChat';
+import { useGroupInvitations, useRespondGroupInvitation } from '@/features/chat';
 
 interface GroupInvitationsModalProps {
   invitations: ReturnType<typeof useGroupInvitations>;

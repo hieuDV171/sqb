@@ -4,7 +4,7 @@ import { Check, ChevronRight, Copy, Edit3, Heart, MessageSquare, PlayCircle, Tra
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ActionError } from '@/components/ui/action-error';
-import type { SubmissionSessionSummaryDto, SessionStatus } from '../types/session.types';
+import type { SubmissionSessionSummaryDto, SessionStatus } from '@/features/session';
 
 interface SubmissionCardProps {
   submission: SubmissionSessionSummaryDto;
@@ -52,9 +52,9 @@ export function SubmissionCard({ submission, onViewDetail, onEdit, onDelete }: S
         <ActionError className="basis-full" message={copyError} />
       </header>
       <div className="flex-1 space-y-2">
-        <h2 className="break-words text-lg font-semibold leading-snug">{title || 'Phiên đề xuất câu hỏi'}</h2>
-        {subjectName && <p className="break-words text-sm font-medium text-academic">{subjectName}</p>}
-        {content && <p className="line-clamp-2 break-words text-sm text-muted-foreground">{content}</p>}
+        <h2 className="wrap-break-word text-lg font-semibold leading-snug">{title || 'Phiên đề xuất câu hỏi'}</h2>
+        {subjectName && <p className="wrap-break-word text-sm font-medium text-academic">{subjectName}</p>}
+        {content && <p className="line-clamp-2 wrap-break-word text-sm text-muted-foreground">{content}</p>}
       </div>
       <footer className="space-y-3 border-t border-border pt-3">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

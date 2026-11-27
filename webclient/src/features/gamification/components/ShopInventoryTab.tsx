@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useBuyCosmetic, useEquipCosmetic, useMyInventory, useShopPages, useUnequipCosmetic } from '../hooks/useGamification';
-import type { CosmeticType, CosmeticRarity, CosmeticSortBy, InventoryItemDto, ShopItemDto } from '../types/gamification.types';
-import { getRarityColor } from '../types/gamification.types';
+import { useBuyCosmetic, useEquipCosmetic, useMyInventory, useShopPages, useUnequipCosmetic } from '@/features/gamification';
+import type { CosmeticType, CosmeticRarity, CosmeticSortBy, InventoryItemDto, ShopItemDto } from '@/features/gamification';
+import { getRarityColor } from '@/features/gamification';
 import { FittingRoomPreview } from './FittingRoomPreview';
 import { FilterSelect } from '@/components/ui/filter-select';
 

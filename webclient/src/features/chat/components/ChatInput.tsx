@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { useChatStore } from '../stores/useChatStore';
+import { useChatStore } from '@/features/chat';
 import { mediaService } from '@/services/mediaService';
-import type { MessageDto, MessageType } from '../types/chat.types';
+import type { MessageDto, MessageType } from '@/features/chat';
 import {
   Send,
   Image as ImageIcon,

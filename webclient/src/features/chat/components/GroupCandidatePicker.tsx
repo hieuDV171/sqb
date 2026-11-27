@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { useGroupCandidates } from '../hooks/useChat';
-import type { GroupCandidateDto } from '../types/chat.types';
+import { useGroupCandidates } from '@/features/chat';
+import type { GroupCandidateDto } from '@/features/chat';
 
 interface GroupCandidatePickerProps {
   conversationId?: number;

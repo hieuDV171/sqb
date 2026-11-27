@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { stompClient, useStompStatus, useStompSubscription } from '@/lib/stompClient';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { chatService } from '../services/chatService';
-import { useChatStore } from '../stores/useChatStore';
+import { chatService } from '@/features/chat';
+import { useChatStore } from '@/features/chat';
 import { useChatPresenceStore } from '../stores/useChatPresenceStore';
-import type { ChatPresenceDto } from '../types/chat.types';
+import type { ChatPresenceDto } from '@/features/chat';
 import { useConversations } from './useChat';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;

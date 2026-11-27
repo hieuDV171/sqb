@@ -1,5 +1,5 @@
 import { examDifficulties, examPercentFormat } from '../examPresentation';
-import type { DifficultyDistribution, Statistic } from '../types/exam.types';
+import type { DifficultyDistribution, Statistic } from '@/features/exam';
 
 export function ExamDifficultySummary({ statistic, requested }: { statistic: Statistic; requested?: DifficultyDistribution | null }) {
   return (

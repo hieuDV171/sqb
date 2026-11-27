@@ -1,5 +1,5 @@
 import { getAvatarInitial } from '@/lib/avatar';
-import type { MessageDto } from '../types/chat.types';
+import type { MessageDto } from '@/features/chat';
 import { Reply, Trash2, Check, Ban, CornerDownRight } from 'lucide-react';
 
 interface MessageBubbleProps {
@@ -96,7 +96,7 @@ export function MessageBubble({
 
         {/* Message Main Bubble */}
         <div
-          className={`relative px-4 py-2.5 rounded-2xl shadow-xs text-sm leading-relaxed break-words ${
+          className={`relative px-4 py-2.5 rounded-2xl shadow-xs text-sm leading-relaxed wrap-break-word ${
             isMe
               ? 'bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-br-xs'
               : 'bg-card text-foreground border border-slate-200/70 dark:border-slate-700/60 rounded-bl-xs'

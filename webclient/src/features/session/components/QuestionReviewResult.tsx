@@ -1,6 +1,6 @@
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react';
 import { getRejectionReasonLabel } from '@/lib/rejectionReasons';
-import type { MySubmissionQuestionDto } from '../types/session.types';
+import type { MySubmissionQuestionDto } from '@/features/session';
 
 type QuestionReviewResultProps = Pick<
   MySubmissionQuestionDto,

@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { practiceService } from '../services/practiceService';
+import { practiceService } from '@/features/practice';
 import type {
   RateQuestionRequest,
   RateQuestionResponse,
   SessionQuestionsResponse,
-} from '../types/practice.types';
+} from '@/features/practice';
 
 interface RateMutationParams {
   questionId: number;

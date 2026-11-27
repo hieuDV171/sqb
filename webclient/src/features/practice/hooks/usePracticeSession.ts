@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { practiceService } from '../services/practiceService';
-import type { SessionQuestionsResponse } from '../types/practice.types';
+import { practiceService } from '@/features/practice';
+import type { SessionQuestionsResponse } from '@/features/practice';
 
 export function usePracticeSession(sessionId: number | null | undefined) {
   return useQuery<SessionQuestionsResponse>({

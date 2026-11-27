@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useAddGroupMembers, useGroupMembers, useMessages, useRemoveGroupMember, useUpdateGroupInfo, useUpdateMemberRole } from '../hooks/useChat';
-import type { ConversationMemberDto, ConversationRole, GroupCandidateDto } from '../types/chat.types';
+import { useAddGroupMembers, useGroupMembers, useMessages, useRemoveGroupMember, useUpdateGroupInfo, useUpdateMemberRole } from '@/features/chat';
+import type { ConversationMemberDto, ConversationRole, GroupCandidateDto } from '@/features/chat';
 import { GroupCandidatePicker } from './GroupCandidatePicker';
 
 interface GroupMembersModalProps {
@@ -58,7 +58,7 @@ function MemberRoleMenu({ member, disabled, onSelect }: {
         <ChevronDown aria-hidden="true" className="text-muted-foreground" />
       </Menu.Trigger>
       <Menu.Portal>
-        <Menu.Positioner align="end" sideOffset={6} className="z-[72] max-w-(--available-width)">
+        <Menu.Positioner align="end" sideOffset={6} className="z-72 max-w-(--available-width)">
           <Menu.Popup className="w-60 max-w-(--available-width) overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
             {roleOptions.map(({ role, label }) => (
               <Menu.Item key={role} disabled={role === member.role} onClick={() => { nextRole.current = role; }}
@@ -164,8 +164,8 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
       if (!open && !action && !addMembers.isPending && !renameGroup.isPending) onClose();
     }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/55" />
-        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-[71] mx-auto flex max-h-[calc(100dvh-2rem)] max-w-xl -translate-y-1/2 flex-col rounded-2xl border border-border bg-card text-foreground shadow-xl">
+        <Dialog.Backdrop className="fixed inset-0 z-70 bg-black/55" />
+        <Dialog.Popup className="fixed inset-x-4 top-1/2 z-71 mx-auto flex max-h-[calc(100dvh-2rem)] max-w-xl -translate-y-1/2 flex-col rounded-2xl border border-border bg-card text-foreground shadow-xl">
           <div className="flex items-start gap-3 border-b border-border p-4 sm:p-5">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-academic-soft text-academic">
               <Users aria-hidden="true" className="size-5" />
@@ -316,8 +316,8 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
           }}>
             {action && (
               <AlertDialog.Portal>
-                <AlertDialog.Backdrop className="fixed inset-0 z-[73] bg-black/55" />
-                <AlertDialog.Popup className="fixed inset-x-4 top-1/2 z-[74] mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl"
+                <AlertDialog.Backdrop className="fixed inset-0 z-73 bg-black/55" />
+                <AlertDialog.Popup className="fixed inset-x-4 top-1/2 z-74 mx-auto max-h-[calc(100dvh-2rem)] max-w-md -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl"
                   finalFocus={() => actionTrigger.current?.isConnected ? actionTrigger.current : closeButton.current}>
                   <AlertDialog.Title className="text-xl font-bold">{actionLabel}?</AlertDialog.Title>
                   <AlertDialog.Description className="text-base leading-relaxed wrap-anywhere text-muted-foreground">

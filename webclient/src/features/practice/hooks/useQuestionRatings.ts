@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { practiceService } from '../services/practiceService';
-import type { QuestionRatingsResponse } from '../types/practice.types';
+import { practiceService } from '@/features/practice';
+import type { QuestionRatingsResponse } from '@/features/practice';
 
 export function useQuestionRatings(questionId: number | null | undefined, enabled = true) {
   return useInfiniteQuery<QuestionRatingsResponse>({

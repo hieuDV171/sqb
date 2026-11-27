@@ -1,7 +1,7 @@
 import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import { getAvatarInitial } from '@/lib/avatar';
 import { useRef, useState } from 'react';
-import { useCreateDirectConversation } from '../hooks/useChat';
+import { useCreateDirectConversation } from '@/features/chat';
 import { useMyFriends } from '@/features/profile/hooks/useConnections';
 import {
   MessageSquarePlus,

@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useStompStatus } from '@/lib/stompClient';
 import { useEffect, useState, useMemo } from 'react';
-import { getGroupExitReason, useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '../hooks/useChat';
-import { useChatStore } from '../stores/useChatStore';
+import { getGroupExitReason, useConversations, useGroupMembers, useHiddenConversations, useHideConversation, useMessages } from '@/features/chat';
+import { useChatStore } from '@/features/chat';
 import { useChatPresenceStore } from '../stores/useChatPresenceStore';
 import { ChatPresenceDot } from './ChatPresenceDot';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
-import type { MessageDto } from '../types/chat.types';
+import type { MessageDto } from '@/features/chat';
 import {
   Users,
   ChevronLeft,
@@ -80,7 +80,7 @@ function UnlockedChatWindow({
   }, [conversationsData, hiddenData, isPinUnlocked, conversationId]);
 
   const isGroup = (conversation?.type ?? messageData?.pages[0]?.conversationType) === 'GROUP';
-  const peerActive = useChatPresenceStore((state) => state.byConversation[conversationId]?.active === true);
+  const peerActive = useChatPresenceStore((state) => state.byConversation[conversationId]?.active);
   const showPresence = peerActive && !isGroup && !conversation?.hiddenAt && !messageData?.pages[0]?.hiddenAt;
   const displayName = conversation?.displayName ?? messageData?.pages[0]?.groupName;
   const displayAvatar = conversation?.displayAvatarUrl ?? messageData?.pages[0]?.groupAvatarUrl;

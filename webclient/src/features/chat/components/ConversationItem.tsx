@@ -2,7 +2,7 @@ import { Menu } from '@base-ui/react/menu';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { cn } from '@/lib/utils';
-import type { ConversationDto } from '../types/chat.types';
+import type { ConversationDto } from '@/features/chat';
 import { formatChatTime, truncate } from '../utils/chatUtils';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useChatPresenceStore } from '../stores/useChatPresenceStore';
@@ -39,7 +39,7 @@ export function ConversationItem({
   onLeave,
 }: ConversationItemProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const peerActive = useChatPresenceStore((state) => state.byConversation[conversation.conversationId]?.active === true);
+  const peerActive = useChatPresenceStore((state) => state.byConversation[conversation.conversationId]?.active);
 
   const isGroup = conversation.type === 'GROUP';
   const hasUnread = conversation.unreadCount > 0;

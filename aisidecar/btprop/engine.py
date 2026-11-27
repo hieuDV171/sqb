@@ -1,15 +1,16 @@
-import re
-import math
 import bisect
-import unicodedata
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Tuple, Set, Any
+import math
+import re
+from dataclasses import dataclass, field
+from typing import List, Optional, Tuple, Set
 
+import unicodedata
+
+from .backend import OpenAIBackend, EvaluationError, InvalidDecompositionError, ContextLossError, logsumexp, canonical
 from .config import Config, NEG_INF, TRANSITIONS, map_relation, CORROBORATION_RISK
 from .schemas import (
     QuestionAuditRequest, BtpropAuditResponse, ViolationDto, OptionDto
 )
-from .backend import OpenAIBackend, EvaluationError, InvalidDecompositionError, ContextLossError, logsumexp, canonical
 
 # ===== CONTEXT ANCHORS (Neo ngữ cảnh mở rộng cho đa môn học) =====
 _ANCHOR_PATTERNS = (

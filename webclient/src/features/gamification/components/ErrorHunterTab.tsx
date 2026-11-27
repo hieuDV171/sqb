@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useReviewErrorHunter } from '../hooks/useGamification';
+import { useReviewErrorHunter } from '@/features/gamification';
 
 // Point.GAME5_REPORT_AWARD in the backend.
 const reportReward = new Intl.NumberFormat('vi-VN').format(0.5);

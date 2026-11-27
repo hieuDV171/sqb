@@ -3,9 +3,9 @@ import { X, ShieldAlert, AlertTriangle, Loader2, Send, ImagePlus } from 'lucide-
 import { Dialog } from '@base-ui/react/dialog';
 import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
-import { reportErrorMessage, reportService } from '../services/reportService';
-import { useCreateReport } from '../hooks/useReport';
-import type { ViolationType, ReportTargetType } from '../types/report.types';
+import { reportErrorMessage, reportService } from '@/features/report';
+import { useCreateReport } from '@/features/report';
+import type { ViolationType, ReportTargetType } from '@/features/report';
 
 interface ReportModalProps {
   isOpen: boolean;

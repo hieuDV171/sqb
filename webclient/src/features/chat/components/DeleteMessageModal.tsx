@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useDeleteMessage } from '../hooks/useChat';
+import { useDeleteMessage } from '@/features/chat';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { MessageDto, MessageDeleteScope } from '../types/chat.types';
+import type { MessageDto, MessageDeleteScope } from '@/features/chat';
 import { Trash2, X, Loader2 } from 'lucide-react';
 
 interface DeleteMessageModalProps {

@@ -1,7 +1,7 @@
 import { useIsMutating, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { reactService, type ReactionType } from '@/features/feed/services/reactService';
-import type { PracticeCatalogResponse, SessionQuestionsResponse } from '../types/practice.types';
-import { practiceCatalogQueryKey } from './usePracticeCatalog';
+import type { PracticeCatalogResponse, SessionQuestionsResponse } from '@/features/practice';
+import { practiceCatalogQueryKey } from '@/features/practice';
 
 export interface SessionReactionState {
   reactCount: number;

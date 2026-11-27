@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import type { SubjectResponse, SessionStatus } from '../types/session.types';
+import type { SubjectResponse, SessionStatus } from '@/features/session';
 import { StudySubjectSelect } from './StudySubjectSelect';
 
 interface SubmissionFilterBarProps {

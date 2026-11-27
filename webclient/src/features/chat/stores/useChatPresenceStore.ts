@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { readAccessSessionId } from '@/api/accessSession';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { ChatPresenceDto } from '../types/chat.types';
+import type { ChatPresenceDto } from '@/features/chat';
 
 interface ChatPresenceState {
   byConversation: Record<number, ChatPresenceDto>;

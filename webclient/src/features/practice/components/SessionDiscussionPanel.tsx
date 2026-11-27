@@ -3,7 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import { MessageSquare, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CommentSection } from '@/features/feed/components/CommentSection';
-import type { SessionQuestionsResponse } from '../types/practice.types';
+import type { SessionQuestionsResponse } from '@/features/practice';
 import { SessionReactionButton } from './SessionReactionButton';
 
 export function SessionDiscussionPanel({ sessionId, title, reactCount, myReaction }: Pick<SessionQuestionsResponse, 'sessionId' | 'title' | 'reactCount' | 'myReaction'>) {

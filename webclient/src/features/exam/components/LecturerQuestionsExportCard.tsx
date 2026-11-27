@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getExamSubjects } from '../examPresentation';
-import { useExportQuestions, useLecturerClasses } from '../hooks/useExam';
+import { useExportQuestions, useLecturerClasses } from '@/features/exam';
 
 export function LecturerQuestionsExportCard() {
   const classes = useLecturerClasses();

@@ -3,7 +3,7 @@ import type { CursorResponse, GlobalResponse } from '@/types/response.types';
 import type {
   AdminReportDetail, AdminReportSummary, CreateReportRequestDto, ReportFilters,
   ReportResponseDto, ResolveReportRequest,
-} from '../types/report.types';
+} from '@/features/report';
 
 export const reportService = {
   createReport(data: CreateReportRequestDto) {

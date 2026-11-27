@@ -3,11 +3,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStompStatus, useStompSubscription } from '@/lib/stompClient';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { CHAT_QUERY_KEYS, refreshGroupHistory, refreshGroupMembership, refreshJoinedGroup, resetGroupHistory } from './useChat';
-import { useChatStore } from '../stores/useChatStore';
+import { useChatStore } from '@/features/chat';
 import type {
   WsGroupDetailsChangedDto, WsGroupMemberRemovedDto, WsGroupMembersAddedDto, WsGroupRolesChangedDto,
   WsMessageBroadcastDto, WsMessageRevokedDto, WsReadReceiptBroadcastDto, WsTypingBroadcastDto,
-} from '../types/chat.types';
+} from '@/features/chat';
 
 type ChatEvent = WsMessageBroadcastDto | WsMessageRevokedDto | WsReadReceiptBroadcastDto | WsTypingBroadcastDto
   | WsGroupRolesChangedDto | WsGroupMemberRemovedDto | WsGroupMembersAddedDto | WsGroupDetailsChangedDto;

@@ -21,9 +21,9 @@ import {
   usePredictGame1,
   usePredictGame4,
   useSubmitGame6,
-} from '../hooks/useGamification';
+} from '@/features/gamification';
 import { useGamificationSubjects } from '../hooks/useGamificationSubjects';
-import type { Game3Result, GamePredictionResponse, GameType } from '../types/gamification.types';
+import type { Game3Result, GamePredictionResponse, GameType } from '@/features/gamification';
 import { ErrorHunterTab } from './ErrorHunterTab';
 
 const tabs = [

@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { SubmissionCard } from './SubmissionCard';
-import { SubmissionCardSkeleton } from './SubmissionCardSkeleton';
+import { SubmissionCardSkeleton } from '@/features/session';
 import { EmptySubmissions } from './EmptySubmissions';
 import type {
   SubmissionSessionSummaryDto,
   SessionStatus,
-} from '../types/session.types';
+} from '@/features/session';
 
 interface SubmissionListProps {
   submissions: SubmissionSessionSummaryDto[];

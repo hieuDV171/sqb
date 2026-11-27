@@ -5,8 +5,8 @@ import { ActionError } from '@/components/ui/action-error';
 import { getActionErrorMessage } from '@/lib/errorMessage';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
-import { usePushSettings, useUpdatePushSettings } from '../hooks/useNotification';
-import type { PushSettingsResponseDto } from '../types/notification.types';
+import { usePushSettings, useUpdatePushSettings } from '@/features/notification';
+import type { PushSettingsResponseDto } from '@/features/notification';
 import { QuietHoursTimePicker } from './QuietHoursTimePicker';
 
 const categoryOptions = [
@@ -81,8 +81,8 @@ export function PushSettingsModal({ isOpen, onClose }: { isOpen: boolean; onClos
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/55" />
-        <Dialog.Popup className="fixed top-1/2 left-1/2 z-[71] flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-xl">
+        <Dialog.Backdrop className="fixed inset-0 z-70 bg-black/55" />
+        <Dialog.Popup className="fixed top-1/2 left-1/2 z-71 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-xl">
           <header className="flex shrink-0 items-center gap-3 border-b border-border p-4">
             <Bell aria-hidden="true" className="size-5 shrink-0 text-academic" />
             <div className="min-w-0 flex-1">

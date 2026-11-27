@@ -10,7 +10,7 @@ import type {
   QuestionRatingsResponse,
   PracticeCatalogParams,
   PracticeCatalogResponse,
-} from '../types/practice.types';
+} from '@/features/practice';
 
 export const practiceService = {
   getPracticeCatalog(params: PracticeCatalogParams) {

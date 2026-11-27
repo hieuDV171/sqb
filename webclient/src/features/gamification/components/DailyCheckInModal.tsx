@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Flame, Check, Gift, CalendarCheck } from 'lucide-react';
-import { useGamificationStore } from '../stores/useGamificationStore';
-import { useDailyCheckIn } from '../hooks/useGamification';
+import { useGamificationStore } from '@/features/gamification';
+import { useDailyCheckIn } from '@/features/gamification';
 import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { getActionErrorMessage } from '@/lib/errorMessage';

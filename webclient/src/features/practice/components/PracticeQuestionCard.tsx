@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, BarChart3, Check, Heart, Lightbulb, Maximize2, M
 import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { PracticeQuestionDto } from '../types/practice.types';
+import type { PracticeQuestionDto } from '@/features/practice';
 
 interface PracticeQuestionCardProps {
   question: PracticeQuestionDto;
@@ -80,7 +80,7 @@ export function PracticeQuestionCard({
         </div>
       </header>
 
-      <p className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed sm:text-lg">{question.content}</p>
+      <p className="whitespace-pre-wrap wrap-break-word text-base font-medium leading-relaxed sm:text-lg">{question.content}</p>
       {!!question.imageUrls?.length && (
         <div className="flex flex-wrap gap-3">
           {question.imageUrls.map((url, index) => (
@@ -110,7 +110,7 @@ export function PracticeQuestionCard({
                     disabled={isSubmittingAnswer} className="mt-1 size-4 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
                 )}
                 <span className="shrink-0 font-semibold">{key}.</span>
-                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{text}</span>
+                <span className="min-w-0 flex-1 whitespace-pre-wrap wrap-break-word">{text}</span>
                 {answered && (correctOption || selected) && (
                   <span className="flex shrink-0 flex-col items-end gap-1 text-xs font-medium">
                     {correctOption && <span className="inline-flex items-center gap-1 text-success"><Check aria-hidden="true" className="size-4" /> Đáp án đúng</span>}
@@ -143,7 +143,7 @@ export function PracticeQuestionCard({
           {hiddenFields?.explanation && (
             <div className="space-y-2 rounded-xl border border-border bg-surface-subtle p-4">
               <h3 className="flex items-center gap-2 text-sm font-semibold"><Lightbulb aria-hidden="true" className="size-4 text-academic" /> Giải thích</h3>
-              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{hiddenFields.explanation}</p>
+              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">{hiddenFields.explanation}</p>
             </div>
           )}
         </div>

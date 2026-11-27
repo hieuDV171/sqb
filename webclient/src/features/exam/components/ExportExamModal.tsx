@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Download, FileDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
-import { useExportExam } from '../hooks/useExam';
+import { useExportExam } from '@/features/exam';
 import { ExamDialog } from './ExamDialog';
 
 interface ExportExamModalProps {

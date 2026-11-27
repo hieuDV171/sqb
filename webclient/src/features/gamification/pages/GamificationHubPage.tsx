@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { GamificationHeader } from '../components/GamificationHeader';
-import { DailyCheckInModal } from '../components/DailyCheckInModal';
-import { LeaderboardTab } from '../components/LeaderboardTab';
-import { ShopInventoryTab } from '../components/ShopInventoryTab';
-import { PredictionArenaTab } from '../components/PredictionArenaTab';
+import { GamificationHeader } from '@/features/gamification';
+import { DailyCheckInModal } from '@/features/gamification';
+import { LeaderboardTab } from '@/features/gamification';
+import { ShopInventoryTab } from '@/features/gamification';
+import { PredictionArenaTab } from '@/features/gamification';
 import { BadgesTab } from '../components/BadgesTab';
-import type { GamificationTab } from '../stores/useGamificationStore';
-import { useShop, useCheckInStatus } from '../hooks/useGamification';
+import type { GamificationTab } from '@/features/gamification';
+import { useShop, useCheckInStatus } from '@/features/gamification';
 
 interface GamificationHubPageProps {
   initialTab?: GamificationTab;

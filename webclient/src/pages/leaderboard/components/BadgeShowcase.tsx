@@ -72,8 +72,8 @@ export function BadgeShowcase({ allBadges, userBadges }: BadgeShowcaseProps) {
     const isUnlocked = earnedBadgeMap.has(badge.id);
     if (statusFilter === 'UNLOCKED' && !isUnlocked) return false;
     if (statusFilter === 'LOCKED' && isUnlocked) return false;
-    if (tierFilter !== 'ALL' && badge.badgeTier !== tierFilter) return false;
-    return true;
+    return !(tierFilter !== 'ALL' && badge.badgeTier !== tierFilter);
+
   });
 
   const unlockPercent = Math.round((userBadges.length / Math.max(1, allBadges.length)) * 100);

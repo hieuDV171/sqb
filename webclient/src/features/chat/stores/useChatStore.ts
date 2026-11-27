@@ -3,7 +3,7 @@ import type { InfiniteData } from '@tanstack/react-query';
 import { readAccessSessionId } from '@/api/accessSession';
 import { stompClient } from '@/lib/stompClient';
 import { queryClient } from '@/lib/queryClient';
-import { CHAT_QUERY_KEYS } from '../hooks/useChat';
+import { CHAT_QUERY_KEYS } from '@/features/chat';
 import type {
   MessageType,
   UserSummaryDto,
@@ -13,7 +13,7 @@ import type {
   MessageDto,
   MessageListResponseDto,
   ConversationListResponseDto,
-} from '../types/chat.types';
+} from '@/features/chat';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 interface ChatStoreState {

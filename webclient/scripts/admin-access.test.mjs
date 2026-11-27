@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getAdminPageRedirect, isAccessGatewayResponse, resolveApiBaseUrl } from '../src/lib/adminAccess.ts';
+import { getAdminPageRedirect, isAccessGatewayResponse, resolveApiBaseUrl } from '@/lib/adminAccess.ts';
 
 test('production API and SockJS URLs stay on the current origin even with the old build variable', () => {
   for (const hostname of ['admin.hieudv.id.vn', 'hieudv.id.vn', 'www.hieudv.id.vn', 'snsqb.duckdns.org']) {

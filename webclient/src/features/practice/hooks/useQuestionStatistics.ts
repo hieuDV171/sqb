@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { practiceService } from '../services/practiceService';
-import type { QuestionStatisticsResponse } from '../types/practice.types';
+import { practiceService } from '@/features/practice';
+import type { QuestionStatisticsResponse } from '@/features/practice';
 
 export function useQuestionStatistics(questionId: number | null | undefined, enabled = true) {
   return useQuery<QuestionStatisticsResponse>({

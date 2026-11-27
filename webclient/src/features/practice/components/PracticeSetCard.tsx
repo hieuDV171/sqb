@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, Copy, MessageSquare, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/ui/action-error';
-import type { PracticeSetDto } from '../types/practice.types';
+import type { PracticeSetDto } from '@/features/practice';
 import { SessionReactionButton } from './SessionReactionButton';
 
 export function PracticeSetCard({ session, catalogSearch }: { session: PracticeSetDto; catalogSearch: string }) {

@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { examService } from '../services/examService';
+import { examService } from '@/features/exam';
 import type {
   GenerateExamRequest,
   ExportExamParams,
   ExportQuestionsParams,
-} from '../types/exam.types';
+} from '@/features/exam';
 import { toast } from '@/stores/useToastStore';
 
 export const EXAM_KEYS = {

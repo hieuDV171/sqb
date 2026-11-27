@@ -31,7 +31,7 @@ import type {
   GamePredictionResponse,
   MyPredictionsResponse,
   ReviewErrorRequest,
-} from '../types/gamification.types';
+} from '@/features/gamification';
 
 export const gamificationService = {
   // ==========================================

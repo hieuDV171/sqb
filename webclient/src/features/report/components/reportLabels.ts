@@ -1,6 +1,6 @@
 import type {
   ModerationActionType, ReportDecision, ReportOutcome, ReportTargetState, ReportTargetType, ViolationType,
-} from '../types/report.types';
+} from '@/features/report';
 
 export const targetLabels: Record<ReportTargetType, string> = {
   POST: 'Bài viết', COMMENT: 'Bình luận', USER: 'Tài khoản',

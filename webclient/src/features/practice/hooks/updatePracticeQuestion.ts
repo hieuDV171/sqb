@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { PracticeQuestionDto, SessionQuestionsResponse } from '../types/practice.types';
+import type { PracticeQuestionDto, SessionQuestionsResponse } from '@/features/practice';
 
 export function updatePracticeQuestion(
   queryClient: QueryClient,

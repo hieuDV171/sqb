@@ -3,8 +3,8 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
-import { gamificationService } from '../services/gamificationService';
-import type { BadgeAccount } from '../types/gamification.types';
+import { gamificationService } from '@/features/gamification';
+import type { BadgeAccount } from '@/features/gamification';
 
 const roleLabels = { STUDENT: 'Sinh viên', LECTURER: 'Giảng viên', ADMIN: 'Admin' };
 

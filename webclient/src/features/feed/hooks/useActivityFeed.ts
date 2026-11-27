@@ -95,7 +95,7 @@ export function useActivityFeed(filter: FeedFilter = 'ALL') {
     const initialState = client.getQueryState<FeedData>(queryKey);
     const previous = initialState?.data?.pages[0];
     const staged = manual && pending?.previous === previous ? pending : undefined;
-    if (!staged && navigator.onLine === false) return false;
+    if (!staged && !navigator.onLine) return false;
     if (!previous) {
       const startedAt = Date.now();
       const result = await query.refetch({ cancelRefetch: false });

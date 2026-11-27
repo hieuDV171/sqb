@@ -1,9 +1,9 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { searchService } from '../services/searchService';
+import { searchService } from '@/features/search';
 import type {
   SavedAndTrendingSearchesResponseDto,
   SearchType,
-} from '../types/search.types';
+} from '@/features/search';
 
 export const SEARCH_KEYS = {
   all: ['search'] as const,

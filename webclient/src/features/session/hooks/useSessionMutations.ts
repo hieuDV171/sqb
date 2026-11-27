@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { sessionService } from '../services/sessionService';
+import { sessionService } from '@/features/session';
 import { toast } from '@/stores/useToastStore';
 import type {
   ProposeSessionRequest,
   UpdateSubmissionSessionRequest,
   Game2PredictionRequest,
-} from '../types/session.types';
+} from '@/features/session';
 
 export function useSessionMutations() {
   const queryClient = useQueryClient();

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createDraftAutosave } from '../src/features/session/lib/draftAutosave.ts';
-import { acquireBodyScrollLock, hasActiveOverlay, registerOverlayLayer, trapOverlayTab } from '../src/lib/overlayLifecycle.ts';
+import { createDraftAutosave } from '@/features/session/lib/draftAutosave.ts';
+import { acquireBodyScrollLock, hasActiveOverlay, registerOverlayLayer, trapOverlayTab } from '@/lib/overlayLifecycle.ts';
 
 function storage() {
   const values = new Map();

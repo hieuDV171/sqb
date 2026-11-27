@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { sessionService } from '../services/sessionService';
+import { sessionService } from '@/features/session';
 
 export function useEnrolledSubjects(enabled = true) {
   return useQuery({

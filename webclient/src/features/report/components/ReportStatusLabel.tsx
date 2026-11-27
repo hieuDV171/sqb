@@ -1,4 +1,4 @@
-import type { AdminReportSummary } from '../types/report.types';
+import type { AdminReportSummary } from '@/features/report';
 import { outcomeLabels } from './reportLabels';
 
 export function ReportStatusLabel({ report }: { report: AdminReportSummary }) {

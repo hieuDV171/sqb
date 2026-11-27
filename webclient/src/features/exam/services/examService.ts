@@ -9,7 +9,7 @@ import type {
   ExportResponse,
   ExportExamParams,
   ExportQuestionsParams,
-} from '../types/exam.types';
+} from '@/features/exam';
 
 const examApiPath = '/lecturer/exams';
 

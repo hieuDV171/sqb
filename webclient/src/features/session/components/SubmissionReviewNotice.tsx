@@ -1,6 +1,6 @@
 import { Eye, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { MySubmissionDetailResponse } from '../types/session.types';
+import type { MySubmissionDetailResponse } from '@/features/session';
 
 export function SubmissionReviewNotice({ status, reviewedByLecturer, reviewedAt }: Pick<
   MySubmissionDetailResponse, 'status' | 'reviewedByLecturer' | 'reviewedAt'

@@ -6,7 +6,7 @@ import type {
   SavedAndTrendingSearchesResponseDto,
   DeleteSavedSearchResponseDto,
   RecordSearchRequest,
-} from '../types/search.types';
+} from '@/features/search';
 
 export const searchService = {
   /**

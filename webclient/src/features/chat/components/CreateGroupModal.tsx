@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useCreateGroupConversation } from '../hooks/useChat';
+import { useCreateGroupConversation } from '@/features/chat';
 import { Dialog } from '@base-ui/react/dialog';
 import { GroupCandidatePicker } from './GroupCandidatePicker';
-import type { GroupCandidateDto } from '../types/chat.types';
+import type { GroupCandidateDto } from '@/features/chat';
 import { mediaService } from '@/services/mediaService';
 import {
   Users,

@@ -1,6 +1,6 @@
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PracticeQuestionDto } from '../types/practice.types';
+import type { PracticeQuestionDto } from '@/features/practice';
 
 interface PracticeProgressBarProps {
   questions: PracticeQuestionDto[];
@@ -22,7 +22,7 @@ export function PracticeProgressBar({ questions, currentIndex, onSelectQuestion,
       <nav aria-label="Chọn câu hỏi" className="flex flex-wrap gap-2">
         {questions.map(({ questionId, myInteraction, hiddenFields }, index) => {
           const correct = userAnswersRecord[questionId]?.isCorrect ?? hiddenFields?.wasCorrect ?? undefined;
-          const status = correct === true ? 'Đúng' : correct === false ? 'Sai' : myInteraction.answered ? 'Đã trả lời trước đó' : 'Chưa trả lời';
+          const status = correct ? 'Đúng' : !correct ? 'Sai' : myInteraction.answered ? 'Đã trả lời trước đó' : 'Chưa trả lời';
           return (
             <button
               key={questionId}
@@ -33,14 +33,14 @@ export function PracticeProgressBar({ questions, currentIndex, onSelectQuestion,
               className={cn(
                 'inline-flex size-11 cursor-pointer items-center justify-center gap-0.5 rounded-lg border border-border bg-background text-xs font-semibold tabular-nums hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                 myInteraction.answered && 'bg-academic-soft text-academic',
-                correct === true && 'border-success bg-success-soft text-success',
-                correct === false && 'border-destructive bg-destructive/10 text-destructive',
+                correct && 'border-success bg-success-soft text-success',
+                !correct && 'border-destructive bg-destructive/10 text-destructive',
                 index === currentIndex && 'ring-2 ring-ring ring-offset-1 ring-offset-card',
               )}
             >
               {index + 1}
-              {correct === true && <Check aria-hidden="true" className="size-3" />}
-              {correct === false && <X aria-hidden="true" className="size-3" />}
+              {correct && <Check aria-hidden="true" className="size-3" />}
+              {!correct && <X aria-hidden="true" className="size-3" />}
               {correct === undefined && myInteraction.answered && <span aria-hidden="true">•</span>}
             </button>
           );

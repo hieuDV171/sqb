@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCheck, Settings, ArrowRight, Loader2, Inbox } from 'lucide-react';
-import { useNotifications, useMarkAllAsRead, useNotificationClock } from '../hooks/useNotification';
+import { useNotifications, useMarkAllAsRead, useNotificationClock } from '@/features/notification';
 import { NotificationItem } from './NotificationItem';
 import { ActionError } from '@/components/ui/action-error';
 import { getActionErrorMessage } from '@/lib/errorMessage';

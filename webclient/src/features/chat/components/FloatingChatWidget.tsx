@@ -1,7 +1,7 @@
 import { getAvatarInitial } from '@/lib/avatar';
 import { useNavigate } from 'react-router-dom';
-import { useChatStore } from '../stores/useChatStore';
-import { useConversations } from '../hooks/useChat';
+import { useChatStore } from '@/features/chat';
+import { useConversations } from '@/features/chat';
 import { ChatWindow } from './ChatWindow';
 import {
   Minus,
@@ -79,7 +79,7 @@ export function FloatingChatWidget() {
         return (
           <div
             key={convId}
-            className="pointer-events-auto w-80 sm:w-88 h-[460px] bg-card rounded-3xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200"
+            className="pointer-events-auto w-80 sm:w-88 h-115 bg-card rounded-3xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200"
           >
             {/* Widget Top Bar Controls */}
             <div className="h-10 px-3 bg-indigo-600 dark:bg-slate-850 flex items-center justify-between text-white shrink-0">

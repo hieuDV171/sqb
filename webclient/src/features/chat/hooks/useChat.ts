@@ -5,8 +5,8 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import { chatService } from '../services/chatService';
-import { useChatStore } from '../stores/useChatStore';
+import { chatService } from '@/features/chat';
+import { useChatStore } from '@/features/chat';
 import type {
   CreateDirectConversationDto,
   CreateGroupConversationDto,
@@ -17,7 +17,7 @@ import type {
   SetHiddenChatPinDto,
   UnlockHiddenChatDto,
   DeleteMessageRequestDto,
-} from '../types/chat.types';
+} from '@/features/chat';
 import { toast } from '@/stores/useToastStore';
 import type { ProfileResponse } from '@/types/user.types';
 

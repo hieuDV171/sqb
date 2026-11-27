@@ -2,11 +2,11 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type InfiniteD
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useStompStatus, useStompSubscription } from '@/lib/stompClient';
-import { notificationService } from '../services/notificationService';
+import { notificationService } from '@/features/notification';
 import type {
   UpdatePushSettingsRequestDto,
   NotificationListResponseDto,
-} from '../types/notification.types';
+} from '@/features/notification';
 import { toast } from '@/stores/useToastStore';
 import { useGamificationStore } from '@/stores/useGamificationStore';
 

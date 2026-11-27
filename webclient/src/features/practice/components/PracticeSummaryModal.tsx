@@ -2,7 +2,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import { ArrowLeft, BookOpen, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import type { PracticeQuestionDto } from '../types/practice.types';
+import type { PracticeQuestionDto } from '@/features/practice';
 
 interface PracticeSummaryModalProps {
   isOpen: boolean;
@@ -24,8 +24,8 @@ export function PracticeSummaryModal({
   let previouslyAnswered = 0;
   for (const question of questions) {
     const result = userAnswersRecord[question.questionId];
-    if (result?.isCorrect === true) correctCount++;
-    else if (result?.isCorrect === false) incorrectCount++;
+    if (result?.isCorrect) correctCount++;
+    else if (!result?.isCorrect) incorrectCount++;
     else if (question.myInteraction.answered) previouslyAnswered++;
   }
   const answeredCount = correctCount + incorrectCount + previouslyAnswered;

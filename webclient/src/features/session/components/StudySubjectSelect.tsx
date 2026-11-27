@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown } from 'lucide-react';
-import type { SubjectResponse } from '../types/session.types';
+import type { SubjectResponse } from '@/features/session';
 
 interface StudySubjectSelectProps {
   subjects: SubjectResponse[];

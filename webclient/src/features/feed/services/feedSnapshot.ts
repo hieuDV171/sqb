@@ -1,5 +1,5 @@
-import type { CursorResponse } from '../../../types/user.types';
-import type { UserRole } from '../../../stores/useAuthStore';
+import type { CursorResponse } from '@/types/user.types.ts';
+import type { UserRole } from '@/stores/useAuthStore.ts';
 import type { ActivityFeedItemDto } from '../types/feed.types';
 
 export type ActivityFeedPage = CursorResponse<ActivityFeedItemDto>;

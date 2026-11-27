@@ -5,7 +5,7 @@ import type {
   ReadNotificationResponseDto,
   PushSettingsResponseDto,
   UpdatePushSettingsRequestDto,
-} from '../types/notification.types';
+} from '@/features/notification';
 
 export const notificationService = {
   /**

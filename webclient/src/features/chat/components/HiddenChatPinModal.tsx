@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { toast } from '@/stores/useToastStore';
-import { useSetHiddenPin, useUnlockHiddenChat } from '../hooks/useChat';
-import { useChatStore } from '../stores/useChatStore';
+import { useSetHiddenPin, useUnlockHiddenChat } from '@/features/chat';
+import { useChatStore } from '@/features/chat';
 
 const onlyPinDigits = (value: string) => value.replace(/[^0-9]/g, '').slice(0, 6);
 
@@ -118,8 +118,8 @@ export function HiddenChatPinModal({ isOpen, onClose }: { isOpen: boolean; onClo
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-[70] bg-black/55" />
-        <Dialog.Popup className="fixed top-1/2 left-1/2 z-[71] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-xl sm:p-6">
+        <Dialog.Backdrop className="fixed inset-0 z-70 bg-black/55" />
+        <Dialog.Popup className="fixed top-1/2 left-1/2 z-71 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-xl sm:p-6">
           {isOpen && (typeof configured === 'boolean' ? (
             <HiddenChatPinForm configured={configured} onClose={onClose} />
           ) : (

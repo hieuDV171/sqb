@@ -1,17 +1,17 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useChatStore } from '../stores/useChatStore';
-import { ConversationList } from '../components/ConversationList';
-import { ChatWindow } from '../components/ChatWindow';
-import { HiddenChatPinModal } from '../components/HiddenChatPinModal';
-import { CreateGroupModal } from '../components/CreateGroupModal';
-import { NewDirectChatModal } from '../components/NewDirectChatModal';
-import { GroupMembersModal } from '../components/GroupMembersModal';
+import { useChatStore } from '@/features/chat';
+import { ConversationList } from '@/features/chat';
+import { ChatWindow } from '@/features/chat';
+import { HiddenChatPinModal } from '@/features/chat';
+import { CreateGroupModal } from '@/features/chat';
+import { NewDirectChatModal } from '@/features/chat';
+import { GroupMembersModal } from '@/features/chat';
 import { GroupInvitationsModal } from '../components/GroupInvitationsModal';
-import { useGroupInvitations } from '../hooks/useChat';
-import { DeleteMessageModal } from '../components/DeleteMessageModal';
-import type { MessageDto } from '../types/chat.types';
+import { useGroupInvitations } from '@/features/chat';
+import { DeleteMessageModal } from '@/features/chat';
+import type { MessageDto } from '@/features/chat';
 import { MessageSquare, Users, MessageSquarePlus } from 'lucide-react';
 
 export function MessagesPage() {

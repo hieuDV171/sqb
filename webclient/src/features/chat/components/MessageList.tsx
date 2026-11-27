@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
-import { useMessages } from '../hooks/useChat';
-import { useChatStore } from '../stores/useChatStore';
+import { useMessages } from '@/features/chat';
+import { useChatStore } from '@/features/chat';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { MessageBubble } from './MessageBubble';
 import { formatDateDivider } from '../utils/chatUtils';
-import type { MessageDto } from '../types/chat.types';
+import type { MessageDto } from '@/features/chat';
 import { Loader2, MessageSquareDashed } from 'lucide-react';
 
 interface MessageListProps {

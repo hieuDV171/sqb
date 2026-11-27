@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, BarChart3, TrendingUp, Star } from 'lucide-react';
-import { useQuestionStatistics } from '../hooks/useQuestionStatistics';
+import { useQuestionStatistics } from '@/features/practice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
 

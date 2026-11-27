@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { practiceService } from '../services/practiceService';
+import { practiceService } from '@/features/practice';
 export const practiceCatalogQueryKey = ['practice-catalog'] as const;
 
 export function usePracticeCatalog(subjectId: number | undefined, keyword: string) {

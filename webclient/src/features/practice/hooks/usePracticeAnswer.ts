@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { practiceService } from '../services/practiceService';
+import { practiceService } from '@/features/practice';
 import { updatePracticeQuestion } from './updatePracticeQuestion';
 import type {
   AnswerQuestionRequest,
   AnswerQuestionResponse,
-} from '../types/practice.types';
+} from '@/features/practice';
 
 interface AnswerMutationParams {
   questionId: number;
@@ -40,7 +40,7 @@ export function usePracticeAnswer() {
       }
 
       // Invalidate question statistics so the stats modal reflects new community answer
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: ['questionStatistics', questionId],
       });
     },

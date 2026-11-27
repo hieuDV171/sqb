@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import {
   X,
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import type {
   MySubmissionDetailResponse,
   SessionStatus,
-} from '../types/session.types';
+} from '@/features/session';
 import { QuestionReviewResult } from './QuestionReviewResult';
 import { questionDifficultyLabels } from '@/lib/questionDifficulty';
 import { SubmissionReviewNotice } from './SubmissionReviewNotice';
