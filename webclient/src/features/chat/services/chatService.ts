@@ -20,7 +20,7 @@ import type {
   MessageListResponseDto,
   DeleteMessageRequestDto,
   DeleteMessageResponseDto,
-} from '../types/chat.types';
+} from '@/features/chat';
 
 export const chatService = {
   getPresence(conversationIds: number[], signal: AbortSignal) {

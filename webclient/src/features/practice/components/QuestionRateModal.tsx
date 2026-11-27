@@ -6,11 +6,11 @@ import { ShieldAlert, Star, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { cn } from '@/lib/utils';
-import { useQuestionRatingMutation } from '../hooks/useQuestionRatingMutation';
-import { useQuestionRatings } from '../hooks/useQuestionRatings';
+import { useQuestionRatingMutation } from '@/features/practice';
+import { useQuestionRatings } from '@/features/practice';
 import { updatePracticeQuestion } from '../hooks/updatePracticeQuestion';
-import { practiceService } from '../services/practiceService';
-import type { MyInteractionDto } from '../types/practice.types';
+import { practiceService } from '@/features/practice';
+import type { MyInteractionDto } from '@/features/practice';
 
 interface QuestionRateModalProps {
   questionId: number;
@@ -85,10 +85,10 @@ export function QuestionRateModal({ questionId, questionCode, sessionId, interac
               {reviews.map((review) => (
                 <article key={review.userId} className="space-y-1 rounded-xl border border-border bg-surface-subtle p-3 text-sm">
                   <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                    <p className="min-w-0 break-words font-semibold">{review.reviewerName?.trim() || 'Người đánh giá'}</p>
+                    <p className="min-w-0 wrap-break-word font-semibold">{review.reviewerName?.trim() || 'Người đánh giá'}</p>
                     <p className="font-medium text-muted-foreground">{review.rating + 1}/5 sao</p>
                   </div>
-                  {review.comment && <p className="whitespace-pre-wrap break-words text-muted-foreground">{review.comment}</p>}
+                  {review.comment && <p className="whitespace-pre-wrap wrap-break-word text-muted-foreground">{review.comment}</p>}
                 </article>
               ))}
               <InfiniteListFooter query={ratings} label="Xem thêm đánh giá" />

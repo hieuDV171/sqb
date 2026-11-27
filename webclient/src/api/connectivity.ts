@@ -20,7 +20,7 @@ let lastProbeFinishedAt = -Infinity;
 let snapshot: ConnectionSnapshot = { status: isBrowserOnline() ? 'connected' : 'offline', checking: false };
 
 function isBrowserOnline() {
-  return typeof navigator === 'undefined' || navigator.onLine !== false;
+  return typeof navigator === 'undefined' || navigator.onLine;
 }
 
 function publishStatus() {

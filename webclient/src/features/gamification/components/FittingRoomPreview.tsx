@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { AvatarWithFrame } from '@/features/profile/components/AvatarWithFrame';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { EquippedItemDto, InventoryItemDto } from '../types/gamification.types';
+import type { EquippedItemDto, InventoryItemDto } from '@/features/gamification';
 
 interface FittingRoomPreviewProps {
   equippedFrame?: EquippedItemDto;

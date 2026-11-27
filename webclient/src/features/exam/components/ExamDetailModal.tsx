@@ -7,10 +7,10 @@ import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { examDifficulties, examPercentFormat } from '../examPresentation';
-import { useExamDetail } from '../hooks/useExam';
+import { useExamDetail } from '@/features/exam';
 import { ExamDialog } from './ExamDialog';
 import { ExamDifficultySummary } from './ExamDifficultySummary';
-import { ExportExamModal } from './ExportExamModal';
+import { ExportExamModal } from '@/features/exam';
 
 interface ExamDetailModalProps {
   examId: number;

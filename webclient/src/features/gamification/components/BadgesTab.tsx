@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAllBadges, useMyBadges } from '../hooks/useGamification';
-import { badgeTierLabels, getTierColor, type BadgeResponseDto, type UserBadgeResponseDto } from '../types/gamification.types';
+import { useAllBadges, useMyBadges } from '@/features/gamification';
+import { badgeTierLabels, getTierColor, type BadgeResponseDto, type UserBadgeResponseDto } from '@/features/gamification';
 import { FilterSelect } from '@/components/ui/filter-select';
-import { gamificationService } from '../services/gamificationService';
+import { gamificationService } from '@/features/gamification';
 
 const tiers = [
   { value: '', label: 'Tất cả cấp' },

@@ -10,11 +10,11 @@ import {
   useHideConversation,
   useUnhideConversation,
   useLeaveGroup,
-} from '../hooks/useChat';
-import { useChatStore } from '../stores/useChatStore';
-import { chatService } from '../services/chatService';
-import { ConversationItem } from './ConversationItem';
-import type { ConversationListResponseDto } from '../types/chat.types';
+} from '@/features/chat';
+import { useChatStore } from '@/features/chat';
+import { chatService } from '@/features/chat';
+import { ConversationItem } from '@/features/chat';
+import type { ConversationListResponseDto } from '@/features/chat';
 import {
   Search,
   Users,

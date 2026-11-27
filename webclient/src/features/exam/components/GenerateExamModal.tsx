@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { examDifficulties, getExamSubjects } from '../examPresentation';
-import { useExamBankSummary, useGenerateExam, useLecturerClasses } from '../hooks/useExam';
+import { useExamBankSummary, useGenerateExam, useLecturerClasses } from '@/features/exam';
 import { ExamDialog } from './ExamDialog';
 import { maxQuestionCount, QuestionCountInput } from './QuestionCountInput';
 
