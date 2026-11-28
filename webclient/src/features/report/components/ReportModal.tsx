@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useEffect, useId, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { X, ShieldAlert, AlertTriangle, Loader2, Send, ImagePlus } from 'lucide-react';
 import { Dialog } from '@base-ui/react/dialog';
@@ -201,7 +202,7 @@ export function ReportModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
+        <Form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
           {/* Violation Type Options */}
           <fieldset>
             <legend className="mb-2.5 text-sm font-semibold text-foreground">Lý do báo cáo vi phạm</legend>
@@ -325,7 +326,7 @@ export function ReportModal({
               )}
             </button>
           </div>
-        </form>
+        </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

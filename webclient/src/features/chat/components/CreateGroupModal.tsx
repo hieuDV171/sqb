@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useState, useEffect } from 'react';
 import { useCreateGroupConversation } from '@/features/chat';
 import { Dialog } from '@base-ui/react/dialog';
@@ -130,7 +131,7 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
           </div>
 
           {/* Form Body */}
-          <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4">
+          <Form validation="manual" onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-4 space-y-4">
             {/* Avatar & Group Name */}
             <div className="flex items-center gap-3">
               <label className="relative w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 flex flex-col items-center justify-center cursor-pointer overflow-hidden shrink-0 group transition-colors">
@@ -194,7 +195,7 @@ function CreateGroupForm({ onClose, onCreated }: Omit<CreateGroupModalProps, 'is
                 Tạo nhóm ngay
               </button>
             </div>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,8 @@ export function VerifyOtpPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState<string>(location.state?.email || '');
+  const initialEmail = location.state?.email || '';
+  const [email, setEmail] = useState<string>(initialEmail);
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -108,7 +110,7 @@ export function VerifyOtpPage() {
 
         <CardContent className="p-6 pt-2">
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+            <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600 border border-red-100">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -121,18 +123,21 @@ export function VerifyOtpPage() {
             </div>
           )}
 
-          <form onSubmit={handleVerify} className="space-y-6">
-            {!email && (
+          <Form onSubmit={handleVerify} className="space-y-6">
+            {!initialEmail && (
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-600">Email của bạn</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Nhập email sinh viên"
-                  required
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm"
-                />
+                <label htmlFor="verify-otp-email" className="text-xs font-semibold text-slate-600">Email của bạn</label>
+                <ValidatedField>
+                  <Input
+                    id="verify-otp-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Nhập email sinh viên"
+                    required
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm"
+                  />
+                </ValidatedField>
               </div>
             )}
 
@@ -160,7 +165,7 @@ export function VerifyOtpPage() {
             >
               {isLoading ? 'Đang xác thực...' : 'Xác thực tài khoản'}
             </Button>
-          </form>
+          </Form>
 
           {/* Resend OTP */}
           <div className="mt-6 flex items-center justify-between text-sm text-slate-500 border-t border-slate-100 pt-4">

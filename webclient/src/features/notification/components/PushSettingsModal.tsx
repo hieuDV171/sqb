@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Bell, BookOpen, Loader2, Moon, Shield, Trophy, Users, X } from 'lucide-react';
@@ -24,7 +25,7 @@ function PushSettingsForm({ settings, onClose }: { settings: PushSettingsRespons
   const update = useUpdatePushSettings();
 
   return (
-    <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => {
+    <Form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => {
       event.preventDefault();
       update.mutate({ ...settings, categories, quietHours: { enabled: quietEnabled, startTime: start, endTime: end } },
         { onSuccess: onClose });
@@ -72,7 +73,7 @@ function PushSettingsForm({ settings, onClose }: { settings: PushSettingsRespons
           {update.isPending ? 'Đang lưu…' : 'Lưu cài đặt'}
         </Button>
       </footer>
-    </form>
+    </Form>
   );
 }
 

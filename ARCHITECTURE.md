@@ -166,7 +166,7 @@ Không dùng Offset pagination (`page`, `size`) vì hiệu năng kém khi bảng
 
 Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan trọng, **BẮT BUỘC** phải ghi nhận thêm một bản ghi ADR vào mục này.
 
-### [ADR-001] Áp dụng Phân trang 2 Tầng Không Preview cho Phiên Đề Xuất
+### ADR-001 Áp dụng Phân trang 2 Tầng Không Preview cho Phiên Đề Xuất
 - **Ngày quyết định:** 21/09/2026
 - **Bối cảnh:** API ban đầu trả về mảng phẳng các câu hỏi đề xuất, không gom theo phiên. Ý tưởng gộp cả phiên kèm câu hỏi gây nguy cơ bùng nổ payload (10 phiên có thể chứa 200 câu hỏi, gây giật lag UI và nghẽn mạng).
 - **Quyết định:**
@@ -175,7 +175,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
     2. `GET /api/v1/sessions/{sessionId}/questions`: Trả về danh sách câu hỏi trong phiên để người dùng làm bài và tương tác.
 - **Hệ quả:** UI không bao giờ bị nhảy giao diện (CLS), kiểm soát chặt chẽ dung lượng mạng, tải trang mượt mà.
 
-### [ADR-002] Ẩn Thông tin Đáp án Khách quan khi Luyện tập
+### ADR-002 Ẩn Thông tin Đáp án Khách quan khi Luyện tập
 - **Ngày quyết định:** 21/09/2026
 - **Bối cảnh:** Khi sinh viên luyện tập câu hỏi của người khác, nếu trả về cờ `isCorrect` hoặc `explanation` thì sinh viên có thể xem Inspect Element để biết đáp án.
 - **Quyết định:**
@@ -183,13 +183,13 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Chỉ khi người dùng thực hiện gọi `POST /questions/{id}/answer`, câu trả lời được ghi nhận vào `UserAnswer`, thì trường `correctAnswer` và `explanation` mới được mở khóa trả về cho người dùng đó.
 - **Hệ quả:** Đảm bảo tính trung thực và công bằng cho hệ thống học tập.
 
-### [ADR-003] Không dùng Partitioning cho Bảng Dữ Liệu
+### ADR-003 Không dùng Partitioning cho Bảng Dữ Liệu
 - **Ngày quyết định:** Giai đoạn thiết kế ban đầu
 - **Bối cảnh:** Cân nhắc phân vùng (partition) bảng `questions` và `posts` theo thời gian hoặc môn học.
 - **Quyết định:** Không áp dụng partitioning.
 - **Lý do:** Quy mô dữ liệu trường đại học dự kiến < 10 triệu bản ghi. B-Tree index và PgVector HNSW của PostgreSQL đã đáp ứng tốc độ phản hồi < 50ms, tránh over-engineering gây phức tạp bảo trì.
 
-### [ADR-004] Chuẩn hóa Ranh giới Controller & Đóng gói Phân quyền Phiên vào Tầng Service
+### ADR-004 Chuẩn hóa Ranh giới Controller & Đóng gói Phân quyền Phiên vào Tầng Service
 - **Ngày quyết định:** 21/09/2026
 - **Bối cảnh:** Controller `QuestionInteractionController` ban đầu chứa logic nghiệp vụ `currentUserId.equals(userId) ? status : SessionStatus.RESOLVED`, vi phạm nguyên tắc Thin Controller. Đồng thời tồn tại các DTO cũ trùng lặp (`UserQuestionsResponse`) và dead code (`getUserProposedQuestions`, `findUserQuestionsWithCursor`).
 - **Quyết định:**
@@ -198,7 +198,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Gom các DTO câu hỏi luyện tập trực tiếp vào `SessionQuestionsResponse.PracticeQuestionDto`, xóa bỏ hoàn toàn `UserQuestionsResponse` và các method thừa.
 - **Hệ quả:** Code tầng Controller cực kỳ ngắn gọn và an toàn, triệt tiêu nguy cơ rò rỉ dữ liệu phiên chưa duyệt ra ngoài, loại bỏ nợ kỹ thuật DTO trùng lặp.
 
-### [ADR-005] Đổi Tên và Nâng Cấp Embedding Service thành AI Sidecar (Embeddings + BTProp Audit)
+### ADR-005 Đổi Tên và Nâng Cấp Embedding Service thành AI Sidecar (Embeddings + BTProp Audit)
 - **Ngày quyết định:** 30/09/2026
 - **Bối cảnh:** Trước đây thư mục `embedding-service` chỉ phục vụ sinh vector (`/embed/text`, `/embed/image`). Khi tích hợp thuật toán kiểm soát ảo giác Cây Niềm Tin BTProp (NAACL 2025), service này mở rộng thành bộ đồng xử lý AI chuyên dụng bằng Python. Cần cấu trúc lại cấu hình và định danh cho chuẩn mực kiến trúc.
 - **Quyết định:**
@@ -209,7 +209,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Viết lại `BtpropHallucinationCheckerService` gọi trực tiếp sang AI Sidecar, tích hợp cơ chế Graceful Degradation (Fallback UNVERIFIED nếu Sidecar bận/timeout).
 - **Hệ quả:** Thống nhất toàn bộ luồng giao tiếp AI ngoại vi qua một Sidecar chuẩn REST, hỗ trợ kiểm soát ảo giác đa môn học và câu hỏi nhiều đáp án đúng, đảm bảo hiệu năng cao cho Spring Boot.
 
-### [ADR-006] Chuyển đổi Lưu trữ Object Storage từ MinIO sang Cloudflare R2 & Quản lý Pending Media bằng Redis Sorted Set
+### ADR-006 Chuyển đổi Lưu trữ Object Storage từ MinIO sang Cloudflare R2 & Quản lý Pending Media bằng Redis Sorted Set
 - **Ngày quyết định:** 01/10/2026
 - **Bối cảnh:** 
   - Chuyển đổi hệ thống từ MinIO tự host sang dịch vụ đám mây Cloudflare R2 nhằm tận dụng ưu điểm 0đ phí truyền dữ liệu ra ngoài (Zero Egress Fees) và tính sẵn sàng cao trên toàn cầu.
@@ -223,7 +223,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
     - Tác vụ ngầm `StorageReconciliationCronJob` định kỳ hàng ngày (03:30 AM) quét các key có Score quá 24 giờ để gọi Cloudflare R2 batch `DeleteObjects` dọn sạch file mồ côi.
   - Chuẩn hóa hàm `buildPublicUrl()` hỗ trợ trực tiếp R2 Public Domain (`https://pub-xxx.r2.dev/{objectKey}` hoặc Custom Domain) không chứa bucket name ở giữa đường dẫn.
 - **Hệ quả:** Hệ thống vận hành trơn tru trên Cloudflare R2 với chi phí tối ưu, không phát sinh file rác mồ côi, giữ nguyên 100% mã nguồn Frontend mà không phải thay đổi luồng upload.
-### [ADR-007] Đồng bộ Schema Swagger UI (Springdoc ModelResolver) với Chiến lược snake_case của Jackson
+### ADR-007 Đồng bộ Schema Swagger UI (Springdoc ModelResolver) với Chiến lược snake_case của Jackson
 - **Ngày quyết định:** 12/10/2026
 - **Bối cảnh:** Server đã cấu hình `spring.jackson.property-naming-strategy: SNAKE_CASE` trong `application.yaml` để tiếp nhận và trả về JSON chuẩn `snake_case`. Tuy nhiên, mặc định `springdoc-openapi` không tự động thừa kế Jackson naming strategy cho các model schema khi phân giải POJO. Điều này khiến Swagger UI (`/docs`) hiển thị Schema và Request/Response Example dưới dạng `camelCase`, gây hiểu lầm cho người gọi API (Client web/mobile/Postman) rằng phải truyền dữ liệu dạng camelCase.
 - **Quyết định:**
@@ -233,7 +233,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Bổ sung kiểm thử đơn vị `OpenApiSnakeCaseTest` đảm bảo tính toàn vẹn của Swagger Schema.
 - **Hệ quả:** Toàn bộ Swagger UI hiển thị chính xác 100% định dạng `snake_case`, triệt tiêu hoàn toàn sự sai lệch giữa tài liệu đặc tả và hành vi runtime của hệ thống, bảo đảm cách ly an toàn giữa Jackson 2 và Jackson 3.
 
-### [ADR-008] Giới hạn Tài nguyên Production và Ngừng Distributed Monitoring trên Hosting Dùng chung
+### ADR-008 Giới hạn Tài nguyên Production và Ngừng Distributed Monitoring trên Hosting Dùng chung
 - **Ngày quyết định:** 27/10/2026
 - **Bối cảnh:** Hosting 5.8 GiB RAM dùng chung nhiều dự án bị global OOM; kernel liên tục kill `sqb-backend`. JVM từng dùng ZGC với `MaxRAMPercentage=75.0` nhưng container không có memory limit. AI sidecar chạy hai Uvicorn workers và mỗi worker nạp riêng cả text/image model. Tempo, Prometheus và các container monitoring đã ngừng sử dụng nhưng backend vẫn khởi tạo exporter và thử gửi trace tới Tempo.
 - **Quyết định:**
@@ -244,238 +244,238 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
   - Workflow production không còn đồng bộ hoặc chứa bước khởi động monitoring stack.
 - **Hệ quả:** SQB có ngân sách RAM rõ ràng và giảm nguy cơ làm cạn tài nguyên toàn host; đổi lại G1 có pause dài hơn ZGC, heap nhỏ làm GC thường xuyên hơn và một AI worker giảm khả năng xử lý nhiều inference đồng thời. Hệ thống không còn Prometheus metrics/distributed traces, nhưng health endpoint, application log và correlation ID vẫn hoạt động để chẩn đoán cơ bản.
 
-### [ADR-009] Gắn Phiên Đề xuất Trực tiếp với Lớp Học phần
+### ADR-009 Gắn Phiên Đề xuất Trực tiếp với Lớp Học phần
 - **Ngày quyết định:** 27/10/2026
 - **Bối cảnh:** `Session` chỉ lưu `subject_id`, nên không xác định được phiên thuộc học kỳ/lớp/GV nào. Điều này cho phép tạo phiên bằng enrollment của kỳ cũ và làm hàng đợi duyệt không thể giới hạn chính xác theo phân công giảng viên.
 - **Quyết định:** Xóa quan hệ trực tiếp `Session.subject`; thêm duy nhất `Session.courseClass` (`course_class_id NOT NULL`, `FetchType.LAZY`). Môn học, học kỳ và giảng viên được suy ra qua `CourseClass`. API tạo/cập nhật nhận `course_class_id`; backend bắt buộc lớp thuộc học kỳ active và kiểm tra enrollment/phân công. Hàng đợi duyệt của lecturer lọc theo `courseClass.lecturer`, admin không bị lọc. Các truy vấn đọc dùng `JOIN FETCH courseClass → subject/semester/lecturer` để tránh N+1.
 - **Hệ quả:** Mỗi phiên có ngữ cảnh lớp/kỳ/GV không mơ hồ; lớp lịch sử vẫn có thể hiển thị nhưng không dùng để tạo phiên. Đây là breaking schema/API change, cần changeset Liquibase sinh từ entity và reset/reimport dữ liệu test. Không lưu thêm `semester_id` hay `subject_id` trên `sessions`, tránh dữ liệu dư thừa có thể lệch nhau.
 
-### [ADR-010] Lưu Kết quả Từ chối trên Từng Câu hỏi bằng Mã Chuẩn hóa
+### ADR-010 Lưu Kết quả Từ chối trên Từng Câu hỏi bằng Mã Chuẩn hóa
 - **Ngày quyết định:** 29/10/2026
 - **Bối cảnh:** API từ chối nhận một ghi chú chung nhưng không lưu, trong khi API chi tiết của sinh viên không trả trạng thái/lý do theo câu hỏi. Ép giảng viên nhập văn bản ở mọi lần từ chối cũng tạo ma sát lớn khi phải duyệt hàng chục hoặc hàng trăm câu.
 - **Quyết định:** Lưu `rejectionCode` và `rejectionReason` trực tiếp trên `Question`, bên cạnh `Question.status`. `rejectionCode` là enum chuẩn hóa phục vụ thao tác chọn nhanh/thống kê; `rejectionReason` là ghi chú tùy chọn và chỉ bắt buộc với mã `OTHER`. Dùng chính `GET /sessions/my-submissions/{id}` để trả kết quả theo câu hỏi, không tạo API kết quả riêng. Toàn bộ API kiểm duyệt đặt dưới namespace `/lecturer/**`; danh sách dùng tên `reviewable` vì gồm cả `PENDING` và `REVIEWING`. Bộ lọc dùng `course_class_id`, không dùng `subject_id`, để không trộn các lớp hoặc học kỳ cùng môn. Mọi endpoint duyệt đều kiểm tra role và phân công `courseClass.lecturer`; truy vấn batch phải fetch `Session → CourseClass → Lecturer` để tránh N+1.
 - **Hệ quả:** FE chỉ cần một nút Từ chối với progressive disclosure, sinh viên nhận được phản hồi cụ thể, client cũ vẫn tương thích qua `UNSPECIFIED`. Phê duyệt hoặc biên tập lại phải xóa lý do cũ; câu còn chờ khi chốt phiên dùng `AUTO_REJECTED_ON_COMPLETION`. Cần sinh changeset Liquibase từ entity cho hai cột mới; không sửa changeset thủ công.
 
-### [ADR-011] Tách Live Search khỏi Ghi Lịch sử và Thống kê Trending
+### ADR-011 Tách Live Search khỏi Ghi Lịch sử và Thống kê Trending
 - **Ngày quyết định:** 30/10/2026
 - **Bối cảnh:** `GET /search` trước đây vừa đọc Elasticsearch vừa ghi PostgreSQL và tăng Redis ZSet. Vì Frontend gọi endpoint này sau mỗi lần debounce, hệ thống lưu các đoạn từ khóa chưa gõ xong (`a`, `nguy`, `nguye...`) và dữ liệu automation có thể chiếm Top Trending. Đây cũng là side effect không phù hợp với ngữ nghĩa HTTP GET.
 - **Quyết định:** `GET /search` trở thành read-only tuyệt đối. Thêm `POST /search/saved` để ghi nhận duy nhất khi người dùng xác nhận bằng Enter, “Xem tất cả” hoặc chọn kết quả. Trending dùng các Redis Sorted Set theo ngày trong namespace `trending_searches:v2:*`, tổng hợp cửa sổ 7 ngày; mỗi user chỉ đóng góp một lượt cho cùng từ khóa mỗi ngày thông qua Redis Set có TTL. UI desktop dùng search popover neo dưới Header; mobile dùng dialog gọn, cả hai hỗ trợ click ngoài, Escape, focus return và đủ Loading/Empty/Error/Success.
 - **Hệ quả:** Không còn lịch sử từ khóa dang dở; số Trending phản ánh lượt tìm kiếm có chủ đích trong SQB và không kế thừa dữ liệu automation bị ô nhiễm ở key cũ. Live search vẫn phản hồi nhanh bằng debounce mà không gây ghi dữ liệu. Không thay đổi schema CSDL và không cần Liquibase changeset; Backend/Frontend phải deploy đồng bộ vì có endpoint mới.
 
-### [ADR-012] Cho phép Nhiều Thành viên Cùng Trỏ tới Một Mốc Đã đọc trong Hội thoại
+### ADR-012 Cho phép Nhiều Thành viên Cùng Trỏ tới Một Mốc Đã đọc trong Hội thoại
 - **Ngày quyết định:** 02/11/2026
 - **Bối cảnh:** `UserParticipant.lastReadMessage` được ánh xạ `@OneToOne`, khiến Hibernate sinh unique constraint trên `user_participants.last_read_message_id`. Trong hội thoại, nhiều thành viên có thể hợp lệ cùng đọc tới một message; khi đó REST tải tin nhắn và WebSocket read-receipt đồng thời vi phạm unique constraint và trả lỗi 500.
 - **Quyết định:** Đổi quan hệ thành `@ManyToOne(fetch = FetchType.LAZY)` và giữ nguyên khóa ngoại `last_read_message_id → messages.id`. Không lưu bản sao message, không query trong vòng lặp; mỗi participant vẫn có đúng một mốc đọc, còn một message có thể là mốc đọc của nhiều participant.
 - **Hệ quả:** Read-receipt hoạt động đúng cho hội thoại trực tiếp và nhóm, đồng thời tuân thủ invariant mọi `ManyToOne` phải LAZY. Schema phải bỏ unique constraint `uc_user_participants_last_read_message` nhưng giữ foreign key/index phục vụ lookup; cần sinh và review Liquibase changeset từ Entity trước khi deploy Backend.
 
-### [ADR-013] Tái thiết kế Frontend theo Campus Intelligence và Theo dõi API theo Phase
+### ADR-013 Tái thiết kế Frontend theo Campus Intelligence và Theo dõi API theo Phase
 - **Ngày quyết định:** 06/11/2026
 - **Bối cảnh:** Giao diện cũ trộn một ngôn ngữ visual cho ba ngữ cảnh có mật độ và mục tiêu khác nhau: mạng xã hội, học/luyện câu hỏi và quản trị. Tài liệu API đồng thời chứa các liên kết FE cũ theo số dòng, nhanh chóng sai lệch khi refactor và tạo cảm giác endpoint đã được kiểm chứng dù UI mới chưa sử dụng.
 - **Quyết định:** Xây dựng lại Frontend theo design system `Campus Intelligence`, dùng token ba tầng Primitive → Semantic → Component và một App Shell chung. Social Mode ưu tiên content/feed; Study Mode giảm chrome và tăng khả năng đọc; Management Mode tăng mật độ dữ liệu. Mobile dùng bottom navigation tối đa 5 đích và panel “Thêm”; desktop dùng sidebar phân nhóm theo role. Toàn bộ liên kết FE cũ trong `BACKEND_API_SPECIFICATION.md` được reset; chỉ endpoint đã được gọi và kiểm chứng trong một phase tái cấu trúc mới được đánh dấu lại bằng phase và đường dẫn FE hiện hành.
 - **Hệ quả:** UI có một thương hiệu thống nhất nhưng không ép feed, luyện tập và admin dùng cùng mật độ. Việc theo dõi API phản ánh trạng thái tái triển khai thực tế thay vì lịch sử cũ. Migration được thực hiện theo module, giữ nguyên contract Backend mặc định; thay đổi nghiệp vụ hoặc API phát sinh phải được quyết định riêng. Không thay đổi Entity/schema/Liquibase từ ADR này.
 
-### [ADR-014] Onboarding Bắt buộc cho Tài khoản do Admin Import và Xác thực Email Tự phục vụ
+### ADR-014 Onboarding Bắt buộc cho Tài khoản do Admin Import và Xác thực Email Tự phục vụ
 - **Ngày quyết định:** 06/11/2026
 - **Bối cảnh:** Tài khoản tạo qua bulk import và import Excel trước đây được đánh dấu `verified = true`, `profile_completed = true` dù dùng mật khẩu tạm và chưa chứng minh quyền sở hữu email. Hai API OTP cũ nằm dưới `/auth/admin/**`, nên người dùng thường không thể tự xác thực từ Settings; đồng thời login chặn toàn bộ tài khoản chưa xác thực nên không thể hiển thị hướng dẫn khắc phục sau đăng nhập.
 - **Quyết định:** Tài khoản mới từ `/auth/admin/bulk-import` và `/admin/course-classes/import-excel` mặc định hai cờ bằng `false`. Login cho phép tài khoản chưa xác thực nhưng vẫn chặn tài khoản inactive. Frontend dùng `profile_completed = false` làm cổng onboarding bắt buộc đổi mật khẩu; `POST /auth/change-password` đặt cờ thành `true`. Bổ sung hai API authenticated `/auth/email-verification/request` và `/auth/email-verification/confirm`; email luôn lấy từ JWT, client chỉ gửi OTP. Chuẩn hóa security để chỉ login/refresh là public, các endpoint `/auth/**` còn lại yêu cầu xác thực và `/auth/admin/**` tiếp tục yêu cầu Admin.
 - **Hệ quả:** Người dùng có thể đăng nhập bằng mật khẩu tạm, buộc thiết lập mật khẩu riêng và tự xác thực đúng email mà không thể chỉ định tài khoản khác. `profile_completed` không còn được bật bởi thao tác sửa tên hồ sơ. Không thay đổi Entity/schema/Liquibase; Redis tiếp tục giữ OTP 2 phút và resend lock 60 giây.
 
-### [ADR-015] Phiên Onboarding Hạn chế theo Thứ tự OTP trước Mật khẩu
+### ADR-015 Phiên Onboarding Hạn chế theo Thứ tự OTP trước Mật khẩu
 - **Ngày quyết định:** 06/11/2026
 - **Bối cảnh:** Chỉ chặn bằng modal Frontend không ngăn tài khoản chưa xác thực gọi trực tiếp API, STOMP hoặc giữ quyền Admin/Lecturer. Mật khẩu tạm của luồng import có thể suy ra từ ngày sinh/MSSV, nên cho phép đổi mật khẩu trước khi chứng minh quyền sở hữu email tạo rủi ro chiếm tài khoản.
 - **Quyết định:** Dẫn xuất state machine từ hai cờ hiện hữu theo thứ tự `EMAIL_VERIFICATION_REQUIRED` → `PASSWORD_CHANGE_REQUIRED` → `ACTIVE`. Login ở hai trạng thái đầu chỉ cấp JWT `ONBOARDING` 10 phút với duy nhất `ROLE_ONBOARDING`, không cấp/lưu Refresh Token. Security chỉ cho token này gọi gửi/xác nhận OTP, đổi mật khẩu và logout; mọi REST nghiệp vụ trả `ACCOUNT_ONBOARDING_REQUIRED`, STOMP CONNECT bị từ chối. Đổi mật khẩu lần đầu chỉ hợp lệ sau khi `verified = true`; hoàn tất xong phải đăng nhập lại để nhận cặp token đầy đủ. Access Token thường giảm từ 24 giờ xuống 15 phút. OTP có TTL 2 phút, cooldown gửi lại 60 giây và tối đa 5 lần nhập sai.
 - **Hệ quả:** Biết mật khẩu tạm chưa đủ để truy cập dữ liệu hoặc chiếm tài khoản; Admin/Lecturer chưa hoàn tất không giữ quyền đặc biệt. Không cần API, Entity, schema hay Liquibase mới; contract login bổ sung `token_type` và `account_state`. Phiên onboarding hết hạn không thể refresh và người dùng phải đăng nhập lại.
 
-### [ADR-016] Giới hạn thao tác FID theo tài khoản và thiết bị
+### ADR-016 Giới hạn thao tác FID theo tài khoản và thiết bị
 
 - FID thuộc cặp `userId + deviceId`. Login và đồng bộ kiểm tra xung đột dưới khóa giao dịch PostgreSQL theo FID. Login bỏ qua FID xung đột để người dùng vẫn vào được hệ thống. Đồng bộ trả 409 và chỉ cập nhật thiết bị đang hoạt động. Khi đổi tài khoản trên trình duyệt dùng chung, logout tài khoản cũ giải phóng FID. Login mới chỉ ghi vào thiết bị của chính tài khoản đăng nhập.
 - Hủy FID yêu cầu phiên đầy đủ và dùng một câu cập nhật có điều kiện theo cả cặp sở hữu lẫn FID đang lưu. Frontend xếp hàng callback chưa gửi được và gửi lại khi vào phiên `ACTIVE`.
 
-### [ADR-017] Tách quyền xem hồ sơ khỏi quyền xem bài viết
+### ADR-017 Tách quyền xem hồ sơ khỏi quyền xem bài viết
 
 - Hồ sơ thành viên vẫn truy cập được khi có quan hệ chặn. Backend là nguồn quyết định quyền đọc bài viết qua `GET /users/{userId}/posts` và endpoint chi tiết. Khi nhận `USER_IS_BLOCKED`, FE thay phần bài viết bằng biểu tượng Cấm và thông báo, không hiển thị các bài đã lưu trong cache cho trạng thái này.
 - Hồ sơ chính chủ dùng `GET /posts/me`; hồ sơ thành viên dùng API theo tác giả và tuân theo phạm vi công khai/bạn bè. Phân trang dùng cursor hiện hữu.
 
-### [ADR-018] Rút lời mời đang chờ và xử lý tranh chấp với chấp nhận
+### ADR-018 Rút lời mời đang chờ và xử lý tranh chấp với chấp nhận
 
 - Rút lời mời là hành động của người gửi trên quan hệ `PENDING`, tách khỏi từ chối và hủy kết bạn. Quan hệ theo dõi quản lý riêng.
 - Các thao tác thay đổi quan hệ hiện hữu lấy khóa ghi trên bản ghi trước khi kiểm tra trạng thái. Nếu rút thành công trước, thao tác chấp nhận không còn lời mời. Nếu chấp nhận trước, thao tác rút trả 409.
 
-### [ADR-019] Dùng chung luồng làm mới phiên web cho REST và STOMP
+### ADR-019 Dùng chung luồng làm mới phiên web cho REST và STOMP
 
 - Trong mỗi tab, REST và STOMP chờ chung một lần gọi `POST /auth/refresh` nếu access token đã hết hạn hoặc còn tối đa 5 giây. Refresh vẫn dùng cookie HttpOnly và chỉ chấp nhận access token mới khớp `userId` và `deviceId` của phiên đang chờ.
 - STOMP dùng token hợp lệ trước mỗi `CONNECT`. Nếu broker từ chối xác thực, client thử phục hồi một lần trước khi dừng. Lỗi mạng tạm thời giữ phiên và STOMP thử lại sau 5 giây. Khi refresh bị từ chối, frontend kết thúc phiên tương ứng và đưa người dùng về đăng nhập.
 
-### [ADR-020] Trạng thái cảm xúc của người học trong API luyện tập
+### ADR-020 Trạng thái cảm xúc của người học trong API luyện tập
 
 - `GET /sessions/{sessionId}/questions` bổ sung `my_interaction.my_reaction`. Backend lấy cảm xúc của người dùng hiện tại bằng một truy vấn theo toàn bộ ID câu hỏi của phiên.
 - Frontend cập nhật lạc quan trạng thái và số đếm của đúng câu hỏi, đối chiếu với kết quả `POST /react` và hoàn tác hai trường này khi yêu cầu thất bại. Bình luận thành công cập nhật số đếm trên câu hỏi trong cache. Thẻ phiên ở bảng tin hiển thị số đếm của target `SESSION`.
 
-### [ADR-021] Ẩn kết quả duyệt từng câu trong luyện tập công khai
+### ADR-021 Ẩn kết quả duyệt từng câu trong luyện tập công khai
 
 - Luyện tập phiên đã xét duyệt bao gồm cả câu được duyệt và câu bị từ chối. API luyện tập và tìm kiếm công khai ẩn trạng thái duyệt từng câu. Kết quả chi tiết và tổng số được duyệt thuộc luồng riêng của người nộp hoặc giảng viên.
 - Phiên mới và yêu cầu thay thế danh sách câu hỏi cần ít nhất ba câu. Phiên cũ vẫn truy cập được. Sau khi trả lời, người học xem lại phương án và kết quả đã lưu. Nếu câu hỏi đã được cập nhật, FE hiển thị riêng phương án cũ.
 
-### [ADR-022] Lưu báo lỗi và lượt chúc mừng độc lập
+### ADR-022 Lưu báo lỗi và lượt chúc mừng độc lập
 
 - Báo lỗi dùng bảng `question_error_reports`. Các truy vấn đánh giá sao bỏ qua bản ghi báo lỗi cũ. Game 5 đọc báo lỗi mới và đọc bản ghi cũ nếu cần. Khi người dùng chấm sao lên bản ghi báo lỗi cũ, Backend sao lưu báo lỗi trước khi cập nhật sao.
 - Lượt chúc mừng dùng phản ứng `BADGE_AWARD` theo `feed_id`. Backend khóa sự kiện khi ghi và lấy số đếm theo lô khi dựng bảng tin. Người nhận và người bị chặn không thể gửi lượt chúc mừng đó.
 
-### [ADR-023] Hoàn tất chuyển dữ liệu báo lỗi sang bảng riêng
+### ADR-023 Hoàn tất chuyển dữ liệu báo lỗi sang bảng riêng
 
 - Sau khi áp dụng changeset 09-02, dừng tiến trình ghi và chạy `backend/scripts/migrate-question-reports.sql` trên PostgreSQL. Script chuyển báo lỗi theo khóa người dùng/câu hỏi, giữ bản có sẵn ở bảng đích, tính lại thống kê sao của các câu liên quan rồi bỏ cột `user_ratings.is_error` trong cùng giao dịch.
 - Backend chỉ đọc báo lỗi từ `question_error_reports`, kể cả Game 5. API chấm sao từ chối các trường ngoài hợp đồng để payload báo lỗi cũ không trở thành lượt chấm 1 sao.
 
-### [ADR-024] Kết thúc phiên cục bộ ngay khi đăng xuất
+### ADR-024 Kết thúc phiên cục bộ ngay khi đăng xuất
 
 - Frontend giữ access token của phiên cần thu hồi cho yêu cầu nền, xóa trạng thái và cache cục bộ, ngắt STOMP rồi về trang đăng nhập. Nếu đang có lượt làm mới, yêu cầu thu hồi đợi lần xoay token đó kết thúc. Nếu backend trả 401 cho phiên ACCESS, frontend có thể dùng cookie để xin token cùng người dùng và thiết bị rồi thử thu hồi lại.
 - Yêu cầu đăng nhập mới trong cùng tab đợi tác vụ thu hồi kết thúc để tránh thao tác trên phiên vừa được tạo. Backend vẫn thu hồi refresh token và vô hiệu hóa thiết bị dựa trên danh tính trong access token.
 
-### [ADR-025] Lấy bộ đếm bài viết và đích luyện tập từ PostgreSQL khi tìm kiếm
+### ADR-025 Lấy bộ đếm bài viết và đích luyện tập từ PostgreSQL khi tìm kiếm
 
 - Elasticsearch xếp hạng và phân trang theo các bản ghi khớp. PostgreSQL trả bộ đếm hiện tại cho các ID bài viết trong trang và kiểm tra quyền xem, bao gồm trạng thái xóa, chặn và bạn bè.
 - PostgreSQL trả ID phiên theo lô cho các câu hỏi thuộc phiên đã xét duyệt. Cả câu được duyệt lẫn câu bị từ chối có thể xuất hiện và cùng dùng hợp đồng phản hồi công khai không có trạng thái duyệt từng câu.
 
-### [ADR-026] Chốt kết quả duyệt phiên bằng thao tác riêng
+### ADR-026 Chốt kết quả duyệt phiên bằng thao tác riêng
 
 - Trong `REVIEWING`, phê duyệt, từ chối và biên tập chỉ ghi quyết định hiện tại. Tiến độ 100% vẫn cho phép đổi quyết định. API chi tiết trả `session_status` để FE xác định trạng thái phiên và quyền thao tác.
 - Chốt phiên là giao dịch chuyển sang `RESOLVED`, từ chối câu còn chờ và ghi nhận thưởng, thông báo và sự kiện đồng bộ. Các thao tác ghi khóa hàng phiên theo thứ tự ID trước khi đọc câu hỏi. Yêu cầu sửa sau chốt trả `409 SESSION_REVIEW_FINALIZED`. Gọi chốt lại cùng phiên giữ nguyên kết quả đã ghi.
 - Tạo đề, đếm ngân hàng và lưu câu chính thức cuối kỳ dựa trên câu được duyệt trong phiên `RESOLVED`. Tìm kiếm và luyện tập công khai tiếp tục bao gồm cả hai nhóm câu sau chốt và ẩn quyết định từng câu. Job AI chỉ tự chốt phiên `PENDING` và kiểm tra lại trạng thái khi lấy khóa.
 
-### [ADR-027] Ghi chú và tương tác trên bài vinh danh đóng góp
+### ADR-027 Ghi chú và tương tác trên bài vinh danh đóng góp
 
 - Chốt phiên có câu được duyệt tạo bài công khai `QUESTION_APPROVED_NOTIFICATION`. Bài thuộc loại khác không trả ghi chú cũ trong API. Quyền ghi chú ban đầu dựa trên `session.reviewer` và đã được thay bằng ADR-029.
 - Sự kiện `SESSION_RESOLVED_APPROVED` giữ khóa phiên trong cơ sở dữ liệu. API bảng tin tra bài công khai theo lô bằng `posts.session_id` và trả `target_type = POST`, `target_id` là ID bài viết, `content.session_id` là ID phiên để luyện tập. Sự kiện thiếu bài liên kết hiển thị ở dạng thông báo. Cảm xúc và bình luận trên bài dùng chung dữ liệu với trang chi tiết, còn tương tác `SESSION` dành riêng cho bộ câu hỏi.
 - API quản lý thiết bị chỉ thu hồi hoặc xóa thiết bị khác với `device_id` trong JWT hiện tại. Người dùng kết thúc phiên hiện tại bằng luồng đăng xuất tài khoản.
 
-### [ADR-028] Thảo luận bộ câu hỏi trong màn luyện tập
+### ADR-028 Thảo luận bộ câu hỏi trong màn luyện tập
 
 - Khung thảo luận dùng bình luận `SESSION` và ID phiên. Màn luyện tập và API tương tác phiên dùng cùng quyền truy cập. Phiên `RESOLVED` mở cho người dùng đã xác thực. Phiên chưa chốt chỉ mở cho người đề xuất.
 - Phản hồi phải thuộc cùng đối tượng với bình luận cha. API đọc phản hồi trực tiếp kiểm tra quyền từ bình luận cha. Bản xem trước phản hồi, số phản hồi và hồ sơ tác giả được lấy theo lô cho mỗi trang.
 - Thẻ bộ câu hỏi và khung thảo luận dùng chung cảm xúc `SESSION`. Danh sách phiên trả `my_reaction` theo lô, màn luyện tập trả `react_count` và `my_reaction` ở cấp phiên. FE cập nhật cache theo ID phiên và đối soát với bộ đếm trả về từ `POST /react`.
 
-### [ADR-029] Quyền ghi chú theo lớp học phần của phiên được vinh danh
+### ADR-029 Quyền ghi chú theo lớp học phần của phiên được vinh danh
 
 - Tài khoản `LECTURER` có thể ghi chú trên bài `QUESTION_APPROVED_NOTIFICATION` của sinh viên khi giảng viên phụ trách lớp học phần của phiên `RESOLVED` gắn với bài (`post.session.courseClass.lecturer`). Điều kiện áp dụng cho cả phiên do AI chốt.
 - Bảng tin và API bài viết tra quyền theo lô. API lưu kiểm tra lại cùng điều kiện trước khi cập nhật. Mỗi bài có một ghi chú chung, hiển thị tên giảng viên cập nhật gần nhất.
 
-### [ADR-030] Dùng mã sinh viên trên bài vinh danh đóng góp
+### ADR-030 Dùng mã sinh viên trên bài vinh danh đóng góp
 
 - `SESSION_RESOLVED_APPROVED` và `QUESTION_APPROVED_NOTIFICATION` chỉ dùng mã từ `AnonymizerUtil` làm tên hiển thị trong `actor` và `author`. Hai phản hồi không chứa ID tài khoản, ảnh hoặc khung ảnh của sinh viên. Bài viết thường và tên người ghi chú giữ quy tắc cũ.
 - Chuyển đổi ở tầng phản hồi nên áp dụng cho bài đã tạo, không cần đổi schema. ID phiên tiếp tục dùng để luyện tập; mã và ID phiên có thể đối chiếu với danh sách bộ câu hỏi công khai trên hồ sơ thành viên.
 
-### [ADR-031] Kho luyện tập chung theo môn học
+### ADR-031 Kho luyện tập chung theo môn học
 
 - `GET /sessions/practice-catalog` trả phiên đã chốt theo môn, từ khóa và con trỏ. DTO chỉ chứa dữ liệu cần để luyện tập, không gồm danh tính người nộp, lớp học phần hoặc kết quả duyệt. Cảm xúc được tải theo lô trên trang trả về.
 - `GET /users/{userId}/sessions` chỉ dành cho tài khoản trùng `userId`. Luồng chính chủ dùng `/sessions/my-submissions`, còn giảng viên dùng API duyệt có phân quyền theo lớp. Liên kết web theo hồ sơ cũ dẫn về kho chung.
 - Bài vinh danh giữ mã sinh viên cố định và liên kết luyện tập. Thay đổi chặn đối chiếu qua danh sách phiên gắn với tên thật trong hồ sơ.
 
-### [ADR-032] Tra phiên bằng mã đầy đủ
+### ADR-032 Tra phiên bằng mã đầy đủ
 
 - Tìm kiếm chung tra mã phiên đầy đủ từ PostgreSQL theo ID và đối chiếu toàn bộ mã. Điều kiện đọc là phiên đã chốt hoặc tài khoản gọi chính là người nộp. Phiên chưa chốt không cần được lập chỉ mục tìm kiếm.
 - API phiên của chính mình áp dụng từ khóa trước khi phân trang. Cả ba màn tìm phiên chấp nhận dấu `#` ở đầu mã. Lượt tra mã đầy đủ không được ghi vào lịch sử mới hoặc gợi ý thịnh hành.
 
-### [ADR-033] Nối các trang thông báo trên frontend
+### ADR-033 Nối các trang thông báo trên frontend
 
 - Trang thông báo và menu xem nhanh dùng cùng API con trỏ. Trang nối kết quả theo `pagination.after`, còn menu hiển thị trang đầu với giới hạn riêng.
 - Đánh dấu đã đọc cập nhật các trang đã lưu trong cả hai chế độ và làm mới dữ liệu sau khi API phản hồi. Thông báo đẩy khi đang mở ứng dụng yêu cầu tải lại danh sách.
 
-### [ADR-034] Định tuyến hàng đợi STOMP theo ID tài khoản
+### ADR-034 Định tuyến hàng đợi STOMP theo ID tài khoản
 
 - STOMP xác thực bằng access token và dùng ID trong JWT làm tên principal. ID này trùng với khóa mà dịch vụ chat dùng khi gửi tin mới và biên nhận đã đọc qua `convertAndSendToUser`. JWT và quyền của người dùng vẫn được giữ trong đối tượng xác thực.
 - Client đăng ký `/user/queue/messages` cho phiên của mình. Interceptor từ chối đích gửi hoặc đăng ký ngoài danh sách của chat, bao gồm hàng đợi vật lý và đăng ký theo ký tự đại diện. Các URL STOMP của client không đổi.
 
-### [ADR-035] Xác thực PIN kho ẩn theo phiên đăng nhập
+### ADR-035 Xác thực PIN kho ẩn theo phiên đăng nhập
 
 - Cặp access token và refresh token có cùng `sessionId`. Mỗi lần đăng nhập cấp ID mới. Khi xoay refresh token, Redis chỉ ghi đè nếu token được trình vẫn là token hiện tại. Token cũ chưa có ID nhận ID ở lần refresh tiếp theo.
 - Redis giữ quyền mở kho tối đa 15 phút. Máy chủ kiểm tra quyền theo tài khoản và `sessionId`, đồng thời đối chiếu phiên với refresh token còn hiệu lực. Khóa thủ công xóa quyền của phiên gọi. Đăng xuất hoặc đăng nhập lại làm quyền của phiên trước mất hiệu lực.
 - REST kiểm tra quyền trước khi đọc danh sách, lịch sử và thao tác trên hội thoại ẩn. STOMP đưa cả sự kiện đang gõ vào hàng đợi cá nhân. Broker kiểm tra quyền mở kho cho từng socket nhận dữ liệu ẩn. Việc trích dẫn tin nhắn chỉ áp dụng trong cùng hội thoại.
 
-### [ADR-036] Cập nhật thu hồi tin nhắn qua STOMP
+### ADR-036 Cập nhật thu hồi tin nhắn qua STOMP
 
 - API thu hồi cho mọi người phát `MESSAGE_REVOKED` sau khi giao dịch lưu hoàn tất. Event chỉ có ID hội thoại và ID tin nhắn. Dùng cùng bộ phát hàng đợi cá nhân và kiểm tra quyền kho ẩn như tin mới.
 - Giữ thứ tự xử lý các frame đến và đi trong mỗi kết nối. STOMP dùng chung cấu hình JSON `snake_case` với REST. Hai chiều của trạng thái đang nhập dùng `typing`, còn trạng thái thu hồi trong lịch sử và danh sách hội thoại dùng `revoked`. Frontend dùng sự kiện thu hồi để cập nhật tin nhắn, trích dẫn và bản xem trước hội thoại ngay trong cache.
 
-### [ADR-037] Yêu cầu đồng ý trước khi tham gia nhóm chat qua quan hệ theo dõi
+### ADR-037 Yêu cầu đồng ý trước khi tham gia nhóm chat qua quan hệ theo dõi
 
 - Tạo nhóm và thêm thành viên kiểm tra quan hệ theo lô. Bạn bè tham gia trực tiếp. Người theo dõi hoặc đang được theo dõi nhận bản ghi trong `group_invitations`. Chỉ tài khoản nhận lời mời có thể chấp nhận hoặc từ chối.
 - Lời mời giữ chỗ tối đa 7 ngày trong giới hạn 200 chỗ. Khi người gửi rời nhóm hoặc bị xóa, hệ thống hủy các lời mời họ đã gửi. API chấp nhận kiểm tra lại quyền, hạn và quan hệ chặn, rồi cập nhật thành viên và xóa lời mời trong một giao dịch.
 - Khóa bản ghi hội thoại khi thay đổi thành viên hoặc xử lý lời mời để tuần tự hóa việc giữ chỗ, chấp nhận và rời nhóm. Lịch sử chat yêu cầu tư cách thành viên đang hoạt động.
 
-### [ADR-038] Cập nhật ngày khai giảng độc lập với trạng thái học kỳ
+### ADR-038 Cập nhật ngày khai giảng độc lập với trạng thái học kỳ
 
 - Admin đặt hoặc sửa ngày khai giảng của học kỳ hiện có qua API riêng. Dữ liệu dùng cột `semesters.start_date` hiện có.
 - Hibernate chỉ ghi các thuộc tính thay đổi. Luồng kích hoạt, sửa ngày và chốt sổ cập nhật entity được đọc trong giao dịch để việc sửa ngày và đổi trạng thái không ghi đè lẫn nhau.
 - Hủy cache học kỳ hiện tại sau khi giao dịch đổi ngày hoặc trạng thái commit. Lần đọc sau lấy lại trạng thái và ngày khai giảng đã lưu.
 
-### [ADR-039] Bù lượt Game 1 bị lỡ lịch chốt
+### ADR-039 Bù lượt Game 1 bị lỡ lịch chốt
 
 - Lượt Game 1 đặt cho ngày hôm sau theo giờ Việt Nam và chỉ đến hạn khi ngày mục tiêu đã kết thúc. Tác vụ khởi chạy một lần mỗi đêm lúc 00:05 và ngừng mở lô mới từ 00:20. Nếu bỏ lỡ lịch hoặc còn lượt tồn, lần chạy kế tiếp sẽ xử lý tiếp.
 - Mỗi lô chọn ngày mục tiêu quá hạn cũ nhất, khóa tối đa 500 lượt đang chờ và đếm người nộp theo lô cho các lớp của đúng ngày đó. Tác vụ tiếp tục sau lô dưới 500 lượt và dừng khi lô rỗng. Mỗi lô chuyển lượt `PENDING` sang `RESOLVED` và cộng thưởng trong giao dịch riêng.
 - Lịch sử trả cả `created_at` và `target_date` để giao diện phân biệt ngày đặt với ngày dự đoán.
 
-### [ADR-040] Chấm Game 3 theo hai mốc sau khi chốt phiên
+### ADR-040 Chấm Game 3 theo hai mốc sau khi chốt phiên
 
 - Chốt phiên thủ công hoặc tự động ghi một lượt `GAME_3_AUTHOR_CONFIDENCE` vào bảng `predictions` của học kỳ đang mở nếu phiên có ít nhất 10 câu. Lượt lưu độ tự tin của 10 câu đầu theo `displayOrder` (dùng ID khi trùng hoặc thiếu thứ tự), gồm cả câu bị từ chối. Phiên đã chốt trước khi triển khai giữ nguyên kết quả và điểm cũ.
 - Cron lúc 00:30 giờ Việt Nam đọc các lượt đến hạn theo lô tối đa 500 lượt. Mốc đầu là 14 ngày kể từ lúc chốt phiên. Mỗi câu cần ít nhất 3 người đánh giá khác tác giả, lấy trung bình thang 0–4. Chênh tối đa 0,5 là khớp. Năm câu khớp đem lại 0,25 điểm công khai, sáu câu lệch kết thúc với kết quả thua. Nếu chưa kết luận, `targetDate` chuyển sang mốc 28 ngày. Khi hết hạn, lượt chưa phân định được ghi `RESOLVED` kèm `actualData.outcome = INSUFFICIENT_RATINGS`.
 - Chốt sổ chấm các lượt còn chờ của học kỳ ngay trong giao dịch chốt sổ, kể cả các lượt chưa đến mốc 14 ngày. Các lần chấm chỉ xét đánh giá được tạo trước mốc tương ứng hoặc thời điểm chốt sổ nếu đến trước. `user_ratings` lưu điểm mới nhất của mỗi người, nên một lần sửa điểm trên đánh giá đã có có thể được đọc nếu tác vụ chạy sau mốc.
 - Đăng ký, chấm đêm và chốt sổ dùng khóa hàng học kỳ. Trạng thái kết quả, điểm và xu commit cùng giao dịch. Chốt sổ tính hạng từ `point_histories` để tính cả điểm vừa cộng, còn Redis nhận sự kiện sau commit theo đúng ID học kỳ. Dùng các trường hiện có, không cần Liquibase.
 
-### [ADR-041] Lưu số liệu tại lần chốt kết quả Game 3
+### ADR-041 Lưu số liệu tại lần chốt kết quả Game 3
 
 - Khi lượt chuyển sang `RESOLVED`, lưu `questionEvaluations` trong `actualData` cùng kết quả và `resolvedAt`. Mỗi câu có ID, mã câu, thứ tự, độ tự tin, điểm trung bình, số người đánh giá hợp lệ và kết luận. Các số liệu này lấy từ cùng truy vấn dùng để tính kết quả, gồm cả câu có 0 đánh giá.
 - Lịch sử lấy số liệu đã lưu cho chủ lượt. Chỉnh sửa đánh giá về sau chỉ cập nhật điểm cộng đồng. Lượt đã chốt bằng phiên bản trước chỉ hiển thị số liệu tổng hợp đã ghi. Giữ nguyên API và schema.
 
-### [ADR-042] Cập nhật vai trò nhóm chat qua STOMP
+### ADR-042 Cập nhật vai trò nhóm chat qua STOMP
 
 - Đổi vai trò lấy cùng khóa hàng hội thoại với thao tác thành viên để tuần tự hóa chuyển quyền Tù trưởng. Khi đổi vai trò hoặc khi Tù trưởng rời nhóm và có người kế nhiệm, phát `GROUP_ROLES_CHANGED` sau commit đến thành viên đang hoạt động qua `/user/queue/messages`, dùng cùng kiểm tra PIN cho hội thoại ẩn.
 - Sự kiện chỉ mang ID hội thoại. Frontend tải lại truy vấn thành viên của nhóm để lấy cả vai trò mới và quyền thao tác theo vai trò. Khi STOMP kết nối lại, làm mới các truy vấn thành viên đang mở.
 
-### [ADR-043] Ghi nhận và đồng bộ khi thành viên bị mời ra khỏi nhóm
+### ADR-043 Ghi nhận và đồng bộ khi thành viên bị mời ra khỏi nhóm
 
 - `user_participants.left_at` xác định tư cách thành viên đã kết thúc. Cột boolean nullable `removed_from_group` ghi nhận thao tác mời ra. Xóa cờ khi tự rời hoặc tham gia lại qua thêm trực tiếp hay chấp nhận lời mời. Bản ghi cũ có `left_at` và chưa có lý do dùng thông báo chung.
 - Sau commit phát `GROUP_MEMBER_REMOVED` qua hàng đợi cá nhân tới thành viên đang tham gia và người vừa bị mời ra, giữ kiểm tra PIN của từng người nhận. Frontend làm mới danh sách hội thoại, thành viên và gợi ý của nhóm. Phía người bị mời ra tải lại quyền truy cập từ API lịch sử.
 - API lịch sử và thành viên dùng HTTP 403 với mã `2413` khi bị mời ra và `2414` khi tư cách đã kết thúc mà thiếu dấu hiệu bị mời ra. Giao diện thay khu vực tin nhắn bằng thông báo tương ứng. Nhóm ẩn vẫn yêu cầu mở kho trước khi trả lý do.
 
-### [ADR-044] Đồng bộ khi có thành viên mới trong nhóm chat
+### ADR-044 Đồng bộ khi có thành viên mới trong nhóm chat
 
 - Thêm trực tiếp và chấp nhận lời mời phát `GROUP_MEMBERS_ADDED` sau commit khi có thành viên mới hoặc tham gia lại. Lời mời còn chờ chưa làm tăng số thành viên. Dùng hàng đợi cá nhân và kiểm tra PIN hiện có, gồm cả người vừa tham gia.
 - Client tải lại danh sách hội thoại, thành viên và gợi ý của nhóm. Tiêu đề chat và hộp thành viên lấy số lượng từ cùng truy vấn thành viên khi đã tải. Với người tham gia lại đang mở nhóm, sự kiện làm mới truy vấn lịch sử từng báo lỗi hoặc còn chờ.
 
-### [ADR-045] Đọc học kỳ hiện tại từ PostgreSQL
+### ADR-045 Đọc học kỳ hiện tại từ PostgreSQL
 
 - `CurrentSemesterService` đọc trực tiếp trạng thái học kỳ. Index `idx_semesters_single_active` trong changeset 07-02 bảo đảm tối đa một dòng `active = true`. Kích hoạt flush trong giao dịch để ánh xạ xung đột đúng index thành HTTP 409. Đóng kỳ lấy cùng khóa hàng với chốt sổ và Game 3, rồi cập nhật đúng dòng đã kiểm tra.
 - Khi chưa có kỳ hoạt động, API xem bảng xếp hạng và danh sách lớp theo kỳ hiện tại trả rỗng. Thao tác đồng bộ bảng xếp hạng, tạo lớp theo kỳ hiện tại, nhập lớp và đề xuất yêu cầu một kỳ hoạt động. Lớp lịch sử đọc trạng thái từ học kỳ đã join trong truy vấn lớp.
 - Sổ điểm và `PointAddedEvent` dùng cùng ID học kỳ. Game 1 lấy kỳ của lớp theo lô, Game 2 và thưởng duyệt lấy kỳ của phiên, Game 3 và chốt sổ dùng kỳ đã xác định trong giao dịch. Game 5 và Game 6 lấy kỳ tại lúc xử lý. Listener Redis bỏ qua sự kiện không có kỳ và chỉ dùng kỳ ghi trên sự kiện.
 
-### [ADR-046] Cập nhật thông báo trong ứng dụng qua STOMP
+### ADR-046 Cập nhật thông báo trong ứng dụng qua STOMP
 
 - Các luồng tạo thông báo nội bộ lưu qua `NotificationWriter`. Sau khi commit, dịch vụ gửi `NOTIFICATIONS_CHANGED` tới hàng đợi cá nhân `/user/queue/notifications`. Khi lưu theo lô, mỗi tài khoản nhận một tín hiệu cho lô đó. Định tuyến dùng ID tài khoản đã xác thực và payload chỉ có loại sự kiện.
 - Frontend dùng lại kết nối STOMP của ứng dụng để tải lại danh sách và số chưa đọc khi có tín hiệu hoặc khi kết nối lại. REST vẫn cung cấp dữ liệu phân trang và trạng thái đã đọc. Luồng Firebase Cloud Messaging tiếp tục phục vụ thông báo đẩy theo cài đặt của người dùng.
 
-### [ADR-047] Ngừng cung cấp trợ lý chat AI cho Admin
+### ADR-047 Ngừng cung cấp trợ lý chat AI cho Admin
 
 - Gỡ ba API gửi câu hỏi, đọc lịch sử và liệt kê phiên tại `/admin/ai/chat`, cùng mã xử lý riêng cho chức năng này. Mã của tính năng có thể tra trong lịch sử Git.
 - Gỡ mapping của `ai_chat_sessions` và `ai_chat_messages` khỏi JPA. Hai bảng và dữ liệu vẫn còn cho đến khi áp dụng changeset do người vận hành tạo. Scheduler duyệt tự động và luồng tinh chỉnh, áp dụng đề xuất AI cho câu hỏi tiếp tục sử dụng dịch vụ AI hiện tại.
 
-### [ADR-048] Quyền xem video bài giảng theo môn học
+### ADR-048 Quyền xem video bài giảng theo môn học
 
 - Người dùng xem được bài `LEARNING_VIDEO` nếu đã ghi danh vào một lớp học phần của môn, là người đăng hoặc là Admin. Ghi danh được xét theo môn, gồm cả lớp ở kỳ trước. API danh sách và Bảng tin áp dụng quyền trước khi phân trang.
 - Chi tiết, bài viết hồ sơ, kết quả tìm kiếm và tương tác trên bài giảng cũng kiểm tra quyền. Quyền này kiểm soát dữ liệu do API cung cấp. Tệp trên URL công khai của R2 vẫn truy cập được nếu đã có URL.
 
-### [ADR-049] Con trỏ phân trang cho hội thoại và danh sách quản lý
+### ADR-049 Con trỏ phân trang cho hội thoại và danh sách quản lý
 
 - Hội thoại thường và kho ẩn sắp xếp theo thời điểm tin cuối giảm dần, dùng ID hội thoại khi trùng thời điểm và xếp nhóm chưa có tin xuống cuối. API trả `next_cursor` chứa thời điểm đầy đủ và ID. Danh sách bạn bè, lời mời kết bạn, theo dõi và chặn dùng cùng định dạng với ID của người ở đầu kia. Các API vẫn nhận `after` dạng mili giây để tương thích client cũ.
 - Lịch sử dự đoán, Đề thi và Phiên cần duyệt nhận `before` hoặc `after`. Chiều ngược lấy các ID liền trước theo thứ tự tăng dần rồi đảo khi trả kết quả. Backend áp dụng cùng bộ lọc và quyền ở cả hai chiều, trả con trỏ cùng `has_prev` và `has_next`. Bảng xếp hạng tiếp tục dùng con trỏ theo thứ hạng.
 - Cửa hàng giữ `after` là ID vật phẩm. Khi sắp theo giá hoặc độ hiếm, backend dùng giá hoặc thứ tự độ hiếm của vật phẩm mốc cùng ID để tiếp tục. Thứ tự độ hiếm từ cao xuống thấp là LEGENDARY, EPIC, RARE, COMMON. Trạng thái sở hữu được truy vấn một lần theo ID các vật phẩm trên trang.
 
-### [ADR-050] Xóa tài khoản sau 30 ngày
+### ADR-050 Xóa tài khoản sau 30 ngày
 
 - `DELETE /users/me` ghi hạn xóa vào `users.deletion_due_at` và trả lại cùng hạn khi gửi lại yêu cầu. Trong 30 ngày chờ, tài khoản vẫn hoạt động bình thường. Settings đọc trạng thái bằng `GET /users/me/deletion` và hủy bằng `DELETE /users/me/deletion` trước khi hết hạn.
 - Tác vụ nền kiểm tra mỗi phút và xử lý tài khoản đã đến hạn theo lô. Lập lịch, hủy và xử lý hết hạn đều khóa hàng `User`. Hồ sơ, điểm và thiết bị được đọc hoặc cập nhật theo lô. Khi xử lý thành công, tài khoản bị vô hiệu hóa, hồ sơ được ẩn danh và bản ghi tài khoản được giữ cho các dữ liệu tham chiếu.
 - Sau commit, backend phát sự kiện gỡ hồ sơ khỏi tìm kiếm, dọn ảnh đại diện và ảnh bìa, đóng kết nối STOMP trên tiến trình BE hiện tại. JWT cho REST và STOMP được đối chiếu với ID, email và trạng thái hoạt động của tài khoản. Refresh token mới cũng mang ID tài khoản. Token cũ được chuyển sang định dạng mới khi làm mới.
 
-### [ADR-051] Áp dụng bản AI trong phiên duyệt và quản trị huy hiệu
+### ADR-051 Áp dụng bản AI trong phiên duyệt và quản trị huy hiệu
 
 - Giảng viên phụ trách lớp và Admin xem bản tinh chỉnh cùng kết quả BTProp trong phiên đang mở. Cảnh báo hoặc kết quả chưa kiểm chứng cần xác nhận tự rà soát. BE khóa phiên khi áp dụng, kiểm tra bản đề xuất còn chờ và câu hỏi chưa được sửa sau khi tạo bản AI. Tệp ảnh đáp án lấy từ câu hỏi gốc theo khóa lựa chọn.
 - Trang duyệt giữ nội dung đang soạn và các lượt trao đổi theo ID câu hỏi. Giảng viên có thể đóng và mở lại hộp thoại kể cả khi đang kiểm chứng. Rời trang hoặc tải lại sẽ bỏ nháp tại trình duyệt. Áp dụng bản đề xuất sẽ bắt đầu lại hội thoại từ câu hỏi đã cập nhật. API tinh chỉnh nhận tùy chọn `previous_edit_log_id` của bản đề xuất còn chờ, thuộc cùng câu hỏi và người duyệt. Backend đối chiếu thời điểm câu hỏi cập nhật và dùng nội dung văn bản của bản đó cùng câu gốc khi sinh bản kế tiếp.
@@ -485,32 +485,32 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Admin được trao thủ công mọi huy hiệu đang hoạt động. Vô hiệu hóa giữ các lượt đã trao. Danh mục và màn Admin lấy số người đạt theo lô; JSON tiêu chí ghi duy nhất trường phân loại `type`.
 - Hồ sơ dùng tải trực tiếp cho ảnh đại diện và ảnh bìa. Đề xuất phiên dùng presign và kiểm tra tồn tại theo lô trước khi nộp. Khi lưu nghiệp vụ, BE xác nhận tệp vĩnh viễn. API thống kê quan hệ giữ tương thích và được đánh dấu deprecated.
 
-### [ADR-052] Ngừng trao và thu hồi huy hiệu
+### ADR-052 Ngừng trao và thu hồi huy hiệu
 
 - `Badge.active` điều khiển việc xét và trao mới. GV/SV thấy huy hiệu đã ngừng trao ở danh mục và bộ sưu tập. Admin có thể kích hoạt lại qua API cập nhật huy hiệu hiện có.
 - `UserBadge.revokedAt` ghi nhận lượt bị thu hồi và giữ cặp khóa người dùng/huy hiệu. Luồng tự động bỏ qua mọi cặp khóa đã có, kể cả lượt bị thu hồi. Admin trao lại bằng cách đặt `revokedAt` về null và ghi thời điểm trao mới. Thu hồi cập nhật số đếm hồ sơ, ẩn sự kiện cũ khỏi Bảng tin và tạo thông báo `BADGE_REVOKED` cho tài khoản đang hoạt động bằng `NotificationWriter`. STOMP báo thay đổi sau commit. Thông báo đã gửi và ảnh của sự kiện lịch sử vẫn được lưu.
 - Màn Admin tìm người trao và người đang giữ huy hiệu bằng truy vấn phân trang theo ID. Form lấy danh mục môn học qua `/subjects`; BE kiểm tra ID và dùng mã môn chính thức. Biểu tượng tải trực tiếp lên R2 qua `BADGE_ICON` và được xác nhận vĩnh viễn khi lưu huy hiệu.
 - `Badge.badgeTriggerEvent` chọn sự kiện xét thưởng và `Badge.criteria` lưu JSONB theo bộ đánh giá tương ứng. BE kiểm tra cặp cấu hình khi tạo, sửa tiêu chí hoặc kích hoạt lại. Cấu hình đã lưu được dùng từ sự kiện tiếp theo, dựa trên dữ liệu tích lũy của người phát sinh sự kiện. Huy hiệu thứ hạng chỉ xét Top 10 toàn trường khi chốt học kỳ. Tiêu chí thứ hạng theo môn đã lưu từ trước không được xét bằng kết quả toàn trường.
 
-### [ADR-053] Triển khai Backend và AI sidecar độc lập
+### ADR-053 Triển khai Backend và AI sidecar độc lập
 
 - `deploy-stack.yml` theo dõi thư mục dịch vụ trên `master`. `deploy-backend.yml` và `deploy-aisidecar.yml` dùng để chạy thủ công. Mỗi dịch vụ có cache Buildx riêng và triển khai theo digest. VPS kiểm tra readiness của Spring hoặc `/health` của AISidecar rồi lưu image đã sẵn sàng trong `/opt/sqb/.deploy-images/`.
 - ADR-065 thay thế trigger push và cách áp dụng Compose của ADR này. Workflow Stack vẫn có chế độ thủ công để khởi tạo hoặc khôi phục. Workflow dùng các image đã sẵn sàng nếu không chọn digest khác và áp dụng theo thứ tự hạ tầng, sidecar, BE. Lần đầu chuyển từ cấu hình cũ, script lấy digest từ image của container hiện có. Stack mới hoàn toàn dùng các image trong `.env.prod`.
 - Khi đổi hợp đồng HTTP, triển khai sidecar hỗ trợ hợp đồng cũ và mới, chuyển BE, rồi bỏ hợp đồng cũ sau khi hết nhu cầu rollback. Có thể chạy từng workflow với tùy chọn `deploy` tắt để xuất image và chọn cặp digest cụ thể trong workflow Stack. Sidecar mới vẫn phải phục vụ BE đang chạy trong lúc chuyển phiên bản.
 
-### [ADR-054] Tải video bài giảng từng phần trực tiếp lên R2
+### ADR-054 Tải video bài giảng từng phần trực tiếp lên R2
 
 - API điều phối nằm dưới `/lecturer/medias/lecture-uploads`, dùng quy tắc Spring Security dành cho Giảng viên/Admin và kiểm tra chủ phiên ở service.
 - Trình duyệt tải từng phần 16 MiB qua URL PUT ký sẵn. API chỉ nhận JSON điều phối. Trần 2 GiB/tệp cấu hình được qua `LECTURE_VIDEO_MAX_FILE_SIZE`. Các giới hạn Spring multipart 15 MiB/tệp, 20 MiB/yêu cầu và Caddy 50 MB trên domain ứng dụng áp dụng cho request đi qua VPS.
 - Redis giữ phiên 24 giờ theo UUID và chủ sở hữu. Khóa theo phiên tuần tự hóa mở, hoàn tất, hủy và gắn video. Khi mất kết nối, R2 là nguồn xác định phần đã nhận. Server kiểm tra kích thước từng phần, sau đó kiểm tra lại đối tượng đã ghép bằng HEAD. Media mới lưu bằng JSONB hiện có.
 - Video đã ghép được đưa vào hàng đợi media tạm. Khi gắn vào bài giảng, BE xác nhận vĩnh viễn và đưa lại vào hàng tạm nếu giao dịch rollback. Phiên multipart bị bỏ dở được dọn theo quy tắc lifecycle của R2. CORS của bucket cần cho phép origin frontend gửi PUT với `Content-Type`. Video phát từ tệp đã tải, chưa có hàng đợi chuyển mã.
 
-### [ADR-055] Dùng chung thẻ và trình phát bài giảng
+### ADR-055 Dùng chung thẻ và trình phát bài giảng
 
 - Bảng tin, tab Video học tập và chi tiết dùng `PostFeedCard` với API tương tác hiện có. `GET /video-posts` bổ sung cảm xúc của người xem bằng một truy vấn theo các ID bài trong trang sau khi áp dụng bộ lọc quyền và phân trang. Quyền xem và cấu trúc lưu bài giữ theo ADR-048 và ADR-054.
 - Trình phát dùng Video.js 10 Neutral, tải thư viện và nguồn MP4/WebM khi người xem bấm phát. Ba màn dùng chung nguồn media đã chuẩn hóa từ API và giao diện điều khiển tiếng Việt.
 
-### [ADR-056] Quy trình xử lý báo cáo vi phạm
+### ADR-056 Quy trình xử lý báo cáo vi phạm
 
 - Phương án A được chọn. Giữ `POST /report` cho `POST`, `COMMENT` và `USER`. Hàng đợi theo từng đơn, báo cáo liên quan tải theo đối tượng. Khóa hàng người gửi khi tạo để chống trùng giữa các request. Duyệt khóa đơn rồi khóa đối tượng khi áp dụng biện pháp.
 - `moderation_actions` ghi biện pháp và hoàn tác. `Post`, `Comment` và `User` ánh xạ `activeModerationAction` bằng `@ManyToOne(fetch = LAZY)` trên cột nullable `moderation_action_id`. Khóa ngoại trỏ tới `moderation_actions.id`. Truy vấn lọc nội dung kiểm tra cột này, còn hàng đợi Admin lấy ID biện pháp từ tham chiếu mà không tải bản ghi. Đình chỉ 24 giờ, 7 ngày hoặc 30 ngày có thể gỡ sớm và dùng `session_epoch` để thu hồi token cũ. Tài khoản Admin được tiếp nhận đơn và đóng đơn. Trạng thái đình chỉ độc lập với xóa tài khoản.
@@ -518,62 +518,62 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Kho `R2_REPORT_EVIDENCE_BUCKET` phải riêng tư và khác bucket media công khai. Ảnh trả về qua URL ký 120 giây. Thời hạn mặc định 90 ngày sau khi duyệt có thể chỉnh bằng `REPORT_EVIDENCE_RETENTION_DAYS`. Admin có thể chuyển ảnh cũ từ URL SQB hợp lệ để xem. Việc thu hồi URL public cũ cần kiểm kê tham chiếu trước khi xóa ở kho cũ.
 - Trước khi cập nhật BE, áp dụng schema từ entity qua quy trình Liquibase của dự án. Đối chiếu API báo cáo trong [Swagger UI](https://hieudv.id.vn/api/v1/docs) và kế hoạch thiết kế trong `REPORT_MODERATION_PLAN.md`.
 
-### [ADR-057] Độ khó đề xuất và xác nhận khi duyệt câu hỏi
+### ADR-057 Độ khó đề xuất và xác nhận khi duyệt câu hỏi
 
 - Dùng cột `Question.difficulty` hiện có. Sinh viên có thể chọn độ khó khi đề xuất hoặc sửa phiên còn `PENDING`. Câu mới thiếu mức dùng `UNCLASSIFIED`. Client bỏ qua trường khi sửa câu hiện có sẽ giữ mức đã lưu.
 - Giảng viên được phân công hoặc Admin thấy độ khó hiện hành và có thể đổi mức khi biên tập. Phê duyệt trực tiếp hoặc theo lô xác nhận mức đang lưu. Cho phép duyệt câu `UNCLASSIFIED`. Luồng khóa phiên và quy tắc chỉ dùng câu `APPROVED` từ phiên `RESOLVED` khi tạo đề tiếp tục áp dụng.
 - Câu được hệ thống tự động phê duyệt từ trạng thái `PENDING` dùng `UNCLASSIFIED` vì mức đề xuất chưa qua giảng viên. Mức của câu đã được phê duyệt được giữ.
 
-### [ADR-058] Phạm vi xuất tài liệu ôn tập theo môn
+### ADR-058 Phạm vi xuất tài liệu ôn tập theo môn
 
 - `GET /lecturer/questions/export` kiểm tra giảng viên được phân công ít nhất một lớp của môn trong học kỳ đang hoạt động, cùng phạm vi với danh sách môn trên màn xuất. Admin được xuất mọi môn. Backend kiểm tra trước khi đọc dữ liệu hoặc truy cập tệp đã lưu.
 - Tài liệu ôn tập gồm toàn bộ câu hỏi của môn qua các lớp, học kỳ và trạng thái. API xuất đề thi dùng các câu đã được chọn khi sinh đề từ câu `APPROVED` trong phiên `RESOLVED`.
 
-### [ADR-059] Quyền xem và xuất đề thi
+### ADR-059 Quyền xem và xuất đề thi
 
 - `GET /lecturer/exams/{examId}` và `GET /lecturer/exams/{examId}/export` chỉ dành cho giảng viên tạo đề hoặc Admin, theo phạm vi quản lý đề thi. Kiểm tra vai trò trước khi truy vấn và đối chiếu người tạo trước khi trả nội dung hoặc gọi dịch vụ xuất tệp. Gán đề cho lớp chưa cấp quyền xem đáp án cho sinh viên hoặc giảng viên khác.
 
-### [ADR-060] Lưu tệp xuất học thuật trong bucket R2 riêng tư
+### ADR-060 Lưu tệp xuất học thuật trong bucket R2 riêng tư
 
 - Lưu PDF và Excel dưới `exports/exams/` và `exports/questions/` trong bucket `R2_REPORT_EVIDENCE_BUCKET` (`sqb-secret` trên production). Cả tra cache, ghi object và ký URL tải đều dùng bucket này. Backend từ chối xuất nếu cấu hình bị thiếu hoặc trùng `R2_BUCKET`.
 - Dùng đường dẫn riêng với bằng chứng báo cáo. Tệp xuất mới có `Cache-Control: private, no-store`. Giữ thời hạn URL ký hiện hành và xác nhận quyền trước khi truy cập kho.
 
-### [ADR-061] Phiên bản cache và cách tải tệp xuất học thuật
+### ADR-061 Phiên bản cache và cách tải tệp xuất học thuật
 
 - Mẫu PDF và Excel mới dùng nhánh `v2/` bên dưới các tiền tố xuất hiện hành. Lần xuất tiếp theo sinh object theo bố cục mới và ghi sẵn `Content-Disposition: attachment` cùng tên tệp. Bản cũ còn trong kho riêng tư và các URL đã cấp chịu thời hạn của chữ ký.
 - Trình duyệt tải trực tiếp từ URL ký. Backend tiếp tục kiểm tra quyền trước khi cấp URL và R2 trả metadata tải xuống từ object.
 
-### [ADR-062] Hạn mức ghi R2 chung cho tài khoản SQB
+### ADR-062 Hạn mức ghi R2 chung cho tài khoản SQB
 
 - `R2StorageQuota` giữ chỗ theo byte trong Redis dưới khóa chung của tài khoản. Giữ chỗ áp dụng cho media tải qua backend, batch presigned PUT, video multipart, bằng chứng báo cáo và tệp PDF/Excel mới. Presigned PUT ràng buộc `Content-Length`. Phiên video giữ chỗ cả video trước khi tạo multipart và trong lúc tải từng phần.
 - Mỗi 5 phút, backend đối soát danh sách object có phân trang ở các jurisdiction đã cấu hình và metrics toàn tài khoản. Redis giữ các lượt ghi mới hoặc đang tải giữa hai lần đối soát. Backend hủy multipart hết hạn trước khi thu hồi giữ chỗ. Link PUT đã hết hạn có thêm 15 phút dành cho lượt tải đang chạy.
 - Mặc định cảnh báo ở 9 GB và từ chối nếu ghi thêm sẽ vượt 9,5 GB. API dùng HTTP `507` và mã `1017 STORAGE_QUOTA_EXCEEDED`. Khi chưa có số liệu, Redis không khả dụng hoặc kết quả đối soát quá 15 phút, API dùng `503` và mã `1018 STORAGE_QUOTA_UNAVAILABLE` cho lượt giữ chỗ mới. Xem, tải xuống và xóa tệp dùng các đường dẫn hiện hành.
 - Để bật, thêm `R2_STORAGE_QUOTA_ENABLED=true`, `R2_ACCOUNT_ID` và `R2_METRICS_API_TOKEN` vào env backend. Dùng Cloudflare API token Bearer có quyền Workers R2 Storage Read trong đúng tài khoản. Thêm các jurisdiction của tài khoản qua `R2_QUOTA_JURISDICTIONS` nếu có bucket ngoài `default`. Token S3 hiện hành dùng cho ghi và hủy upload. Log `R2 quota initialized` xác nhận lần đối soát đầu tiên. Ghi qua Dashboard hoặc công cụ khác nằm ngoài cơ chế giữ chỗ của SQB.
 
-### [ADR-063] Gửi góp ý về web SQB qua SMTP
+### ADR-063 Gửi góp ý về web SQB qua SMTP
 
 - **Trạng thái:** Đã được thay thế bởi ADR-064.
 - Nút Góp ý trong header của ứng dụng gọi `POST /feedback` bằng phiên đăng nhập thông thường. Backend dùng SMTP hiện có và lấy địa chỉ nhận từ `FEEDBACK_RECIPIENT_EMAIL`. Phản hồi thành công sau khi SMTP chấp nhận thư. Email dạng văn bản chứa nội dung, ID tài khoản từ JWT và đường dẫn màn hình nếu có. FE chỉ gửi pathname.
 - Redis giữ một lượt gửi mỗi phút theo tài khoản bằng thao tác đặt khóa kèm TTL. API trả 429 trong thời gian chờ và 503 khi thiếu địa chỉ nhận hoặc Redis/SMTP gặp lỗi. Thiết lập timeout cho kết nối SMTP dùng chung. Không thêm schema hay lưu nội dung vào log.
 
-### [ADR-064] Mở ứng dụng email từ nút Góp ý
+### ADR-064 Mở ứng dụng email từ nút Góp ý
 
 - Dùng một liên kết `mailto:` toàn ứng dụng dưới dạng nút nổi ở góc dưới bên phải. Địa chỉ nhận là thông tin liên hệ công khai. Người dùng tự soạn và gửi thư trong ứng dụng email của mình.
 - Gỡ endpoint `/feedback` cùng mã lỗi, giới hạn Redis và cấu hình email dành riêng cho góp ý. Luồng gửi OTP dùng cấu hình SMTP hiện hành của chức năng xác thực.
 
-### [ADR-065] Tự động áp dụng cấu hình production theo phạm vi thay đổi
+### ADR-065 Tự động áp dụng cấu hình production theo phạm vi thay đổi
 
 - `deploy-stack.yml` phân loại diff trên `master`. Chỉ build image của thư mục thay đổi và giữ các job build độc lập. Compose mới và các digest của cùng lần push đi qua một lượt deploy. Thay đổi Compose riêng dùng các digest đã ghi trên VPS. Hàng đợi tuần tự hóa các lượt phát hành backend và sidecar tự động, còn VPS bảo vệ trạng thái bằng `flock`. Frontend dùng workflow riêng.
 - Mặc định không nhạy cảm nằm trong `docker-compose.prod.yml`. Bí mật ứng dụng và giá trị ghi đè nằm trong `/opt/sqb/.env.prod`. GitHub Actions tiếp tục dùng Secrets cho kết nối SSH. VPS dùng một bản env đã áp dụng có mode `0600` để deploy bằng cấu hình hiện hành và khôi phục khi áp dụng env mới thất bại.
 - `systemd.path` gọi nhánh `env` của script deploy dưới khóa stack. Script so sánh cấu hình Compose trước và sau khi đổi env, dùng image có sẵn và đợi readiness cho các service ứng dụng bị ảnh hưởng. Thay đổi env kéo theo PostgreSQL, Redis hoặc hạ tầng khác cần phối hợp qua Stack. Cài unit lần đầu trên VPS theo README.
 
-### [ADR-066] Tải mã frontend theo route được bảo vệ
+### ADR-066 Tải mã frontend theo route được bảo vệ
 
 - Vite tách mã trang thành các chunk từ dynamic import. `ProtectedRoute` kiểm tra phiên và onboarding trước khi tải `AppLayout`. `RoleGuard` xét quyền trước khi tải mã trang quản trị hoặc giảng viên. Các URL và redirect tiếp tục đi qua các guard hiện hành của React Router.
 - `RouteContent` hiển thị skeleton trong lúc tải layout hoặc trang. Sau khi layout sẵn sàng, phần nội dung có ranh giới tải riêng, giữ thanh điều hướng và các listener WebSocket trong layout. Khi tải route lỗi, giao diện cho phép thử tải lại và tự bỏ trạng thái lỗi khi đổi route.
 - Workflow frontend chạy ESLint với ngưỡng 0 cảnh báo sau khi cài từ lockfile và trước khi build.
 
-### [ADR-067] Tách hostname quản trị qua Cloudflare Access và Tunnel
+### ADR-067 Tách hostname quản trị qua Cloudflare Access và Tunnel
 
 - **Quyết định ngày 18/11/2026:** Chuyển khu quản trị sang `https://admin.hieudv.id.vn`, bảo vệ toàn hostname bằng Cloudflare Access với danh sách người dùng được cấp quyền. Tunnel native trên Ubuntu kiểm tra Access JWT/AUD trước khi chuyển tới Caddy tại `127.0.0.1:9080`. Listener HTTP này không bind public hoặc có vhost HTTPS công khai; Caddy proxy API tới cùng backend `127.0.0.1:8085`, đặt đúng Host và X-Forwarded-Proto HTTPS. Spring tiếp tục xác thực JWT SQB và vai trò ADMIN.
 - Một frontend artifact phục vụ hostname public và admin. API/refresh/SockJS trên hostname production dùng cùng origin hiện tại. Cả React Router và Caddy chuyển trang `/admin` cũ sang hostname mới; không chuyển token bằng URL hoặc chia sẻ localStorage giữa origin. Cookie refresh vẫn host-only, Secure, HttpOnly, SameSite Strict và Path `/api/v1/auth`. Compose bổ sung origin admin vào CORS và bật Secure cookie cho production. Listener admin từ chối request có Origin khác hostname admin để không cấp quyền gọi API quản trị từ JavaScript ở frontend public.
@@ -581,13 +581,13 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Frontend admin gửi header AJAX và phân biệt lỗi 401/403 ngoài envelope Spring với lỗi JWT SQB để yêu cầu xác thực Access lại; không tự refresh, xóa phiên SQB hoặc lặp thao tác ghi khi edge từ chối. Access và phiên SQB có thời hạn/đăng xuất độc lập.
 - R2 CORS cần thêm origin admin cho các luồng upload/download trực tiếp; FCM/service worker thuộc origin riêng. Hướng dẫn triển khai có giai đoạn thêm listener/tunnel, nghiệm thu, rồi mới khóa đường cũ trong `.github/deploy/admin-access/README.md`. Đây là cấu hình đã chuẩn bị trong repo; chưa áp dụng lên VPS/Cloudflare trong phiên này.
 
-### [ADR-068] Cài cấu hình Caddy SQB trên VPS dùng chung
+### ADR-068 Cài cấu hình Caddy SQB trên VPS dùng chung
 
 - **Quyết định ngày 19/11/2026:** VPS có nhiều quản trị viên/project; không triển khai hay khôi phục bằng cách chép toàn bộ Caddyfile từ repository/backup lên `/etc/caddy/Caddyfile`. Gỡ mẫu Caddyfile đầy đủ chứa cấu hình của các project khác. SQB cung cấp riêng `admin-listener.caddy`, `public-site.caddy` và script kiểm tra/cài đặt `ensure-caddy.py`, không chạy script này tự động trong workflow deploy ứng dụng.
 - Script so sánh cấu hình site SQB qua JSON của Caddy adapter, gồm host, listen/bind và handler. Chuẩn hóa group ID và đường dẫn tự ẩn Caddyfile do adapter sinh; giữ các rule ẩn file khác. Site đã đúng, kể cả block inline từ cutover trước, thì không sửa file/reload. Thiếu site thì tạo file SQB bằng exclusive creation, tận dụng import wildcard sẵn có hoặc chỉ append một import. Site/file đích đã tồn tại nhưng khác thì dừng để ghép riêng phần SQB, không append trùng hoặc ghi đè.
 - Validate toàn bộ cấu hình trước reload. Lỗi thì chỉ gỡ append/file vừa tạo khi nội dung vẫn thuộc lần chạy đó; không phục hồi snapshot đè lên thay đổi mới của quản trị viên khác. Dùng advisory lock và kiểm tra nội dung trước ghi/reload; việc chỉnh thủ công hoặc công cụ của project khác vẫn cần phối hợp cùng lock/tránh ghi đồng thời.
 
-### [ADR-069] Tách transport xác thực Web/Native và giữ AT web trong memory
+### ADR-069 Tách transport xác thực Web/Native và giữ AT web trong memory
 
 - **Quyết định ngày 19/11/2026:** Người dùng yêu cầu phục vụ đồng thời nhóm môn Web và Flutter native, chuyển AT web từ localStorage sang memory. Giữ `/auth/login|refresh|logout` cho WEB và bổ sung `/auth/native/login|refresh|logout` cho NATIVE; chia sẻ credential, tài khoản, quyền, onboarding, Redis rotation và API nghiệp vụ. Bật luồng native trong bản triển khai này, không chờ app riêng.
 - Endpoint server chọn `authClientType` và ký claim vào JWT. Platform chỉ là metadata được kiểm tra phù hợp contract, không phải bằng chứng caller native. WEB RT chỉ dùng cookie HttpOnly; NATIVE RT chỉ dùng JSON/secure storage của OS. Không fallback body khi web thiếu cookie; từ chối refresh/logout sai kênh. RT legacy thiếu kênh chỉ migrate qua WEB cookie, native phải login lại. Không thêm entity/schema/Liquibase.
@@ -595,7 +595,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - AT ONBOARDING cũng chỉ ở memory và không có RT; reload giữa thiết lập yêu cầu login lại. Memory giảm credential lưu bền vững, không ngăn XSS đọc AT đang dùng/gọi API. Logout thu hồi RT/thiết bị, không bảo đảm vô hiệu hóa tức thời mọi AT đã phát hành.
 - Chưa xác định origin frontend của các nhóm: giữ cookie SameSite Strict/Secure theo cấu hình hiện hành và CORS hiện có. Tài liệu Swagger/guide yêu cầu thống nhất cùng-origin proxy hoặc same-site/allowlist trước triển khai; không tự mở CORS, nới cookie hay dùng native contract để né chính sách browser. Hạn mức R2 vẫn đối soát 5 phút theo quyết định trước.
 
-### [ADR-070] Chế độ tương thích RT JSON tạm thời trong giai đoạn bảo vệ
+### ADR-070 Chế độ tương thích RT JSON tạm thời trong giai đoạn bảo vệ
 
 - **Quyết định ngày 19/11/2026:** Người dùng chọn giữ contract JSON cũ có cờ tắt sau bảo vệ, thay vì nới SameSite hoặc tăng hạn AT. Ngoại lệ này bổ sung cho ADR-069. `app.auth.legacy-json-enabled` đọc `AUTH_LEGACY_JSON_ENABLED`, mặc định false ngoài Compose; Compose production mặc định true và cho env ghi đè false.
 - Khi bật, `/auth/login` nhận non-WEB với credential hợp lệ và cấp kênh có chữ ký `LEGACY_JSON`; `/auth/refresh` ưu tiên cookie, nếu thiếu cookie mới nhận RT LEGACY_JSON hoặc RT cũ chưa có kênh trong body. Không chuyển RT đã ký WEB/NATIVE sang JSON tương thích. Tái dùng kiểm tra tài khoản và Redis rotation nguyên tử; ONBOARDING vẫn không có RT. Không thêm query/entity/schema/Liquibase.
@@ -604,7 +604,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - **Bổ sung kế hoạch được chốt ngày 19/11/2026:** Sau khi các nhóm bảo vệ xong sẽ phát hành bản backend loại bỏ toàn bộ tương thích **xác thực** cũ, thay cho việc chỉ tắt cờ: gỡ luồng LEGACY_JSON (cả logout), cờ/cấu hình/mã hỗ trợ và fallback nhận RT thiếu claim kênh qua cookie/body; cập nhật cảnh báo/tài liệu/test tương ứng. Client dùng phiên cũ phải đăng nhập lại theo contract hiện hành; WEB cookie và /auth/native/* chuẩn tiếp tục được hỗ trợ. Đây là đợt thay đổi runtime trong tương lai, không tự xảy ra theo ngày và chưa thực hiện trong lượt thống nhất tài liệu. Trạng thái ON/OFF hiện tại, CORS, cookie và hạn token không đổi; không mở rộng phạm vi sang các tương thích pagination/media/report.
 
 
-### [ADR-071] Rút ngắn chuỗi tải trang đầu, giữ gate xác thực
+### ADR-071 Rút ngắn chuỗi tải trang đầu, giữ gate xác thực
 
 - **Ngày 19/11/2026:** Sau phản ánh LCP cao khi reload, xác nhận chuỗi refresh → hồ sơ → lazy layout → lazy page → API nội dung. Dùng chung loader route và khởi động import layout/page đồng thời sau khi xác nhận phiên/hồ sơ; giữ SPA React/Vite và route guards hiện hành.
 - Không preload hàng loạt trước khi auth hoàn tất: thử nghiệm mạng giới hạn kết nối cho thấy modulepreload có thể làm request phiên đợi lâu hơn. Không prefetch API nội dung trước xác thực, không dùng token/hồ sơ persisted để mở gate sớm.
@@ -613,7 +613,7 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Giữ nguyên refresh rotation/Web Locks, lỗi mạng cho thử lại, Access gateway và thông báo thay đổi phiên giữa các tab. Thêm bốn User Timing `sqb:*` chỉ ghi tên/thời lượng trong trình duyệt để phân tích; không gửi telemetry, không ghi credential.
 - Không đổi backend contract, query/entity/schema/Liquibase hoặc cơ chế media permanent. Phép đo localhost chỉ kiểm chứng frontend; cần Record and reload trên môi trường đích để phân bổ LCP thực. Chi tiết tại `webclient/docs/STARTUP_PERFORMANCE.md`.
 
-### [ADR-072] Quản lý vòng đời autosave, overlay và dữ liệu môn học
+### ADR-072 Quản lý vòng đời autosave, overlay và dữ liệu môn học
 
 - **Ngày 19/11/2026:** Sau rà soát effect và theo yêu cầu sửa của người dùng, giữ effect cho các đồng bộ bên ngoài React nhưng giao timer autosave cho controller có cancel/generation. Submit lưu ngay input hiện tại để giữ dữ liệu khi request lỗi, success/discard hủy lượt ghi đang chờ; mở form trống không xóa bản nháp cũ chưa được xử lý, xóa trắng nội dung đã soạn thì gỡ snapshot cũ.
 - Các overlay tự quản lý dùng chung owner cho khóa cuộn và stack cho quyền xử lý Escape/Tab. Chỉ owner cuối khôi phục overflow; đóng lớp dưới không giành focus từ lớp trên. Ctrl+K không mở tìm kiếm chồng lên overlay đã đăng ký; tìm kiếm mobile giữ Tab trong panel, unmount khi đóng để reset form, mọi focus timer có cleanup.
@@ -621,25 +621,25 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Tab thành tích lấy URL làm nguồn dữ liệu duy nhất, bỏ bản sao `activeTab` trong Zustand; vẫn giữ chuẩn hóa URL và điều hướng Back. Đo hướng mở dropdown bằng layout effect trước paint, gỡ listener khi đóng.
 - Kiểm chứng bằng test timer/owner/Query và trình duyệt trên fixture tổng hợp cục bộ. Không đổi auth/cookie/TTL, Cloudflare, upload/permanent, backend query/entity/schema hoặc Liquibase; chưa deploy.
 
-### [ADR-073] Thời hạn lưu kết quả của tác vụ import/export dự kiến
+### ADR-073 Thời hạn lưu kết quả của tác vụ import/export dự kiến
 
 - **Ngày 20/11/2026 — yêu cầu đã chốt, chưa triển khai:** Trong khi lập kế hoạch chuyển import/export sang tác vụ nền, người dùng chọn giữ file xuất và kết quả import **24 giờ**. Đây là chính sách cho luồng job sẽ xây dựng; không mô tả hành vi runtime hiện tại và không thay thời hạn bằng chứng báo cáo.
 - Thời hạn giữ file/kết quả khác thời hạn URL ký tải. Kế hoạch đề xuất tính từ lúc job kết thúc, giới hạn URL theo thời gian còn lại và có cleanup đúng bucket; mốc tính cụ thể, vòng đời input/metadata và cách thu hồi cần hoàn thiện khi chốt contract.
 - Người dùng chưa chọn PostgreSQL queue/Redis Streams/broker và chưa chọn atomic/partial import; các phương án trong `.tmp/IMPORT_EXPORT_ASYNC_PLAN.md` là đề xuất để so sánh. Không tự quyết định thay đổi kiến trúc hàng đợi, nghiệp vụ import, schema/index hoặc Liquibase trong lượt rà soát.
 
-### [ADR-074] PDF cố định A4 và bỏ tham số chọn khổ giấy
+### ADR-074 PDF cố định A4 và bỏ tham số chọn khổ giấy
 
 - **Ngày 20/11/2026 — theo yêu cầu người dùng:** Giữ PDF mặc định A4; bỏ `paper_size` khỏi endpoint export đề thi, signature service, params/types frontend và form xuất đề. Không thêm lựa chọn Letter; mẫu PDF A4 hiện có giữ nguyên.
 - Cập nhật các consumer/test và API specification; regression renderer kiểm kích thước trang 595×842 point, tiếng Việt/ảnh/đáp án/thứ tự câu. Không đổi query/entity/schema/Liquibase, phạm vi quyền export hoặc quy trình private R2/quota/confirmMediaPermanent.
 - Người dùng nghiêng về một transaction cho toàn bộ phần ghi DB của Excel; hàng đợi vẫn chưa chọn. Không đặt hard cap 200 câu hoặc triển khai queue trong thay đổi này. Phân tích riêng PostgreSQL/Redis Streams/RabbitMQ theo VPS2vCPU/6GB nằm trong `.tmp/FILE_JOB_QUEUE_COMPARISON.md`; giới hạn batch/part là đề xuất cần đo.
 - Người dùng yêu cầu xem trực quan quá trình kiểm thử: mở browser local/staging, phân biệt fixture/backend thật, trình bày trạng thái/request và bằng chứng hình ảnh trong các lượt kiểm thử tiếp theo. Lượt A4 đã thao tác form thật trên Chrome với API giả lập local; backend renderer được kiểm bằng unit test riêng, không gọi R2/DB production.
 
-### [ADR-075] Gỡ API chuyển bằng chứng lịch sử sau khi người dùng xác nhận dữ liệu
+### ADR-075 Gỡ API chuyển bằng chứng lịch sử sau khi người dùng xác nhận dữ liệu
 
 - **Ngày20/11/2026:** Người dùng xác nhận hệ thống chỉ có một báo cáo và ảnh của báo cáo đã nằm trong kho riêng sqb-secret, đồng ý bỏ POST `/admin/reports/{id}/evidence/import`. Đây là xác nhận của chủ hệ thống kèm ảnh, không phải kết quả kiểm DB/R2 production của agent.
 - Gỡ endpoint/helper chỉ dành cho copy lịch sử, DTO flag hasLegacyEvidence và nhánh/nút/service frontend tương ứng. GET xin URL ảnh riêng, upload/attach report mới và retention90 ngày tiếp tục dùng; không xóa report/object/cột DB. Nhánh tương thích evidence_urls khi tạo report vẫn kiểm ownership và xác nhận permanent.
 
-### [ADR-076] Chọn RabbitMQ cho tác vụ nhập xuất file và chuẩn bị broker độc lập
+### ADR-076 Chọn RabbitMQ cho tác vụ nhập xuất file và chuẩn bị broker độc lập
 
 - **Ngày20/11/2026 — lựa chọn đã chốt, pipeline chưa triển khai:** Người dùng chọn thử RabbitMQ trên VPS2vCPU/6GB cho import/export. PostgreSQL dự kiến lưu job và transactional outbox; Rabbit chỉ mang job_id/schema_version; worker có idempotency/lease, ack sau commit kết quả, retry hữu hạn. Chưa tạo Entity/migration hoặc thay các API synchronous thành job trong lượt chuẩn bị.
 - Broker được chuẩn bị trong Compose project riêng sqb-file-jobs, dùng network sqb-network hiện có, volume/node name cố định, không publish AMQP ra host; management chỉ bind loopback và dùng SSH tunnel. Ngân sách thử512MiB/0,5CPU, memory alarm256MiB; image4.4.1-management-alpine đã đối chiếu Docker Official Images, cần nghiệm thu runtime và pin digest khi pull trên VPS.
@@ -647,14 +647,14 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Loại queue, mốc tính24h, snapshot và deadline/byte/temp disk/backlog limit còn là phần contract cần hoàn thiện trước module job. Hướng dẫn triển khai, đo tải trực quan và quay lại nằm tại `.github/deploy/file-jobs/README.md`; không coi broker chạy được đồng nghĩa pipeline job đã sẵn sàng.
 - Kiểm chứng broker local bằng đúng image/config, override riêng tên container/network/volume và port QA: boot healthy, user management/vhost/quyền namespace đúng, hai message persistent qua Management API còn sau restart, tiêu thụ một còn một. Đây không phải kiểm AMQP publisher confirm/Spring worker hoặc benchmark VPS. Các mẫu Docker stats132,7MiB và82,28MiB không phải peak; chưa đo pipeline10.000 câu.
 
-### [ADR-077] Phát triển RabbitMQ ở local, hoãn production đến khi có VPS riêng
+### ADR-077 Phát triển RabbitMQ ở local, hoãn production đến khi có VPS riêng
 
 - **Ngày20/11/2026 — theo quyết định người dùng:** Giữ lựa chọn RabbitMQ cho import/export, trước mắt phát triển và kiểm thử ở local. Không bật broker trên VPS dùng chung hiện tại; triển khai production chờ người dùng thuê VPS riêng khi có ngân sách.
 - Quyết định dựa trên snapshot VPS người dùng cung cấp: available967MiB, swap dùng2,5GiB và backend957,4MiB/1152MiB. Chưa có phép đo áp lực bộ nhớ theo thời gian hoặc benchmark pipeline trên VPS; không kết luận RabbitMQ không thể khởi động.
 - Runbook VPS giữ cho giai đoạn sau, phải đo lại tài nguyên và rà topology/backend/worker/DB/broker theo máy mới. Không tự quyết định mọi dịch vụ sẽ chuyển sang VPS mới. Local test phải trình bày trực quan và phân biệt kết quả broker với kết quả toàn bộ pipeline; chưa thay API synchronous hoặc cấu hình production.
 
 
-### [ADR-078] Chính sách mật khẩu A và bàn giao mật khẩu tạm riêng từng tài khoản
+### ADR-078 Chính sách mật khẩu A và bàn giao mật khẩu tạm riêng từng tài khoản
 
 - **Ngày 20/11/2026 — đã triển khai theo yêu cầu người dùng:** Mật khẩu mới tối thiểu12 code point sau Unicode NFC, tối đa72 byte UTF-8, đủ chữ hoa/thường Unicode, số0–9 và dấu câu/ký hiệu Unicode. Chữ Việt có dấu tính vào nhóm hoa/thường; dấu kết hợp/khoảng trắng không tính special, chặn điều khiển/ẩn. FE dùng validator/checklist chung ở onboarding/modal/Admin tạo/reset; BE kiểm tại service cả register/bulk/reset/change. Không trim/cắt chuỗi; login giữ thử chuỗi gốc cho hash cũ, rồi NFC cho mật khẩu mới. BCrypt không đổi; không áp policy mới để chặn login mật khẩu cũ.
 - ImportExcel tạo tài khoản mới, bulk tạo thủ công khi bỏ trống và reset khi bỏ trống đều sinh SecureRandom16 ký tựASCII đủ4nhóm, không loại O/0/I/l/1. Bỏ DOB/MSSV/default-user-password và biến DEFAULT_USER_PASSWORD trong .env.prod; không đụng tài khoản bootstrapAdmin. Import giữ nguyên mật khẩu userđãtồntại.
@@ -662,21 +662,21 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - Reset khóaUser rồi đổi hash + profileCompleted=false + tăngsessionEpoch(null→1 hoặc+1) cùngtransaction; giữ verified/hồsơ. Đổi mật khẩu cá nhân cũng tăngepoch, profileCompleted=true; từchối dùng lại mật khẩu hiện tại. Tái sử dụng kiểmepoch AT/RT hiệncó, không thêmblacklist hay schema; deactiveUserDevice theo batch và CredentialsChanged đóngWebSocket saucommit. WEBchange xóaRTcookie và FE xóaRAM/cache/chuyểnlogin, không gọilogout bằng tokenvừavôhiệu. Khônghủy requestđãxácthực đangchạy.
 - N+1: import tảiUsers theo email IN và profiles theo MSSV IN JOIN FETCH user, bỏ findByEmail trongloop. Không thêmEntity/index/Liquibase hoặcmediaupload, không chuyển import sangasync trong thayđổi này. API spec cập nhật contract; kiểm thử local/unit/mock không thay thế nghiệm thu DB/Redis/VPSthật. Frontend/backend cần phát hành đồng bộ do reset response đổi kiểu và client cần credentials mới.
 
-### [ADR-079] Nâng trần RAM backend lên 1.5 GiB và quay về ZGC
+### ADR-079 Nâng trần RAM backend lên 1.5 GiB và quay về ZGC
 
 - **Ngày 20/11/2026 — theo yêu cầu người dùng:** Thay phần cấu hình RAM/GC của ADR-008 và baseline backend trong ADR-076 bằng container RAM limit `1536m` (1.5 GiB), tổng RAM + swap limit `1664m` (tối đa 128 MiB swap). Giữ giới hạn rõ ràng trên VPS dùng chung; không khôi phục cấu hình không cap hoặc `MaxRAMPercentage=75.0` trước đây.
 - Chuyển Java 25 từ `-XX:+UseG1GC` sang `-XX:+UseZGC`, giữ `-Xms256m -Xmx640m` và `-XX:+ExitOnOutOfMemoryError`. Java 25 dùng ZGC generational, không thêm tùy chọn `ZGenerational` đã bị loại bỏ. Tăng cap không tự tăng heap.
 - ZGC ưu tiên giảm thời gian dừng GC, vẫn cần headroom trong heap và CPU để thu gom đồng thời. Cấu hình mới phải được đo RAM thực dùng/GC pause/allocation stall/CPU/swap dưới tải thực; chưa coi đây là bằng chứng đủ RAM hoặc tăng hiệu năng trên VPS. Không thay query/entity/schema/Liquibase/media, cấu hình dịch vụ khác hoặc quyết định RabbitMQ chỉ chạy local tại ADR-077.
 - Thay đổi trong repository cần rebuild image backend và recreate container bằng Compose mới để có hiệu lực; không mô tả như đã triển khai lên server. Nếu cần quay lại baseline trước: G1, heap giữ nguyên, RAM `1152m`, tổng RAM + swap `1280m`.
 
-### [ADR-080] Vá dependency bảo mật trên nhánh Spring Boot 4.0
+### ADR-080 Vá dependency bảo mật trên nhánh Spring Boot 4.0
 
 - **Ngày 21/11/2026 — người dùng duyệt nâng theo báo cáo:** Nâng Spring Boot `4.0.7` → `4.0.10`; Jackson 2/3, Netty, PostgreSQL JDBC và Hibernate theo BOM. Bỏ phiên bản riêng của `hibernate-vector` để đồng bộ với Hibernate Core; chọn `redisson-spring-data-40:4.7.0` thay adapter 41 cho Spring Data Redis 4.0.x.
 - Những bản vá chưa có trong BOM dùng property override theo cả họ thư viện: Commons Codec `1.23.0`, HttpClient `5.6.5` + HttpCore `5.4.4`, OpenTelemetry BOM `1.68.0`; dùng constraint có lý do CVE cho Guava `33.8.0-jre`, BCprov `1.87`, Snappy `1.1.10.12`, Batik `1.20`. Rà để gỡ override khi BOM đã cung cấp bản vá phù hợp; không tự chuyển lên Boot 4.2 hoặc phiên bản beta.
 - MsgPack giữ `0.9.12` vì chưa xác minh được bản vá phát hành; Jackson YAML đi theo BOM nhưng chưa coi WS-2026-0134 được vá trên nhánh 2.x. Cần xác minh đường gọi và theo dõi upstream riêng, không suppress cảnh báo hoặc đổi định dạng/xóa Redis cache trong lần nâng này. Test fixture cache từ Jackson 2.21.4 kiểm tra đọc dữ liệu cũ sau nâng.
 - Không thay API, entity/query, schema/Liquibase hoặc luồng media. Resolve dependency và kiểm thử local không thay thế nghiệm thu kết nối PostgreSQL/Redis/Elasticsearch/R2/Firebase trên môi trường đích; thay đổi chỉ có hiệu lực production sau rebuild và triển khai backend.
 
-### [ADR-081] Tự duyệt từng câu theo kết quả dò trùng và dùng danh mục chủ đề theo môn
+### ADR-081 Tự duyệt từng câu theo kết quả dò trùng và dùng danh mục chủ đề theo môn
 
 - **Ngày 23/11/2026 — đã triển khai trong mã nguồn:** Bỏ tác vụ tự gọi AI tinh chỉnh sau 3 ngày. Tinh chỉnh do giảng viên chủ động yêu cầu tiếp tục theo ADR-051. Sáu ngày là mốc bắt đầu tự xử lý câu còn chờ; câu gặp lỗi kỹ thuật có thể tiếp tục chờ sau mốc này.
 - Dò trong phiên và với các câu đã duyệt cùng môn. Kết quả gắn với phiên bản nội dung đã kiểm tra. Phân biệt đang chờ, lỗi kỹ thuật và đã kiểm tra xong để scheduler tự duyệt câu sạch, từ chối bản sao chính xác và đánh giá thêm cặp chỉ có tín hiệu tương đồng. Câu chưa có kết quả được giữ để thử lại hoặc giảng viên xử lý; phiên có thể chốt tự động sau khi các câu đều có quyết định. Lịch thử lại là 15 phút, 1 giờ và 6 giờ tính từ mỗi lượt lỗi. Sau đó giảng viên có thể xem hoặc chủ động thử lại.
@@ -685,111 +685,124 @@ Mỗi khi có quyết định thiết kế hoặc thay đổi kiến trúc quan 
 - BTProp dùng một chế độ. Sidecar giới hạn độ sâu tối đa bằng `BTPROP_DEPTH` (mặc định 2) và trả độ sâu đã duyệt. Bản chấm dở có điểm rủi ro và độ tin cậy rỗng ở API sidecar. Java hiển thị cảnh báo cần tự rà soát khi áp dụng bản AI.
 - Schema bổ sung `topics.archived` và `questions.duplicate_check_status`, `duplicate_check_attempts`, `duplicate_check_next_attempt_at`. `archived = NULL` có nghĩa đang dùng. Câu cũ đang chờ với trạng thái kiểm tra rỗng được poller đưa vào hàng chờ. Các cột ảnh và embedding hiện có được tái sử dụng. Changeset do người dùng tạo trước khi chạy backend trên database đã có dữ liệu.
 
-### [ADR-082] Ánh xạ một chiều từ bài viết tới phiên
+### ADR-082 Ánh xạ một chiều từ bài viết tới phiên
 
 - **Ngày 24/11/2026.** `Post.session` sở hữu quan hệ 1–1 qua `posts.session_id` và khai báo `FetchType.LAZY`. Bỏ thuộc tính ngược `Session.post` vì mã nguồn truy cập bài viết theo ID phiên thông qua repository. Hibernate có thể truy vấn thêm để xác định sự tồn tại của chiều ngược tùy chọn khi tải danh sách phiên.
 - Khi cần bài công khai của các phiên đã duyệt, bảng tin tiếp tục lấy theo lô bằng `PostRepository.findPublicApprovalPostsBySessionIds`. Khóa ngoại và ràng buộc duy nhất trên `posts.session_id` đã có trong schema.
 
-### [ADR-083] Hiển thị Hệ thống là tác giả bài vinh danh đóng góp
+### ADR-083 Hiển thị Hệ thống là tác giả bài vinh danh đóng góp
 
 - **Ngày 24/11/2026.** Thay quy tắc tên tác giả của ADR-030. API Bảng tin và bài viết trả tác giả `Hệ thống` cho `SESSION_RESOLVED_APPROVED` và `QUESTION_APPROVED_NOTIFICATION`, kể cả bài đã tạo trước đó.
 - Tên tác giả được chọn khi tạo DTO. Bài tự động vẫn gắn với phiên, nội dung vinh danh vẫn dùng mã người đề xuất và ghi chú vẫn hiển thị người ghi chú theo ADR-029.
 
-### [ADR-084] Gom các tính năng quan hệ xã hội
+### ADR-084 Gom các tính năng quan hệ xã hội
 
 - **Ngày 24/11/2026.** Đặt bạn bè, theo dõi và chặn dưới `modules.socialgraph`, mỗi tính năng có package con riêng. Các repository quan hệ nằm cạnh controller và service của tính năng phụ trách.
 - `modules.socialinteraction` phụ trách bình luận và cảm xúc trên nội dung. Các package entity, route HTTP, ánh xạ JPA và schema giữ nguyên.
 
-### [ADR-085] Kiểm tra phiên bản khi cập nhật chủ đề
+### ADR-085 Kiểm tra phiên bản khi cập nhật chủ đề
 
 - **Ngày 24/11/2026.** API tra cứu chủ đề đang dùng giữ tại `/subjects/{subjectId}/topics`. API quản lý dưới `/lecturer/subjects/{subjectId}/topics` liệt kê cả chủ đề ngừng sử dụng và tiếp tục kiểm quyền giảng viên theo môn. ADMIN được phép quản lý mọi môn.
 - Khóa ghi hàng môn học vẫn tuần tự hóa tạo, sửa và kiểm tra trùng tên. `Topic.version` dùng `@Version`. Sau khi lấy khóa, backend so sánh phiên bản gửi trong PUT với bản vừa đọc và trả HTTP 412 nếu đã thay đổi. Giao diện tải lại, giữ nội dung đang nhập và yêu cầu giảng viên xem phiên bản mới trước khi lưu tiếp.
 - Cần áp dụng changeset bổ sung `topics.version` và khởi tạo bản ghi cũ về `0` trước khi chạy backend mới.
 
-### [ADR-086] Dòng hệ thống trong lịch sử nhóm chat
+### ADR-086 Dòng hệ thống trong lịch sử nhóm chat
 
 - **Ngày 25/11/2026.** Thành viên đang hoạt động xem toàn bộ các dòng hệ thống đã ghi của nhóm theo quyền lịch sử hiện có, kể cả các dòng từ trước lần tham gia gần nhất. Nhóm ẩn tiếp tục kiểm tra quyền mở kho theo phiên.
 - Lưu dòng `SYSTEM` trong bảng `messages` với nội dung tại thời điểm thao tác và `sender_id` để trống. Dữ liệu dùng cột `VARCHAR(20)` và con trỏ ID hiện có. Cùng giao dịch lưu hoạt động thêm, tham gia qua lời mời, mời ra, rời nhóm, đổi tên hoặc đổi vai trò. Danh sách hội thoại tính số chưa đọc và bản xem trước từ tin nhắn thường.
 - Tái sử dụng sự kiện STOMP thêm, mời ra và đổi vai trò. Thêm `GROUP_DETAILS_CHANGED` cho đổi tên và rời nhóm. Sau commit, hàng đợi riêng báo client làm mới lịch sử. Khi rời nhóm, tài khoản vừa rời cũng nhận tín hiệu để tải lại quyền truy cập.
 
-### [ADR-087] Lựa chọn giới tính trong hồ sơ
+### ADR-087 Lựa chọn giới tính trong hồ sơ
 
 - **Ngày 25/11/2026.** Bổ sung `OTHER` và `PREFER_NOT_TO_SAY` bên cạnh Nam và Nữ. `null` biểu thị hồ sơ chưa có lựa chọn. API hồ sơ của chính mình trả lựa chọn đang lưu, API hồ sơ người khác bỏ trường giới tính khi giá trị là `PREFER_NOT_TO_SAY`.
 - Entity lưu enum dưới dạng chuỗi trong cột `user_profiles.gender` kiểu `VARCHAR(20)`. Changelog hiện có tạo cột này bằng kiểu chuỗi, với dung lượng đủ cho hai giá trị mới. Phát hành backend hỗ trợ enum trước khi giao diện cho phép ghi lựa chọn mới.
 
-### [ADR-088] Mã chuẩn cho múi giờ Việt Nam
+### ADR-088 Mã chuẩn cho múi giờ Việt Nam
 
 - **Ngày 25/11/2026.** Dùng `Asia/Ho_Chi_Minh` để gửi, lưu và trả múi giờ Việt Nam. Yêu cầu sửa hồ sơ với mã cũ nhận lỗi tham số. Khi tạo tài khoản hoặc nhập hàng loạt, mã cũ đi qua nhánh giá trị mặc định như các mã không hợp lệ khác. Hồ sơ đã lưu mã cũ được trả về và lưu lại theo mã chuẩn.
 - Frontend lấy danh sách từ `Intl.supportedValuesOf('timeZone')`. Múi giờ Việt Nam xuất hiện một lần với nhãn “Việt Nam (UTC+07:00)”. Lọc bí danh cũ do trình duyệt có thể trả về.
 
-### [ADR-089] Đánh dấu thông báo đã đọc khi mở từ push
+### ADR-089 Đánh dấu thông báo đã đọc khi mở từ push
 
 - **Ngày 25/11/2026.** Push mang ID của bản ghi thông báo đã lưu dưới dạng chuỗi và chỉ gửi sau khi giao dịch commit. Cấu hình, hồ sơ và thiết bị của người nhận được tải theo lô trước khi gửi.
 - Service worker mở trang đích trong ứng dụng và chuyển ID qua tham số `pushNotificationId`. Với push có ID mà thiếu đường dẫn, trang đích là trung tâm thông báo. Push cũ thiếu ID tiếp tục điều hướng theo đường dẫn sẵn có.
 - Frontend gọi API đánh dấu một thông báo đã đọc bằng phiên xác thực, xóa tham số khỏi URL và đồng bộ danh sách cùng số chưa đọc theo phản hồi API.
 - Vite tính SHA-256 từ nội dung `public/firebase-messaging-sw.js` khi build và đưa vào tham số `sqbVersion` của URL đăng ký để vượt qua cache CDN của URL cũ. Khi mở web với FID hiện có và quyền thông báo đã cấp, frontend cập nhật đăng ký cùng scope. Push mới cũng đặt `pushNotificationId` ngay trong `data.targetUrl` để worker cũ chỉ đọc đường dẫn vẫn chuyển được ID.
 
-### [ADR-090] Đọc dữ liệu JSONB trong thống kê, duyệt và báo cáo
+### ADR-090 Đọc dữ liệu JSONB trong thống kê, duyệt và báo cáo
 
 - **Ngày 25/11/2026.** Cài đặt push so sánh theo giá trị ở cả cấu hình chung, danh mục và giờ yên lặng. Hibernate nhận biết bản sao JSONB cùng nội dung trong transaction gửi push, tránh ghi lại cấu hình vừa đọc.
 - PostgreSQL tổng hợp số lượt chọn theo khóa đáp án từ bản chụp `user_answers.selected_options`. Màn duyệt lấy một log gần nhất cho mỗi câu trong một truy vấn và fetch tác giả. Chọn thời điểm giảm dần, ưu tiên log có thời điểm rồi dùng ID giảm dần khi bằng nhau. API vẫn trả bản chụp của log đã chọn.
 - Entity `Report` dùng `private_evidence_key` để truy cập ảnh riêng và bỏ mapping cột `reports.evidence_urls`. Tham số URL tương thích khi nộp báo cáo tiếp tục đi qua bước kiểm quyền và lưu vào kho riêng. Kiểm kê dữ liệu cũ trước khi áp dụng changeset bỏ cột.
 
-### [ADR-091] Chọn câu theo đồng thời ma trận độ khó và chủ đề
+### ADR-091 Chọn câu theo đồng thời ma trận độ khó và chủ đề
 
 - **Ngày 25/11/2026.** API thống kê kho dùng truy vấn đếm theo chủ đề và độ khó trên câu đã phê duyệt trong phiên đã chốt của môn. Tỷ lệ chủ đề được gắn với ID của chủ đề đang hoạt động, thuộc đúng môn học.
 - Khi tạo đề, phân bổ số câu nguyên theo phần lẻ lớn nhất. Tìm số câu có thể chọn đồng thời theo hạn mức độ khó và chủ đề bằng luồng cực đại trên các nhóm có câu. Trả lỗi trước khi ghi dữ liệu nếu tổng tối đa thấp hơn yêu cầu. Chọn ngẫu nhiên trong mỗi nhóm được phân bổ.
 - Hai cột JSONB hiện có lưu bản chụp tỷ lệ yêu cầu và số câu thực tế tại thời điểm tạo. Ma trận chủ đề lưu thêm tên chủ đề và số câu theo từng độ khó. Đề cũ chưa có bản chụp tiếp tục đọc thống kê từ các câu của đề.
 - Thống kê kho và ma trận đề có nhóm “Chưa được phân loại chủ đề” cho câu có `topic_id` rỗng, kể cả khi kho đang có 0 câu trong nhóm. Yêu cầu tạo đề dùng khóa `untagged` để phân bổ tỷ lệ cho nhóm này. Câu có chủ đề đã lưu trữ vẫn tính vào tổng kho của môn.
 
-### [ADR-092] Tải phương án và lời giải khi mở đối sánh
+### ADR-092 Tải phương án và lời giải khi mở đối sánh
 
 - **Ngày 25/11/2026.** API duyệt phiên giữ dữ liệu cảnh báo gọn và tải chi tiết qua yêu cầu riêng khi người duyệt mở đối sánh. Các ID được lấy từ cảnh báo đã lưu của câu gốc, sau đó đọc cùng lúc và giới hạn trong cùng phiên hoặc ngân hàng đã duyệt cùng môn.
 - Hộp thoại hiện dữ liệu hiện hành của câu đối sánh, gồm ảnh, phương án, đáp án đúng và lời giải. Giữ đoạn trích đã lưu khi câu đối sánh hiện không khả dụng.
 
-### [ADR-093] Trạng thái kết nối trên frontend
+### ADR-093 Trạng thái kết nối trên frontend
 
 - **Ngày 26/11/2026.** Pop-up ở cấp ứng dụng đọc trạng thái mạng từ trình duyệt. Khi trình duyệt báo ngoại tuyến, frontend hủy bước kiểm tra máy chủ đang chạy và ưu tiên thông báo mất mạng. Pop-up nằm ở góc dưới bên trái vùng nội dung và phía trên thanh điều hướng trên điện thoại.
 - Lỗi mạng, phản hồi 5xx hoặc yêu cầu API chờ 8 giây kích hoạt một lượt `GET /api/v1/actuator/health/readiness` trên API origin đang dùng. Pop-up lỗi SQB chỉ xuất hiện khi lượt kiểm tra xác nhận sự cố. Các thành phần vẫn xử lý lỗi thao tác tại chỗ.
 - Mỗi tab có tối đa một lượt kiểm tra đang chạy. Lượt kiểm tra có thời hạn 5 giây. Trong thời gian có sự cố, frontend kiểm tra lại sau 15 giây hoặc khi người dùng bấm “Thử lại”. Yêu cầu ghi dữ liệu do người dùng thực hiện tiếp tục theo luồng riêng.
 
-### [ADR-094] Biên nhận đọc tin nhắn theo vùng hiển thị
+### ADR-094 Biên nhận đọc tin nhắn theo vùng hiển thị
 
 - **Ngày 26/11/2026.** API lịch sử trả `last_read_message_id` và chạy trong transaction chỉ đọc. Gửi tin mới giữ nguyên mốc đọc của người gửi. Số tin chưa đọc bỏ qua tin đã xóa ở phía người xem, tin do chính người xem gửi và dòng hệ thống.
 - Frontend dùng `IntersectionObserver` để theo dõi tin đến trong tab đang hiển thị. Mốc chỉ tiến qua chuỗi tin đã vào vùng nhìn theo thứ tự và chờ nếu còn lịch sử chưa tải trước mốc dự kiến. Danh sách hội thoại và chấm báo giảm theo mốc mới.
 - `/app/chat.read` dùng cập nhật có điều kiện trên cột hiện có để biên nhận trùng hoặc cũ từ nhiều tab không lùi mốc. Phát hành frontend và backend cùng đợt.
 
-### [ADR-095] Trạng thái hoạt động trong chat trực tiếp
+### ADR-095 Trạng thái hoạt động trong chat trực tiếp
 
 - **Ngày 26/11/2026.** Tab đang hiển thị gửi heartbeat STOMP mỗi 15 giây. Redis lưu mốc hết hạn 45 giây theo kết nối. Tab ẩn hoặc kết nối đã đóng rút mốc còn tối đa 5 giây. Một tài khoản đang hoạt động khi còn ít nhất một kết nối chưa hết hạn.
 - Lua cập nhật thời hạn và ghi thay đổi nguyên tử. Backend thu các thay đổi theo lô mỗi giây, kiểm tra thành viên và quyền chặn hai chiều rồi phát qua hàng đợi STOMP riêng. Heartbeat dùng danh tính của kết nối đã xác thực. Hộp thư lấy trạng thái ban đầu theo lô và đồng bộ lại sau khi kết nối hoặc định kỳ khi mở chat.
 - Phạm vi là chat 1–1 trong hộp thư thường và một instance backend dùng STOMP simple broker. Trạng thái chỉ dùng Redis. Phát hành backend trước frontend để ứng dụng nhận được các đích STOMP mới.
 
-### [ADR-096] Cache trang đầu Bảng tin và làm mới nền
+### ADR-096 Cache trang đầu Bảng tin và làm mới nền
 
 - **Ngày 26/11/2026.** IndexedDB giữ một bản trang đầu gồm tối đa 20 mục, con trỏ và thời điểm yêu cầu. Bản lưu có hạn 30 phút, gắn với tài khoản, vai trò và sự kiện phiên hiện tại. Frontend chỉ khôi phục sau khi xác minh tài khoản, dọn bản lưu khi đăng nhập hoặc đăng xuất và đối chiếu phiên trước khi ghi phản hồi.
 - React Query dùng cache riêng theo tài khoản. Khi vào Bảng tin hoặc kết nối phục hồi, frontend lấy trang đầu. Nếu người dùng đang cuộn, frontend giữ danh sách và đưa bản mới vào nút cập nhật sẵn có. Khi thứ tự trang đầu hoặc con trỏ thay đổi, lần tải tiếp bắt đầu từ con trỏ mới. Lỗi tải nền giữ danh sách đang đọc.
 - Tận dụng các endpoint Bảng tin hiện có. Phạm vi ngoại tuyến là trang đã mở trong phiên đang hoạt động.
 
-### [ADR-097] Vai trò hiển thị của tác giả Bảng tin và bài viết
+### ADR-097 Vai trò hiển thị của tác giả Bảng tin và bài viết
 
 - **Ngày 27/11/2026.** DTO `actor` của Bảng tin và `author` của bài viết hoặc video lấy `role` từ tài khoản tác giả đã được tải. Frontend hiển thị `SV`, `GV` và `AD` tương ứng.
 - DTO tác giả Hệ thống trả `role: SYSTEM` và `user_id: null`. Thẻ Bảng tin hiển thị nhãn xanh `HT` và tiếp tục áp dụng quy tắc ẩn danh của ADR-083. Enum vai trò của tài khoản, quyền xác thực và schema giữ nguyên.
 
-### [ADR-098] Giữ sổ điểm và kho câu hỏi nhất quán khi chốt học kỳ
+### ADR-098 Giữ sổ điểm và kho câu hỏi nhất quán khi chốt học kỳ
 
 - **Ngày 27/11/2026.** Ghi điểm lấy khóa chia sẻ trên dòng học kỳ và kiểm tra cờ chốt trong cùng lệnh SQL. Chốt kỳ dùng khóa ghi trên dòng này. Khoản điểm công khai phát sinh muộn vẫn cập nhật số liệu cá nhân và có `semester_id = NULL`, vì vậy không đổi thứ hạng kỳ đã chốt. Điểm bí mật Game 5 cần học kỳ đang mở để kết chuyển đúng kỳ.
 - Chi tiết chấm Game 3 hỗ trợ sao chép qua Java serialization của Hibernate và dùng cấu trúc JSONB đã có. Lưu trữ câu hỏi lấy các câu đã duyệt thuộc phiên đã chốt trong đúng học kỳ đang tổng kết. Game 4 đếm số câu được duyệt theo lô trên kho tích lũy của các môn có dự đoán.
 - Giao dịch xu khóa dòng ví trước khi thay đổi số dư. Sổ xu dùng số dư từ cùng entity đã cập nhật, kể cả khi ví được tải từ đầu giao dịch chốt kỳ. Các thay đổi dùng schema hiện có.
 
-### [ADR-099] Đổi tên các module ứng dụng và định danh triển khai
+### ADR-099 Đổi tên các module ứng dụng và định danh triển khai
 
 - **Ngày 28/11/2026.** Tên thư mục, workflow, image và dịch vụ mới dùng `aisidecar`, `webclient` và `mobileclient`. Backend đọc cấu hình `aisidecar` với biến `AISIDECAR_URL`. MobileClient dùng package Dart `mobileclient` và ID Android/iOS `com.frozenheart.mobileclient`.
 - **Chuyển Webclient trên VPS.** Nếu website đang dùng `/var/www/sqb-frontend` và đường dẫn mới chưa tồn tại, chạy `sudo ln -sT -- /var/www/sqb-frontend /var/www/sqb-webclient` trước đợt deploy đầu. Khi `/var/www/sqb-webclient/dist` đã đọc được, áp dụng cấu hình Caddy cho cả public và admin. `deploy-webclient.yml` đọc `WEBCLIENT_BASE_URL` và hỗ trợ biến GitHub cũ trong giai đoạn chuyển tiếp.
 - **Chuyển AISidecar trên VPS.** Cấp quyền đọc package GHCR `sqb-aisidecar` cho tài khoản triển khai. Đợt đầu chạy Stack với cả `aisidecar` và `backend` mới. Script đọc digest và dịch vụ cũ để khôi phục khi readiness thất bại. Sau khi cả hai dịch vụ mới ổn định, kiểm tra rồi dừng container `sqb-ai-sidecar` cũ. Chuyển `AI_SIDECAR_IMAGE` trong môi trường sang `AISIDECAR_IMAGE` khi cập nhật cấu hình vận hành.
 - **Kết thúc chuyển tiếp.** Sau khi VPS nghiệm thu cấu hình mới, workflow chỉ đọc `WEBCLIENT_BASE_URL` hoặc dùng origin mặc định. Compose và backend dùng các biến `AISIDECAR_*`. Script deploy vận hành với service `aisidecar` và vẫn lưu digest của image đã qua readiness để dùng cho watcher và rollback. `.env.prod` có thể dùng tag `:latest` khi thao tác Compose trực tiếp.
 
-### [ADR-100] Triển khai AISidecar bằng tag `latest`
+### ADR-100 Triển khai AISidecar bằng tag `latest`
 
 - **Ngày 28/11/2026.** Workflow build xuất `sqb-aisidecar:latest` cho `master`. Build thủ công trên `master` và workflow Stack dùng chung hàng đợi để từng lượt công bố và triển khai tag chạy lần lượt. Backend tiếp tục được deploy theo digest.
 - VPS pull `:latest` sau khi lấy khóa deploy. Trước khi pull, script giữ image đang chạy bằng một tag rollback cục bộ. Nếu deploy lỗi, script khôi phục tag cục bộ và chạy lại image cũ. Watcher dùng image của container hiện tại khi áp dụng thay đổi môi trường. Script chỉ còn lưu trạng thái image backend và có thể bỏ tệp `.deploy-images/aisidecar.env` sau khi Stack cài script mới.
+
+### ADR-101 Dùng chung chuẩn Campus Intelligence giữa các client
+
+- **Ngày 28/11/2026.** Mở rộng quyết định Campus Intelligence từ ADR-013 thành chuẩn UX/UI của SQB. [Chuẩn thiết kế trong Git](docs/clients/DESIGN.md) quy định nhận diện, vai trò token, các chế độ sử dụng và hành vi chung. Webclient là triển khai tham chiếu. Flutter ánh xạ các quy tắc vào theme, điều hướng và tương tác phù hợp với nền tảng.
+- Web và native dùng chung API nghiệp vụ và áp dụng hợp đồng xác thực riêng theo ADR-069. Hướng dẫn agent nằm theo module. [Webclient](webclient/AGENTS.md) · [MobileClient](mobileclient/AGENTS.md)
+- Áp dụng trước cho beta học tập của sinh viên và nghiệm thu trên Android thật với API môi trường thử nghiệm. Roadmap ghi riêng phạm vi, tiến độ triển khai, kết quả kiểm thử tự động và nghiệm thu trên thiết bị. [Lộ trình MobileClient](mobileclient/ROADMAP.md)
+
+
+### ADR-102 Hiển thị lỗi nhập liệu trong giao diện Webclient
+
+- **Ngày 28/11/2026.** Mọi biểu mẫu JSX đi qua `Form`. Component tắt tooltip của trình duyệt, đọc ràng buộc qua `ValidityState` và dùng thông báo tiếng Việt trong `ValidatedField`. Nếu trường chưa có vị trí hiển thị riêng, lỗi xuất hiện trong form. `ValidatedField` đặt `aria-invalid` và liên kết trường với thông báo qua `aria-describedby`.
+- Form có quy tắc nghiệp vụ riêng dùng `validation="manual"` và tự hiển thị lỗi ở trường hoặc nhóm tương ứng. Lỗi gửi hoặc lưu xuất hiện tại vùng thao tác. Lỗi tải xuất hiện tại vùng dữ liệu cần tải lại. [Chuẩn trải nghiệm](docs/clients/DESIGN.md)
+- ESLint kiểm tra cấu trúc form và các API kích hoạt hoặc đọc thông báo mặc định. Bước lint trong workflow Webclient áp dụng quy tắc này. Vị trí của lỗi nghiệp vụ được kiểm tra trong luồng sử dụng. [ESLint](webclient/eslint.config.js) · [Form](webclient/src/components/ui/form.tsx)

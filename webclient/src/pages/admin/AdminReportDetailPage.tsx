@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useId, useRef, useState, type SubmitEvent, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation } from '@tanstack/react-query';
@@ -229,7 +230,7 @@ function ReportDecisionDialog({ report, onClose, mode }: {
         <Dialog.Description className="mt-1 text-sm text-muted-foreground">
           {reversing ? decisionEffects.REVERSE : selected ? decisionEffects[selected] : 'Báo cáo đã được xử lý.'}
         </Dialog.Description>
-        <form className="mt-4 space-y-4" onSubmit={submit}>
+        <Form className="mt-4 space-y-4" onSubmit={submit}>
           {!reversing && <FilterSelect label="Quyết định" value={selected ?? ''}
             options={report.allowedActions.map((value) => ({ value, label: decisionLabels[value] }))}
             disabled={mutation.isPending} onChange={(value) => setDraft(value as ReportDecision)} />}
@@ -237,8 +238,10 @@ function ReportDecisionDialog({ report, onClose, mode }: {
             options={durationOptions} disabled={mutation.isPending} onChange={(value) => setDays(Number(value) as SuspensionDays)} />}
           <div className="space-y-1.5">
             <label className="text-sm font-medium" htmlFor={reasonId}>Lý do xử lý</label>
-            <Textarea id={reasonId} rows={4} maxLength={500} required value={reason} disabled={mutation.isPending}
-              onChange={(event) => setReason(event.target.value)} />
+            <ValidatedField>
+              <Textarea id={reasonId} rows={4} maxLength={500} required value={reason} disabled={mutation.isPending}
+                onChange={(event) => setReason(event.target.value)} />
+            </ValidatedField>
           </div>
           {(!stillAllowed || mutation.isError) && <p role="alert" className="text-sm text-destructive">
             {reportErrorMessage(mutation.error, 'Trạng thái đã thay đổi. Đóng hộp thoại để xem quyết định mới nhất.')}
@@ -251,7 +254,7 @@ function ReportDecisionDialog({ report, onClose, mode }: {
               {mutation.isPending ? 'Đang lưu…' : 'Xác nhận'}
             </Button>
           </div>
-        </form>
+        </Form>
       </Dialog.Popup>
     </Dialog.Portal>
   </Dialog.Root>;

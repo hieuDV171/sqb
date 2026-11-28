@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useId, useState } from 'react';
 import { BookOpen, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ export function LecturerQuestionsExportCard() {
           Chưa có môn học phụ trách trong học kỳ hiện tại.
         </p>
       ) : (
-        <form onSubmit={(event) => {
+        <Form onSubmit={(event) => {
           event.preventDefault();
           if (!exportMutation.isPending) {
             exportMutation.mutate({ subjectId: selectedSubject.id, format, includeAnswer });
@@ -88,7 +89,7 @@ export function LecturerQuestionsExportCard() {
               {exportMutation.isPending ? 'Đang xuất…' : 'Xuất tệp'}
             </Button>
           </div>
-        </form>
+        </Form>
       )}
     </section>
   );

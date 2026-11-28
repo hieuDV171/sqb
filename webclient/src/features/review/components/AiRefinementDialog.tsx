@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -314,7 +315,7 @@ export function AiRefinementDialog({ question, sessionId, open, onClose }: {
               : refine.isPending ? 'Đang tạo đề xuất.'
               : lastTurn?.result && isValidDraft(lastTurn.result.suggestedQuestion) ? 'Đã nhận được kết quả kiểm chứng.' : ''}
           </div>
-          <form onSubmit={submit} className="shrink-0 space-y-2 border-t border-border px-4 py-3 sm:px-5">
+          <Form onSubmit={submit} className="shrink-0 space-y-2 border-t border-border px-4 py-3 sm:px-5">
             {previousDraft && (
               <div className="flex flex-wrap items-center justify-between gap-x-2">
                 <p className="text-xs text-muted-foreground">{useOriginal ? 'Đang dùng câu hỏi gốc' : 'Đang chỉnh tiếp bản đề xuất gần nhất'}</p>
@@ -343,7 +344,7 @@ export function AiRefinementDialog({ question, sessionId, open, onClose }: {
               </Button>
             </div>
             <p className="hidden text-xs text-muted-foreground sm:block">Enter để gửi · Shift + Enter để xuống dòng</p>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

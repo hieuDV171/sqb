@@ -12,6 +12,8 @@
 .agents
 .codex
 AGENTS.md
+!/webclient/AGENTS.md
+!/mobileclient/AGENTS.md
 BACKEND_API_SPECIFICATION.md
 TASK_TRACKER.md
 REPORT_MODERATION_PLAN.md

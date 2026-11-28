@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useRef, useState } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
@@ -181,18 +182,20 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
           </div>
 
           {nameDraft !== null && canManage ? (
-            <form className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5" onSubmit={(event) => {
+            <Form className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5" onSubmit={(event) => {
               event.preventDefault();
               if (!canRename || !updatedName) return;
               renameGroup.mutate({ conversationId, data: { name: updatedName } }, {
                 onSuccess: () => setNameDraft(null),
               });
             }}>
-              <label className="block space-y-2">
-                <span className="block text-base font-semibold">Tên nhóm mới</span>
-                <Input autoFocus required maxLength={100} value={nameDraft} onChange={(event) => setNameDraft(event.target.value)}
-                  disabled={renameGroup.isPending} className="min-h-11 md:text-base" />
-              </label>
+              <div className="space-y-2">
+                <label htmlFor="chat-group-name" className="block text-base font-semibold">Tên nhóm mới</label>
+                <ValidatedField>
+                  <Input id="chat-group-name" autoFocus required maxLength={100} value={nameDraft} onChange={(event) => setNameDraft(event.target.value)}
+                    disabled={renameGroup.isPending} className="min-h-11 md:text-base" />
+                </ValidatedField>
+              </div>
               {renameGroup.isError && <p role="alert" className="text-sm text-destructive">Không thể đổi tên nhóm. Hãy thử lại.</p>}
               <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" variant="outline" className="min-h-11" onClick={() => setNameDraft(null)}
@@ -201,7 +204,7 @@ function GroupMembersDialog({ conversationId, onClose }: Omit<GroupMembersModalP
                   {renameGroup.isPending ? 'Đang lưu…' : 'Lưu tên nhóm'}
                 </Button>
               </div>
-            </form>
+            </Form>
           ) : isAddMode && canManage ? (
             <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">

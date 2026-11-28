@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { CursorPagination, type PageCursor } from '@/components/ui/cursor-pagination';
 import { useRef, useState, type SubmitEvent, type ReactNode } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
@@ -49,6 +50,8 @@ const schoolTimeZone = 'Asia/Ho_Chi_Minh';
 const schoolDate = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeZone: schoolTimeZone });
 const schoolDateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: schoolTimeZone });
 const ratingFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 });
+const maxGame1Participants = 1_000_000;
+const maxGame4BankSize = 2_147_483_647; // Game4PredictionRequest uses a Java Integer.
 const questionVerdicts = {
   MATCH: { label: 'Khớp', variant: 'success' },
   MISMATCH: { label: 'Lệch', variant: 'destructive' },
@@ -69,13 +72,15 @@ function GamePanel({ title, description, children }: { title: string; descriptio
 }
 
 function NumberField({ id, label, value, onChange, min, max }: {
-  id: string; label: string; value: string; onChange: (value: string) => void; min: number; max?: number;
+  id: string; label: string; value: string; onChange: (value: string) => void; min: number; max: number;
 }) {
   return (
     <div className="min-w-0 space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type="number" value={value} onChange={(event) => onChange(event.target.value)}
-        min={min} max={max} required />
+      <ValidatedField>
+        <Input id={id} type="number" inputMode="numeric" value={value} onChange={(event) => onChange(event.target.value)}
+          min={min} max={max} step={1} required />
+      </ValidatedField>
     </div>
   );
 }
@@ -263,13 +268,13 @@ export function PredictionArenaTab() {
               </div>
             )}
           {selectedClass && (
-            <form onSubmit={submitGame1} className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,20rem)_auto] sm:items-end sm:justify-start">
-              <NumberField id="game1-count" label="Số sinh viên dự đoán" min={1} max={100} value={game1Count} onChange={setGame1Count} />
-              <Button type="submit" disabled={predictGame1.isPending}><Send aria-hidden="true" />{predictGame1.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
+            <Form key={selectedClass.courseClassId} onSubmit={submitGame1} className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,20rem)_auto] sm:items-start sm:justify-start">
+              <NumberField id="game1-count" label="Số sinh viên dự đoán" min={1} max={maxGame1Participants} value={game1Count} onChange={setGame1Count} />
+              <Button type="submit" className="sm:mt-5" disabled={predictGame1.isPending}><Send aria-hidden="true" />{predictGame1.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}</Button>
               {predictGame1.isError && predictGame1.variables?.courseClassId === selectedClass.courseClassId && (
                 <ActionError className="sm:col-span-2" message={getActionErrorMessage(predictGame1.error, 'Không thể đặt dự đoán cho lớp này.')} />
               )}
-            </form>
+            </Form>
           )}
         </GamePanel>
       )}
@@ -307,10 +312,11 @@ export function PredictionArenaTab() {
             : subjectsQuery.isError ? <ErrorState title="Không thể tải danh sách môn học" onRetry={() => void subjectsQuery.refetch()} />
             : subjects.length === 0 ? <EmptyState icon={Database} title="Chưa có môn học để dự đoán" />
             : (
-              <form onSubmit={submitGame4} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
+              <Form onSubmit={submitGame4} className="max-w-xl space-y-4 rounded-xl border border-border bg-surface-subtle p-4">
                 <StudySubjectSelect subjects={subjects} value={game4Subject?.subjectId} onChange={setGame4SubjectId}
                   label="Môn học" emptyLabel="Chọn một môn học…" required />
-                <NumberField id="game4-bank-size" label="Tổng số câu hỏi dự đoán" min={0} value={game4BankSize} onChange={setGame4BankSize} />
+                <NumberField id="game4-bank-size" label="Tổng số câu hỏi dự đoán" min={0} max={maxGame4BankSize}
+                  value={game4BankSize} onChange={setGame4BankSize} />
                 <Button ref={game4SubmitButton} type="submit" disabled={!game4Subject || predictGame4.isPending}>
                   <Send aria-hidden="true" />{predictGame4.isPending ? 'Đang gửi…' : 'Gửi dự đoán'}
                 </Button>
@@ -319,7 +325,7 @@ export function PredictionArenaTab() {
                     && 'code' in predictGame4.error && predictGame4.error.code === '2201') && (
                   <ActionError message={getActionErrorMessage(predictGame4.error, 'Không thể đặt dự đoán cho môn này.')} />
                 )}
-              </form>
+              </Form>
             )}
           <AlertDialog.Root open={showGame4Duplicate} onOpenChange={setShowGame4Duplicate}>
             <AlertDialog.Portal>

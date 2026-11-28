@@ -1,5 +1,7 @@
+import { Form } from '@/components/ui/form';
 import { useId, useState, type SubmitEvent } from 'react';
 import { FilePlus2 } from 'lucide-react';
+import { ActionError } from '@/components/ui/action-error';
 import { Button } from '@/components/ui/button';
 import { FilterSelect } from '@/components/ui/filter-select';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,7 @@ const defaultPercentages = { easy: '30', medium: '50', hard: '20', unclassified:
 const untaggedTopicKey = 'untagged';
 const invalidPercentage = (value: string) =>
   value === '' || !Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 100;
+const percentageError = 'Nhập số nguyên từ 0 đến 100.';
 
 export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, onSuccess }: GenerateExamModalProps) {
   const id = useId();
@@ -57,7 +60,6 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   const validTopics = !useTopicMatrix || (topicTotal === 100 && !weightedTopics.some(({ percentage }) => invalidPercentage(percentage)));
   const count = Number(questionCount);
   const validCount = Number.isInteger(count) && count >= 1 && count <= maxQuestionCount;
-  const invalidCount = questionCount !== '' && !validCount;
   const bankTooSmall = bank != null && validCount && count > bank.totalQuestions;
   const canGenerate = !!bank && selectedClasses.length > 0 && validCount && !bankTooSmall && validMatrix && validTopics;
 
@@ -85,7 +87,7 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
   return (
     <ExamDialog title="Tạo đề thi" description="Chọn môn, lớp học phần và ma trận cho đề thi."
       icon={FilePlus2} busy={generate.isPending} onClose={onClose}>
-      <form onSubmit={submit} className="flex min-h-0 min-w-0 flex-col">
+      <Form validation="manual" onSubmit={submit} className="flex min-h-0 min-w-0 flex-col">
         <div className="min-h-0 overflow-y-auto">
           <fieldset disabled={generate.isPending} className="min-w-0 space-y-5 p-4 sm:p-5">
             {classes.isPending ? (
@@ -162,10 +164,10 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
               <div className="space-y-1.5">
                 <Label htmlFor={`${id}-count`}>Số câu hỏi</Label>
                 <QuestionCountInput id={`${id}-count`} value={questionCount} onChange={setQuestionCount}
-                  invalid={invalidCount || bankTooSmall}
+                  invalid={!validCount || bankTooSmall}
                   describedBy={bankTooSmall ? `${id}-count-range ${id}-count-error` : `${id}-count-range`} />
-                <p id={`${id}-count-range`} className={cn('text-sm', invalidCount ? 'text-destructive' : 'text-muted-foreground')}>
-                  {invalidCount ? `Nhập số nguyên từ 1 đến ${maxQuestionCount}.` : `Từ 1 đến ${maxQuestionCount} câu`}
+                <p id={`${id}-count-range`} role="status" className={cn('text-sm', validCount ? 'text-muted-foreground' : 'text-destructive')}>
+                  {validCount ? `Từ 1 đến ${maxQuestionCount} câu` : `Nhập số nguyên từ 1 đến ${maxQuestionCount}.`}
                 </p>
               </div>
             </div>
@@ -183,15 +185,18 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                     <div className="relative text-foreground">
                       <Input id={`${id}-${field}`} type="number" min={0} max={100} step={1} required
                         aria-label={`Tỷ lệ ${label.toLowerCase()} (%)`}
+                        aria-invalid={invalidPercentage(percentages[field]) || undefined}
+                        aria-describedby={invalidPercentage(percentages[field]) ? `${id}-${field}-error` : undefined}
                         className="h-11 bg-background pr-7" value={percentages[field]}
                         onChange={(event) => setPercentages((previous) => ({ ...previous, [field]: event.target.value }))} />
                       <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-sm text-muted-foreground">%</span>
                     </div>
+                    <ActionError id={`${id}-${field}-error`} message={invalidPercentage(percentages[field]) ? percentageError : undefined} />
                   </div>
                 ))}
               </div>
               <p id={`${id}-matrix-total`} role="status" className={cn('text-sm font-medium', validMatrix ? 'text-success' : 'text-destructive')}>
-                Tổng {total}%{!validMatrix && ' · Nhập số nguyên từ 0 đến 100 cho mỗi nhóm, tổng phải bằng 100%.'}
+                Tổng {total}%{total !== 100 && ' · Tổng tỷ lệ phải bằng 100%.'}
               </p>
               <p id={`${id}-matrix-help`} className="text-sm text-muted-foreground">
                 Hệ thống làm tròn tỷ lệ ra số câu nguyên. Đề chỉ được tạo khi kho đáp ứng đủ ma trận.
@@ -221,11 +226,14 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                             <div className="relative">
                               <Input id={`${id}-topic-${topic.key}`} type="number" min={0} max={100} step={1} required
                                 aria-label={`Tỷ lệ chủ đề ${topic.topicName} (%)`} className="h-11 bg-background pr-7"
+                                aria-invalid={invalidPercentage(topic.percentage) || undefined}
+                                aria-describedby={invalidPercentage(topic.percentage) ? `${id}-topic-${topic.key}-error` : undefined}
                                 value={topic.percentage}
                                 onChange={(event) => setTopicPercentages((previous) => ({ ...previous, [topic.key]: event.target.value }))} />
                               <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-sm text-muted-foreground">%</span>
                             </div>
                           </div>
+                          <ActionError id={`${id}-topic-${topic.key}-error`} message={invalidPercentage(topic.percentage) ? percentageError : undefined} />
                           <dl className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                             {examDifficulties.map(({ count: countField, field, label, tone }) => (
                               <div key={field} className={cn('flex min-w-0 flex-col justify-between gap-1 rounded-lg px-2 py-1.5', tone)}>
@@ -238,7 +246,7 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
                       ))}
                     </ul>
                     <p role="status" className={cn('text-sm font-medium', validTopics ? 'text-success' : 'text-destructive')}>
-                      Tổng {topicTotal}%{!validTopics && ' · Tỷ lệ các chủ đề phải cộng đủ 100%.'}
+                      Tổng {topicTotal}%{topicTotal !== 100 && ' · Tỷ lệ các chủ đề phải cộng đủ 100%.'}
                     </p>
                   </>
                 )}
@@ -267,7 +275,7 @@ export function GenerateExamModal({ initialClassId, initialSubjectId, onClose, o
             </Button>
           </div>
         </footer>
-      </form>
+      </Form>
     </ExamDialog>
   );
 }

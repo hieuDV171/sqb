@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useState, type SubmitEvent } from 'react';
 import { AlertCircle, Check, Eye, EyeOff, KeyRound, LogOut, MailCheck, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/common/BrandMark';
@@ -140,20 +141,22 @@ export function AccountSetupPage() {
               )}
 
               {needsEmailVerification ? (
-                <form onSubmit={verifyOtp} className="mt-6 space-y-5">
+                <Form onSubmit={verifyOtp} className="mt-6 space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="setup-otp">Mã OTP</Label>
-                    <Input
-                      id="setup-otp"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                      placeholder="000000"
-                      className="h-12 text-center text-lg tracking-[0.45em]"
-                      required
-                    />
+                    <ValidatedField>
+                      <Input
+                        id="setup-otp"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={otp}
+                        onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        className="h-12 text-center text-lg tracking-[0.45em]"
+                        required
+                      />
+                    </ValidatedField>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Button type="button" variant="outline" onClick={sendOtp} disabled={busyAction !== null}>
@@ -163,9 +166,9 @@ export function AccountSetupPage() {
                       {busyAction === 'verify' ? 'Đang xác thực…' : 'Xác thực và tiếp tục'}
                     </Button>
                   </div>
-                </form>
+                </Form>
               ) : (
-                <form onSubmit={changePassword} className="mt-6 space-y-4">
+                <Form onSubmit={changePassword} className="mt-6 space-y-4">
                   <PasswordField id="setup-current-password" label="Mật khẩu tạm thời" value={oldPassword} onChange={setOldPassword} visible={showPasswords} autoComplete="current-password" />
                   <PasswordField id="setup-new-password" label="Mật khẩu mới" value={newPassword} onChange={setNewPassword} visible={showPasswords} autoComplete="new-password" />
                   <PasswordRequirements id="setup-password-requirements" password={newPassword} currentPassword={oldPassword} />
@@ -178,7 +181,7 @@ export function AccountSetupPage() {
                   <Button type="submit" className="w-full" disabled={busyAction !== null}>
                     <KeyRound className="size-4" /> {busyAction === 'password' ? 'Đang cập nhật…' : 'Đổi mật khẩu và đăng nhập lại'}
                   </Button>
-                </form>
+                </Form>
               )}
             </CardContent>
           </Card>
@@ -203,7 +206,9 @@ function PasswordField({ id, label, value, onChange, visible, autoComplete }: { 
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={visible ? 'text' : 'password'} autoComplete={autoComplete} value={value} onChange={(event) => onChange(event.target.value)} autoCapitalize="none" spellCheck={false} aria-describedby={id === 'setup-new-password' ? 'setup-password-requirements' : undefined} required />
+      <ValidatedField>
+        <Input id={id} type={visible ? 'text' : 'password'} autoComplete={autoComplete} value={value} onChange={(event) => onChange(event.target.value)} autoCapitalize="none" spellCheck={false} aria-describedby={id === 'setup-new-password' ? 'setup-password-requirements' : undefined} required />
+      </ValidatedField>
     </div>
   );
 }

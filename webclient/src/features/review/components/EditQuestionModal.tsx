@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
@@ -69,12 +70,14 @@ export function EditQuestionModal({ question, questionNumber, subjectId, isSavin
               <X aria-hidden="true" />
             </Dialog.Close>
           </header>
-          <form onSubmit={submit} className="min-h-0 overflow-y-auto">
+          <Form onSubmit={submit} className="min-h-0 overflow-y-auto">
             <fieldset disabled={isSaving} className="min-w-0 space-y-4 p-4">
               <div className="space-y-2">
                 <Label htmlFor={`${id}-content`}>Nội dung câu hỏi</Label>
-                <textarea id={`${id}-content`} rows={3} required value={content} className={textareaClass}
-                  onChange={(event) => setContent(event.target.value)} />
+                <ValidatedField>
+                  <textarea id={`${id}-content`} rows={3} required value={content} className={textareaClass}
+                    onChange={(event) => setContent(event.target.value)} />
+                </ValidatedField>
               </div>
               <div className="max-w-xs space-y-3">
                 <QuestionTopicSelect subjectId={subjectId} value={topicId}
@@ -94,8 +97,10 @@ export function EditQuestionModal({ question, questionNumber, subjectId, isSavin
                         </Button>
                       )}
                     </div>
-                    <Input id={`${id}-option-${option.key}`} required={!option.mediaUrl} value={option.text ?? ''}
-                      className="min-h-11" onChange={(event) => updateOption(option.key, { text: event.target.value })} />
+                    <ValidatedField>
+                      <Input id={`${id}-option-${option.key}`} required={!option.mediaUrl} value={option.text ?? ''}
+                        className="min-h-11" onChange={(event) => updateOption(option.key, { text: event.target.value })} />
+                    </ValidatedField>
                     {option.mediaUrl && <img src={option.mediaUrl} alt={`Ảnh phương án ${option.key}`} className="max-h-20 max-w-full rounded-lg object-contain" />}
                     <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
                       <input type="checkbox" checked={option.isCorrect} className="size-4 accent-academic"
@@ -128,7 +133,7 @@ export function EditQuestionModal({ question, questionNumber, subjectId, isSavin
                 {isSaving ? 'Đang lưu…' : autoApprove ? 'Lưu và phê duyệt' : 'Lưu thay đổi'}
               </Button>
             </footer>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

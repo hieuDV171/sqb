@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import React, { useId, useState, useRef, useEffect } from "react";
 import { Combobox } from "@base-ui/react/combobox";
 import { Select } from "@base-ui/react/select";
@@ -529,7 +530,7 @@ export function AdminUsersPage() {
             Hệ thống ghi danh sinh viên vào lớp và tạo tài khoản cho những người chưa có.
           </AccountPanelHeading>
           <CardContent className="space-y-6">
-            <form noValidate onSubmit={handleExcelImport} className="space-y-5">
+            <Form validation="manual" onSubmit={handleExcelImport} className="space-y-5">
               <div className="space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
                 <div className="space-y-1.5" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
                   <Label htmlFor="excel-file">Tệp Excel danh sách lớp *</Label>
@@ -614,7 +615,7 @@ export function AdminUsersPage() {
                   <Upload aria-hidden="true" /> Nhập danh sách lớp
                 </Button>
               </div>
-            </form>
+            </Form>
 
             {excelResult && (
               <div className="space-y-3 rounded-xl border border-success/25 bg-success-soft p-4" role="status">
@@ -664,7 +665,7 @@ export function AdminUsersPage() {
             <CardContent className="space-y-6">
               <AccountFormError message={bulkError} />
 
-              <form noValidate onSubmit={handleBulkSubmit} className="space-y-6">
+              <Form validation="manual" onSubmit={handleBulkSubmit} className="space-y-6">
                 <div className="space-y-4">
                   {usersToImport.map(({ id, user, passwordConfirmation }, index) => {
                     const fieldPrefix = `account-${id}`;
@@ -788,7 +789,7 @@ export function AdminUsersPage() {
                     <UserPlus aria-hidden="true" /> Xác nhận tạo {usersToImport.length} tài khoản
                   </Button>
                 </div>
-              </form>
+              </Form>
 
               <p role="status" aria-atomic="true" className="sr-only">
                 {bulkResult && `Kết quả tạo tài khoản. Thành công ${bulkResult.totalSuccess}, thất bại ${bulkResult.totalFailed}.`}
@@ -841,7 +842,7 @@ export function AdminUsersPage() {
             Cấp lại mật khẩu cho một hoặc nhiều tài khoản theo địa chỉ email.
           </AccountPanelHeading>
           <CardContent className="space-y-6">
-            <form noValidate onSubmit={handleAdminResetPassword} className="space-y-5">
+            <Form validation="manual" onSubmit={handleAdminResetPassword} className="space-y-5">
               <fieldset disabled={isResetLoading} className="min-w-0 space-y-4 rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="resetEmails">Email tài khoản *</Label>
@@ -891,7 +892,7 @@ export function AdminUsersPage() {
                   Cấp lại mật khẩu
                 </Button>
               </div>
-            </form>
+            </Form>
 
             {resetLogs.length > 0 && (
               <div className="rounded-xl border border-border bg-surface-subtle p-4" role="status">

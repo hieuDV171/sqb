@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useRef, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -130,7 +131,7 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
             </Button>
           </div>
 
-          <form onSubmit={submit} aria-busy={busy} className="space-y-5 overflow-y-auto p-4 sm:p-6">
+          <Form onSubmit={submit} aria-busy={busy} className="space-y-5 overflow-y-auto p-4 sm:p-6">
             <div className="relative h-28 overflow-hidden rounded-xl bg-accent sm:h-36">
               {cover && <img src={cover} alt="Xem trước ảnh bìa" className="size-full object-cover" />}
             </div>
@@ -148,9 +149,11 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
 
             <div className="space-y-2">
               <Label htmlFor="profile-full-name">Họ và tên hiển thị</Label>
-              <Input id="profile-full-name" ref={nameInput} value={fullName} maxLength={100} required
-                aria-invalid={nameInvalid} aria-describedby={nameInvalid ? 'profile-name-error' : undefined}
-                onChange={(event) => { setFullName(event.target.value); setNameInvalid(false); }} />
+              <ValidatedField>
+                <Input id="profile-full-name" ref={nameInput} value={fullName} maxLength={100} required
+                  aria-invalid={nameInvalid} aria-describedby={nameInvalid ? 'profile-name-error' : undefined}
+                  onChange={(event) => { setFullName(event.target.value); setNameInvalid(false); }} />
+              </ValidatedField>
               {nameInvalid && <p id="profile-name-error" role="alert" className="text-sm text-destructive">Hãy nhập họ và tên.</p>}
             </div>
             <div className="space-y-2">
@@ -176,7 +179,7 @@ export function EditProfileModal({ isOpen, onClose, profile }: EditProfileModalP
                 {updateMutation.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
               </Button>
             </div>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

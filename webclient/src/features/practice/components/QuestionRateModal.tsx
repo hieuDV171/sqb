@@ -1,5 +1,6 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
-import { useState, type SubmitEvent } from 'react';
+import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert, Star, X } from 'lucide-react';
@@ -27,6 +28,7 @@ const tabs = [
 ] as const;
 
 export function QuestionRateModal({ questionId, questionCode, sessionId, interaction, onClose }: QuestionRateModalProps) {
+  const descriptionId = useId();
   const [tab, setTab] = useState<(typeof tabs)[number]['value']>('rate');
   const [stars, setStars] = useState<number | null>(interaction.myRating == null ? null : interaction.myRating + 1);
   const [ratingComment, setRatingComment] = useState(interaction.ratingComment ?? '');
@@ -94,7 +96,7 @@ export function QuestionRateModal({ questionId, questionCode, sessionId, interac
               <InfiniteListFooter query={ratings} label="Xem thêm đánh giá" />
             </div>
           ) : (
-            <form className="space-y-4" onSubmit={submit}>
+            <Form key={tab} className="space-y-4" onSubmit={submit}>
               {tab === 'rate' && (
                 <fieldset className="space-y-2">
                   <legend className="text-sm font-medium">Chấm chất lượng câu hỏi</legend>
@@ -113,19 +115,21 @@ export function QuestionRateModal({ questionId, questionCode, sessionId, interac
                   {interaction.reported ? 'Bạn đã gửi báo lỗi. Gửi lại để cập nhật nội dung.' : 'Báo lỗi được lưu riêng với đánh giá sao.'}
                 </p>
               )}
-              <label className="block space-y-1.5 text-sm font-medium">
-                <span>{tab === 'report' ? 'Mô tả lỗi' : 'Nhận xét (tùy chọn)'}</span>
-                <textarea rows={3} maxLength={500} required={tab === 'report'}
-                  className="w-full rounded-xl border border-input bg-background p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  value={tab === 'report' ? reportDescription : ratingComment}
-                  onChange={(event) => tab === 'report' ? setReportDescription(event.target.value) : setRatingComment(event.target.value)} />
-              </label>
+              <div className="space-y-1.5">
+                <label htmlFor={descriptionId} className="block text-sm font-medium">{tab === 'report' ? 'Mô tả lỗi' : 'Nhận xét (tùy chọn)'}</label>
+                <ValidatedField>
+                  <textarea id={descriptionId} rows={3} maxLength={500} required={tab === 'report'}
+                    className="w-full rounded-xl border border-input bg-background p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    value={tab === 'report' ? reportDescription : ratingComment}
+                    onChange={(event) => tab === 'report' ? setReportDescription(event.target.value) : setRatingComment(event.target.value)} />
+                </ValidatedField>
+              </div>
               {error && <p role="alert" className="text-sm text-destructive">{error.message || 'Không gửi được phản hồi.'}</p>}
               {saved && <p role="status" className="text-sm text-success">{tab === 'report' ? 'Đã lưu báo lỗi.' : 'Đã lưu đánh giá.'}</p>}
               <Button type="submit" className="min-h-11" disabled={isSubmitting || (tab === 'report' ? !reportDescription.trim() : stars == null)}>
                 {isSubmitting ? 'Đang gửi…' : tab === 'report' ? 'Gửi báo lỗi' : 'Lưu đánh giá'}
               </Button>
-            </form>
+            </Form>
           )}
         </Dialog.Popup>
       </Dialog.Portal>

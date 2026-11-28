@@ -2,6 +2,7 @@ package com.frozenheart.backend.modules.gamification.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -10,6 +11,7 @@ public record Game1PredictionRequest(
         @Schema(description = "Số lượng sinh viên dự đoán sẽ đề xuất câu hỏi vào ngày mai", example = "5")
         @NotNull(message = "Số dự đoán không được bỏ trống")
         @Min(value = 1, message = "Số lượng sinh viên dự đoán tối thiểu là 1")
+        @Max(value = 1_000_000, message = "Số lượng sinh viên dự đoán tối đa là 1.000.000")
         Integer predictedCount,
 
         @Schema(description = "ID lớp học phần", example = "101")

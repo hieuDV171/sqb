@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useId, useRef, useState } from 'react';
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ export function EditComment({ comment }: { comment: CommentResponseDto }) {
   );
 
   return (
-    <form className="my-2 w-full space-y-2" onSubmit={(event) => {
+    <Form className="my-2 w-full space-y-2" onSubmit={(event) => {
       event.preventDefault();
       if (!mutation.isPending && draft.trim() && draft.trim() !== comment.content.trim()) mutation.mutate(draft.trim());
     }} onKeyDown={(event) => {
@@ -69,6 +70,6 @@ export function EditComment({ comment }: { comment: CommentResponseDto }) {
         </Button>
         <Button type="button" variant="ghost" className="min-h-11" disabled={mutation.isPending} onClick={close}>Hủy</Button>
       </div>
-    </form>
+    </Form>
   );
 }

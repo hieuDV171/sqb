@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, MessageSquare, Send, Loader2 } from 'lucide-react';
@@ -178,7 +179,7 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
         </div>
 
         {/* Input box */}
-        <form
+        <Form
           onSubmit={handleSubmit}
           className="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-2"
         >
@@ -200,7 +201,7 @@ export const QuestionDiscussionModal: React.FC<QuestionDiscussionModalProps> = (
               <Send className="w-4 h-4" />
             )}
           </button>
-        </form>
+        </Form>
         {sendComment.isError && sendComment.variables?.targetId === questionId && (
           <ActionError className="px-5 pb-3" message={getActionErrorMessage(sendComment.error, 'Không thể gửi bình luận. Hãy thử lại.')} />
         )}

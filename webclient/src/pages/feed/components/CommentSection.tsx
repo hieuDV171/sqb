@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { getAvatarInitial } from '@/lib/avatar';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
 import React, { useState } from 'react';
@@ -36,7 +37,7 @@ export function CommentSection({ postId, comments, onAddComment }: CommentSectio
     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-4">
       {/* TODO: Hỗ trợ thanh chuyển đổi sắp xếp bình luận ('newest' / 'oldest') để phục vụ thảo luận bài học theo trình tự thời gian */}
       {/* Root Input Box */}
-      <form onSubmit={handleSendRootComment} className="flex gap-2">
+      <Form onSubmit={handleSendRootComment} className="flex gap-2">
         <div className="w-8 h-8 rounded-full bg-linear-to-tr from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
           {user?.avatarUrl ? (
             <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
@@ -61,7 +62,7 @@ export function CommentSection({ postId, comments, onAddComment }: CommentSectio
             <Send className="w-4 h-4" />
           </button>
         </div>
-      </form>
+      </Form>
 
       {/* Comment List */}
       <div className="space-y-3 pt-1">

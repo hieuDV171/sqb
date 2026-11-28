@@ -1,4 +1,5 @@
-import { useState, type SubmitEvent } from 'react';
+import { Form, ValidatedField } from '@/components/ui/form';
+import { useId, useRef, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Award, Plus } from 'lucide-react';
@@ -91,6 +92,9 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
   const [iconUrl, setIconUrl] = useState(badge?.iconUrl ?? '');
   const [selected, setSelected] = useState<BadgeAccount[]>([]);
   const [validationError, setValidationError] = useState('');
+  const [showCriteriaError, setShowCriteriaError] = useState(false);
+  const criteriaTrigger = useRef<HTMLButtonElement>(null);
+  const fieldId = useId();
   const subjectCriteria = trigger === 'APPROVED_QUESTIONS' && bySubject;
   const { amountLabel } = triggers[trigger];
   const isRank = trigger === 'LEADERBOARD_RANK';
@@ -99,6 +103,9 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
   const assigning = mode === 'grant' || mode === 'revoke';
   const subjects = useQuery({ queryKey: ['subjects', 'admin'], enabled: editing && subjectCriteria,
     queryFn: () => adminService.getAllSubjects().then(({ data }) => data) });
+  const subjectError = subjectCriteria && !subjects.data?.some((item) => String(item.subjectId) === subjectId)
+    ? 'Hãy chọn môn học.' : undefined;
+  const periodError = isRank && rankPeriod !== 'SEMESTER' ? 'Hãy chọn phạm vi học kỳ.' : undefined;
   const upload = useMutation({
     mutationFn: (file: File) => mediaService.uploadMedia(file, 'BADGE_ICON'),
     onSuccess: ({ url }) => setIconUrl(url),
@@ -149,6 +156,11 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
     event.preventDefault();
     if (mutation.isPending || upload.isPending) return;
     setValidationError('');
+    if (editing && (subjectError || periodError)) {
+      setShowCriteriaError(true);
+      criteriaTrigger.current?.focus();
+      return;
+    }
     mutation.mutate(new FormData(event.currentTarget));
   }
   const original = trigger === badge?.badgeTriggerEvent ? savedCriteria : undefined;
@@ -165,14 +177,22 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
         <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] max-w-lg -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
           <Dialog.Title className="text-lg font-bold">{titles[mode]}</Dialog.Title>
           {badge && <Dialog.Description className="my-2 text-sm text-muted-foreground">{badge.name}</Dialog.Description>}
-          <form className="mt-3 space-y-3" onSubmit={submit}>
+          <Form className="mt-3 space-y-3" onSubmit={submit}>
             <fieldset disabled={busy} className="space-y-3">
               {editing && <>
-                <label className="block space-y-1 text-sm">Tên huy hiệu<Input name="name" defaultValue={badge?.name} maxLength={100} required /></label>
+                <div className="space-y-1">
+                  <label htmlFor={`${fieldId}-name`} className="block text-sm">Tên huy hiệu</label>
+                  <ValidatedField>
+                    <Input id={`${fieldId}-name`} name="name" defaultValue={badge?.name} maxLength={100} required />
+                  </ValidatedField>
+                </div>
                 <label className="block space-y-1 text-sm">Mô tả<Textarea name="description" defaultValue={badge?.description} maxLength={500} /></label>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FilterSelect label="Cấp huy hiệu" value={tier} options={tierOptions} onChange={(value) => setTier(value as BadgeTier)} disabled={busy} />
-                  <FilterSelect label="Sự kiện xét thưởng" value={trigger} options={triggerOptions} onChange={(value) => setTrigger(value as BadgeTriggerEvent)} disabled={busy} />
+                  <FilterSelect label="Sự kiện xét thưởng" value={trigger} options={triggerOptions} onChange={(value) => {
+                    setShowCriteriaError(false);
+                    setTrigger(value as BadgeTriggerEvent);
+                  }} disabled={busy} />
                 </div>
                 <fieldset className="space-y-3 rounded-xl border border-border px-3 pb-3">
                   <legend className="px-1 text-sm font-medium">{amountLabel ? 'Tiêu chí xét tự động' : 'Trao thủ công'}</legend>
@@ -185,17 +205,22 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
                     <FilterSelect label="Môn học" value={subjectId} options={[
                       { value: '', label: subjects.isPending ? 'Đang tải môn học…' : 'Chọn môn học' },
                       ...(subjects.data ?? []).map((subject) => ({ value: String(subject.subjectId), label: `${subject.code} · ${subject.name}` })),
-                    ]} onChange={setSubjectId} required disabled={busy || !subjects.data?.length} />
+                    ]} onChange={setSubjectId} required disabled={busy || !subjects.data?.length}
+                      triggerRef={criteriaTrigger} error={showCriteriaError ? subjectError : undefined} />
                     {subjects.isError && <Button type="button" size="sm" variant="outline" onClick={() => void subjects.refetch()}>Tải lại danh sách môn học</Button>}
                     {subjects.data?.length === 0 && <p className="text-sm text-muted-foreground">Chưa có môn học để chọn.</p>}
                   </div>}
                   {isRank && <FilterSelect label="Phạm vi xếp hạng" value={rankPeriod} options={[
                     ...(rankPeriod ? [] : [{ value: '', label: 'Chọn phạm vi được hỗ trợ' }]),
                     { value: 'SEMESTER', label: 'Toàn trường theo học kỳ' },
-                  ]} onChange={setRankPeriod} required disabled={busy} />}
-                  {amountLabel && <label key={`${trigger}-${subjectCriteria}`} className="block space-y-1 text-sm">{amountLabel}
-                    <Input name="amount" type="number" min={1} max={isRank ? 10 : 2_147_483_647} step={1} defaultValue={defaultAmount} required />
-                  </label>}
+                  ]} onChange={setRankPeriod} required disabled={busy}
+                    triggerRef={criteriaTrigger} error={showCriteriaError ? periodError : undefined} />}
+                  {amountLabel && <div key={`${trigger}-${subjectCriteria}`} className="space-y-1">
+                    <label htmlFor={`${fieldId}-amount`} className="block text-sm">{amountLabel}</label>
+                    <ValidatedField>
+                      <Input id={`${fieldId}-amount`} name="amount" type="number" min={1} max={isRank ? 10 : 2_147_483_647} step={1} defaultValue={defaultAmount} required />
+                    </ValidatedField>
+                  </div>}
                   {isCounter && <FilterSelect label="Vai trò xét thưởng" value={role} options={roleOptions} onChange={(value) => setRole(value as BadgeTargetRole)} disabled={busy} />}
                   {trigger === 'MANUAL_GRANT' && <label className="block space-y-1 text-sm">Ghi chú trao thủ công (không bắt buộc)
                     <Input name="criteriaDescription" defaultValue={original?.type === 'MANUAL_GRANT' ? original.description : ''} />
@@ -235,7 +260,7 @@ function AdminBadgeDialog({ action, onClose }: { action: Action; onClose: () => 
                 {mutation.isPending ? 'Đang lưu…' : submitLabels[mode]}
               </Button>
             </div>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

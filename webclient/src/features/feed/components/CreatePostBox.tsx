@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import React, { useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -209,7 +210,7 @@ export const CreatePostBox: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="p-4 md:p-5">
+      <Form onSubmit={handleSubmit} className="p-4 md:p-5">
         <h2 id="create-post-heading" className="mb-4 text-base font-semibold text-foreground">Chia sẻ với cộng đồng</h2>
         <div className="flex gap-3.5 items-start">
           <div className="relative shrink-0">
@@ -442,7 +443,7 @@ export const CreatePostBox: React.FC = () => {
             {postType === 'LEARNING_VIDEO' ? 'Xuất bản bài giảng' : 'Đăng bài'}
           </Button>
         </div>
-      </form>
+      </Form>
     </section>
   );
 };

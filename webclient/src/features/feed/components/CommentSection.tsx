@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { InfiniteListFooter } from '@/components/ui/infinite-list-footer';
 import type { CommentResponseDto } from '@/types/post.types';
 import React, { useRef, useState } from 'react';
@@ -106,7 +107,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
   return (
       <section aria-label="Bình luận" className={targetType === 'SESSION' ? undefined : 'mt-3 border-t border-border pt-4'}>
           {/* 1. Comment Input Box */}
-          <form
+          <Form
               onSubmit={handleSubmitComment}
               className="flex gap-2.5 items-start mb-4"
           >
@@ -180,7 +181,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ targetType, targ
                       </button>
                   </div>
               </div>
-          </form>
+          </Form>
 
           <ActionError message={commentError} className="mb-4" />
           {/* 2. Comments List */}

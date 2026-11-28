@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { Form, ValidatedField } from '@/components/ui/form';
+import { useId, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { KeyRound, Loader2, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
+import { ActionError } from '@/components/ui/action-error';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { toast } from '@/stores/useToastStore';
 import { useSetHiddenPin, useUnlockHiddenChat } from '@/features/chat';
 import { useChatStore } from '@/features/chat';
+import { getActionErrorMessage } from '@/lib/errorMessage';
 
 const onlyPinDigits = (value: string) => value.replace(/[^0-9]/g, '').slice(0, 6);
 
@@ -17,24 +20,28 @@ function PinField({ label, value, onChange, disabled, autoFocus }: {
   disabled: boolean;
   autoFocus: boolean;
 }) {
+  const id = useId();
   return (
-    <label className="block space-y-1.5 text-sm font-medium">
-      <span>{label}</span>
-      <input
-        type="password"
-        inputMode="numeric"
-        pattern="[0-9]{6}"
-        maxLength={6}
-        autoComplete="off"
-        autoFocus={autoFocus}
-        required
-        disabled={disabled}
-        placeholder="Nhập 6 chữ số"
-        value={value}
-        onChange={(event) => onChange(onlyPinDigits(event.target.value))}
-        className="block min-h-11 w-full rounded-xl border border-input bg-background px-3 text-center font-mono text-base tracking-wider focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
-      />
-    </label>
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-sm font-medium">{label}</label>
+      <ValidatedField patternError="Nhập đủ 6 chữ số.">
+        <input
+          id={id}
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          autoComplete="off"
+          autoFocus={autoFocus}
+          required
+          disabled={disabled}
+          placeholder="Nhập 6 chữ số"
+          value={value}
+          onChange={(event) => onChange(onlyPinDigits(event.target.value))}
+          className="block min-h-11 w-full rounded-xl border border-input bg-background px-3 text-center font-mono text-base tracking-wider focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+        />
+      </ValidatedField>
+    </div>
   );
 }
 
@@ -50,10 +57,12 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
   const Icon = unlocking ? Lock : KeyRound;
 
   const [pinError, setPinError] = useState('');
-  const showPinError = (error: unknown) => {
+  const showPinError = (error: unknown, fallback: string) => {
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === '2412') {
       setPinError('Bạn đã thử PIN quá nhiều lần. Vui lòng thử lại sau 15 phút.');
+      return;
     }
+    setPinError(getActionErrorMessage(error, fallback));
   };
 
   const openVault = () => unlock.mutate({ pin }, {
@@ -62,7 +71,7 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
       toast.success('Đã mở khóa kho trò chuyện ẩn');
       onClose();
     },
-    onError: showPinError,
+    onError: (error) => showPinError(error, 'Không thể mở khóa. Kiểm tra mã PIN và thử lại.'),
   });
 
   return (
@@ -78,20 +87,23 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
           {unlocking ? 'Nhập mã PIN 6 chữ số để mở kho trò chuyện ẩn.' : 'Chọn mã PIN mới gồm đúng 6 chữ số.'}
         </Dialog.Description>
       </header>
-      <form className="mt-5 space-y-4" onSubmit={(event) => {
+      <Form className="mt-5 space-y-4" onSubmit={(event) => {
         event.preventDefault();
         if (busy || pin.length !== 6 || (changing && oldPin.length !== 6)) return;
         setPinError('');
         if (unlocking) {
           openVault();
         } else {
-          save.mutate({ pin, ...(changing ? { oldPin } : {}) }, { onSuccess: openVault, onError: showPinError });
+          save.mutate({ pin, ...(changing ? { oldPin } : {}) }, {
+            onSuccess: openVault,
+            onError: (error) => showPinError(error, 'Không thể lưu mã PIN. Hãy thử lại.'),
+          });
         }
       }}>
         {changing && <PinField label="Mã PIN cũ" value={oldPin} onChange={setOldPin} disabled={busy} autoFocus />}
         <PinField key={unlocking ? 'unlock' : 'new'} label={unlocking ? 'Mã PIN' : 'Mã PIN mới'} value={pin}
           onChange={setPin} disabled={busy} autoFocus={!changing} />
-        {pinError && <p role="alert" className="text-sm text-destructive">{pinError}</p>}
+        <ActionError message={pinError} />
         <Button type="submit" className="min-h-11 w-full" disabled={busy || pin.length !== 6 || (changing && oldPin.length !== 6)}>
           {busy && <Loader2 aria-hidden="true" className="motion-safe:animate-spin" />}
           {unlocking ? 'Mở khóa' : 'Lưu mã PIN mới'}
@@ -106,7 +118,7 @@ function HiddenChatPinForm({ configured, onClose }: { configured: boolean; onClo
             {changing ? 'Quay lại mở khóa' : 'Đổi mã PIN'}
           </Button>
         )}
-      </form>
+      </Form>
     </>
   );
 }

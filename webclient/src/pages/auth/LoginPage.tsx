@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useRef, useState, type SubmitEvent } from 'react';
 import {
   AlertCircle,
@@ -196,7 +197,7 @@ export function LoginPage() {
 
             <Card className="bg-card/90 backdrop-blur">
               <CardContent className="p-5 sm:p-6">
-                <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                <Form onSubmit={handleSubmit} validation="manual" className="space-y-5">
                   {activeError && (
                     <div role="alert" className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/10 p-3.5 text-sm text-destructive">
                       <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -262,7 +263,7 @@ export function LoginPage() {
                     {isLoading ? 'Đang xác thực…' : 'Đăng nhập'}
                     {!isLoading && <ArrowRight className="size-4" aria-hidden="true" />}
                   </Button>
-                </form>
+                </Form>
 
                 <div className="mt-5 flex items-start gap-3 rounded-2xl bg-surface-subtle p-3.5 text-xs leading-5 text-muted-foreground">
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-academic" aria-hidden="true" />

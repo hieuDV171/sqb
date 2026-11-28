@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { getAvatarInitial } from '@/lib/avatar';
 import { getErrorMessage } from '@/lib/errorMessage';
 import { useCurrentUserAvatarName } from '@/features/profile/hooks/useCurrentUserAvatarName';
@@ -184,7 +185,7 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <Form onSubmit={handleSubmit} className="space-y-3">
         {/* Top: Avatar & Textarea */}
         <div className="flex gap-3">
           {/* Avatar with optional frame */}
@@ -369,7 +370,7 @@ export function CreatePostCard({ subjects, onSubmitPost }: CreatePostCardProps) 
           </button>
         </div>
 
-      </form>
+      </Form>
     </div>
   );
 }

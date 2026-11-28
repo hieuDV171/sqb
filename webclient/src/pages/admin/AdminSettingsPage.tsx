@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { TopicCatalogDialog } from '@/features/session/components/TopicCatalogDialog';
 import { useState, type SubmitEvent } from 'react';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
@@ -70,7 +71,7 @@ function EditSemesterStartDate({ semester, disabled }: { semester: SemesterRespo
         <Dialog.Popup className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xl">
           <Dialog.Title className="text-lg font-bold">Sửa ngày khai giảng</Dialog.Title>
           <Dialog.Description className="text-sm text-muted-foreground">Học kỳ {semester.name}</Dialog.Description>
-          <form className="space-y-4" onSubmit={(event) => {
+          <Form className="space-y-4" onSubmit={(event) => {
             event.preventDefault();
             if (date && date !== semester.startDate && !update.isPending) update.mutate(date);
           }}>
@@ -85,7 +86,7 @@ function EditSemesterStartDate({ semester, disabled }: { semester: SemesterRespo
                 {update.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
               </Button>
             </div>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
@@ -159,11 +160,13 @@ function SemesterSettings() {
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <h2 id="admin-semesters" className="text-lg font-bold">Quản lý học kỳ</h2>
         <p className="mt-1 text-sm text-muted-foreground">Tạo học kỳ, kích hoạt, chốt sổ và đóng kỳ theo thứ tự.</p>
-        <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
+        <Form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
           <div className="w-full space-y-1.5 sm:w-60">
             <Label htmlFor="semester-name">Tên học kỳ</Label>
-            <Input id="semester-name" value={name} onChange={(event) => setName(event.target.value)}
-              placeholder="VD: 2026.1" required disabled={create.isPending} />
+            <ValidatedField>
+              <Input id="semester-name" value={name} onChange={(event) => setName(event.target.value)}
+                placeholder="VD: 2026.1" required disabled={create.isPending} />
+            </ValidatedField>
           </div>
           <div className="w-full space-y-1.5 sm:w-52">
             <Label htmlFor="semester-start-date">Ngày khai giảng (tùy chọn)</Label>
@@ -173,7 +176,7 @@ function SemesterSettings() {
             {create.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <Plus aria-hidden="true" />}
             Tạo học kỳ
           </Button>
-        </form>
+        </Form>
         {create.isError && <p role="alert" className="mt-3 text-sm text-destructive">{errorMessage(create.error, 'Không thể tạo học kỳ.')}</p>}
       </div>
 
@@ -308,21 +311,25 @@ function SubjectSettings() {
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <h2 id="admin-subjects" className="text-lg font-bold">Quản lý môn học</h2>
         <p className="mt-1 text-sm text-muted-foreground">Thêm môn vào danh mục dùng chung của trường.</p>
-        <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
+        <Form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
           <div className="w-full space-y-1.5 sm:w-36">
             <Label htmlFor="subject-code">Mã môn</Label>
-            <Input id="subject-code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())}
-              placeholder="VD: IT4409" maxLength={10} required disabled={create.isPending} />
+            <ValidatedField>
+              <Input id="subject-code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())}
+                placeholder="VD: IT4409" maxLength={10} required disabled={create.isPending} />
+            </ValidatedField>
           </div>
           <div className="w-full min-w-0 space-y-1.5 sm:min-w-56 sm:flex-1">
             <Label htmlFor="subject-name">Tên môn học</Label>
-            <Input id="subject-name" value={name} onChange={(event) => setName(event.target.value)} required disabled={create.isPending} />
+            <ValidatedField>
+              <Input id="subject-name" value={name} onChange={(event) => setName(event.target.value)} required disabled={create.isPending} />
+            </ValidatedField>
           </div>
           <Button type="submit" className="min-h-11" disabled={create.isPending || !code.trim() || !name.trim()}>
             {create.isPending ? <Loader2 aria-hidden="true" className="motion-safe:animate-spin" /> : <Plus aria-hidden="true" />}
             Tạo môn học
           </Button>
-        </form>
+        </Form>
         {create.isError && <p role="alert" className="mt-3 text-sm text-destructive">{errorMessage(create.error, 'Không thể tạo môn học.')}</p>}
       </div>
 

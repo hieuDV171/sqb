@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -70,18 +71,20 @@ export function TopicCatalogDialog({ subjectId, subjectName, onClose }: TopicCat
             </div>
           ) : (
             <>
-              <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+              <Form onSubmit={submit} className="flex flex-wrap items-end gap-2">
                 <div className="min-w-40 flex-1 space-y-1.5">
                   <Label htmlFor={id}>{editing ? 'Đổi tên chủ đề' : 'Tên chủ đề mới'}</Label>
-                  <Input id={id} value={name} onChange={(event) => setName(event.target.value)}
-                    required maxLength={100} disabled={save.isPending} className="min-h-11" />
+                  <ValidatedField>
+                    <Input id={id} value={name} onChange={(event) => setName(event.target.value)}
+                      required maxLength={100} disabled={save.isPending} className="min-h-11" />
+                  </ValidatedField>
                 </div>
                 <Button type="submit" className="min-h-11" disabled={save.isPending || !name.trim() || needsLatestVersion}>
                   {save.isPending ? 'Đang lưu…' : editing ? 'Lưu tên' : 'Thêm chủ đề'}
                 </Button>
                 {editing && <Button type="button" variant="ghost" disabled={save.isPending}
                   onClick={() => { setEditing(null); setName(''); save.reset(); }}>Hủy sửa</Button>}
-              </form>
+              </Form>
               {needsLatestVersion && (
                 <div className="space-y-2">
                   <p role="alert" className="wrap-anywhere text-sm">

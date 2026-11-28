@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { BookOpen, Loader2, Search } from 'lucide-react';
@@ -45,7 +46,7 @@ export function PracticeCatalogPage() {
         <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <StudySubjectSelect subjects={subjects.data ?? []} value={selectedSubjectId}
             onChange={(value) => setFilter('subject', value?.toString())} />
-          <form className="flex min-w-0 items-end gap-2" onSubmit={(event) => {
+          <Form className="flex min-w-0 items-end gap-2" onSubmit={(event) => {
             event.preventDefault();
             setFilter('q', String(new FormData(event.currentTarget).get('q') ?? '').trim());
           }}>
@@ -56,7 +57,7 @@ export function PracticeCatalogPage() {
                 placeholder="Tiêu đề hoặc mã phiên" />
             </label>
             <Button type="submit" variant="outline" className="min-h-11"><Search aria-hidden="true" /> Tìm</Button>
-          </form>
+          </Form>
         </div>
         {subjects.isError && (
           <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

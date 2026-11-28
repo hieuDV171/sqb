@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useState } from 'react';
 import { Download, FileDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ export function ExportExamModal({ examId, examTitle, onClose }: ExportExamModalP
   return (
     <ExamDialog title="Xuất đề thi" description={examTitle || `Đề thi #${examId}`}
       icon={FileDown} className="max-w-md" busy={exportExam.isPending} onClose={onClose}>
-      <form className="flex min-h-0 flex-col" onSubmit={(event) => {
+      <Form className="flex min-h-0 flex-col" onSubmit={(event) => {
         event.preventDefault();
         if (!exportExam.isPending) exportExam.mutate({ examId, params: { format, includeAnswerKey } });
       }}>
@@ -51,7 +52,7 @@ export function ExportExamModal({ examId, examTitle, onClose }: ExportExamModalP
             {exportExam.isPending ? 'Đang xuất…' : 'Xuất tệp'}
           </Button>
         </footer>
-      </form>
+      </Form>
     </ExamDialog>
   );
 }

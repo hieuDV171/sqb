@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, School, X } from 'lucide-react';
@@ -74,21 +75,23 @@ export function CreateCourseClassDialog({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 p-5">
+          <Form onSubmit={handleSubmit} className="space-y-4 p-5">
             <div className="space-y-1.5">
               <label htmlFor="class-code" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Mã lớp học phần *
               </label>
-              <input
-                ref={classCodeRef}
-                id="class-code"
-                value={classCode}
-                onChange={(event) => setClassCode(event.target.value)}
-                maxLength={50}
-                required
-                placeholder="Ví dụ: 161234"
-                className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
+              <ValidatedField>
+                <input
+                  ref={classCodeRef}
+                  id="class-code"
+                  value={classCode}
+                  onChange={(event) => setClassCode(event.target.value)}
+                  maxLength={50}
+                  required
+                  placeholder="Ví dụ: 161234"
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </ValidatedField>
             </div>
 
             <FilterSelect
@@ -139,7 +142,7 @@ export function CreateCourseClassDialog({
                 Tạo lớp
               </button>
             </div>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

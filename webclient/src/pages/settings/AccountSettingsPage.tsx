@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useState, type SubmitEvent } from 'react';
 import { AlertTriangle, CheckCircle2, KeyRound, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -100,20 +101,22 @@ export function AccountSettingsPage() {
               {isSending ? 'Đang gửi mã…' : 'Xác thực email ngay'}
             </Button>
           ) : (
-            <form onSubmit={confirmOtp} className="mt-5 max-w-sm space-y-3">
+            <Form onSubmit={confirmOtp} className="mt-5 max-w-sm space-y-3">
               <Label htmlFor="email-verification-code">Mã OTP gồm 6 chữ số</Label>
-              <Input
-                id="email-verification-code"
-                value={verifyCode}
-                onChange={(event) => setVerifyCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="000000"
-                className="h-12 bg-card font-mono text-lg tracking-[0.35em]"
-                maxLength={6}
-                autoFocus
-                required
-              />
+              <ValidatedField>
+                <Input
+                  id="email-verification-code"
+                  value={verifyCode}
+                  onChange={(event) => setVerifyCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  className="h-12 bg-card font-mono text-lg tracking-[0.35em]"
+                  maxLength={6}
+                  autoFocus
+                  required
+                />
+              </ValidatedField>
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={isConfirming || verifyCode.length !== 6}>
                   {isConfirming ? 'Đang xác nhận…' : 'Xác nhận mã'}
@@ -122,7 +125,7 @@ export function AccountSettingsPage() {
                   {isSending ? 'Đang gửi…' : 'Gửi lại mã'}
                 </Button>
               </div>
-            </form>
+            </Form>
           )}
         </section>
       ) : (

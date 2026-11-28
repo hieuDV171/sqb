@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import React, {useState} from 'react';
 import {Bot, Check, HelpCircle, ImageIcon, Loader2, Plus, Save, Trash2, User, X,} from 'lucide-react';
 import {cn} from '@/lib/utils';
@@ -271,7 +272,7 @@ function EditSubmissionForm({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 scrollbar-thin">
+        <Form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 scrollbar-thin">
           {/* Title & Description */}
           <div className="space-y-4 bg-slate-50/70 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
             <div>
@@ -556,23 +557,25 @@ function EditSubmissionForm({
                           </span>
                         </span>
                       </div>
-                      <input
-                        id={`edit-confidence-${qIdx}`}
-                        {...formError.inputProps(`edit-confidence-${qIdx}`)}
-                        type="number"
-                        min="0"
-                        max="4"
-                        step="0.01"
-                        required
-                        value={q.confidence ?? ''}
-                        onChange={(e) => handleUpdateQuestion(qIdx, 'confidence', e.target.value === '' ? undefined : Number(e.target.value))}
-                        onBlur={(e) => {
-                          if (e.target.value === '') return;
-                          const normalized = Math.min(4, Math.max(0, Number(e.target.value)));
-                          handleUpdateQuestion(qIdx, 'confidence', Math.round(normalized * 100) / 100);
-                        }}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
-                      />
+                      <ValidatedField>
+                        <input
+                          id={`edit-confidence-${qIdx}`}
+                          {...formError.inputProps(`edit-confidence-${qIdx}`)}
+                          type="number"
+                          min="0"
+                          max="4"
+                          step="0.01"
+                          required
+                          value={q.confidence ?? ''}
+                          onChange={(e) => handleUpdateQuestion(qIdx, 'confidence', e.target.value === '' ? undefined : Number(e.target.value))}
+                          onBlur={(e) => {
+                            if (e.target.value === '') return;
+                            const normalized = Math.min(4, Math.max(0, Number(e.target.value)));
+                            handleUpdateQuestion(qIdx, 'confidence', Math.round(normalized * 100) / 100);
+                          }}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white"
+                        />
+                      </ValidatedField>
                       <ActionError id={`edit-confidence-${qIdx}-error`} message={formError.messageAt(`edit-confidence-${qIdx}`)} />
                     </div>
 
@@ -617,7 +620,7 @@ function EditSubmissionForm({
               <span>{isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}</span>
             </button>
           </div>
-        </form>
+        </Form>
       </div>
 
       {/* Lightbox zoomed image */}

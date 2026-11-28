@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useId, useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2, X, XCircle } from 'lucide-react';
@@ -69,7 +70,7 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
               <X aria-hidden="true" />
             </Dialog.Close>
           </div>
-          <form onSubmit={submit} className="space-y-4">
+          <Form onSubmit={submit} className="space-y-4">
             <fieldset className="space-y-1" disabled={saving}>
               <legend className="mb-1 text-sm font-medium">Chọn một lý do</legend>
               {reasons.map((value) => (
@@ -82,9 +83,11 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
             </fieldset>
             <div className="space-y-2">
               <Label htmlFor={formId}>{code === 'OTHER' ? 'Lý do cụ thể (bắt buộc)' : 'Ghi chú thêm (tùy chọn)'}</Label>
-              <textarea id={formId} rows={3} maxLength={1000} value={reason} disabled={saving}
-                required={code === 'OTHER'} onChange={(event) => setReason(event.target.value)}
-                className="w-full rounded-xl border border-input bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
+              <ValidatedField key={code}>
+                <textarea id={formId} rows={3} maxLength={1000} value={reason} disabled={saving}
+                  required={code === 'OTHER'} onChange={(event) => setReason(event.target.value)}
+                  className="w-full rounded-xl border border-input bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
+              </ValidatedField>
             </div>
             <ActionError message={error} />
             <div className="flex flex-wrap justify-end gap-2">
@@ -95,7 +98,7 @@ export function RejectReasonPopover({ disabled, isRejected, rejectionCode, rejec
                 {saving ? 'Đang lưu…' : 'Lưu lý do từ chối'}
               </Button>
             </div>
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

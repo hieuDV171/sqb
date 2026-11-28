@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useState, type SubmitEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Loader2 } from 'lucide-react';
@@ -40,17 +41,19 @@ export function LecturerNoteModal({ postId, initialNote = '', onClose }: Lecture
           <Dialog.Description className="mt-1 text-sm text-muted-foreground">
             Ghi chú sẽ hiển thị công khai trên bài vinh danh phiên đề xuất.
           </Dialog.Description>
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <Form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <label className="block space-y-2 text-sm font-medium">
               <span>Nội dung ghi chú</span>
-              <textarea
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                rows={4}
-                required
-                disabled={isUpdatingNote}
-                className="block w-full rounded-xl border border-input bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <ValidatedField>
+                <textarea
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={4}
+                  required
+                  disabled={isUpdatingNote}
+                  className="block w-full rounded-xl border border-input bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </ValidatedField>
             </label>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" disabled={isUpdatingNote} onClick={onClose} className="min-h-11">
@@ -62,7 +65,7 @@ export function LecturerNoteModal({ postId, initialNote = '', onClose }: Lecture
               </Button>
             </div>
             <ActionError message={error} />
-          </form>
+          </Form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

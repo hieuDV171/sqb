@@ -17,3 +17,9 @@ Webclient dùng React, TypeScript và Vite. Backend dùng Spring Boot, PostgreSQ
 [Kiến trúc hệ thống](ARCHITECTURE.md) · [Tài liệu API (Swagger UI)](https://hieudv.id.vn/api/v1/docs)
 
 - **TODO sau khi các nhóm bảo vệ xong:** phát hành bản backend loại bỏ toàn bộ tương thích xác thực cũ: luồng `LEGACY_JSON`, cờ `AUTH_LEGACY_JSON_ENABLED` cùng cấu hình/mã hỗ trợ, fallback nhận RT thiếu claim kênh qua cookie/body và cảnh báo/tài liệu/test dành riêng cho phần đã bỏ. Kiểm thử từ chối các phiên cũ và yêu cầu đăng nhập lại; giữ WEB cookie và `/auth/native/*` chuẩn. Tắt cờ hiện tại chỉ chặn nhánh JSON, chưa hoàn thành việc dọn code và không chặn fallback RT thiếu kênh qua cookie WEB; không có cơ chế tự xóa theo ngày.
+
+## Phát triển các client
+
+- [Chuẩn UX/UI Campus Intelligence](docs/clients/DESIGN.md)
+- [Hướng dẫn agent cho Webclient](webclient/AGENTS.md)
+- [Hướng dẫn agent cho MobileClient](mobileclient/AGENTS.md) · [Lộ trình MobileClient](mobileclient/ROADMAP.md)

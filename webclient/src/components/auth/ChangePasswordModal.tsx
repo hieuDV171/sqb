@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useState, type SubmitEvent } from 'react';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -126,25 +127,27 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <Form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="oldPassword">Mật khẩu hiện tại</Label>
             <div className="relative">
-              <Input
-                id="oldPassword"
-                name="current-password"
-                type={showOldPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                value={oldPassword}
-                onChange={(event) => setOldPassword(event.target.value)}
-                className="pr-12"
-                required
-                data-autofocus
-              />
+              <ValidatedField>
+                <Input
+                  id="oldPassword"
+                  name="current-password"
+                  type={showOldPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={oldPassword}
+                  onChange={(event) => setOldPassword(event.target.value)}
+                  className="pr-12"
+                  required
+                  data-autofocus
+                />
+              </ValidatedField>
               <button
                 type="button"
                 onClick={() => setShowOldPassword((current) => !current)}
-                className="absolute right-0 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground hover:text-foreground"
+                className="absolute right-0 top-0 grid size-11 place-items-center rounded-xl text-muted-foreground hover:text-foreground md:h-10"
                 aria-label={showOldPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'}
                 aria-pressed={showOldPassword}
               >
@@ -156,21 +159,23 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
           <div className="space-y-2">
             <Label htmlFor="newPassword">Mật khẩu mới</Label>
             <div className="relative">
-              <Input
-                id="newPassword"
-                name="new-password"
-                type={showNewPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                className="pr-12"
-                autoCapitalize="none" spellCheck={false} aria-describedby="new-password-requirements"
-                required
-              />
+              <ValidatedField>
+                <Input
+                  id="newPassword"
+                  name="new-password"
+                  type={showNewPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="pr-12"
+                  autoCapitalize="none" spellCheck={false} aria-describedby="new-password-requirements"
+                  required
+                />
+              </ValidatedField>
               <button
                 type="button"
                 onClick={() => setShowNewPassword((current) => !current)}
-                className="absolute right-0 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground hover:text-foreground"
+                className="absolute right-0 top-0 grid size-11 place-items-center rounded-xl text-muted-foreground hover:text-foreground md:h-10"
                 aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
                 aria-pressed={showNewPassword}
               >
@@ -182,16 +187,18 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
           <div className="space-y-2">
             <PasswordRequirements id="new-password-requirements" password={newPassword} currentPassword={oldPassword} />
             <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
-            <Input
-              id="confirmPassword"
-              name="confirm-password"
-              aria-describedby="confirm-password-status" autoCapitalize="none" spellCheck={false}
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              required
-            />
+            <ValidatedField>
+              <Input
+                id="confirmPassword"
+                name="confirm-password"
+                aria-describedby="confirm-password-status" autoCapitalize="none" spellCheck={false}
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+              />
+            </ValidatedField>
           </div>
 
           <PasswordConfirmation id="confirm-password-status" password={newPassword} confirmation={confirmPassword} />
@@ -201,7 +208,7 @@ export function ChangePasswordModal({ isOpen, onClose, required = false, onSucce
               {isLoading ? 'Đang cập nhật…' : success ? 'Đã cập nhật' : 'Cập nhật mật khẩu'}
             </Button>
           </div>
-        </form>
+        </Form>
       </div>
     </div>
   );

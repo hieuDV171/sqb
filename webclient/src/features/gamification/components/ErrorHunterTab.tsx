@@ -1,3 +1,4 @@
+import { Form, ValidatedField } from '@/components/ui/form';
 import { useState, type SubmitEvent } from 'react';
 import { BookOpen, Flag, Send, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -72,17 +73,21 @@ export function ErrorHunterTab() {
       {canReview && (
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
           <h3 className="text-lg font-bold">Thẩm định báo lỗi</h3>
-          <form onSubmit={submit} className="max-w-2xl space-y-4">
+          <Form onSubmit={submit} className="max-w-2xl space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="error-hunter-question">ID câu hỏi</Label>
-                <Input id="error-hunter-question" type="number" min={1} required value={questionId}
-                  onChange={(event) => setQuestionId(event.target.value)} />
+                <ValidatedField>
+                  <Input id="error-hunter-question" type="number" min={1} required value={questionId}
+                    onChange={(event) => setQuestionId(event.target.value)} />
+                </ValidatedField>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="error-hunter-reporter">ID người báo lỗi</Label>
-                <Input id="error-hunter-reporter" type="number" min={1} required value={ratingUserId}
-                  onChange={(event) => setRatingUserId(event.target.value)} />
+                <ValidatedField>
+                  <Input id="error-hunter-reporter" type="number" min={1} required value={ratingUserId}
+                    onChange={(event) => setRatingUserId(event.target.value)} />
+                </ValidatedField>
               </div>
             </div>
             <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 text-sm">
@@ -98,7 +103,7 @@ export function ErrorHunterTab() {
               <Send aria-hidden="true" /> {reviewError.isPending ? 'Đang gửi…' : 'Gửi kết quả thẩm định'}
             </Button>
             {reviewError.isError && <ActionError message={getActionErrorMessage(reviewError.error, 'Không thể thẩm định báo lỗi. Hãy thử lại.')} />}
-          </form>
+          </Form>
         </section>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { Form } from '@/components/ui/form';
 import { useMemo, useState } from 'react';
 import { CheckCircle2, Loader2, UserPlus, X } from 'lucide-react';
 import { useAssignStudents } from '@/features/course-class';
@@ -71,7 +72,7 @@ export function AssignStudentsDialog({ open, courseClassId, classCode, onClose }
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <Form onSubmit={handleSubmit} className="space-y-4 p-5">
           <div className="space-y-1.5">
             <label htmlFor="student-codes" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               Danh sách MSSV *
@@ -131,7 +132,7 @@ export function AssignStudentsDialog({ open, courseClassId, classCode, onClose }
               </button>
             )}
           </div>
-        </form>
+        </Form>
       </div>
     </div>
   );

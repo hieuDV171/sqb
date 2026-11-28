@@ -1,6 +1,7 @@
-import { useId } from 'react';
+import { useId, type Ref } from 'react';
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown } from 'lucide-react';
+import { ActionError } from './action-error';
 
 interface FilterSelectProps {
   label: string;
@@ -10,10 +11,13 @@ interface FilterSelectProps {
   disabled?: boolean;
   inlineLabel?: boolean;
   required?: boolean;
+  error?: string;
+  triggerRef?: Ref<HTMLButtonElement>;
 }
 
-export function FilterSelect({ label, value, options, onChange, disabled, inlineLabel, required }: FilterSelectProps) {
+export function FilterSelect({ label, value, options, onChange, disabled, inlineLabel, required, error, triggerRef }: FilterSelectProps) {
   const labelId = useId();
+  const errorId = `${labelId}-error`;
   const placeholder = options.find((option) => option.value === '')?.label ?? 'Chọn một mục';
 
   return (
@@ -23,9 +27,10 @@ export function FilterSelect({ label, value, options, onChange, disabled, inline
       <span id={labelId} className="block text-sm font-medium">
         {label}{required && <span aria-hidden="true" className="ml-1">*</span>}
       </span>
-      <Select.Root items={options} value={value} disabled={disabled} required={required}
+      <Select.Root items={options} value={value} disabled={disabled}
         onValueChange={(next) => { if (next !== null) onChange(next); }}>
-        <Select.Trigger aria-labelledby={labelId}
+        <Select.Trigger ref={triggerRef} aria-labelledby={labelId} aria-required={required}
+          aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined}
           className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60">
           <Select.Value className="min-w-0 truncate" placeholder={placeholder} />
           <Select.Icon className="shrink-0"><ChevronDown aria-hidden="true" className="size-4 text-muted-foreground" /></Select.Icon>
@@ -46,6 +51,7 @@ export function FilterSelect({ label, value, options, onChange, disabled, inline
           </Select.Positioner>
         </Select.Portal>
       </Select.Root>
+      <ActionError id={errorId} message={error} className="col-span-full" />
     </div>
   );
 }
